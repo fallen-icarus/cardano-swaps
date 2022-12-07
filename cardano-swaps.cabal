@@ -21,7 +21,30 @@ maintainer:         modern.daidalos+git@gmail.com
 -- category:
 extra-source-files: CHANGELOG.md
 
+common lang
+  build-depends: base ^>=4.14
+  default-language: Haskell2010
+  ghc-options: -Wall -Wredundant-constraints -Wunused-packages
+
+library
+  import: lang
+  exposed-modules: CardanoSwaps
+  build-depends:
+    plutus-ledger,
+    plutus-ledger-api,
+    plutus-tx-plugin,
+    plutus-tx,
+    plutus-script-utils,
+    cardano-api,
+    bytestring,
+    serialise,
+    aeson,
+    plutonomy
+  hs-source-dirs: src
+  ghc-options: -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas -fno-specialise
+
 executable cardano-swaps
+    import: lang
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
@@ -29,6 +52,6 @@ executable cardano-swaps
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
-    build-depends:    base ^>=4.14.3.0
+    build-depends:    cardano-swaps,
     hs-source-dirs:   app
     default-language: Haskell2010

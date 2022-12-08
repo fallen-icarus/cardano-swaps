@@ -105,7 +105,7 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
                <> "\nShould not consume reference script from swap address"
                <> "\nUtxo output to swap address must contain proper datum (must match input datum)"
                <> "\nOnly the offered asset is allowed to leave the swap address"
-               <> "\nUser must supply the 1 ADA for each output with native tokens"
+               <> "\nUser must supply the ADA for each output with native tokens"
                <> "\nOffered asset leaving <= Asked asset given * price") swapCheck
 
   where
@@ -194,7 +194,7 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
           isOnlyOfferedAsset           _ = False
       in
         -- only the offered asset is allowed to leave the script address
-        -- when ADA is not being offered, the user is required to supply the 1 ADA for native token utxos
+        -- when ADA is not being offered, the user is required to supply the ADA for native token utxos
         -- this means that, when ADA is not offered, the script's ADA value can only increase
         isOnlyOfferedAsset leavingAssets &&
 

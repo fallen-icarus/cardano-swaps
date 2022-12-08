@@ -137,65 +137,57 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
     --       numOfDatums = fromInteger $ length allDatums
     --   in sum' allDatums * recip numOfDatums
 
-    -- separate input value from script and rest of input value (can be from other scripts)
-    -- fee is subtracted from value of other input
+    -- separate script input value from rest of input value (can be from other scripts)
     -- throws an error if there is a ref script among script inputs
-    -- (Valueof script input, value of other input)
-    inputValues :: (Value,Value)
-    inputValues =
+    scriptInputValue :: Value
+    scriptInputValue =
       let inputs = txInfoInputs info
-          fee = txInfoFee info
-          foo (si,oi) i = case addressCredential $ txOutAddress $ txInInfoResolved i of
+          foo si i = case addressCredential $ txOutAddress $ txInInfoResolved i of
             ScriptCredential vh ->
               -- check if it belongs to swap script
               if vh == scriptValidatorHash
               then -- check if it contains a ref script from swap script address 
                    if isJust $ txOutReferenceScript $ txInInfoResolved i
                    then traceError "Cannot consumer reference script from swap address"
-                   else (si <> txOutValue (txInInfoResolved i),oi)
-              else (si,oi <> txOutValue (txInInfoResolved i))
-            PubKeyCredential _ -> (si, oi <> txOutValue (txInInfoResolved i))
-      in foldl foo (emptyVal,Num.negate fee) inputs -- accounting for fee paid by user here
+                   else si <> txOutValue (txInInfoResolved i)
+              else si
+            PubKeyCredential _ -> si
+      in foldl foo emptyVal inputs
 
     parseDatum :: TxOut -> Price
     parseDatum o = case txOutDatum o of
       (OutputDatum (Datum d)) -> unsafeFromBuiltinData d
       _ -> traceError "Invalid datum for swap script output"
 
-    -- separate output value to script and rest of output value (can be to other scripts)
+    -- separate output value to script from rest of output value (can be to other scripts)
     -- throw error if output to script doesn't contain proper inline datum
-    -- (Value of script output, value of other output)
-    outputValues :: (Value,Value)
-    outputValues =
+    scriptOutputValue :: Value
+    scriptOutputValue =
       let outputs = txInfoOutputs info
-          foo (so,oo) o = case (addressCredential $ txOutAddress o,parseDatum o) of
+          foo so o = case (addressCredential $ txOutAddress o,parseDatum o) of
             -- also checks if proper datum is attached
             (ScriptCredential vh,price') ->
               -- check if it belongs to swap script
               if vh == scriptValidatorHash 
               then -- check if output to swap script contains proper datum
                    if price' == price
-                   then (so <> txOutValue o,oo) 
+                   then so <> txOutValue o
                    else traceError "datum changed in script output"
-              else (so,oo <> txOutValue o)
-            _ -> (so,oo <> txOutValue o)
-      in foldl foo (emptyVal,emptyVal) outputs
+              else so
+            _ -> so
+      in foldl foo emptyVal outputs
 
     swapCheck :: Bool
     swapCheck =
-      let (scriptInValue,otherInValue) = inputValues
-          (scriptOutValue,otherOutValue) = outputValues
-
-          -- value differences
-          scriptValueDiff = scriptOutValue <> Num.negate scriptInValue
-          otherValueDiff = otherOutValue <> Num.negate otherInValue
+      let  -- value differences
+          scriptValueDiff = scriptOutputValue <> Num.negate scriptInputValue
 
           -- amounts
           askedGiven = fromInteger $ uncurry (valueOf scriptValueDiff) askAsset
-          offeredTaken = fromInteger $ uncurry (valueOf otherValueDiff) offerAsset
+          offeredTaken = fromInteger $ Num.negate $ uncurry (valueOf scriptValueDiff) offerAsset
 
           -- assets leaving script address
-          leavingAssets = flattenValue $ fst $ split scriptValueDiff
+          leavingAssets = flattenValue $ fst $ split scriptValueDiff -- zero diff amounts removed
           isOnlyOfferedAsset [(cn,tn,_)] = (cn,tn) == offerAsset
           isOnlyOfferedAsset           _ = False
       in

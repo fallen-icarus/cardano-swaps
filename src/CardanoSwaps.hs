@@ -42,7 +42,7 @@ import Plutus.Script.Utils.V2.Typed.Scripts
 -- import Ledger.Bytes (fromHex)
 -- import Data.String (fromString)
 import qualified Plutonomy
-import Ledger.Value (valueOf)
+import Ledger.Value (valueOf,split,flattenValue)
 import PlutusTx.Numeric as Num
 import Plutus.V2.Ledger.Tx
 -- import PlutusTx.Ratio (recip)
@@ -95,11 +95,16 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
     traceIfFalse "invalid new asking price" (getPrice newPrice > fromInteger 0) &&
     -- must output to swap script address or owner address
     traceIfFalse "all outputs must go to either the script or the owner" outputsToSelfOrOwner
-  Swap ->
-    -- must not consume reference script utxo (which also contains beacon)
-    traceIfFalse "cannot spend reference script utxo" (null inputsWithRefScripts) &&
-    -- ratio met, ADA not withdrawn unless part of swap, and proper datums attached to script outputs
-    traceIfFalse "invalid swap" swapCheck
+  Swap -> 
+    -- should not consume reference script from swap script address
+    -- utxo output to the script must have the proper datum and datum must not differ from input
+    -- only offered asset should leave the swap script address
+    -- max offered asset taken <= given asset * price
+    traceIfFalse ("invalid swap:" 
+               <> "\nShould not consume reference script from swap address"
+               <> "\nUtxo output to swap address must contain proper datum (same as input)"
+               <> "\nOnly the offered asset is allowed to leave the swap address"
+               <> "\nOffered asset leaving <= Asked asset given * price") swapCheck
 
   where
     selfOutputs :: [TxOut]
@@ -132,8 +137,9 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
     --       numOfDatums = fromInteger $ length allDatums
     --   in sum' allDatums * recip numOfDatums
 
-    -- separate input value to script and rest of input value (can be from other scripts)
+    -- separate input value from script and rest of input value (can be from other scripts)
     -- fee is subtracted from value of other input
+    -- throws an error if there is a ref script among script inputs
     -- (Valueof script input, value of other input)
     inputValues :: (Value,Value)
     inputValues =
@@ -141,8 +147,12 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
           fee = txInfoFee info
           foo (si,oi) i = case addressCredential $ txOutAddress $ txInInfoResolved i of
             ScriptCredential vh ->
+              -- check if it belongs to swap script
               if vh == scriptValidatorHash
-              then (si <> txOutValue (txInInfoResolved i),oi)
+              then -- check if it contains a ref script from swap script address 
+                   if isJust $ txOutReferenceScript $ txInInfoResolved i
+                   then traceError "Cannot consumer reference script from swap address"
+                   else (si <> txOutValue (txInInfoResolved i),oi)
               else (si,oi <> txOutValue (txInInfoResolved i))
             PubKeyCredential _ -> (si, oi <> txOutValue (txInInfoResolved i))
       in foldl foo (emptyVal,Num.negate fee) inputs -- accounting for fee paid by user here
@@ -150,23 +160,24 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
     parseDatum :: TxOut -> Price
     parseDatum o = case txOutDatum o of
       (OutputDatum (Datum d)) -> unsafeFromBuiltinData d
-      _ -> traceError "Invalid datum for script output"
+      _ -> traceError "Invalid datum for swap script output"
 
     -- separate output value to script and rest of output value (can be to other scripts)
-    -- throw error if script output doesn't contain proper inline datum (added here to save resources)
+    -- throw error if output to script doesn't contain proper inline datum
     -- (Value of script output, value of other output)
     outputValues :: (Value,Value)
     outputValues =
       let outputs = txInfoOutputs info
-          -- emptyVal = lovelaceValueOf 0
-          foo acc@(so,oo) o = case (addressCredential $ txOutAddress o,parseDatum o) of
+          foo (so,oo) o = case (addressCredential $ txOutAddress o,parseDatum o) of
             -- also checks if proper datum is attached
             (ScriptCredential vh,price') ->
+              -- check if it belongs to swap script
               if vh == scriptValidatorHash 
-              then if price' == price
+              then -- check if output to swap script contains proper datum
+                   if price' == price
                    then (so <> txOutValue o,oo) 
                    else traceError "datum changed in script output"
-              else acc
+              else (so,oo <> txOutValue o)
             _ -> (so,oo <> txOutValue o)
       in foldl foo (emptyVal,emptyVal) outputs
 
@@ -174,17 +185,28 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
     swapCheck =
       let (scriptInValue,otherInValue) = inputValues
           (scriptOutValue,otherOutValue) = outputValues
-          scriptValueDiff = scriptInValue <> Num.negate scriptOutValue
-          otherValueDiff = otherInValue <> Num.negate otherOutValue
+
+          -- value differences
+          scriptValueDiff = scriptOutValue <> Num.negate scriptInValue
+          otherValueDiff = otherOutValue <> Num.negate otherInValue
+
+          -- amounts
           askedGiven = fromInteger $ uncurry (valueOf scriptValueDiff) askAsset
           offeredTaken = fromInteger $ uncurry (valueOf otherValueDiff) offerAsset
-      in if fst askAsset == adaSymbol || fst offerAsset == adaSymbol
-         then offeredTaken <= askedGiven * (getPrice price) -- ratio met
-         else 
-          -- ratio met
-          offeredTaken <= askedGiven * (getPrice price) && 
-          -- no ada should be swapped
-          valueOf scriptValueDiff adaSymbol adaToken == 0 
+
+          -- assets leaving script address
+          leavingAssets = flattenValue $ fst $ split scriptValueDiff
+          isOnlyOfferedAsset [(cn,tn,_)] = (cn,tn) == offerAsset
+          isOnlyOfferedAsset           _ = False
+      in
+        -- only the offered asset is allowed to leave the script address
+        -- when ADA is not being offered, the user is required to supply the 1 ADA for native token utxos
+        -- this means that, when ADA is not offered, the script's ADA value can only increase
+        isOnlyOfferedAsset leavingAssets &&
+
+        -- ratio sets the maximum amount of the offered asset that can be taken
+        -- to withdraw more of the offered asset, more of the asked asset must be deposited to the script
+        offeredTaken <= askedGiven * (getPrice price)
     
 
 data Swap

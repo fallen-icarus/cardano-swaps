@@ -18,8 +18,18 @@
 
 module CardanoSwaps
 (
-  swap,
   BasicInfo (..),
+  parsePubKey,
+  parseCurrencySymbol,
+  parseTokenName,
+
+  Price (..),
+  Action (..),
+
+  swapValidator,
+
+  writeScript,
+  writeData,
 ) where
 
 import Data.Aeson hiding (Value)
@@ -27,7 +37,8 @@ import Codec.Serialise (serialise)
 import qualified Data.ByteString.Lazy  as LBS
 import qualified Data.ByteString.Short as SBS
 import Prelude (IO,FilePath) 
--- import qualified Prelude as Haskell
+import qualified Prelude as Haskell
+import Data.String (fromString)
 
 import           Cardano.Api hiding (Script,Value,TxOut)
 import           Cardano.Api.Shelley   (PlutusScript (..))
@@ -38,14 +49,11 @@ import PlutusTx.Prelude
 import Ledger.Address
 import Plutus.Script.Utils.V2.Scripts as Scripts
 import Plutus.Script.Utils.V2.Typed.Scripts
--- import Plutus.V1.Ledger.Value (flattenValue)
--- import Ledger.Bytes (fromHex)
--- import Data.String (fromString)
+import Ledger.Bytes (fromHex)
 import qualified Plutonomy
 import Ledger.Value (valueOf,split,flattenValue)
 import PlutusTx.Numeric as Num
 import Plutus.V2.Ledger.Tx
--- import PlutusTx.Ratio (recip)
 import Ledger.Ada (lovelaceValueOf)
 
 -------------------------------------------------
@@ -61,6 +69,24 @@ data BasicInfo = BasicInfo
 
 PlutusTx.makeLift ''BasicInfo
 
+-- functions for parsing user input
+parsePubKey :: Haskell.String -> PaymentPubKeyHash
+parsePubKey s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> PaymentPubKeyHash $ PubKeyHash bytes'
+  Left msg                   -> Haskell.error $ "could not convert: " <> msg
+
+parseCurrencySymbol :: Haskell.String -> CurrencySymbol
+parseCurrencySymbol s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> CurrencySymbol bytes'
+  Left msg                   -> Haskell.error $ "could not convert: " <> msg
+
+parseTokenName :: Haskell.String -> TokenName
+parseTokenName s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> TokenName bytes'
+  Left msg                   -> Haskell.error $ "could not convert: " <> msg
+
+
+-- Datum
 newtype Price = Price 
   -- offerAsset/askAsset
   { getPrice :: Rational }
@@ -71,6 +97,8 @@ instance Eq Price where
 
 PlutusTx.unstableMakeIsData ''Price
 
+
+-- Redeemer
 data Action = Close
             | UpdatePrices Price
             | Swap
@@ -208,8 +236,8 @@ instance ValidatorTypes Swap where
   type instance RedeemerType Swap = Action
   type instance DatumType Swap = Price
 
-swap :: BasicInfo -> Validator
-swap basicInfo = Plutonomy.optimizeUPLC $ validatorScript $ mkTypedValidator @Swap
+swapValidator :: BasicInfo -> Validator
+swapValidator basicInfo = Plutonomy.optimizeUPLC $ validatorScript $ mkTypedValidator @Swap
     ($$(PlutusTx.compile [|| mkSwap ||])
       `PlutusTx.applyCode` PlutusTx.liftCode basicInfo)
     $$(PlutusTx.compile [|| wrap ||])

@@ -101,7 +101,7 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
     -- only offered asset should leave the swap script address
     -- user must supply the 1 ADA for each utxo with native tokens
     -- max offered asset taken <= given asset * price
-    traceIfFalse ("invalid swap:" 
+    traceIfFalse ("Invalid swap:" 
                <> "\nShould not consume reference script from swap address"
                <> "\nUtxo output to swap address must contain proper datum (same as input)"
                <> "\nOnly the offered asset is allowed to leave the swap address"

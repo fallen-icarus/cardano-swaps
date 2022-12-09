@@ -88,7 +88,7 @@ parseTokenName s = case fromHex $ fromString s of
 
 -- Datum
 newtype Price = Price 
-  -- offerAsset/askAsset
+  -- askedAsset/offeredAsset
   { getPrice :: Rational }
 
 instance Eq Price where
@@ -228,7 +228,7 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
 
         -- ratio sets the maximum amount of the offered asset that can be taken
         -- to withdraw more of the offered asset, more of the asked asset must be deposited to the script
-        offeredTaken <= askedGiven * (getPrice price)
+        offeredTaken * (getPrice price) <= askedGiven
     
 
 data Swap

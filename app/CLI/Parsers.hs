@@ -4,13 +4,15 @@ module CLI.Parsers
 ) where
 
 import Options.Applicative as Opts
-import CardanoSwaps
+
+import CardanoSwaps (PaymentPubKeyHash,CurrencySymbol,TokenName,Price(..),Action(..),readCurrencySymbol,readPubKeyHash,readTokenName,fromGHC)
+import CLI.Query (Network(..),BlockfrostApiKey(..))
 
 data Command 
   = CreateSwapScript !PaymentPubKeyHash !CurrencySymbol !TokenName !CurrencySymbol !TokenName !FilePath
   | CreateDatum !Price !FilePath
   | CreateRedeemer !Action !FilePath
-  | Query !CurrencySymbol !TokenName !CurrencySymbol !TokenName
+  | Query !CurrencySymbol !TokenName !CurrencySymbol !TokenName !Network
 
 parseCreateSwapScript :: Parser Command
 parseCreateSwapScript = 
@@ -100,6 +102,7 @@ parseQuery =
      <*> pTargetTokenName
      <*> pUserCurrencySymbol
      <*> pUserTokenName
+     <*> (pMainnet <|> pTestnet)
   where
     pTargetCurrencySymbol :: Parser CurrencySymbol
     pTargetCurrencySymbol = option (eitherReader readCurrencySymbol)
@@ -127,6 +130,19 @@ parseQuery =
       (  long "user-asset-token-name"
       <> metavar "STRING"
       <> help "The token name (in hexidecimal) of the asset you will give to the swap address."
+      )
+    
+    pMainnet :: Parser Network
+    pMainnet = flag' Mainnet
+      (  long "mainnet"
+      <> help "Query the Cardano Mainnet using the Koios REST api."
+      )
+    
+    pTestnet :: Parser Network
+    pTestnet = PreProdTestnet . BlockfrostApiKey <$> strOption
+      (  long "preprod-testnet"
+      <> metavar "STRING"
+      <> help "Query the Cardano PreProduction Testnet using the Blockfrost REST api and the supplied api key."
       )
 
 parseCommand :: Parser Command

@@ -48,7 +48,8 @@ executable cardano-swaps
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    other-modules: CLI.Parsers
+    other-modules: CLI.Parsers,
+                   CLI.Query
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:

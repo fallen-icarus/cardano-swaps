@@ -19,12 +19,16 @@
 module CardanoSwaps
 (
   BasicInfo (..),
-  parsePubKey,
-  parseCurrencySymbol,
-  parseTokenName,
+  readPubKeyHash,
+  readCurrencySymbol,
+  readTokenName,
 
   Price (..),
   Action (..),
+  CurrencySymbol,
+  TokenName,
+  PaymentPubKeyHash,
+  fromGHC,
 
   swapValidator,
 
@@ -55,6 +59,7 @@ import Ledger.Value (valueOf,split,flattenValue)
 import PlutusTx.Numeric as Num
 import Plutus.V2.Ledger.Tx
 import Ledger.Ada (lovelaceValueOf)
+import PlutusTx.Ratio (fromGHC)
 
 -------------------------------------------------
 -- Swap Settings
@@ -70,20 +75,20 @@ data BasicInfo = BasicInfo
 PlutusTx.makeLift ''BasicInfo
 
 -- functions for parsing user input
-parsePubKey :: Haskell.String -> PaymentPubKeyHash
-parsePubKey s = case fromHex $ fromString s of
-  Right (LedgerBytes bytes') -> PaymentPubKeyHash $ PubKeyHash bytes'
-  Left msg                   -> Haskell.error $ "could not convert: " <> msg
+readPubKeyHash :: Haskell.String -> Either Haskell.String PaymentPubKeyHash
+readPubKeyHash s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> Right $ PaymentPubKeyHash $ PubKeyHash bytes'
+  Left msg                   -> Left $ "could not convert: " <> msg
 
-parseCurrencySymbol :: Haskell.String -> CurrencySymbol
-parseCurrencySymbol s = case fromHex $ fromString s of
-  Right (LedgerBytes bytes') -> CurrencySymbol bytes'
-  Left msg                   -> Haskell.error $ "could not convert: " <> msg
+readCurrencySymbol :: Haskell.String -> Either Haskell.String CurrencySymbol
+readCurrencySymbol s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> Right $ CurrencySymbol bytes'
+  Left msg                   -> Left $ "could not convert: " <> msg
 
-parseTokenName :: Haskell.String -> TokenName
-parseTokenName s = case fromHex $ fromString s of
-  Right (LedgerBytes bytes') -> TokenName bytes'
-  Left msg                   -> Haskell.error $ "could not convert: " <> msg
+readTokenName :: Haskell.String -> Either Haskell.String TokenName
+readTokenName s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> Right $ TokenName bytes'
+  Left msg                   -> Left $ "could not convert: " <> msg
 
 
 -- Datum

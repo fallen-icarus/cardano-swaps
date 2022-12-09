@@ -55,5 +55,10 @@ executable cardano-swaps
     -- other-extensions:
     build-depends:    cardano-swaps,
                       optparse-applicative,
+                      servant,
+                      aeson,
+                      servant-client,
+                      http-client,
+                      http-client-tls,
     hs-source-dirs:   app
     default-language: Haskell2010

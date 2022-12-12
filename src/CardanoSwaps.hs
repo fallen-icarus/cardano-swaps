@@ -25,8 +25,8 @@ module CardanoSwaps
 
   Price (..),
   Action (..),
-  CurrencySymbol,
-  TokenName,
+  CurrencySymbol(..),
+  TokenName(..),
   PaymentPubKeyHash,
   fromGHC,
 

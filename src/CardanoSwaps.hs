@@ -31,6 +31,9 @@ module CardanoSwaps
   fromGHC,
 
   swapScript,
+  beaconVaultScript,
+  beaconScript,
+  beaconSymbol,
 
   writeScript,
   writeData,
@@ -58,7 +61,7 @@ import qualified Plutonomy
 import Ledger.Value (valueOf,split,flattenValue)
 import PlutusTx.Numeric as Num
 import Plutus.V2.Ledger.Tx
-import Ledger.Ada (lovelaceValueOf)
+import Ledger.Ada (lovelaceValueOf,lovelaceOf,fromValue)
 import PlutusTx.Ratio (fromGHC)
 
 -------------------------------------------------
@@ -103,10 +106,10 @@ readTokenName s = case fromHex $ fromString s of
   Left msg                   -> Left $ "could not convert: " <> msg
 
 
--- | Datum
+-- | Swap Datum
 type Price = Rational  -- ^ askedAsset/offeredAsset
 
--- | Redeemer
+-- | Swap Redeemer
 data Action 
   -- | Owner can spend any utxo at the script address.
   = Close
@@ -266,6 +269,103 @@ swapValidator basicInfo = Plutonomy.optimizeUPLC $ validatorScript $ mkTypedVali
 
 swapScript :: BasicInfo -> Script
 swapScript = unValidatorScript . swapValidator
+
+-------------------------------------------------
+-- Beacon Settings
+-------------------------------------------------
+-- | Beacon Redeemer
+data BeaconRedeemer
+  -- | To mint a beacon, 1 ADA must be depositing into the proper script address.
+  = MintBeacon
+  -- | To burn a beacon, 1 ADA must be withdrawn from the proper script address.
+  | BurnBeacon
+
+PlutusTx.unstableMakeIsData ''BeaconRedeemer
+
+-------------------------------------------------
+-- On-Chain Beacon
+-------------------------------------------------
+-- | Script responsible for holding deposits
+mkBeaconVault :: () -> BeaconRedeemer -> ScriptContext -> Bool
+mkBeaconVault () r ctx@ScriptContext{scriptContextTxInfo = info} = case r of
+   MintBeacon ->
+     -- | Only allow minting if 1 ADA also deposited at this script in same tx.
+     traceIfFalse "Must deposit exactly 1 ADA to mint beacon. Must deposit and mint in same tx." 
+       (containsOnly1ADA deposit)
+   BurnBeacon ->
+     -- | Only allow burning if 1 ADA is also withdrawn from this script.
+     --   Only check amount of ADA withdrawn. If other assets are accidentally deposited,
+     --   they can be withdrawn along with the 1 ADA.
+     traceIfFalse "Must withdraw exactly 1 ADA to burn beacon. Must withdraw and burn in same tx." 
+       (containsOnly1ADA withdrawal)
+
+  where
+    scriptValidatorHash :: ValidatorHash
+    scriptValidatorHash = ownHash ctx
+
+    deposit :: Value
+    deposit = valueLockedBy info scriptValidatorHash
+
+    containsOnly1ADA :: Value -> Bool
+    containsOnly1ADA v = lovelaceOf 1_000_000 == fromValue v
+
+    withdrawal :: Value
+    withdrawal = fold $ map snd $ scriptOutputsAt scriptValidatorHash info
+
+data BeaconVault
+instance ValidatorTypes BeaconVault where
+  type instance RedeemerType BeaconVault = BeaconRedeemer
+  type instance DatumType BeaconVault = ()
+
+beaconVaultValidator :: Validator
+beaconVaultValidator = Plutonomy.optimizeUPLC $ validatorScript $ mkTypedValidator @BeaconVault
+    $$(PlutusTx.compile [|| mkBeaconVault ||])
+    $$(PlutusTx.compile [|| wrap ||])
+  where wrap = mkUntypedValidator
+
+beaconVaultScript :: Script
+beaconVaultScript = unValidatorScript beaconVaultValidator
+
+beaconVaultValidatorHash :: ValidatorHash
+beaconVaultValidatorHash = Scripts.validatorHash beaconVaultValidator
+
+-- | Beacon minting policy
+mkBeacon :: ValidatorHash -> BeaconRedeemer -> ScriptContext -> Bool
+mkBeacon vaultHash r ScriptContext{scriptContextTxInfo = info} = case r of
+   MintBeacon ->
+     -- | Must deposit 1 ADA to proper script address.
+     traceIfFalse ("Must deposit 1 ADA to this script address: " <> hashToString vaultHash)
+       (containsOnly1ADA deposit)
+   BurnBeacon ->
+     -- | Must withdraw 1 ADA from proper script address.
+     traceIfFalse ("Must withdraw 1 ADA from this script address: " <> hashToString vaultHash)
+       (containsOnly1ADA withdrawal)
+
+  where
+    hashToString :: ValidatorHash -> BuiltinString
+    hashToString (ValidatorHash vh) = decodeUtf8 vh 
+
+    deposit :: Value
+    deposit = valueLockedBy info vaultHash
+
+    containsOnly1ADA :: Value -> Bool
+    containsOnly1ADA v = lovelaceOf 1_000_000 == fromValue v
+
+    withdrawal :: Value
+    withdrawal = fold $ map snd $ scriptOutputsAt vaultHash info
+
+beaconPolicy :: ValidatorHash -> MintingPolicy
+beaconPolicy vh = Plutonomy.optimizeUPLC $ mkMintingPolicyScript
+  ($$(PlutusTx.compile [|| wrap ||])
+    `PlutusTx.applyCode` PlutusTx.liftCode vh)
+  where
+    wrap = mkUntypedMintingPolicy . mkBeacon
+
+beaconScript :: Script
+beaconScript = unMintingPolicyScript $ beaconPolicy beaconVaultValidatorHash
+
+beaconSymbol :: CurrencySymbol
+beaconSymbol = scriptCurrencySymbol $ beaconPolicy beaconVaultValidatorHash
 
 -------------------------------------------------
 -- Serialization

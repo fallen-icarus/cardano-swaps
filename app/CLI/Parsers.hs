@@ -1,7 +1,8 @@
 module CLI.Parsers
 (
   parseCommand,
-  Command (..)
+  Command (..),
+  AdvancedOption (..),
 ) where
 
 import Options.Applicative as Opts
@@ -15,6 +16,12 @@ data Command
   | CreateSwapRedeemer !Action !FilePath
   | CreateBeaconRedeemer !BeaconRedeemer !FilePath
   | Query !CurrencySymbol !TokenName !CurrencySymbol !TokenName !Network
+  | Advanced !AdvancedOption !FilePath
+
+data AdvancedOption
+  = BeaconPolicyId
+  | BeaconPolicy
+  | BeaconVaultScript
 
 parseCreateSwapScript :: Parser Command
 parseCreateSwapScript = 
@@ -171,6 +178,30 @@ parseQuery =
       <> help "Query the Cardano PreProduction Testnet using the Blockfrost REST api and the supplied api key."
       )
 
+parseAdvanced :: Parser Command
+parseAdvanced = 
+   Advanced
+     <$> (pBeaconPolicyId <|> pBeaconPolicy <|> pBeaconVaultScript)
+     <*> pOutputFile
+  where
+    pBeaconPolicyId :: Parser AdvancedOption
+    pBeaconPolicyId = flag' BeaconPolicyId
+      (  long "beacon-policy-id"
+      <> help "Output the policy id for the beacons used by the DEX."
+      )
+
+    pBeaconPolicy :: Parser AdvancedOption
+    pBeaconPolicy = flag' BeaconPolicy
+      (  long "beacon-policy-script"
+      <> help "Output the beacon policy script."
+      )
+
+    pBeaconVaultScript :: Parser AdvancedOption
+    pBeaconVaultScript = flag' BeaconVaultScript
+      (  long "beacon-vault-script"
+      <> help "Output the beacon's deposit vault script."
+      )
+
 parseCommand :: Parser Command
 parseCommand = hsubparser $
   command "create-swap-script" 
@@ -182,7 +213,9 @@ parseCommand = hsubparser $
   command "create-beacon-redeemer"
     (info parseCreateBeaconRedeemer (progDesc "Create a redeemer for the beacon policy.")) <>
   command "query" 
-    (info parseQuery (progDesc "Query available swaps for a trading pair."))
+    (info parseQuery (progDesc "Query available swaps for a trading pair.")) <>
+  command "advanced"
+    (info parseAdvanced (progDesc "Advanced options."))
 
 pOutputFile :: Parser FilePath
 pOutputFile = strOption

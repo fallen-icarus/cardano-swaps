@@ -182,7 +182,7 @@ parseCommand = hsubparser $
   command "create-beacon-redeemer"
     (info parseCreateBeaconRedeemer (progDesc "Create a redeemer for the beacon policy.")) <>
   command "query" 
-    (info parseQuery (progDesc "Query available swaps for a pair."))
+    (info parseQuery (progDesc "Query available swaps for a trading pair."))
 
 pOutputFile :: Parser FilePath
 pOutputFile = strOption

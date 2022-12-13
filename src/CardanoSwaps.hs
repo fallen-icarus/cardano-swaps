@@ -64,7 +64,8 @@ import PlutusTx.Ratio (fromGHC)
 -------------------------------------------------
 -- Swap Settings
 -------------------------------------------------
--- for use as extra parameter; creates a unique address
+-- | For use as extra parameter to the swap script.
+--   This creates a unique address for every BasicInfo configuration.
 data BasicInfo = BasicInfo
   {
     owner :: PaymentPubKeyHash,
@@ -83,40 +84,37 @@ createBasicInfo pkh offeredCurrSym offeredTokName askedCurrSym askedTokName =
     , askAsset = (askedCurrSym,askedTokName)
     }
 
--- functions for parsing user input
+-- | Parse PaymentPubKeyHash from user supplied String
 readPubKeyHash :: Haskell.String -> Either Haskell.String PaymentPubKeyHash
 readPubKeyHash s = case fromHex $ fromString s of
   Right (LedgerBytes bytes') -> Right $ PaymentPubKeyHash $ PubKeyHash bytes'
   Left msg                   -> Left $ "could not convert: " <> msg
 
+-- | Parse Currency from user supplied String
 readCurrencySymbol :: Haskell.String -> Either Haskell.String CurrencySymbol
 readCurrencySymbol s = case fromHex $ fromString s of
   Right (LedgerBytes bytes') -> Right $ CurrencySymbol bytes'
   Left msg                   -> Left $ "could not convert: " <> msg
 
+-- | Parse TokenName from user supplied String
 readTokenName :: Haskell.String -> Either Haskell.String TokenName
 readTokenName s = case fromHex $ fromString s of
   Right (LedgerBytes bytes') -> Right $ TokenName bytes'
   Left msg                   -> Left $ "could not convert: " <> msg
 
 
--- Datum
+-- | Datum
 type Price = Rational  -- ^ askedAsset/offeredAsset
--- newtype Price = Price 
---   -- askedAsset/offeredAsset
---   { getPrice :: Rational }
 
--- instance Eq Price where
---   {-# INLINABLE (==) #-}
---   (Price x) == (Price y) = x == y
-
--- PlutusTx.unstableMakeIsData ''Price
-
-
--- Redeemer
-data Action = Close
-            | UpdatePrices Price
-            | Swap
+-- | Redeemer
+data Action 
+  -- | Owner can spend any utxo at the script address.
+  = Close
+  -- | Owner can update all datums at the script address.
+  --   The datum with the reference script cannot be updated to conserve fees.
+  | UpdatePrices Price
+  -- | User can try swapping with assets at the script address.
+  | Swap
 
 PlutusTx.unstableMakeIsData ''Action
 
@@ -126,24 +124,24 @@ PlutusTx.unstableMakeIsData ''Action
 mkSwap :: BasicInfo -> Price -> Action -> ScriptContext -> Bool
 mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} = case action of
   Close ->
-    -- must be signed by owner
+    -- | Must be signed by owner.
     traceIfFalse "owner didn't sign" (txSignedBy info $ unPaymentPubKeyHash owner)
     -- must burn beacon
   UpdatePrices newPrice ->
-    -- must be signed by owner
+    -- | Must be signed by owner.
     traceIfFalse "owner didn't sign" (txSignedBy info $ unPaymentPubKeyHash owner) &&
-    -- must not consume reference script (to save on fees)
+    -- | Must not consume reference script (to save on fees).
     traceIfFalse "updating reference script utxo's datum is not necessary" (null inputsWithRefScripts) &&
-    -- datum must be valid price
+    -- | Datum must be valid price.
     traceIfFalse "invalid new asking price" (newPrice > fromInteger 0) &&
-    -- must output to swap script address or owner address
+    -- | Must output to swap script address or owner address.
     traceIfFalse "all outputs must go to either the script or the owner" outputsToSelfOrOwner
   Swap -> 
-    -- should not consume reference script from swap script address
-    -- utxo output to the script must have the proper datum and datum must not differ from input
-    -- only offered asset should leave the swap script address
-    -- user must supply the 1 ADA for each utxo with native tokens
-    -- max offered asset taken <= given asset * price
+    -- | Should not consume reference script from swap script address.
+    -- | Utxo output to the script must have the proper datum and datum must not differ from input.
+    -- | Only offered asset should leave the swap script address.
+    -- | User must supply the 1 ADA for each utxo with native tokens.
+    -- | Max offered asset taken <= given asset * price.
     traceIfFalse ("Invalid swap:" 
                <> "\nShould not consume reference script from swap address"
                <> "\nUtxo output to swap address must contain proper datum (must match input datum)"
@@ -167,7 +165,7 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
                          $ map txInInfoResolved
                          $ txInfoInputs info
 
-    -- ValidatorHash of this script
+    -- | ValidatorHash of this script
     scriptValidatorHash :: ValidatorHash
     scriptValidatorHash = ownHash ctx
 
@@ -182,8 +180,8 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
     --       numOfDatums = fromInteger $ length allDatums
     --   in sum' allDatums * recip numOfDatums
 
-    -- separate script input value from rest of input value (can be from other scripts)
-    -- throws an error if there is a ref script among script inputs
+    -- | Separate script input value from rest of input value (can be from other scripts).
+    -- | Throws an error if there is a ref script among script inputs.
     scriptInputValue :: Value
     scriptInputValue =
       let inputs = txInfoInputs info
@@ -204,17 +202,17 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
       (OutputDatum (Datum d)) -> unsafeFromBuiltinData d
       _ -> traceError "Invalid datum for swap script output"
 
-    -- separate output value to script from rest of output value (can be to other scripts)
-    -- throw error if output to script doesn't contain proper inline datum
+    -- | Separate output value to script from rest of output value (can be to other scripts).
+    -- | Throw error if output to script doesn't contain proper inline datum.
     scriptOutputValue :: Value
     scriptOutputValue =
       let outputs = txInfoOutputs info
           foo so o = case (addressCredential $ txOutAddress o,parseDatum o) of
-            -- also checks if proper datum is attached
+            -- | Also checks if proper datum is attached.
             (ScriptCredential vh,price') ->
               -- check if it belongs to swap script
               if vh == scriptValidatorHash 
-              then -- check if output to swap script contains proper datum
+              then -- | Check if output to swap script contains proper datum.
                    if price' == price
                    then so <> txOutValue o
                    else traceError "datum changed in script output"
@@ -224,25 +222,25 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
 
     swapCheck :: Bool
     swapCheck =
-      let  -- value differences
+      let  -- | Value differences
           scriptValueDiff = scriptOutputValue <> Num.negate scriptInputValue
 
-          -- amounts
+          -- | Amounts
           askedGiven = fromInteger $ uncurry (valueOf scriptValueDiff) askAsset
           offeredTaken = fromInteger $ Num.negate $ uncurry (valueOf scriptValueDiff) offerAsset
 
-          -- assets leaving script address
+          -- | Assets leaving script address
           leavingAssets = flattenValue $ fst $ split scriptValueDiff -- zero diff amounts removed
           isOnlyOfferedAsset [(cn,tn,_)] = (cn,tn) == offerAsset
           isOnlyOfferedAsset           _ = False
       in
-        -- only the offered asset is allowed to leave the script address
-        -- when ADA is not being offered, the user is required to supply the ADA for native token utxos
-        -- this means that, when ADA is not offered, the script's ADA value can only increase
+        -- | Only the offered asset is allowed to leave the script address.
+        -- | When ADA is not being offered, the user is required to supply the ADA for native token utxos.
+        -- | This means that, when ADA is not offered, the script's ADA value can only increase.
         isOnlyOfferedAsset leavingAssets &&
 
-        -- ratio sets the maximum amount of the offered asset that can be taken
-        -- to withdraw more of the offered asset, more of the asked asset must be deposited to the script
+        -- | Ratio sets the maximum amount of the offered asset that can be taken.
+        -- | To withdraw more of the offered asset, more of the asked asset must be deposited to the script.
         offeredTaken * (price) <= askedGiven
     
 

@@ -6,13 +6,14 @@ module CLI.Parsers
 
 import Options.Applicative as Opts
 
-import CardanoSwaps (PaymentPubKeyHash,CurrencySymbol,TokenName,Price,Action(..),readCurrencySymbol,readPubKeyHash,readTokenName,fromGHC)
+import CardanoSwaps (PaymentPubKeyHash,CurrencySymbol,TokenName,Price,Action(..),readCurrencySymbol,readPubKeyHash,readTokenName,fromGHC,BeaconRedeemer(..))
 import CLI.Query (Network(..),BlockfrostApiKey(..))
 
 data Command 
   = CreateSwapScript !PaymentPubKeyHash !CurrencySymbol !TokenName !CurrencySymbol !TokenName !FilePath
-  | CreateDatum !Price !FilePath
-  | CreateRedeemer !Action !FilePath
+  | CreateSwapDatum !Price !FilePath
+  | CreateSwapRedeemer !Action !FilePath
+  | CreateBeaconRedeemer !BeaconRedeemer !FilePath
   | Query !CurrencySymbol !TokenName !CurrencySymbol !TokenName !Network
 
 parseCreateSwapScript :: Parser Command
@@ -60,8 +61,8 @@ parseCreateSwapScript =
       <> help "The token name (in hexidecimal) of the asked asset."
       )
 
-parseCreateDatum :: Parser Command
-parseCreateDatum = CreateDatum <$> pSwapPrice <*> pOutputFile
+parseCreateSwapDatum :: Parser Command
+parseCreateSwapDatum = CreateSwapDatum <$> pSwapPrice <*> pOutputFile
   where
     pSwapPrice :: Parser Price
     pSwapPrice = fromGHC . (toRational :: Double -> Rational) <$> option auto
@@ -71,10 +72,10 @@ parseCreateDatum = CreateDatum <$> pSwapPrice <*> pOutputFile
       )
 
 
-parseCreateRedeemer :: Parser Command
-parseCreateRedeemer =
-   CreateRedeemer
-     <$> (pClose <|> pSwap <|> fmap UpdatePrices pUpdateSwapPrice)
+parseCreateSwapRedeemer :: Parser Command
+parseCreateSwapRedeemer =
+   CreateSwapRedeemer
+     <$> (pClose <|> pSwap <|> pInfo <|> fmap UpdatePrices pUpdateSwapPrice)
      <*> pOutputFile
   where
     pClose :: Parser Action
@@ -89,11 +90,35 @@ parseCreateRedeemer =
       <> help "Swap with assets at a swap address."
       )
 
+    pInfo :: Parser Action
+    pInfo = flag' Info
+      (  long "owner-info"
+      <> help "Get the owner info needed to verify contract integrity."
+      )
+
     pUpdateSwapPrice :: Parser Price
     pUpdateSwapPrice = fromGHC . (toRational :: Double -> Rational) <$> option auto
       (  long "update-swap-price"
       <> metavar "DECIMAL"
       <> help "Change the swap price (asked asset / offered asset)."
+      )
+
+parseCreateBeaconRedeemer :: Parser Command
+parseCreateBeaconRedeemer =
+   CreateBeaconRedeemer
+     <$> (pMint <|> pBurn)
+     <*> pOutputFile
+  where
+    pMint :: Parser BeaconRedeemer
+    pMint = flag' MintBeacon
+      (  long "mint-beacon"
+      <> help "Mint a beacon to make deposit and create a new swap contract."
+      )
+
+    pBurn :: Parser BeaconRedeemer
+    pBurn = flag' BurnBeacon
+      (  long "burn-beacon"
+      <> help "Burn a beacon to close a swap contract and reclaim deposit."
       )
 
 parseQuery :: Parser Command
@@ -150,10 +175,12 @@ parseCommand :: Parser Command
 parseCommand = hsubparser $
   command "create-swap-script" 
     (info parseCreateSwapScript (progDesc "Create a unique swap script.")) <>
-  command "create-datum" 
-    (info parseCreateDatum (progDesc "Create a datum for the swap script.")) <>
-  command "create-redeemer"
-    (info parseCreateRedeemer (progDesc "Create a redeemer for a swap transaction.")) <>
+  command "create-swap-datum" 
+    (info parseCreateSwapDatum (progDesc "Create a datum for the swap script.")) <>
+  command "create-swap-redeemer"
+    (info parseCreateSwapRedeemer (progDesc "Create a redeemer for a swap transaction.")) <>
+  command "create-beacon-redeemer"
+    (info parseCreateBeaconRedeemer (progDesc "Create a redeemer for the beacon policy.")) <>
   command "query" 
     (info parseQuery (progDesc "Query available swaps for a pair."))
 

@@ -29,6 +29,7 @@ module CardanoSwaps
   TokenName(..),
   PaymentPubKeyHash,
   fromGHC,
+  BeaconRedeemer (..),
 
   swapScript,
   beaconVaultScript,

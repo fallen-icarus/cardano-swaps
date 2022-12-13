@@ -1,11 +1,12 @@
 module CLI.Parsers
 (
-  parseCommand
+  parseCommand,
+  Command (..)
 ) where
 
 import Options.Applicative as Opts
 
-import CardanoSwaps (PaymentPubKeyHash,CurrencySymbol,TokenName,Price(..),Action(..),readCurrencySymbol,readPubKeyHash,readTokenName,fromGHC)
+import CardanoSwaps (PaymentPubKeyHash,CurrencySymbol,TokenName,Price,Action(..),readCurrencySymbol,readPubKeyHash,readTokenName,fromGHC)
 import CLI.Query (Network(..),BlockfrostApiKey(..))
 
 data Command 
@@ -63,7 +64,7 @@ parseCreateDatum :: Parser Command
 parseCreateDatum = CreateDatum <$> pSwapPrice <*> pOutputFile
   where
     pSwapPrice :: Parser Price
-    pSwapPrice = Price . fromGHC . (toRational :: Double -> Rational) <$> option auto
+    pSwapPrice = fromGHC . (toRational :: Double -> Rational) <$> option auto
       (  long "swap-price"
       <> metavar "DECIMAL"
       <> help "The swap price (asked asset / offered asset)."
@@ -89,7 +90,7 @@ parseCreateRedeemer =
       )
 
     pUpdateSwapPrice :: Parser Price
-    pUpdateSwapPrice = Price . fromGHC . (toRational :: Double -> Rational) <$> option auto
+    pUpdateSwapPrice = fromGHC . (toRational :: Double -> Rational) <$> option auto
       (  long "update-swap-price"
       <> metavar "DECIMAL"
       <> help "Change the swap price (asked asset / offered asset)."

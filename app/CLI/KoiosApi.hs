@@ -141,7 +141,13 @@ queryKoios currSym tokName = do
              (CurrencySymbolParam currSym) 
              (TokenNameParam tokName) 
              (SelectParams ["payment_address"])
-  utxos <- addressInfoApi
-             (AddressesPost $ take 100 $ map paymentAddress addrs)
-             (SelectParams ["utxo_set"])
-  return utxos
+  utxos <- mapM (\z -> addressInfoApi
+                  (AddressesPost $ map paymentAddress z)
+                  (SelectParams ["utxo_set"])
+                ) $ groupBy 20 addrs
+  return $ concat utxos
+
+  where
+    groupBy :: Int -> [a] -> [[a]]
+    groupBy _ [] = []
+    groupBy n xs = take n xs : groupBy n (drop n xs)

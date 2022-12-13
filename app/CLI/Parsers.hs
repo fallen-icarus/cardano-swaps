@@ -6,8 +6,8 @@ module CLI.Parsers
 
 import Options.Applicative as Opts
 
-import CardanoSwaps (PaymentPubKeyHash,CurrencySymbol,TokenName,Price,Action(..),readCurrencySymbol,readPubKeyHash,readTokenName,fromGHC,BeaconRedeemer(..))
-import CLI.Query (Network(..),BlockfrostApiKey(..))
+import CardanoSwaps
+import CLI.Query
 
 data Command 
   = CreateSwapScript !PaymentPubKeyHash !CurrencySymbol !TokenName !CurrencySymbol !TokenName !FilePath

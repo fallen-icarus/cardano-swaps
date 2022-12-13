@@ -115,6 +115,10 @@ data Action
   | UpdatePrices Price
   -- | User can try swapping with assets at the script address.
   | Swap
+  -- | Dedicated Redeemer for getting the owner's pub key hash of the script.
+  --   This allows for checking the target script has not been tampered with.
+  --   To check for tampering: recreate the script using the owner's pkh and assets.
+  | Info
 
 PlutusTx.unstableMakeIsData ''Action
 
@@ -123,6 +127,7 @@ PlutusTx.unstableMakeIsData ''Action
 -------------------------------------------------
 mkSwap :: BasicInfo -> Price -> Action -> ScriptContext -> Bool
 mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} = case action of
+  Info -> traceError ("Owner's payment pubkey hash:\n" <> ownerAsString)
   Close ->
     -- | Must be signed by owner.
     traceIfFalse "owner didn't sign" (txSignedBy info $ unPaymentPubKeyHash owner)
@@ -150,6 +155,9 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
                <> "\nOffered asset leaving <= Asked asset given * price") swapCheck
 
   where
+    ownerAsString :: BuiltinString
+    ownerAsString = decodeUtf8 $ getPubKeyHash $ unPaymentPubKeyHash $ owner
+
     selfOutputs :: [TxOut]
     selfOutputs = getContinuingOutputs ctx
 

@@ -18,19 +18,19 @@
 
 module CardanoSwaps
 (
-  BasicInfo (..),
+  createBasicInfo,
   readPubKeyHash,
   readCurrencySymbol,
   readTokenName,
 
-  Price (..),
+  Price,
   Action (..),
   CurrencySymbol(..),
   TokenName(..),
   PaymentPubKeyHash,
   fromGHC,
 
-  swapValidator,
+  swapScript,
 
   writeScript,
   writeData,
@@ -74,6 +74,15 @@ data BasicInfo = BasicInfo
 
 PlutusTx.makeLift ''BasicInfo
 
+createBasicInfo :: PaymentPubKeyHash -> CurrencySymbol -> TokenName 
+                -> CurrencySymbol -> TokenName -> BasicInfo
+createBasicInfo pkh offeredCurrSym offeredTokName askedCurrSym askedTokName =
+  BasicInfo
+    { owner = pkh
+    , offerAsset = (offeredCurrSym,offeredTokName)
+    , askAsset = (askedCurrSym,askedTokName)
+    }
+
 -- functions for parsing user input
 readPubKeyHash :: Haskell.String -> Either Haskell.String PaymentPubKeyHash
 readPubKeyHash s = case fromHex $ fromString s of
@@ -92,15 +101,16 @@ readTokenName s = case fromHex $ fromString s of
 
 
 -- Datum
-newtype Price = Price 
-  -- askedAsset/offeredAsset
-  { getPrice :: Rational }
+type Price = Rational  -- ^ askedAsset/offeredAsset
+-- newtype Price = Price 
+--   -- askedAsset/offeredAsset
+--   { getPrice :: Rational }
 
-instance Eq Price where
-  {-# INLINABLE (==) #-}
-  (Price x) == (Price y) = x == y
+-- instance Eq Price where
+--   {-# INLINABLE (==) #-}
+--   (Price x) == (Price y) = x == y
 
-PlutusTx.unstableMakeIsData ''Price
+-- PlutusTx.unstableMakeIsData ''Price
 
 
 -- Redeemer
@@ -125,7 +135,7 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
     -- must not consume reference script (to save on fees)
     traceIfFalse "updating reference script utxo's datum is not necessary" (null inputsWithRefScripts) &&
     -- datum must be valid price
-    traceIfFalse "invalid new asking price" (getPrice newPrice > fromInteger 0) &&
+    traceIfFalse "invalid new asking price" (newPrice > fromInteger 0) &&
     -- must output to swap script address or owner address
     traceIfFalse "all outputs must go to either the script or the owner" outputsToSelfOrOwner
   Swap -> 
@@ -233,7 +243,7 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
 
         -- ratio sets the maximum amount of the offered asset that can be taken
         -- to withdraw more of the offered asset, more of the asked asset must be deposited to the script
-        offeredTaken * (getPrice price) <= askedGiven
+        offeredTaken * (price) <= askedGiven
     
 
 data Swap
@@ -247,6 +257,9 @@ swapValidator basicInfo = Plutonomy.optimizeUPLC $ validatorScript $ mkTypedVali
       `PlutusTx.applyCode` PlutusTx.liftCode basicInfo)
     $$(PlutusTx.compile [|| wrap ||])
   where wrap = mkUntypedValidator
+
+swapScript :: BasicInfo -> Script
+swapScript = unValidatorScript . swapValidator
 
 -------------------------------------------------
 -- Serialization

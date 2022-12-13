@@ -18,6 +18,8 @@
 
 module CardanoSwaps
 (
+  genPairTokenName, 
+  
   createBasicInfo,
   readPubKeyHash,
   readCurrencySymbol,
@@ -64,6 +66,15 @@ import PlutusTx.Numeric as Num
 import Plutus.V2.Ledger.Tx
 import Ledger.Ada (lovelaceValueOf,lovelaceOf,fromValue)
 import PlutusTx.Ratio (fromGHC)
+
+-------------------------------------------------
+-- Misc Functions
+-------------------------------------------------
+genPairTokenName :: CurrencySymbol -> TokenName -> CurrencySymbol -> TokenName -> TokenName
+genPairTokenName offeredCurrSym offeredTokName askedCurrSym askedTokName = 
+  let offeredName = unCurrencySymbol offeredCurrSym <> unTokenName offeredTokName
+      askedName = unCurrencySymbol askedCurrSym <> unTokenName askedTokName
+  in TokenName $ sha3_256 (offeredName <> "/" <> askedName)
 
 -------------------------------------------------
 -- Swap Settings

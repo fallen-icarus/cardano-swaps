@@ -41,24 +41,25 @@ instance ToHttpApiData TokenNameParam where
   toQueryParam = T.pack . init . tail . show . unTokenName . unTokenNameParam
 
 -- | The response for the asset address list api.
-newtype AssetAddressResponse = AssetAddressResponse { paymentAddress :: String } deriving (Show)
+newtype AssetAddressResponse = AssetAddressResponse 
+  { unAssetAddressResponse :: String } deriving (Show)
 
 instance FromJSON AssetAddressResponse where
   parseJSON (Object o) = AssetAddressResponse <$> o .: "payment_address"
   parseJSON _ = mzero
 
 -- | The post data type for the address info api.
-newtype AddressesPost = AddressesPost { unAddresses :: [String] }
+newtype AssetAddressesPost = AssetAddressesPost { unAssetAddressPost :: [String] }
 
-instance ToJSON AddressesPost where
-  toJSON (AddressesPost as) = object ["_addresses" .= as]
+instance ToJSON AssetAddressesPost where
+  toJSON (AssetAddressesPost as) = object ["_addresses" .= as]
 
 -- | The response for the address info api
 newtype AddressInfoResponse = AddressInfoResponse { utxoSet :: [UtxoSet] } deriving (Show)
 
 instance FromJSON AddressInfoResponse where
   parseJSON (Object o) = AddressInfoResponse <$> o .: "utxo_set"
-  parseJSON _ = mempty
+  parseJSON _ = mzero
 
 -- | The utxo info that comes in the AddressInfo Response
 data UtxoSet = UtxoSet
@@ -81,6 +82,7 @@ instance FromJSON UtxoSet where
       <*> o .: "inline_datum"
       <*> o .: "reference_script"
       <*> o .: "asset_list"
+  parseJSON _ = mzero
 
 -- | The inline datum info that is part of UtxoSet.
 data InlineDatum = InlineDatum { inlineDatumValue :: Map String Value } deriving (Show)
@@ -123,7 +125,7 @@ type KoiosApi
     :> Get '[JSON] [AssetAddressResponse]
 
   :<|> "address_info"
-    :> ReqBody '[JSON] AddressesPost
+    :> ReqBody '[JSON] AssetAddressesPost
     :> QueryParam' '[Required] "select" SelectParams
     :> Post '[JSON] [AddressInfoResponse]
 
@@ -142,9 +144,9 @@ queryKoios currSym tokName = do
              (TokenNameParam tokName) 
              (SelectParams ["payment_address"])
   utxos <- mapM (\z -> addressInfoApi
-                  (AddressesPost $ map paymentAddress z)
+                  (AssetAddressesPost $ map unAssetAddressResponse z)
                   (SelectParams ["utxo_set"])
-                ) $ groupBy 20 addrs
+                ) $ groupBy 100 $ take 200 addrs -- for testing; one address has an absurd number of utxos
   return $ concat utxos
 
   where

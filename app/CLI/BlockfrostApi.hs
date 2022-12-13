@@ -17,6 +17,7 @@ import qualified Data.Text as T
 import Data.List (intersperse)
 import Data.Map (Map)
 import qualified Data.Map as Map
+import qualified Data.Vector as Vector
 
 import CardanoSwaps (CurrencySymbol(..),TokenName(..))
 
@@ -54,7 +55,7 @@ data UtxoSet = UtxoSet
   , outputIndex :: Integer
   , amount :: [AssetInfo]
   , dataHash :: Maybe String
-  , inlineDatum :: Maybe String
+  -- , inlineDatum :: Maybe String
   , referenceScriptHash :: Maybe String
   } deriving (Show)
 
@@ -65,7 +66,7 @@ instance FromJSON UtxoSet where
       <*> o .: "output_index"
       <*> o .: "amount"
       <*> o .: "data_hash"
-      <*> o .: "inline_datum"
+      -- <*> o .: "inline_datum"
       <*> o .: "reference_script_hash" 
   
   parseJSON _ = mzero
@@ -83,6 +84,18 @@ instance FromJSON AssetInfo where
       <*> o .: "quantity"
   parseJSON _ = mzero
 
+-- | The inline price datum type used in the datumInfoApi
+data InlinePriceDatum = InlinePriceDatum
+  { numerator :: Integer
+  , denominator :: Integer
+  } deriving (Show)
+
+instance FromJSON InlinePriceDatum where
+  parseJSON (Object o) =
+    InlinePriceDatum
+      <$> ((o .: "json_value") >>= (.: "fields") >>= (.: "int") . (Vector.! 0))
+      <*> ((o .: "json_value") >>= (.: "fields") >>= (.: "int") . (Vector.! 1))
+
 -------------------------------------------------
 -- Blockfrost Api
 -------------------------------------------------
@@ -99,7 +112,13 @@ type BlockfrostApi
     :> "utxos"
     :> Get '[JSON] [UtxoSet]
 
-assetAddressListApi :<|> addressInfoApi = client api
+  :<|> "scripts"
+    :> Header' '[Required] "project_id" BlockfrostApiKey
+    :> "datum"
+    :> Capture "datum_hash" String
+    :> Get '[JSON] InlinePriceDatum
+
+assetAddressListApi :<|> addressInfoApi :<|> datumInfoApi = client api
   where
     api :: Proxy BlockfrostApi
     api = Proxy
@@ -107,8 +126,9 @@ assetAddressListApi :<|> addressInfoApi = client api
 -------------------------------------------------
 -- Query Blockfrost Function
 -------------------------------------------------
-queryBlockfrost :: BlockfrostApiKey -> CurrencySymbol -> TokenName -> ClientM [UtxoSet]
+queryBlockfrost :: BlockfrostApiKey -> CurrencySymbol -> TokenName -> ClientM InlinePriceDatum
 queryBlockfrost apiKey currSym tokName = do
-  addrs <- assetAddressListApi apiKey (AssetParam currSym tokName)
-  utxos <- concat <$> mapM (addressInfoApi apiKey) addrs
-  return utxos
+  -- addrs <- assetAddressListApi apiKey (AssetParam currSym tokName)
+  -- utxos <- concat <$> mapM (addressInfoApi apiKey) addrs
+  -- return utxos
+  datumInfoApi apiKey "8d68aabedc6b44e0faec6f678d9eecc1456b8cc395ac2df201cfc867c0181c72"

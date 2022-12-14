@@ -158,10 +158,10 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
     -- | User must supply the 1 ADA for each utxo with native tokens.
     -- | Max offered asset taken <= given asset * price.
     traceIfFalse ("Invalid swap:" 
-               <> "\nShould not consume reference script from swap address"
-               <> "\nUtxo output to swap address must contain proper datum (must match input datum)"
-               <> "\nOnly the offered asset is allowed to leave the swap address"
-               <> "\nUser must supply the ADA for each output with native tokens"
+              --  <> "\nShould not consume reference script from swap address"
+              --  <> "\nUtxo output to swap address must contain proper datum (must match input datum)"
+               <> "\nOnly the offered asset is allowed to leave the swap address."
+               <> "\nUser must supply the extra ADA (if necessary) for each output with native tokens."
                <> "\nOffered asset leaving <= Asked asset given * price") swapCheck
 
   where

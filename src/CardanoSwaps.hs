@@ -139,7 +139,6 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
   Close ->
     -- | Must be signed by owner.
     traceIfFalse "owner didn't sign" (txSignedBy info $ unPaymentPubKeyHash owner)
-    -- must burn beacon
   UpdatePrices newPrice ->
     -- | Must be signed by owner.
     traceIfFalse "owner didn't sign" (txSignedBy info $ unPaymentPubKeyHash owner) &&
@@ -153,10 +152,10 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
     traceIfFalse "all outputs must go to either the script or the owner" outputsToSelfOrOwner
   Swap -> 
     -- | Should not consume reference script from swap script address.
-    -- | Utxo output to the script must have the proper datum and datum must not differ from input.
-    -- | Only offered asset should leave the swap script address.
-    -- | User must supply the 1 ADA for each utxo with native tokens.
-    -- | Max offered asset taken <= given asset * price.
+    --   Utxo output to the script must have the proper datum and datum must not differ from input.
+    --   Only offered asset should leave the swap script address.
+    --   User must supply the 1 ADA for each utxo with native tokens.
+    --   Max offered asset taken <= given asset * price.
     traceIfFalse ("Invalid swap:" 
               --  <> "\nShould not consume reference script from swap address"
               --  <> "\nUtxo output to swap address must contain proper datum (must match input datum)"
@@ -210,16 +209,17 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
     emptyVal :: Value
     emptyVal = lovelaceValueOf 0
 
-    -- here in case ref script's datum shows up in allDatums
-    -- avgAskPrice :: Rational
-    -- avgAskPrice =
-    --   let allDatums = Map.elems $ txInfoData info
-    --       sum' = foldl (\a z -> a + (getPrice $ unsafeFromBuiltinData $ getDatum z)) (fromInteger 0)
-    --       numOfDatums = fromInteger $ length allDatums
-    --   in sum' allDatums * recip numOfDatums
+    -- | Convert price if necessary
+    correctedPrice :: Price
+    correctedPrice
+      -- | If ADA is offered, divide the price by 1,000,000
+      | offerAsset == (adaSymbol,adaToken) = price * unsafeRatio 1 1_000_000
+      -- | If ADA is asked, multiply the price by 1,000,000
+      | askAsset == (adaSymbol,adaToken) = price * unsafeRatio 1_000_000 1
+      | otherwise = price
 
     -- | Separate script input value from rest of input value (can be from other scripts).
-    -- | Throws an error if there is a ref script among script inputs.
+    --   Throws an error if there is a ref script among script inputs.
     scriptInputValue :: Value
     scriptInputValue =
       let inputs = txInfoInputs info
@@ -236,7 +236,7 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
       in foldl foo emptyVal inputs
 
     -- | Separate output value to script from rest of output value (can be to other scripts).
-    -- | Throw error if output to script doesn't contain proper inline datum.
+    --   Throw error if output to script doesn't contain proper inline datum.
     scriptOutputValue :: Value
     scriptOutputValue =
       let outputs = txInfoOutputs info
@@ -268,13 +268,14 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
           isOnlyOfferedAsset           _ = False
       in
         -- | Only the offered asset is allowed to leave the script address.
-        -- | When ADA is not being offered, the user is required to supply the ADA for native token utxos.
-        -- | This means that, when ADA is not offered, the script's ADA value can only increase.
+        --   When ADA is not being offered, the user is required to supply the ADA for native token utxos.
+        --   This means that, when ADA is not offered, the script's ADA value can only increase.
         isOnlyOfferedAsset leavingAssets &&
 
         -- | Ratio sets the maximum amount of the offered asset that can be taken.
-        -- | To withdraw more of the offered asset, more of the asked asset must be deposited to the script.
-        offeredTaken * (price) <= askedGiven
+        --   To withdraw more of the offered asset, more of the asked asset must be deposited to the script.
+        --   Uses the corrected price to account for converting ADA to lovelace 
+        offeredTaken * (correctedPrice) <= askedGiven
     
 
 data Swap

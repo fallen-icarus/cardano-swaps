@@ -25,12 +25,12 @@ runCreateSwapScript pkh oa aa file = do
 runCreateDatum :: Price -> FilePath -> IO ()
 runCreateDatum price file = do
   writeData file price
-  putStrLn "Swap datum created successfully."
+  putStrLn "Datum file created successfully."
 
 runCreateSwapRedeemer :: Action -> FilePath -> IO ()
 runCreateSwapRedeemer action file = do
   writeData file action
-  putStrLn "Swap redeemer created successfully."
+  putStrLn "Redeemer file created successfully."
 
 runCommand :: Command -> IO ()
 runCommand cmd = case cmd of

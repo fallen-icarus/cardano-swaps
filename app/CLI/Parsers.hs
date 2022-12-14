@@ -3,6 +3,7 @@ module CLI.Parsers
   parseCommand,
   Command (..),
   AdvancedOption (..),
+  Asset (..),
 ) where
 
 import Options.Applicative as Opts
@@ -11,16 +12,17 @@ import CardanoSwaps
 import CLI.Query
 
 data Command 
-  = CreateSwapScript !PaymentPubKeyHash !OfferedAsset !AskedAsset !FilePath
+  = CreateSwapScript !PaymentPubKeyHash !Asset !Asset !FilePath
   | CreateSwapDatum !Price !FilePath
   | CreateSwapRedeemer !Action !FilePath
   | CreateBeaconRedeemer !BeaconRedeemer !FilePath
   | Query !CurrencySymbol !TokenName !CurrencySymbol !TokenName !Network
   | Advanced !AdvancedOption !FilePath
 
-data OfferedAsset = AdaOffered | Offered !CurrencySymbol !TokenName
+data Asset = Ada | Asset !CurrencySymbol !TokenName
+-- data OfferedAsset = AdaOffered | Offered !CurrencySymbol !TokenName
 
-data AskedAsset = AdaAsked | Asked !CurrencySymbol !TokenName
+-- data AskedAsset = AdaAsked | Asked !CurrencySymbol !TokenName
 
 data AdvancedOption
   = BeaconPolicyId
@@ -42,8 +44,8 @@ parseCreateSwapScript =
       <> help "The owner's payment key hash."
       )
 
-    pOfferedAda :: Parser OfferedAsset
-    pOfferedAda = flag' AdaOffered
+    pOfferedAda :: Parser Asset
+    pOfferedAda = flag' Ada
       (  long "offered-asset-is-ada"
       <> help "The asset being offered is ADA"
       )
@@ -62,11 +64,11 @@ parseCreateSwapScript =
       <> help "The token name (in hexidecimal) of the offered asset."
       )
     
-    pOffered :: Parser OfferedAsset
-    pOffered = pOfferedAda <|> (Offered <$> pOfferedCurrencySymbol <*> pOfferedTokenName)
+    pOffered :: Parser Asset
+    pOffered = pOfferedAda <|> (Asset <$> pOfferedCurrencySymbol <*> pOfferedTokenName)
 
-    pAskedAda :: Parser AskedAsset
-    pAskedAda = flag' AdaAsked
+    pAskedAda :: Parser Asset
+    pAskedAda = flag' Ada
       (  long "asked-asset-is-ada"
       <> help "The asset asked for is ADA"
       )
@@ -85,8 +87,8 @@ parseCreateSwapScript =
       <> help "The token name (in hexidecimal) of the asked asset."
       )
 
-    pAsked :: Parser AskedAsset
-    pAsked = pAskedAda <|> (Asked <$> pAskedCurrencySymbol <*> pAskedTokenName)
+    pAsked :: Parser Asset
+    pAsked = pAskedAda <|> (Asset <$> pAskedCurrencySymbol <*> pAskedTokenName)
 
 parseCreateSwapDatum :: Parser Command
 parseCreateSwapDatum = CreateSwapDatum <$> pSwapPrice <*> pOutputFile

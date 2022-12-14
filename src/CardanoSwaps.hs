@@ -147,6 +147,8 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
     traceIfFalse "updating reference script utxo's datum is not necessary" (null inputsWithRefScripts) &&
     -- | Datum must be valid price.
     traceIfFalse "invalid new asking price" (newPrice > fromInteger 0) &&
+    -- | All outputs must contain same datum as specified in redeemer
+    traceIfFalse "new datums do not match price in redeemer" (allDatumsMatchRedeemerPrice newPrice) &&
     -- | Must output to swap script address or owner address.
     traceIfFalse "all outputs must go to either the script or the owner" outputsToSelfOrOwner
   Swap -> 
@@ -181,6 +183,26 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
                          $ map txInInfoResolved
                          $ txInfoInputs info
 
+    -- | Check datums of new outputs to script. If new datum is not an inline datum,
+    --   it will throw an error.
+    allDatumsMatchRedeemerPrice :: Price -> Bool
+    allDatumsMatchRedeemerPrice newPrice = 
+      let outputs = txInfoOutputs info
+          foo o = case (addressCredential $ txOutAddress o, parseDatum o) of
+            -- | if output is to the script, check its datum too
+              (ScriptCredential vh,price') -> 
+                if vh == scriptValidatorHash
+                then -- | Check if output to swap script contains proper datum.
+                     price' == newPrice
+                else True -- ^ If output to other script, ignore datum
+              _ -> True -- ^ If output to user wallet, ignore datum
+      in all foo outputs
+
+    parseDatum :: TxOut -> Price
+    parseDatum o = case txOutDatum o of
+      (OutputDatum (Datum d)) -> unsafeFromBuiltinData d
+      _ -> traceError "Invalid datum for swap script output"
+
     -- | ValidatorHash of this script
     scriptValidatorHash :: ValidatorHash
     scriptValidatorHash = ownHash ctx
@@ -212,11 +234,6 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
               else si
             PubKeyCredential _ -> si
       in foldl foo emptyVal inputs
-
-    parseDatum :: TxOut -> Price
-    parseDatum o = case txOutDatum o of
-      (OutputDatum (Datum d)) -> unsafeFromBuiltinData d
-      _ -> traceError "Invalid datum for swap script output"
 
     -- | Separate output value to script from rest of output value (can be to other scripts).
     -- | Throw error if output to script doesn't contain proper inline datum.

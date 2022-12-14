@@ -23,10 +23,14 @@ runCreateSwapScript pkh oa aa file = do
     Left err -> putStrLn $ "There was an error: " <> show err
 
 runCreateDatum :: Price -> FilePath -> IO ()
-runCreateDatum price file = writeData file price
+runCreateDatum price file = do
+  writeData file price
+  putStrLn "Swap datum created successfully."
 
 runCreateSwapRedeemer :: Action -> FilePath -> IO ()
-runCreateSwapRedeemer action file = writeData file action
+runCreateSwapRedeemer action file = do
+  writeData file action
+  putStrLn "Swap redeemer created successfully."
 
 runCommand :: Command -> IO ()
 runCommand cmd = case cmd of

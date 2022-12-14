@@ -20,11 +20,11 @@ module CardanoSwaps
 (
   genPairTokenName, 
   
-  createBasicInfo,
   readPubKeyHash,
   readCurrencySymbol,
   readTokenName,
 
+  BasicInfo (..),
   Price,
   Action (..),
   CurrencySymbol(..),
@@ -32,6 +32,8 @@ module CardanoSwaps
   PaymentPubKeyHash,
   fromGHC,
   BeaconRedeemer (..),
+  adaSymbol,
+  adaToken,
 
   swapScript,
   beaconVaultScript,
@@ -89,15 +91,6 @@ data BasicInfo = BasicInfo
   }
 
 PlutusTx.makeLift ''BasicInfo
-
-createBasicInfo :: PaymentPubKeyHash -> CurrencySymbol -> TokenName 
-                -> CurrencySymbol -> TokenName -> BasicInfo
-createBasicInfo pkh offeredCurrSym offeredTokName askedCurrSym askedTokName =
-  BasicInfo
-    { owner = pkh
-    , offerAsset = (offeredCurrSym,offeredTokName)
-    , askAsset = (askedCurrSym,askedTokName)
-    }
 
 -- | Parse PaymentPubKeyHash from user supplied String
 readPubKeyHash :: Haskell.String -> Either Haskell.String PaymentPubKeyHash

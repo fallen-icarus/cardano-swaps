@@ -11,12 +11,16 @@ import CardanoSwaps
 import CLI.Query
 
 data Command 
-  = CreateSwapScript !PaymentPubKeyHash !CurrencySymbol !TokenName !CurrencySymbol !TokenName !FilePath
+  = CreateSwapScript !PaymentPubKeyHash !OfferedAsset !AskedAsset !FilePath
   | CreateSwapDatum !Price !FilePath
   | CreateSwapRedeemer !Action !FilePath
   | CreateBeaconRedeemer !BeaconRedeemer !FilePath
   | Query !CurrencySymbol !TokenName !CurrencySymbol !TokenName !Network
   | Advanced !AdvancedOption !FilePath
+
+data OfferedAsset = AdaOffered | Offered !CurrencySymbol !TokenName
+
+data AskedAsset = AdaAsked | Asked !CurrencySymbol !TokenName
 
 data AdvancedOption
   = BeaconPolicyId
@@ -27,10 +31,8 @@ parseCreateSwapScript :: Parser Command
 parseCreateSwapScript = 
    CreateSwapScript 
      <$> pOwnerPubKeyHash
-     <*> pOfferedCurrencySymbol
-     <*> pOfferedTokenName
-     <*> pAskedCurrencySymbol
-     <*> pAskedTokenName
+     <*> pOffered
+     <*> pAsked
      <*> pOutputFile
   where
     pOwnerPubKeyHash :: Parser PaymentPubKeyHash
@@ -38,6 +40,12 @@ parseCreateSwapScript =
       (  long "owner-payment-key-hash" 
       <> metavar "STRING" 
       <> help "The owner's payment key hash."
+      )
+
+    pOfferedAda :: Parser OfferedAsset
+    pOfferedAda = flag' AdaOffered
+      (  long "offered-asset-is-ada"
+      <> help "The asset being offered is ADA"
       )
 
     pOfferedCurrencySymbol :: Parser CurrencySymbol
@@ -53,7 +61,16 @@ parseCreateSwapScript =
       <> metavar "STRING"
       <> help "The token name (in hexidecimal) of the offered asset."
       )
+    
+    pOffered :: Parser OfferedAsset
+    pOffered = pOfferedAda <|> (Offered <$> pOfferedCurrencySymbol <*> pOfferedTokenName)
 
+    pAskedAda :: Parser AskedAsset
+    pAskedAda = flag' AdaAsked
+      (  long "asked-asset-is-ada"
+      <> help "The asset asked for is ADA"
+      )
+    
     pAskedCurrencySymbol :: Parser CurrencySymbol
     pAskedCurrencySymbol = option (eitherReader readCurrencySymbol)
       (  long "asked-asset-policy-id" 
@@ -67,6 +84,9 @@ parseCreateSwapScript =
       <> metavar "STRING"
       <> help "The token name (in hexidecimal) of the asked asset."
       )
+
+    pAsked :: Parser AskedAsset
+    pAsked = pAskedAda <|> (Asked <$> pAskedCurrencySymbol <*> pAskedTokenName)
 
 parseCreateSwapDatum :: Parser Command
 parseCreateSwapDatum = CreateSwapDatum <$> pSwapPrice <*> pOutputFile

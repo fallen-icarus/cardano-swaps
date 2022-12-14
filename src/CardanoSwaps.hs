@@ -229,7 +229,7 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
               if vh == scriptValidatorHash
               then -- check if it contains a ref script from swap script address 
                    if isJust $ txOutReferenceScript $ txInInfoResolved i
-                   then traceError "Cannot consumer reference script from swap address"
+                   then traceError "Cannot consume reference script from swap address"
                    else si <> txOutValue (txInInfoResolved i)
               else si
             PubKeyCredential _ -> si

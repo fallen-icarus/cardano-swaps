@@ -144,7 +144,7 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
     traceIfFalse "owner didn't sign" (txSignedBy info $ unPaymentPubKeyHash owner) &&
     -- | Must not consume reference script (to save on fees).
     traceIfFalse "updating reference script utxo's datum is not necessary" (null inputsWithRefScripts) &&
-    -- | Datum must be valid price.
+    -- | Datum must be valid price. Any number great than zero.
     traceIfFalse "invalid new asking price" (newPrice > fromInteger 0) &&
     -- | All outputs must contain same datum as specified in redeemer
     traceIfFalse "new datums do not match price in redeemer" (allDatumsMatchRedeemerPrice newPrice) &&

@@ -230,7 +230,7 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
     allDatumsMatchRedeemerPrice :: Price -> Bool
     allDatumsMatchRedeemerPrice newPrice = 
       let outputs = txInfoOutputs info
-          foo o = case (addressCredential $ txOutAddress o, parseOutputDatum o) of
+          foo o = case (addressCredential $ txOutAddress o, parseDatum outputDatumError o) of
             -- | if output is to the script, check its datum too
               (ScriptCredential vh,price') -> 
                 if vh == scriptValidatorHash
@@ -240,15 +240,16 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
               _ -> True -- ^ If output to user wallet, ignore datum
       in all foo outputs
 
-    parseOutputDatum :: TxOut -> Price
-    parseOutputDatum o = case txOutDatum o of
+    outputDatumError :: BuiltinString
+    outputDatumError = "Invalid price datum for swap script output. Must be inline datum."
+
+    inputDatumError :: BuiltinString
+    inputDatumError = "Failed to parse input datum."
+
+    parseDatum :: BuiltinString -> TxOut -> Price
+    parseDatum err o = case txOutDatum o of
       (OutputDatum (Datum d)) -> unsafeFromBuiltinData d
-      _ -> traceError "Invalid price datum for swap script output. Must be inline datum."
-    
-    parseInputDatum :: TxOut -> Price
-    parseInputDatum o = case txOutDatum o of
-      (OutputDatum (Datum d)) -> unsafeFromBuiltinData d
-      _ -> traceError "Failed to parse input datum."
+      _ -> traceError err
 
     -- | ValidatorHash of this script
     scriptValidatorHash :: ValidatorHash
@@ -261,7 +262,7 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
     priceTier :: TxOut -> (Integer,Price)
     priceTier o = 
       ( valueOf (txOutValue o) (fst offerAsset) (snd offerAsset)
-      , parseInputDatum o
+      , parseDatum inputDatumError o
       )
     
     -- | Separate script input value from rest of input value (can be from other scripts).
@@ -324,7 +325,7 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
               if vh == scriptValidatorHash 
               then -- | Check if output to swap script contains proper datum.
                    --   Throws error if invalid datum.
-                   if parseOutputDatum o == weightedPrice
+                   if parseDatum outputDatumError o == weightedPrice
                    then so <> txOutValue o
                    else traceError "output datum is not the weighted price of all utxo inputs"
               else so

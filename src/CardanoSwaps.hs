@@ -18,7 +18,9 @@
 
 module CardanoSwaps
 (
-  genPairTokenName, 
+  genPairTokenName,
+  calcWeightedPrice,
+  UtxoPriceInfo (..),
   
   readPubKeyHash,
   readCurrencySymbol,
@@ -51,6 +53,7 @@ import qualified Data.ByteString.Short as SBS
 import Prelude (IO,FilePath) 
 import qualified Prelude as Haskell
 import Data.String (fromString)
+import Control.Monad (mzero)
 
 import           Cardano.Api hiding (Script,Value,TxOut)
 import           Cardano.Api.Shelley   (PlutusScript (..))
@@ -77,6 +80,46 @@ genPairTokenName offeredCurrSym offeredTokName askedCurrSym askedTokName =
   let offeredName = unCurrencySymbol offeredCurrSym <> unTokenName offeredTokName
       askedName = unCurrencySymbol askedCurrSym <> unTokenName askedTokName
   in TokenName $ sha3_256 (offeredName <> "/" <> askedName)
+
+data UtxoPriceInfo = UtxoPriceInfo
+  { utxoAmount :: Integer
+  , priceNumerator :: Integer
+  , priceDenominator :: Integer
+  }
+
+instance FromJSON UtxoPriceInfo where
+  parseJSON (Object o) = 
+    UtxoPriceInfo 
+      Haskell.<$> o .: "utxoAmount"
+      Haskell.<*> o .: "priceNumerator"
+      Haskell.<*> o .: "priceDenominator"
+  parseJSON _ = mzero
+
+instance ToJSON UtxoPriceInfo where
+  toJSON UtxoPriceInfo{..} =
+    object [ "utxoAmount" .= utxoAmount
+           , "priceNumerator" .= priceNumerator
+           , "priceDenominator" .= priceDenominator
+           ]
+
+-- | Helper function to calculate the weighted price.
+--   Will match the weighted price calculation done by script.
+--   Meant to be used with a UtxoPriceInfo JSON File.
+calcWeightedPrice :: [UtxoPriceInfo] -> (Integer,Rational)
+calcWeightedPrice xs = foldl foo (0,fromInteger 0) xs
+  where
+    convert :: (UtxoPriceInfo) -> Rational 
+    convert UtxoPriceInfo{priceNumerator = num,priceDenominator = den} = 
+      case ratio num den of
+        Nothing -> Haskell.error $ "Denominator was zero: " <> Haskell.show (num,den)
+        Just r -> r
+    
+    foo :: (Integer,Rational) -> UtxoPriceInfo -> (Integer,Rational) 
+    foo (runningTot,wp) ui@UtxoPriceInfo{..} =
+      let newAmount = runningTot + utxoAmount
+          wp' = unsafeRatio runningTot newAmount * wp +
+                unsafeRatio utxoAmount newAmount * convert ui
+      in (newAmount,wp')
 
 -------------------------------------------------
 -- Swap Settings
@@ -187,7 +230,7 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
     allDatumsMatchRedeemerPrice :: Price -> Bool
     allDatumsMatchRedeemerPrice newPrice = 
       let outputs = txInfoOutputs info
-          foo o = case (addressCredential $ txOutAddress o, parseDatum o) of
+          foo o = case (addressCredential $ txOutAddress o, parseOutputDatum o) of
             -- | if output is to the script, check its datum too
               (ScriptCredential vh,price') -> 
                 if vh == scriptValidatorHash
@@ -197,10 +240,15 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
               _ -> True -- ^ If output to user wallet, ignore datum
       in all foo outputs
 
-    parseDatum :: TxOut -> Price
-    parseDatum o = case txOutDatum o of
+    parseOutputDatum :: TxOut -> Price
+    parseOutputDatum o = case txOutDatum o of
       (OutputDatum (Datum d)) -> unsafeFromBuiltinData d
-      _ -> traceError "Invalid datum for swap script output"
+      _ -> traceError "Invalid price datum for swap script output. Must be inline datum."
+    
+    parseInputDatum :: TxOut -> Price
+    parseInputDatum o = case txOutDatum o of
+      (OutputDatum (Datum d)) -> unsafeFromBuiltinData d
+      _ -> traceError "Failed to parse input datum."
 
     -- | ValidatorHash of this script
     scriptValidatorHash :: ValidatorHash
@@ -209,54 +257,116 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
     emptyVal :: Value
     emptyVal = lovelaceValueOf 0
 
-    -- | Convert price if necessary
-    correctedPrice :: Price
-    correctedPrice
-      -- | If ADA is offered, divide the price by 1,000,000
-      | offerAsset == (adaSymbol,adaToken) = price * unsafeRatio 1 1_000_000
-      -- | If ADA is asked, multiply the price by 1,000,000
-      | askAsset == (adaSymbol,adaToken) = price * unsafeRatio 1_000_000 1
-      | otherwise = price
+    -- | How much of the offered asset is available in this utxo input and for what price.
+    priceTier :: TxOut -> (Integer,Price)
+    priceTier o = 
+      ( valueOf (txOutValue o) (fst offerAsset) (snd offerAsset)
+      , parseInputDatum o
+      )
+    
+    -- | Separate script input value from rest of input value (can be from other scripts).
+    --   Throws an error if there is a ref script among script inputs.
+    --   Get the weighted average price for all the utxo inputs from this script. This will
+    --   throw an error if the datum is not an inline datum or if it is not a price.
+    --
+    --   returns (Total Value from Script,(Total Offered Asset in Inputs,Weighted Price))
+    scriptInputInfo :: (Value,(Integer,Price))
+    scriptInputInfo =
+      let inputs = txInfoInputs info
+          addrCred i = addressCredential $ txOutAddress $ txInInfoResolved i
+          foo (si,(on,wp)) i = 
+            -- | Check if input belongs to this script
+            if ScriptCredential scriptValidatorHash == addrCred i
+            then -- | check if input contains a ref script from the swap script
+                 if isJust $ txOutReferenceScript $ txInInfoResolved i
+                 then traceError "Cannot consume reference script from swap address."
+                 else let (offeredInInput,price') = priceTier $ txInInfoResolved i
+                          newAmount = on + offeredInInput
+                          -- | This can throw an error if the first script input
+                          --   doesn't contain any offered asset. But basic
+                          --   usage assumes it does. Therefore failure here is okay.
+                          newWeightedPrice =
+                            unsafeRatio on newAmount * wp +
+                            unsafeRatio offeredInInput newAmount * price'
+                      in ( si <> txOutValue (txInInfoResolved i)
+                         , (newAmount,newWeightedPrice)
+                         )
+            else (si,(on,wp))
+      in foldl foo (emptyVal,(0,fromInteger 0)) inputs
 
     -- | Separate script input value from rest of input value (can be from other scripts).
     --   Throws an error if there is a ref script among script inputs.
-    scriptInputValue :: Value
-    scriptInputValue =
-      let inputs = txInfoInputs info
-          foo si i = case addressCredential $ txOutAddress $ txInInfoResolved i of
-            ScriptCredential vh ->
-              -- check if it belongs to swap script
-              if vh == scriptValidatorHash
-              then -- check if it contains a ref script from swap script address 
-                   if isJust $ txOutReferenceScript $ txInInfoResolved i
-                   then traceError "Cannot consume reference script from swap address"
-                   else si <> txOutValue (txInInfoResolved i)
-              else si
-            PubKeyCredential _ -> si
-      in foldl foo emptyVal inputs
+    -- scriptInputValue :: Value
+    -- scriptInputValue =
+    --   let inputs = txInfoInputs info
+    --       foo si i = case addressCredential $ txOutAddress $ txInInfoResolved i of
+    --         ScriptCredential vh ->
+    --           -- check if it belongs to swap script
+    --           if vh == scriptValidatorHash
+    --           then -- check if it contains a ref script from swap script address 
+    --                if isJust $ txOutReferenceScript $ txInInfoResolved i
+    --                then traceError "Cannot consume reference script from swap address"
+    --                else si <> txOutValue (txInInfoResolved i)
+    --           else si
+    --         PubKeyCredential _ -> si
+    --   in foldl foo emptyVal inputs
 
     -- | Separate output value to script from rest of output value (can be to other scripts).
     --   Throw error if output to script doesn't contain proper inline datum.
-    scriptOutputValue :: Value
-    scriptOutputValue =
+    --   The supplied price is the weighted average of all script input prices.
+    scriptOutputValue :: Price -> Value
+    scriptOutputValue weightedPrice =
       let outputs = txInfoOutputs info
-          foo so o = case (addressCredential $ txOutAddress o,parseDatum o) of
+          foo so o = case addressCredential $ txOutAddress o of
             -- | Also checks if proper datum is attached.
-            (ScriptCredential vh,price') ->
-              -- check if it belongs to swap script
+            ScriptCredential vh ->
+              -- | check if it belongs to swap script
               if vh == scriptValidatorHash 
               then -- | Check if output to swap script contains proper datum.
-                   if price' == price
+                   --   Throws error if invalid datum.
+                   if parseOutputDatum o == weightedPrice
                    then so <> txOutValue o
-                   else traceError "datum changed in script output"
+                   else traceError "output datum is not the weighted price of all utxo inputs"
               else so
             _ -> so
       in foldl foo emptyVal outputs
 
+
+    -- | Separate output value to script from rest of output value (can be to other scripts).
+    --   Throw error if output to script doesn't contain proper inline datum.
+    -- scriptOutputValue :: Value
+    -- scriptOutputValue =
+    --   let outputs = txInfoOutputs info
+    --       foo so o = case (addressCredential $ txOutAddress o,parseDatum o) of
+    --         -- | Also checks if proper datum is attached.
+    --         (ScriptCredential vh,price') ->
+    --           -- check if it belongs to swap script
+    --           if vh == scriptValidatorHash 
+    --           then -- | Check if output to swap script contains proper datum.
+    --                if price' == price
+    --                then so <> txOutValue o
+    --                else traceError "datum changed in script output"
+    --           else so
+    --         _ -> so
+    --   in foldl foo emptyVal outputs
+
     swapCheck :: Bool
     swapCheck =
-      let  -- | Value differences
-          scriptValueDiff = scriptOutputValue <> Num.negate scriptInputValue
+      let -- | Input info
+          (scriptInputValue,(_,weightedPrice)) = scriptInputInfo
+
+          -- | Convert price if necessary
+          correctedPrice
+            -- | If ADA is offered, divide the weighted price by 1,000,000
+            | offerAsset == (adaSymbol,adaToken) = weightedPrice * unsafeRatio 1 1_000_000
+            -- | If ADA is asked, multiply the weighted price by 1,000,000
+            | askAsset == (adaSymbol,adaToken) = weightedPrice * unsafeRatio 1_000_000 1
+            | otherwise = weightedPrice
+          
+          -- | Value differences
+          scriptValueDiff 
+            =  scriptOutputValue weightedPrice -- ^ checks if outputs contain weighted price
+            <> Num.negate scriptInputValue
 
           -- | Amounts
           askedGiven = fromInteger $ uncurry (valueOf scriptValueDiff) askAsset
@@ -265,7 +375,8 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
           -- | Assets leaving script address
           leavingAssets = flattenValue $ fst $ split scriptValueDiff -- zero diff amounts removed
           isOnlyOfferedAsset [(cn,tn,_)] = (cn,tn) == offerAsset
-          isOnlyOfferedAsset           _ = False
+          isOnlyOfferedAsset [] = True -- ^ allows consolidating utxos at swap script address
+          isOnlyOfferedAsset _ = False
       in
         -- | Only the offered asset is allowed to leave the script address.
         --   When ADA is not being offered, the user is required to supply the ADA for native token utxos.
@@ -276,6 +387,30 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
         --   To withdraw more of the offered asset, more of the asked asset must be deposited to the script.
         --   Uses the corrected price to account for converting ADA to lovelace 
         offeredTaken * (correctedPrice) <= askedGiven
+
+    -- swapCheck :: Bool
+    -- swapCheck =
+    --   let  -- | Value differences
+    --       scriptValueDiff = scriptOutputValue <> Num.negate scriptInputValue
+
+    --       -- | Amounts
+    --       askedGiven = fromInteger $ uncurry (valueOf scriptValueDiff) askAsset
+    --       offeredTaken = fromInteger $ Num.negate $ uncurry (valueOf scriptValueDiff) offerAsset
+
+    --       -- | Assets leaving script address
+    --       leavingAssets = flattenValue $ fst $ split scriptValueDiff -- zero diff amounts removed
+    --       isOnlyOfferedAsset [(cn,tn,_)] = (cn,tn) == offerAsset
+    --       isOnlyOfferedAsset           _ = False
+    --   in
+    --     -- | Only the offered asset is allowed to leave the script address.
+    --     --   When ADA is not being offered, the user is required to supply the ADA for native token utxos.
+    --     --   This means that, when ADA is not offered, the script's ADA value can only increase.
+    --     isOnlyOfferedAsset leavingAssets &&
+
+    --     -- | Ratio sets the maximum amount of the offered asset that can be taken.
+    --     --   To withdraw more of the offered asset, more of the asked asset must be deposited to the script.
+    --     --   Uses the corrected price to account for converting ADA to lovelace 
+    --     offeredTaken * (correctedPrice) <= askedGiven
     
 
 data Swap

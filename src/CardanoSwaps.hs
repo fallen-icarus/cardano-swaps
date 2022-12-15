@@ -297,23 +297,6 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
             else (si,(on,wp))
       in foldl foo (emptyVal,(0,fromInteger 0)) inputs
 
-    -- | Separate script input value from rest of input value (can be from other scripts).
-    --   Throws an error if there is a ref script among script inputs.
-    -- scriptInputValue :: Value
-    -- scriptInputValue =
-    --   let inputs = txInfoInputs info
-    --       foo si i = case addressCredential $ txOutAddress $ txInInfoResolved i of
-    --         ScriptCredential vh ->
-    --           -- check if it belongs to swap script
-    --           if vh == scriptValidatorHash
-    --           then -- check if it contains a ref script from swap script address 
-    --                if isJust $ txOutReferenceScript $ txInInfoResolved i
-    --                then traceError "Cannot consume reference script from swap address"
-    --                else si <> txOutValue (txInInfoResolved i)
-    --           else si
-    --         PubKeyCredential _ -> si
-    --   in foldl foo emptyVal inputs
-
     -- | Separate output value to script from rest of output value (can be to other scripts).
     --   Throw error if output to script doesn't contain proper inline datum.
     --   The supplied price is the weighted average of all script input prices.
@@ -333,25 +316,6 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
               else so
             _ -> so
       in foldl foo emptyVal outputs
-
-
-    -- | Separate output value to script from rest of output value (can be to other scripts).
-    --   Throw error if output to script doesn't contain proper inline datum.
-    -- scriptOutputValue :: Value
-    -- scriptOutputValue =
-    --   let outputs = txInfoOutputs info
-    --       foo so o = case (addressCredential $ txOutAddress o,parseDatum o) of
-    --         -- | Also checks if proper datum is attached.
-    --         (ScriptCredential vh,price') ->
-    --           -- check if it belongs to swap script
-    --           if vh == scriptValidatorHash 
-    --           then -- | Check if output to swap script contains proper datum.
-    --                if price' == price
-    --                then so <> txOutValue o
-    --                else traceError "datum changed in script output"
-    --           else so
-    --         _ -> so
-    --   in foldl foo emptyVal outputs
 
     swapCheck :: Bool
     swapCheck =
@@ -390,31 +354,6 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
         --   To withdraw more of the offered asset, more of the asked asset must be deposited to the script.
         --   Uses the corrected price to account for converting ADA to lovelace 
         offeredTaken * (correctedPrice) <= askedGiven
-
-    -- swapCheck :: Bool
-    -- swapCheck =
-    --   let  -- | Value differences
-    --       scriptValueDiff = scriptOutputValue <> Num.negate scriptInputValue
-
-    --       -- | Amounts
-    --       askedGiven = fromInteger $ uncurry (valueOf scriptValueDiff) askAsset
-    --       offeredTaken = fromInteger $ Num.negate $ uncurry (valueOf scriptValueDiff) offerAsset
-
-    --       -- | Assets leaving script address
-    --       leavingAssets = flattenValue $ fst $ split scriptValueDiff -- zero diff amounts removed
-    --       isOnlyOfferedAsset [(cn,tn,_)] = (cn,tn) == offerAsset
-    --       isOnlyOfferedAsset           _ = False
-    --   in
-    --     -- | Only the offered asset is allowed to leave the script address.
-    --     --   When ADA is not being offered, the user is required to supply the ADA for native token utxos.
-    --     --   This means that, when ADA is not offered, the script's ADA value can only increase.
-    --     isOnlyOfferedAsset leavingAssets &&
-
-    --     -- | Ratio sets the maximum amount of the offered asset that can be taken.
-    --     --   To withdraw more of the offered asset, more of the asked asset must be deposited to the script.
-    --     --   Uses the corrected price to account for converting ADA to lovelace 
-    --     offeredTaken * (correctedPrice) <= askedGiven
-    
 
 data Swap
 instance ValidatorTypes Swap where

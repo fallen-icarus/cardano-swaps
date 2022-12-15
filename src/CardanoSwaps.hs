@@ -117,9 +117,14 @@ calcWeightedPrice xs = foldl foo (0,fromInteger 0) xs
     foo :: (Integer,Rational) -> UtxoPriceInfo -> (Integer,Rational) 
     foo (runningTot,wp) ui@UtxoPriceInfo{..} =
       let newAmount = runningTot + utxoAmount
-          wp' = unsafeRatio runningTot newAmount * wp +
-                unsafeRatio utxoAmount newAmount * convert ui
+          wp' = ratio' runningTot newAmount * wp +
+                ratio' utxoAmount newAmount * convert ui
       in (newAmount,wp')
+
+{-# INLINABLE ratio' #-}
+-- | When denominator is zero, returns (fromInteger 0)
+ratio' :: Integer -> Integer -> Rational
+ratio' num den = if den == 0 then fromInteger 0 else unsafeRatio num den
 
 -------------------------------------------------
 -- Swap Settings
@@ -283,12 +288,9 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
                  then traceError "Cannot consume reference script from swap address."
                  else let (offeredInInput,price') = priceTier $ txInInfoResolved i
                           newAmount = on + offeredInInput
-                          -- | This can throw an error if the first script input
-                          --   doesn't contain any offered asset. But basic
-                          --   usage assumes it does. Therefore failure here is okay.
                           newWeightedPrice =
-                            unsafeRatio on newAmount * wp +
-                            unsafeRatio offeredInInput newAmount * price'
+                            ratio' on newAmount * wp +
+                            ratio' offeredInInput newAmount * price'
                       in ( si <> txOutValue (txInInfoResolved i)
                          , (newAmount,newWeightedPrice)
                          )
@@ -359,9 +361,9 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
           -- | Convert price if necessary
           correctedPrice
             -- | If ADA is offered, divide the weighted price by 1,000,000
-            | offerAsset == (adaSymbol,adaToken) = weightedPrice * unsafeRatio 1 1_000_000
+            | offerAsset == (adaSymbol,adaToken) = weightedPrice * ratio' 1 1_000_000
             -- | If ADA is asked, multiply the weighted price by 1,000,000
-            | askAsset == (adaSymbol,adaToken) = weightedPrice * unsafeRatio 1_000_000 1
+            | askAsset == (adaSymbol,adaToken) = weightedPrice * ratio' 1_000_000 1
             | otherwise = weightedPrice
           
           -- | Value differences

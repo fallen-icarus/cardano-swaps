@@ -246,15 +246,17 @@ mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} 
       in all foo outputs
 
     outputDatumError :: BuiltinString
-    outputDatumError = "Invalid price datum for swap script output. Must be inline datum."
+    outputDatumError = "Invalid price datum for swap script output."
 
     inputDatumError :: BuiltinString
     inputDatumError = "Failed to parse input datum."
 
     parseDatum :: BuiltinString -> TxOut -> Price
     parseDatum err o = case txOutDatum o of
-      (OutputDatum (Datum d)) -> unsafeFromBuiltinData d
-      _ -> traceError err
+      (OutputDatum (Datum d)) -> case fromBuiltinData d of
+        Nothing -> traceError err
+        Just p -> p
+      _ -> traceError "All datums must be inline datums."
 
     -- | ValidatorHash of this script
     scriptValidatorHash :: ValidatorHash

@@ -48,7 +48,6 @@ runCreateDatum d file = case d of
       , UtxoPriceInfo { utxoAmount = 200, priceNumerator = 2, priceDenominator = 1 }
       ]
 
-
 runCreateSwapRedeemer :: Action -> FilePath -> IO ()
 runCreateSwapRedeemer action file = do
   writeData file action
@@ -66,10 +65,16 @@ runCreateStakingScript pkh moa maa file = do
     Right _ -> putStrLn "Staking script created successfully."
     Left err -> putStrLn $ "There was an error: " <> show err
 
+runCreateStakingRedeemer :: FilePath -> IO ()
+runCreateStakingRedeemer file = do
+  writeData file ()
+  putStrLn "Redeemer file created successfully."
+
 runCommand :: Command -> IO ()
 runCommand cmd = case cmd of
   CreateSwapScript pkh oa aa file -> runCreateSwapScript pkh oa aa file
   CreateSwapDatum d file -> runCreateDatum d file
   CreateSwapRedeemer action file -> runCreateSwapRedeemer action file
   CreateStakingScript pkh moa maa file -> runCreateStakingScript pkh moa maa file
+  CreateStakingRedeemer file -> runCreateStakingRedeemer file
   _ -> return ()

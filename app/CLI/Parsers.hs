@@ -17,6 +17,7 @@ data Command
   | CreateSwapDatum !SwapDatumInfo !FilePath
   | CreateSwapRedeemer !Action !FilePath
   | CreateStakingScript !PaymentPubKeyHash (Maybe Asset) (Maybe Asset) !FilePath
+  | CreateStakingRedeemer !FilePath
   | CreateBeaconRedeemer !BeaconRedeemer !FilePath
   | Query !CurrencySymbol !TokenName !CurrencySymbol !TokenName !Network
   | Advanced !AdvancedOption !FilePath
@@ -49,6 +50,8 @@ parseCreateStakingScript =
     <*> optional pAsked
     <*> pOutputFile
 
+parseCreateStakingRedeemer :: Parser Command
+parseCreateStakingRedeemer = CreateStakingRedeemer <$> pOutputFile
 
 parseCreateSwapDatum :: Parser Command
 parseCreateSwapDatum = 
@@ -212,6 +215,8 @@ parseCommand = hsubparser $
     (info parseCreateSwapRedeemer (progDesc "Create a redeemer for a swap transaction.")) <>
   command "create-staking-script"
     (info parseCreateStakingScript (progDesc "Create a personal staking script.")) <>
+  command "create-staking-redeemer"
+    (info parseCreateStakingRedeemer (progDesc "Create the redeemer for the staking script")) <>
   command "create-beacon-redeemer"
     (info parseCreateBeaconRedeemer (progDesc "Create a redeemer for the beacon policy.")) <>
   command "query" 

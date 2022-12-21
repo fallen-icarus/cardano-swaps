@@ -4,25 +4,28 @@ module CLI.Parsers
   Command (..),
   AdvancedOption (..),
   Asset (..),
+  SwapDatumInfo (..),
 ) where
 
-import Options.Applicative as Opts
+import Options.Applicative
 
 import CardanoSwaps
 import CLI.Query
 
 data Command 
   = CreateSwapScript !PaymentPubKeyHash !Asset !Asset !FilePath
-  | CreateSwapDatum !Price !FilePath
+  | CreateSwapDatum !SwapDatumInfo !FilePath
   | CreateSwapRedeemer !Action !FilePath
   | CreateBeaconRedeemer !BeaconRedeemer !FilePath
   | Query !CurrencySymbol !TokenName !CurrencySymbol !TokenName !Network
   | Advanced !AdvancedOption !FilePath
 
 data Asset = Ada | Asset !CurrencySymbol !TokenName
--- data OfferedAsset = AdaOffered | Offered !CurrencySymbol !TokenName
 
--- data AskedAsset = AdaAsked | Asked !CurrencySymbol !TokenName
+data SwapDatumInfo
+  = SwapDatum !Price
+  | SwapDatumUtxos !FilePath  -- ^ JSON file for UtxoPriceInfo to be used with calcWeightedPrice
+  | SwapDatumUtxosTemplate  -- ^ If a JSON template file is necessary
 
 data AdvancedOption
   = BeaconPolicyId
@@ -91,7 +94,10 @@ parseCreateSwapScript =
     pAsked = pAskedAda <|> (Asset <$> pAskedCurrencySymbol <*> pAskedTokenName)
 
 parseCreateSwapDatum :: Parser Command
-parseCreateSwapDatum = CreateSwapDatum <$> pSwapPrice <*> pOutputFile
+parseCreateSwapDatum = 
+   CreateSwapDatum 
+     <$> (pSwapDatum <|> pSwapUtxoInfo <|> pTemplate) 
+     <*> pOutputFile
   where
     pSwapPrice :: Parser Price
     pSwapPrice = fromGHC . (toRational :: Double -> Rational) <$> option auto
@@ -99,6 +105,23 @@ parseCreateSwapDatum = CreateSwapDatum <$> pSwapPrice <*> pOutputFile
       <> metavar "DECIMAL"
       <> help "The swap price (asked asset / offered asset)."
       )
+
+    pSwapDatum :: Parser SwapDatumInfo
+    pSwapDatum = SwapDatum <$> pSwapPrice
+
+    pSwapUtxoInfo :: Parser SwapDatumInfo
+    pSwapUtxoInfo = SwapDatumUtxos <$> strOption
+      (  long "calc-swap-price-from-file"
+      <> metavar "JSON FILE"
+      <> help "JSON file of utxo amounts, price numerators, and price denominators."
+      )
+
+    pTemplate :: Parser SwapDatumInfo
+    pTemplate = flag' SwapDatumUtxosTemplate
+      (  long "swap-price-file-template"
+      <> help "Create a template JSON file for use with calc-swap-price-from-file."
+      )
+
 
 
 parseCreateSwapRedeemer :: Parser Command

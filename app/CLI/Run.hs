@@ -3,6 +3,10 @@ module CLI.Run
   runCommand
 ) where
 
+import Data.Aeson
+import Data.Aeson.Encode.Pretty
+import qualified Data.ByteString.Lazy as BL
+
 import CardanoSwaps
 import CLI.Parsers
 
@@ -22,10 +26,28 @@ runCreateSwapScript pkh oa aa file = do
     Right _ -> putStrLn "Swap script created successfully."
     Left err -> putStrLn $ "There was an error: " <> show err
 
-runCreateDatum :: Price -> FilePath -> IO ()
-runCreateDatum price file = do
-  writeData file price
-  putStrLn "Datum file created successfully."
+runCreateDatum :: SwapDatumInfo -> FilePath -> IO ()
+runCreateDatum d file = case d of
+     SwapDatum price -> do
+       writeData file price
+       putStrLn "Datum file created successfully."
+     SwapDatumUtxos utxoFile -> do
+       utxos <- BL.readFile utxoFile
+       case decode utxos of
+         Nothing -> putStrLn "There was an error parsing the utxos file."
+         Just uis -> do
+           writeData file $ snd $ calcWeightedPrice uis
+           putStrLn "Datum file created successfully."
+     SwapDatumUtxosTemplate -> do
+       BL.writeFile file $ encodePretty template
+       putStrLn "Template file created successfully."
+  where
+    template :: [UtxoPriceInfo]
+    template =
+      [ UtxoPriceInfo { utxoAmount = 100, priceNumerator = 1, priceDenominator = 1 }
+      , UtxoPriceInfo { utxoAmount = 200, priceNumerator = 2, priceDenominator = 1 }
+      ]
+
 
 runCreateSwapRedeemer :: Action -> FilePath -> IO ()
 runCreateSwapRedeemer action file = do
@@ -35,6 +57,6 @@ runCreateSwapRedeemer action file = do
 runCommand :: Command -> IO ()
 runCommand cmd = case cmd of
   CreateSwapScript pkh oa aa file -> runCreateSwapScript pkh oa aa file
-  CreateSwapDatum price file -> runCreateDatum price file
+  CreateSwapDatum d file -> runCreateDatum d file
   CreateSwapRedeemer action file -> runCreateSwapRedeemer action file
   _ -> return ()

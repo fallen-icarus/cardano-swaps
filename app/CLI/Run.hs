@@ -54,9 +54,22 @@ runCreateSwapRedeemer action file = do
   writeData file action
   putStrLn "Redeemer file created successfully."
 
+runCreateStakingScript :: PaymentPubKeyHash -> Maybe Asset -> Maybe Asset -> FilePath -> IO ()
+runCreateStakingScript pkh moa maa file = do
+  let stakeConfig = StakeConfig
+                     { stakeOwner = pkh
+                     , stakeOfferedAsset = assetInfo <$> moa
+                     , stakeAskedAsset = assetInfo <$> maa
+                     }
+  res <- writeScript file $ stakingScript stakeConfig
+  case res of
+    Right _ -> putStrLn "Staking script created successfully."
+    Left err -> putStrLn $ "There was an error: " <> show err
+
 runCommand :: Command -> IO ()
 runCommand cmd = case cmd of
   CreateSwapScript pkh oa aa file -> runCreateSwapScript pkh oa aa file
   CreateSwapDatum d file -> runCreateDatum d file
   CreateSwapRedeemer action file -> runCreateSwapRedeemer action file
+  CreateStakingScript pkh moa maa file -> runCreateStakingScript pkh moa maa file
   _ -> return ()

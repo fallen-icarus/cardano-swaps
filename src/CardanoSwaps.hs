@@ -36,6 +36,7 @@ module CardanoSwaps
   BeaconRedeemer (..),
   adaSymbol,
   adaToken,
+  StakeConfig (..),
 
   swapScript,
   stakingScript,

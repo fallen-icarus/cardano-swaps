@@ -16,7 +16,7 @@ data Command
   = CreateSwapScript !PaymentPubKeyHash !Asset !Asset !FilePath
   | CreateSwapDatum !SwapDatumInfo !FilePath
   | CreateSwapRedeemer !Action !FilePath
-  | CreateStakingScript !PaymentPubKeyHash (Maybe Asset) (Maybe Asset)
+  | CreateStakingScript !PaymentPubKeyHash (Maybe Asset) (Maybe Asset) !FilePath
   | CreateBeaconRedeemer !BeaconRedeemer !FilePath
   | Query !CurrencySymbol !TokenName !CurrencySymbol !TokenName !Network
   | Advanced !AdvancedOption !FilePath
@@ -35,18 +35,20 @@ data AdvancedOption
 
 parseCreateSwapScript :: Parser Command
 parseCreateSwapScript = 
-   CreateSwapScript 
-     <$> pOwnerPubKeyHash
-     <*> pOffered
-     <*> pAsked
-     <*> pOutputFile
-  where
-    pOwnerPubKeyHash :: Parser PaymentPubKeyHash
-    pOwnerPubKeyHash = option (eitherReader readPubKeyHash)
-      (  long "owner-payment-key-hash" 
-      <> metavar "STRING" 
-      <> help "The owner's payment key hash."
-      )
+  CreateSwapScript 
+    <$> pOwnerPubKeyHash
+    <*> pOffered
+    <*> pAsked
+    <*> pOutputFile
+
+parseCreateStakingScript :: Parser Command
+parseCreateStakingScript =
+  CreateStakingScript
+    <$> pOwnerPubKeyHash
+    <*> optional pOffered
+    <*> optional pAsked
+    <*> pOutputFile
+
 
 parseCreateSwapDatum :: Parser Command
 parseCreateSwapDatum = 
@@ -76,8 +78,6 @@ parseCreateSwapDatum =
       (  long "swap-price-file-template"
       <> help "Create a template JSON file for use with calc-swap-price-from-file."
       )
-
-
 
 parseCreateSwapRedeemer :: Parser Command
 parseCreateSwapRedeemer =
@@ -205,11 +205,13 @@ parseAdvanced =
 parseCommand :: Parser Command
 parseCommand = hsubparser $
   command "create-swap-script" 
-    (info parseCreateSwapScript (progDesc "Create a unique swap script.")) <>
+    (info parseCreateSwapScript (progDesc "Create a personal swap script.")) <>
   command "create-swap-datum" 
     (info parseCreateSwapDatum (progDesc "Create a datum for the swap script.")) <>
   command "create-swap-redeemer"
     (info parseCreateSwapRedeemer (progDesc "Create a redeemer for a swap transaction.")) <>
+  command "create-staking-script"
+    (info parseCreateStakingScript (progDesc "Create a personal staking script.")) <>
   command "create-beacon-redeemer"
     (info parseCreateBeaconRedeemer (progDesc "Create a redeemer for the beacon policy.")) <>
   command "query" 
@@ -271,3 +273,10 @@ pAsked = pAskedAda <|> (Asset <$> pAskedCurrencySymbol <*> pAskedTokenName)
       <> metavar "STRING"
       <> help "The token name (in hexidecimal) of the asked asset."
       )
+
+pOwnerPubKeyHash :: Parser PaymentPubKeyHash
+pOwnerPubKeyHash = option (eitherReader readPubKeyHash)
+  (  long "owner-payment-key-hash" 
+  <> metavar "STRING" 
+  <> help "The owner's payment key hash."
+  )

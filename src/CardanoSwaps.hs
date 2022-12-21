@@ -87,7 +87,7 @@ data UtxoPriceInfo = UtxoPriceInfo
   { utxoAmount :: Integer
   , priceNumerator :: Integer
   , priceDenominator :: Integer
-  }
+  } deriving (Haskell.Show)
 
 instance FromJSON UtxoPriceInfo where
   parseJSON (Object o) = 
@@ -110,9 +110,9 @@ calcWeightedPrice :: [UtxoPriceInfo] -> (Integer,Rational)
 calcWeightedPrice xs = foldl foo (0,fromInteger 0) xs
   where
     convert :: (UtxoPriceInfo) -> Rational 
-    convert UtxoPriceInfo{priceNumerator = num,priceDenominator = den} = 
+    convert upi@UtxoPriceInfo{priceNumerator = num,priceDenominator = den} = 
       case ratio num den of
-        Nothing -> Haskell.error $ "Denominator was zero: " <> Haskell.show (num,den)
+        Nothing -> Haskell.error $ "Denominator was zero: " <> Haskell.show upi
         Just r -> r
     
     foo :: (Integer,Rational) -> UtxoPriceInfo -> (Integer,Rational) 

@@ -421,9 +421,9 @@ stakingScript = unStakeValidatorScript . staking
 -- | Beacon Redeemer
 data BeaconRedeemer
   -- | To mint a beacon, 1 ADA must be depositing into the proper script address.
-  = MintBeacon
+  = MintBeacon TokenName  -- ^ TokenName of token to be minted
   -- | To burn a beacon, 1 ADA must be withdrawn from the proper script address.
-  | BurnBeacon
+  | BurnBeacon TokenName  -- ^ TokenName of token to be burned
 
 PlutusTx.unstableMakeIsData ''BeaconRedeemer
 
@@ -433,11 +433,10 @@ PlutusTx.unstableMakeIsData ''BeaconRedeemer
 -- | Script responsible for holding deposits
 mkBeaconVault :: () -> BeaconRedeemer -> ScriptContext -> Bool
 mkBeaconVault () r ctx@ScriptContext{scriptContextTxInfo = info} = case r of
-   MintBeacon ->
-     -- | Only allow minting if 1 ADA also deposited at this script in same tx.
-     traceIfFalse "Must deposit exactly 1 ADA to mint beacon. Must deposit and mint in same tx." 
-       (containsOnly1ADA depositValue)
-   BurnBeacon ->
+   -- | Disallow minting redeemer with beacon vault script
+   MintBeacon _ -> 
+    traceError "Executing beacon vault script is not necessary for minting a beacon."
+   BurnBeacon _ ->
      -- | Only allow burning if 1 ADA is also withdrawn from this script.
      --   Only check amount of ADA withdrawn. If other assets are accidentally deposited,
      --   they can be withdrawn along with the 1 ADA.
@@ -454,13 +453,6 @@ mkBeaconVault () r ctx@ScriptContext{scriptContextTxInfo = info} = case r of
     containsOnly1ADA :: Value -> Bool
     containsOnly1ADA v = lovelaceOf 1_000_000 == fromValue v
 
-    parseDatum :: TxOut -> ()
-    parseDatum o = case txOutDatum o of
-      (OutputDatum (Datum d)) -> case fromBuiltinData d of
-        Nothing -> traceError "Datum must be the unit datum."
-        Just p -> p
-      _ -> traceError "All datums must be inline datums."
-
     -- | Separate script input value from rest of input value (can be from other scripts).
     --   Throws an error if there is a ref script among script inputs.
     withdrawalValue :: Value
@@ -470,31 +462,12 @@ mkBeaconVault () r ctx@ScriptContext{scriptContextTxInfo = info} = case r of
           foo si i = 
             -- | Check if input belongs to this script
             if ScriptCredential scriptValidatorHash == addrCred i
-            then -- | check if input contains a ref script from the swap script
+            then -- | check if input contains a ref script from the beacon vault script
                  if isJust $ txOutReferenceScript $ txInInfoResolved i
                  then traceError "Cannot consume reference script from beacon vault address."
                  else si <> txOutValue (txInInfoResolved i)
             else si
       in foldl foo emptyVal inputs
-
-    -- | Separate output value to script from rest of output value (can be to other scripts).
-    --   Throw error if output to script doesn't contain inline datum of unit.
-    depositValue :: Value
-    depositValue =
-      let outputs = txInfoOutputs info
-          foo so o = case addressCredential $ txOutAddress o of
-            -- | Also checks if proper datum is attached.
-            ScriptCredential vh ->
-              -- | check if it belongs to swap script
-              if vh == scriptValidatorHash 
-              then -- | Check if output to swap script contains proper datum.
-                   --   Throws error if invalid datum.
-                   if parseDatum o == ()
-                   then so <> txOutValue o
-                   else traceError "Output to beacon vault does not contain unit datum."
-              else so
-            _ -> so
-      in foldl foo emptyVal outputs
     
 
 data BeaconVault
@@ -517,27 +490,74 @@ beaconVaultValidatorHash = Scripts.validatorHash beaconVaultValidator
 -- | Beacon minting policy
 mkBeacon :: ValidatorHash -> BeaconRedeemer -> ScriptContext -> Bool
 mkBeacon vaultHash r ScriptContext{scriptContextTxInfo = info} = case r of
-   MintBeacon ->
+   MintBeacon tokName ->
      -- | Must deposit 1 ADA to proper script address.
      traceIfFalse ("Must deposit 1 ADA to this script address: " <> hashToString vaultHash)
-       (containsOnly1ADA deposit)
-   BurnBeacon ->
-     -- | Must withdraw 1 ADA from proper script address.
-     traceIfFalse ("Must withdraw 1 ADA from this script address: " <> hashToString vaultHash)
-       (containsOnly1ADA withdrawal)
+       (containsOnly1ADA depositsToVault) &&
+     -- | Only one token minted
+     traceIfFalse "Too many beacons minted." (mintCheck tokName 1 minted)
+
+   -- | Delegate checking withdrawal amount to beacon vault script
+   BurnBeacon tokName ->
+     -- | Beacon vault executed
+     traceIfFalse 
+       ("Must withdraw 1 ADA from this script address: " <> hashToString vaultHash) 
+       withdrawsFromVault &&
+     -- | Only one token burned
+     traceIfFalse "Too many beacons burned." (mintCheck tokName (-1) minted)
 
   where
     hashToString :: ValidatorHash -> BuiltinString
-    hashToString (ValidatorHash vh) = decodeUtf8 vh 
+    hashToString (ValidatorHash vh) = decodeUtf8 vh
 
-    deposit :: Value
-    deposit = valueLockedBy info vaultHash
+    minted :: [(CurrencySymbol,TokenName,Integer)]
+    minted = flattenValue $ txInfoMint info
+
+    mintCheck :: TokenName -> Integer -> [(CurrencySymbol,TokenName,Integer)] -> Bool
+    mintCheck tokName target [(_,tn,n)] = tn == tokName && n == target
+    mintCheck _ _ _ = traceError "Only the beacon token can be minted/burned in this tx."
+
+    -- | Check if utxo belongs to beacon vault
+    checkHash :: TxOut -> Bool
+    checkHash TxOut{txOutAddress=Address{addressCredential=ScriptCredential h}} = vaultHash == h
+    checkHash _ = False
+
+    -- | Check if any tx inputs go to the beacon vault
+    withdrawsFromVault :: Bool
+    withdrawsFromVault = any (checkHash . txInInfoResolved) $ txInfoInputs info
+
+    emptyVal :: Value
+    emptyVal = lovelaceValueOf 0
 
     containsOnly1ADA :: Value -> Bool
     containsOnly1ADA v = lovelaceOf 1_000_000 == fromValue v
 
-    withdrawal :: Value
-    withdrawal = fold $ map snd $ scriptOutputsAt vaultHash info
+    parseDatum :: TxOut -> ()
+    parseDatum o = case txOutDatum o of
+      (OutputDatum (Datum d)) -> case fromBuiltinData d of
+        Nothing -> traceError "Datum must be the unit datum."
+        Just p -> p
+      _ -> traceError "All datums must be inline datums."
+
+    -- | Find deposits to beacon vault
+    depositsToVault :: Value
+    depositsToVault = 
+      let outputs = txInfoOutputs info
+          foo so o = case addressCredential $ txOutAddress o of
+            -- | Also checks if proper datum is attached.
+            ScriptCredential h ->
+              -- | check if it belongs to this script
+              if h == vaultHash 
+              then -- | Check if output to beacon vault script contains proper datum.
+                   --   Throws error if invalid datum.
+                   if parseDatum o == ()
+                   then so <> txOutValue o
+                   else traceError "Output to beacon vault does not contain unit datum."
+              else so
+            _ -> so
+      in foldl foo emptyVal outputs
+
+    
 
 beaconPolicy :: ValidatorHash -> MintingPolicy
 beaconPolicy vh = Plutonomy.optimizeUPLC $ mkMintingPolicyScript

@@ -70,6 +70,22 @@ runCreateStakingRedeemer file = do
   writeData file ()
   putStrLn "Redeemer file created successfully."
 
+runAdvancedCommands :: AdvancedOption -> FilePath -> IO ()
+runAdvancedCommands o file = case o of
+  BeaconPolicyId -> do
+    writeFile file $ show beaconSymbol
+    putStrLn "Beacon policy id save successfully."
+  BeaconPolicy -> do
+    res <- writeScript file beaconScript
+    case res of
+      Right _ -> putStrLn "Beacon policy saved successfully."
+      Left err -> putStrLn $ "There was an error: " <> show err
+  BeaconVaultScript -> do
+    res <- writeScript file beaconVaultScript
+    case res of
+      Right _ -> putStrLn "Beacon vault script saved successfully."
+      Left err -> putStrLn $ "There was an error: " <> show err
+
 runCommand :: Command -> IO ()
 runCommand cmd = case cmd of
   CreateSwapScript pkh oa aa file -> runCreateSwapScript pkh oa aa file
@@ -77,4 +93,5 @@ runCommand cmd = case cmd of
   CreateSwapRedeemer action file -> runCreateSwapRedeemer action file
   CreateStakingScript pkh moa maa file -> runCreateStakingScript pkh moa maa file
   CreateStakingRedeemer file -> runCreateStakingRedeemer file
+  Advanced advancedOptions file -> runAdvancedCommands advancedOptions file
   _ -> return ()

@@ -120,15 +120,17 @@ parseCreateBeaconRedeemer =
      <*> pOutputFile
   where
     pMint :: Parser BeaconRedeemer
-    pMint = flag' MintBeacon
+    pMint = MintBeacon <$> option (eitherReader readTokenName)
       (  long "mint-beacon"
-      <> help "Mint a beacon to make deposit and create a new swap contract."
+      <> metavar "STRING"
+      <> help "Mint a beacon with the supplied token name (in hexidecimal)."
       )
 
     pBurn :: Parser BeaconRedeemer
-    pBurn = flag' BurnBeacon
+    pBurn = BurnBeacon <$> option (eitherReader readTokenName)
       (  long "burn-beacon"
-      <> help "Burn a beacon to close a swap contract and reclaim deposit."
+      <> metavar "STRING"
+      <> help "Burn a beacon with the supplied token name (in hexidecimal)."
       )
 
 parseQuery :: Parser Command
@@ -190,7 +192,7 @@ parseAdvanced =
     pBeaconPolicyId :: Parser AdvancedOption
     pBeaconPolicyId = flag' BeaconPolicyId
       (  long "beacon-policy-id"
-      <> help "Output the policy id for the beacons used by the DEX."
+      <> help "Output the policy id (currency symbol) for the beacons used by the DEX."
       )
 
     pBeaconPolicy :: Parser AdvancedOption
@@ -222,7 +224,7 @@ parseCommand = hsubparser $
   command "query" 
     (info parseQuery (progDesc "Query available swaps for a trading pair.")) <>
   command "advanced"
-    (info parseAdvanced (progDesc "Advanced options."))
+    (info parseAdvanced (progDesc "Advanced options for developers."))
 
 pOutputFile :: Parser FilePath
 pOutputFile = strOption

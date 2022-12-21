@@ -38,6 +38,7 @@ module CardanoSwaps
   adaToken,
 
   swapScript,
+  stakingScript,
   beaconVaultScript,
   beaconScript,
   beaconSymbol,
@@ -371,6 +372,48 @@ swapValidator basicInfo = Plutonomy.optimizeUPLC $ validatorScript $ mkTypedVali
 
 swapScript :: BasicInfo -> Script
 swapScript = unValidatorScript . swapValidator
+
+-------------------------------------------------
+-- Stake Settings
+-------------------------------------------------
+data StakeConfig = StakeConfig
+  { stakeOwner :: PaymentPubKeyHash
+  -- | Not used directly by staking script. Only meant to
+  --   generate unique staking address if desired.
+  , stakeOfferedAsset :: Maybe (CurrencySymbol,TokenName)
+  -- | Not used directly by staking script. Only meant to
+  --   generate unique staking address if desired.
+  , stakeAskedAsset :: Maybe (CurrencySymbol,TokenName) 
+  }
+
+PlutusTx.makeLift ''StakeConfig
+
+-------------------------------------------------
+-- On-Chain Staking
+-------------------------------------------------
+-- | allow any staking related action as long as owner has signed
+mkStaking :: StakeConfig -> () -> ScriptContext -> Bool
+mkStaking StakeConfig{stakeOwner = owner} () ctx = 
+    case purpose of
+      Rewarding _  -> 
+        traceIfFalse "not signed by owner" (txSignedBy info $ unPaymentPubKeyHash owner)
+      Certifying _ -> 
+        traceIfFalse "not signed by owner" (txSignedBy info $ unPaymentPubKeyHash owner)
+      _            -> False
+  where
+    purpose :: ScriptPurpose
+    purpose = scriptContextPurpose ctx
+
+    info :: TxInfo
+    info = scriptContextTxInfo ctx
+
+staking :: StakeConfig -> StakeValidator
+staking sc = mkStakeValidatorScript
+  ($$(PlutusTx.compile [|| mkUntypedStakeValidator . mkStaking ||])
+    `PlutusTx.applyCode` PlutusTx.liftCode sc)
+
+stakingScript :: StakeConfig -> Script
+stakingScript = unStakeValidatorScript . staking
 
 -------------------------------------------------
 -- Beacon Settings

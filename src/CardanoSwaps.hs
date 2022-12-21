@@ -77,11 +77,11 @@ import PlutusTx.Ratio (fromGHC)
 -------------------------------------------------
 -- Misc Functions
 -------------------------------------------------
-genPairTokenName :: CurrencySymbol -> TokenName -> CurrencySymbol -> TokenName -> TokenName
-genPairTokenName offeredCurrSym offeredTokName askedCurrSym askedTokName = 
+genPairTokenName :: (CurrencySymbol,TokenName) -> (CurrencySymbol,TokenName) -> TokenName
+genPairTokenName (offeredCurrSym,offeredTokName) (askedCurrSym,askedTokName) = 
   let offeredName = unCurrencySymbol offeredCurrSym <> unTokenName offeredTokName
       askedName = unCurrencySymbol askedCurrSym <> unTokenName askedTokName
-  in TokenName $ sha3_256 (offeredName <> "/" <> askedName)
+  in TokenName $ sha3_256 (askedName <> "/" <> offeredName)
 
 data UtxoPriceInfo = UtxoPriceInfo
   { utxoAmount :: Integer
@@ -436,26 +436,66 @@ mkBeaconVault () r ctx@ScriptContext{scriptContextTxInfo = info} = case r of
    MintBeacon ->
      -- | Only allow minting if 1 ADA also deposited at this script in same tx.
      traceIfFalse "Must deposit exactly 1 ADA to mint beacon. Must deposit and mint in same tx." 
-       (containsOnly1ADA deposit)
+       (containsOnly1ADA depositValue)
    BurnBeacon ->
      -- | Only allow burning if 1 ADA is also withdrawn from this script.
      --   Only check amount of ADA withdrawn. If other assets are accidentally deposited,
      --   they can be withdrawn along with the 1 ADA.
      traceIfFalse "Must withdraw exactly 1 ADA to burn beacon. Must withdraw and burn in same tx." 
-       (containsOnly1ADA withdrawal)
+       (containsOnly1ADA withdrawalValue)
 
   where
     scriptValidatorHash :: ValidatorHash
     scriptValidatorHash = ownHash ctx
 
-    deposit :: Value
-    deposit = valueLockedBy info scriptValidatorHash
+    emptyVal :: Value
+    emptyVal = lovelaceValueOf 0
 
     containsOnly1ADA :: Value -> Bool
     containsOnly1ADA v = lovelaceOf 1_000_000 == fromValue v
 
-    withdrawal :: Value
-    withdrawal = fold $ map snd $ scriptOutputsAt scriptValidatorHash info
+    parseDatum :: TxOut -> ()
+    parseDatum o = case txOutDatum o of
+      (OutputDatum (Datum d)) -> case fromBuiltinData d of
+        Nothing -> traceError "Datum must be the unit datum."
+        Just p -> p
+      _ -> traceError "All datums must be inline datums."
+
+    -- | Separate script input value from rest of input value (can be from other scripts).
+    --   Throws an error if there is a ref script among script inputs.
+    withdrawalValue :: Value
+    withdrawalValue =
+      let inputs = txInfoInputs info
+          addrCred i = addressCredential $ txOutAddress $ txInInfoResolved i
+          foo si i = 
+            -- | Check if input belongs to this script
+            if ScriptCredential scriptValidatorHash == addrCred i
+            then -- | check if input contains a ref script from the swap script
+                 if isJust $ txOutReferenceScript $ txInInfoResolved i
+                 then traceError "Cannot consume reference script from beacon vault address."
+                 else si <> txOutValue (txInInfoResolved i)
+            else si
+      in foldl foo emptyVal inputs
+
+    -- | Separate output value to script from rest of output value (can be to other scripts).
+    --   Throw error if output to script doesn't contain inline datum of unit.
+    depositValue :: Value
+    depositValue =
+      let outputs = txInfoOutputs info
+          foo so o = case addressCredential $ txOutAddress o of
+            -- | Also checks if proper datum is attached.
+            ScriptCredential vh ->
+              -- | check if it belongs to swap script
+              if vh == scriptValidatorHash 
+              then -- | Check if output to swap script contains proper datum.
+                   --   Throws error if invalid datum.
+                   if parseDatum o == ()
+                   then so <> txOutValue o
+                   else traceError "Output to beacon vault does not contain unit datum."
+              else so
+            _ -> so
+      in foldl foo emptyVal outputs
+    
 
 data BeaconVault
 instance ValidatorTypes BeaconVault where

@@ -18,7 +18,7 @@
 
 module CardanoSwaps
 (
-  genPairTokenName,
+  genBeaconTokenName,
   calcWeightedPrice,
   UtxoPriceInfo (..),
   
@@ -77,8 +77,8 @@ import PlutusTx.Ratio (fromGHC)
 -------------------------------------------------
 -- Misc Functions
 -------------------------------------------------
-genPairTokenName :: (CurrencySymbol,TokenName) -> (CurrencySymbol,TokenName) -> TokenName
-genPairTokenName (offeredCurrSym,offeredTokName) (askedCurrSym,askedTokName) = 
+genBeaconTokenName :: (CurrencySymbol,TokenName) -> (CurrencySymbol,TokenName) -> TokenName
+genBeaconTokenName (offeredCurrSym,offeredTokName) (askedCurrSym,askedTokName) = 
   let offeredName = unCurrencySymbol offeredCurrSym <> unTokenName offeredTokName
       askedName = unCurrencySymbol askedCurrSym <> unTokenName askedTokName
   in TokenName $ sha3_256 (askedName <> "/" <> offeredName)

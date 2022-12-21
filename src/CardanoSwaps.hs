@@ -106,7 +106,6 @@ instance ToJSON UtxoPriceInfo where
 
 -- | Helper function to calculate the weighted price.
 --   Will match the weighted price calculation done by script.
---   Meant to be used with a UtxoPriceInfo JSON File.
 calcWeightedPrice :: [UtxoPriceInfo] -> (Integer,Rational)
 calcWeightedPrice xs = foldl foo (0,fromInteger 0) xs
   where

@@ -16,6 +16,7 @@ data Command
   = CreateSwapScript !PaymentPubKeyHash !Asset !Asset !FilePath
   | CreateSwapDatum !SwapDatumInfo !FilePath
   | CreateSwapRedeemer !Action !FilePath
+  | CreateStakingScript !PaymentPubKeyHash (Maybe Asset) (Maybe Asset)
   | CreateBeaconRedeemer !BeaconRedeemer !FilePath
   | Query !CurrencySymbol !TokenName !CurrencySymbol !TokenName !Network
   | Advanced !AdvancedOption !FilePath
@@ -46,52 +47,6 @@ parseCreateSwapScript =
       <> metavar "STRING" 
       <> help "The owner's payment key hash."
       )
-
-    pOfferedAda :: Parser Asset
-    pOfferedAda = flag' Ada
-      (  long "offered-asset-is-ada"
-      <> help "The asset being offered is ADA"
-      )
-
-    pOfferedCurrencySymbol :: Parser CurrencySymbol
-    pOfferedCurrencySymbol = option (eitherReader readCurrencySymbol)
-      (  long "offered-asset-policy-id" 
-      <> metavar "STRING" 
-      <> help "The policy id of the offered asset."
-      )
-
-    pOfferedTokenName :: Parser TokenName
-    pOfferedTokenName = option (eitherReader readTokenName)
-      (  long "offered-asset-token-name"
-      <> metavar "STRING"
-      <> help "The token name (in hexidecimal) of the offered asset."
-      )
-    
-    pOffered :: Parser Asset
-    pOffered = pOfferedAda <|> (Asset <$> pOfferedCurrencySymbol <*> pOfferedTokenName)
-
-    pAskedAda :: Parser Asset
-    pAskedAda = flag' Ada
-      (  long "asked-asset-is-ada"
-      <> help "The asset asked for is ADA"
-      )
-    
-    pAskedCurrencySymbol :: Parser CurrencySymbol
-    pAskedCurrencySymbol = option (eitherReader readCurrencySymbol)
-      (  long "asked-asset-policy-id" 
-      <> metavar "STRING" 
-      <> help "The policy id of the asked asset."
-      )
-
-    pAskedTokenName :: Parser TokenName
-    pAskedTokenName = option (eitherReader readTokenName)
-      (  long "asked-asset-token-name"
-      <> metavar "STRING"
-      <> help "The token name (in hexidecimal) of the asked asset."
-      )
-
-    pAsked :: Parser Asset
-    pAsked = pAskedAda <|> (Asset <$> pAskedCurrencySymbol <*> pAskedTokenName)
 
 parseCreateSwapDatum :: Parser Command
 parseCreateSwapDatum = 
@@ -269,3 +224,50 @@ pOutputFile = strOption
   <> help "The output file."
   <> completer (bashCompleter "file")
   )
+
+pOffered :: Parser Asset
+pOffered = pOfferedAda <|> (Asset <$> pOfferedCurrencySymbol <*> pOfferedTokenName)
+  where
+    pOfferedAda :: Parser Asset
+    pOfferedAda = flag' Ada
+      (  long "offered-asset-is-ada"
+      <> help "The asset being offered is ADA"
+      )
+
+    pOfferedCurrencySymbol :: Parser CurrencySymbol
+    pOfferedCurrencySymbol = option (eitherReader readCurrencySymbol)
+      (  long "offered-asset-policy-id" 
+      <> metavar "STRING" 
+      <> help "The policy id of the offered asset."
+      )
+
+    pOfferedTokenName :: Parser TokenName
+    pOfferedTokenName = option (eitherReader readTokenName)
+      (  long "offered-asset-token-name"
+      <> metavar "STRING"
+      <> help "The token name (in hexidecimal) of the offered asset."
+      )
+
+
+pAsked :: Parser Asset
+pAsked = pAskedAda <|> (Asset <$> pAskedCurrencySymbol <*> pAskedTokenName)
+  where
+    pAskedAda :: Parser Asset
+    pAskedAda = flag' Ada
+      (  long "asked-asset-is-ada"
+      <> help "The asset asked for is ADA"
+      )
+
+    pAskedCurrencySymbol :: Parser CurrencySymbol
+    pAskedCurrencySymbol = option (eitherReader readCurrencySymbol)
+      (  long "asked-asset-policy-id" 
+      <> metavar "STRING" 
+      <> help "The policy id of the asked asset."
+      )
+
+    pAskedTokenName :: Parser TokenName
+    pAskedTokenName = option (eitherReader readTokenName)
+      (  long "asked-asset-token-name"
+      <> metavar "STRING"
+      <> help "The token name (in hexidecimal) of the asked asset."
+      )

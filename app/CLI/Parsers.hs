@@ -235,7 +235,7 @@ parseCommand = hsubparser $
   command "create-staking-redeemer"
     (info parseCreateStakingRedeemer (progDesc "Create a redeemer for a staking script")) <>
   command "create-beacon-token-name"
-    (info parseCreateBeaconTokenName (progDesc "Generate a beacon token name.")) <>
+    (info parseCreateBeaconTokenName (progDesc "Create the beacon token name for a trading pair.")) <>
   command "create-beacon-redeemer"
     (info parseCreateBeaconRedeemer (progDesc "Create a redeemer for the beacon policy.")) <>
   command "create-beacon-datum"

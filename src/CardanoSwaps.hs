@@ -52,6 +52,7 @@ import Data.Aeson hiding (Value)
 import Codec.Serialise (serialise)
 import qualified Data.ByteString.Lazy  as LBS
 import qualified Data.ByteString.Short as SBS
+import qualified Data.ByteString as BS
 import Prelude (IO,FilePath) 
 import qualified Prelude as Haskell
 import Data.String (fromString)
@@ -78,11 +79,16 @@ import PlutusTx.AssocMap (keys)
 -------------------------------------------------
 -- Misc Functions
 -------------------------------------------------
-genBeaconTokenName :: (CurrencySymbol,TokenName) -> (CurrencySymbol,TokenName) -> TokenName
+genBeaconTokenName :: (BS.ByteString,BS.ByteString) -> (BS.ByteString,BS.ByteString) -> TokenName
 genBeaconTokenName (offeredCurrSym,offeredTokName) (askedCurrSym,askedTokName) = 
-  let offeredName = unCurrencySymbol offeredCurrSym <> unTokenName offeredTokName
-      askedName = unCurrencySymbol askedCurrSym <> unTokenName askedTokName
-  in TokenName $ sha3_256 (askedName <> "/" <> offeredName)
+  let offeredName = BS.append offeredCurrSym offeredTokName
+      askedName = BS.append askedCurrSym askedTokName
+  in TokenName $ sha3_256 $ toBuiltin (BS.append askedName $ BS.append "/" offeredName)
+-- genBeaconTokenName :: (CurrencySymbol,TokenName) -> (CurrencySymbol,TokenName) -> TokenName
+-- genBeaconTokenName (offeredCurrSym,offeredTokName) (askedCurrSym,askedTokName) = 
+--   let offeredName = unCurrencySymbol offeredCurrSym <> unTokenName offeredTokName
+--       askedName = unCurrencySymbol askedCurrSym <> unTokenName askedTokName
+--   in TokenName $ sha3_256 (askedName <> "/" <> offeredName)
 
 data UtxoPriceInfo = UtxoPriceInfo
   { utxoAmount :: Integer

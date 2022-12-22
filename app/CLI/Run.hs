@@ -6,6 +6,7 @@ module CLI.Run
 import Data.Aeson
 import Data.Aeson.Encode.Pretty
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString as BS
 
 import CardanoSwaps
 import CLI.Parsers
@@ -13,6 +14,10 @@ import CLI.Parsers
 assetInfo :: Asset -> (CurrencySymbol,TokenName)
 assetInfo Ada = (adaSymbol,adaToken)
 assetInfo (Asset currSym tokName) = (currSym,tokName)
+
+rawAssetInfo :: RawAsset -> (BS.ByteString,BS.ByteString)
+rawAssetInfo RawAda = (BS.empty,BS.empty)
+rawAssetInfo (RawAsset currSym tokName) = (currSym,tokName)
 
 runCreateSwapScript :: PaymentPubKeyHash -> Asset -> Asset -> FilePath -> IO ()
 runCreateSwapScript pkh oa aa file = do
@@ -65,9 +70,9 @@ runCreateStakingScript pkh moa maa file = do
     Right _ -> putStrLn "Staking script created successfully."
     Left err -> putStrLn $ "There was an error: " <> show err
 
-runCreateBeaconTokenName :: Asset -> Asset -> FilePath -> IO ()
+runCreateBeaconTokenName :: RawAsset -> RawAsset -> FilePath -> IO ()
 runCreateBeaconTokenName oa aa file = do
-  writeFile file $ show $ genBeaconTokenName (assetInfo oa) (assetInfo aa)
+  writeFile file $ drop 2 $ show $ genBeaconTokenName (rawAssetInfo oa) (rawAssetInfo aa)
   putStrLn "Beacon token name generated successfully."
 
 runCreateStakingRedeemer :: FilePath -> IO ()

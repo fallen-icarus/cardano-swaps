@@ -4,10 +4,12 @@ module CLI.Parsers
   Command (..),
   AdvancedOption (..),
   Asset (..),
+  RawAsset (..),
   SwapDatumInfo (..),
 ) where
 
 import Options.Applicative
+import qualified Data.ByteString as BS
 
 import CardanoSwaps
 import CLI.Query
@@ -18,13 +20,14 @@ data Command
   | CreateSwapRedeemer !Action !FilePath
   | CreateStakingScript !PaymentPubKeyHash (Maybe Asset) (Maybe Asset) !FilePath
   | CreateStakingRedeemer !FilePath
-  | CreateBeaconTokenName !Asset !Asset !FilePath
+  | CreateBeaconTokenName !RawAsset !RawAsset !FilePath
   | CreateBeaconRedeemer !BeaconRedeemer !FilePath
   | CreateBeaconDatum !FilePath
   | Query !CurrencySymbol !TokenName !CurrencySymbol !TokenName !Network
   | Advanced !AdvancedOption !FilePath
 
 data Asset = Ada | Asset !CurrencySymbol !TokenName
+data RawAsset = RawAda | RawAsset !BS.ByteString !BS.ByteString
 
 data SwapDatumInfo
   = SwapDatum !Price
@@ -55,8 +58,8 @@ parseCreateStakingScript =
 parseCreateBeaconTokenName :: Parser Command
 parseCreateBeaconTokenName =
   CreateBeaconTokenName
-    <$> pOffered
-    <*> pAsked
+    <$> pOfferedRaw
+    <*> pAskedRaw
     <*> pOutputFile
 
 parseCreateBeaconDatum :: Parser Command
@@ -273,6 +276,28 @@ pOffered = pOfferedAda <|> (Asset <$> pOfferedCurrencySymbol <*> pOfferedTokenNa
       <> help "The token name (in hexidecimal) of the offered asset."
       )
 
+pOfferedRaw :: Parser RawAsset
+pOfferedRaw = pOfferedAda <|> (RawAsset <$> pOfferedCurrencySymbol <*> pOfferedTokenName)
+  where
+    pOfferedAda :: Parser RawAsset
+    pOfferedAda = flag' RawAda
+      (  long "offered-asset-is-ada"
+      <> help "The asset being offered is ADA"
+      )
+
+    pOfferedCurrencySymbol :: Parser BS.ByteString
+    pOfferedCurrencySymbol = strOption
+      (  long "offered-asset-policy-id" 
+      <> metavar "STRING" 
+      <> help "The policy id of the offered asset."
+      )
+
+    pOfferedTokenName :: Parser BS.ByteString
+    pOfferedTokenName = strOption
+      (  long "offered-asset-token-name"
+      <> metavar "STRING"
+      <> help "The token name (in hexidecimal) of the offered asset."
+      )
 
 pAsked :: Parser Asset
 pAsked = pAskedAda <|> (Asset <$> pAskedCurrencySymbol <*> pAskedTokenName)
@@ -292,6 +317,29 @@ pAsked = pAskedAda <|> (Asset <$> pAskedCurrencySymbol <*> pAskedTokenName)
 
     pAskedTokenName :: Parser TokenName
     pAskedTokenName = option (eitherReader readTokenName)
+      (  long "asked-asset-token-name"
+      <> metavar "STRING"
+      <> help "The token name (in hexidecimal) of the asked asset."
+      )
+
+pAskedRaw :: Parser RawAsset
+pAskedRaw = pAskedAda <|> (RawAsset <$> pAskedCurrencySymbol <*> pAskedTokenName)
+  where
+    pAskedAda :: Parser RawAsset
+    pAskedAda = flag' RawAda
+      (  long "asked-asset-is-ada"
+      <> help "The asset asked for is ADA"
+      )
+
+    pAskedCurrencySymbol :: Parser BS.ByteString
+    pAskedCurrencySymbol = strOption
+      (  long "asked-asset-policy-id" 
+      <> metavar "STRING" 
+      <> help "The policy id of the asked asset."
+      )
+
+    pAskedTokenName :: Parser BS.ByteString
+    pAskedTokenName = strOption
       (  long "asked-asset-token-name"
       <> metavar "STRING"
       <> help "The token name (in hexidecimal) of the asked asset."

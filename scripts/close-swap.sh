@@ -3,6 +3,7 @@ dir="../assets/plutus-files/"
 swapScriptFile="${dir}swap.plutus"
 closeRedeemerFile="${dir}close.json"
 beaconRedeemer="${dir}beaconRedeemer.json"
+beaconTokenNameFile="${dir}beaconTokenName.txt"
 tmpDir="../assets/tmp/"
 
 beaconScriptFile="${dir}beaconScript.plutus"
@@ -10,7 +11,8 @@ beaconSymbol="$(cat ${dir}beaconSymbol.txt)"
 beaconVaultScriptFile="${dir}beaconVaultScript.plutus"
 beaconVaultScriptAddrFile="${dir}beaconVaultScript.addr"
 
-beacon="${beaconSymbol}.1111"
+beaconTokenName="$(cat ${beaconTokenNameFile})"
+beacon="${beaconSymbol}.ce48dd16f80225ea3c8d74de877b93d333e69e2d1d39ede3287e25685a09f483"
 
 # Create Close redeemer file
 cabal run -v0 cardano-swaps -- create-swap-redeemer \
@@ -19,7 +21,7 @@ cabal run -v0 cardano-swaps -- create-swap-redeemer \
 
 # Create beacon redeemer
 cabal run -v0 cardano-swaps -- create-beacon-redeemer \
-  --burn-beacon 1111 \
+  --burn-beacon $beaconTokenName \
   --out-file $beaconRedeemer
 
 # Close the swap
@@ -28,18 +30,18 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 30619c648d46a3e70682d28664aa9d63313a3cdfdc6d85b82ad3b7cab9cc9b63#3 \
-  --tx-in 30619c648d46a3e70682d28664aa9d63313a3cdfdc6d85b82ad3b7cab9cc9b63#0 \
-  --spending-tx-in-reference 30619c648d46a3e70682d28664aa9d63313a3cdfdc6d85b82ad3b7cab9cc9b63#0 \
+  --tx-in 8553bceb870c7954177eebe6528adf99ab47e84fd276078fce2eef03e2fab5b4#3 \
+  --tx-in 8553bceb870c7954177eebe6528adf99ab47e84fd276078fce2eef03e2fab5b4#0 \
+  --spending-tx-in-reference 8553bceb870c7954177eebe6528adf99ab47e84fd276078fce2eef03e2fab5b4#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $closeRedeemerFile \
-  --tx-in 30619c648d46a3e70682d28664aa9d63313a3cdfdc6d85b82ad3b7cab9cc9b63#1 \
-  --spending-tx-in-reference 30619c648d46a3e70682d28664aa9d63313a3cdfdc6d85b82ad3b7cab9cc9b63#0 \
+  --tx-in 8553bceb870c7954177eebe6528adf99ab47e84fd276078fce2eef03e2fab5b4#1 \
+  --spending-tx-in-reference 8553bceb870c7954177eebe6528adf99ab47e84fd276078fce2eef03e2fab5b4#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $closeRedeemerFile \
-  --tx-in 30619c648d46a3e70682d28664aa9d63313a3cdfdc6d85b82ad3b7cab9cc9b63#2 \
+  --tx-in 8553bceb870c7954177eebe6528adf99ab47e84fd276078fce2eef03e2fab5b4#2 \
   --tx-in-script-file $beaconVaultScriptFile \
   --tx-in-inline-datum-present \
   --tx-in-redeemer-file $beaconRedeemer \

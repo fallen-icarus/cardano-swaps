@@ -7,17 +7,16 @@ swapDatumFile="${dir}price.json"
 stakingScriptFile="${dir}staking.plutus"
 stakingScriptAddrFile="${dir}staking.addr"
 beaconTokenNameFile="${dir}beaconTokenName.txt"
-unitDatumFile="${dir}unit.json"
+beaconDatumFile="${dir}beaconDatum.json"
 beaconRedeemer="${dir}beaconRedeemer.json"
-# beaconTokenName="$(cat ${beaconTokenNameFile} | xxd -r)"
-# beaconTokenNameHex="$(cat ${beaconTokenNameFile})"
 
 beaconScriptFile="${dir}beaconScript.plutus"
 beaconSymbol="$(cat ${dir}beaconSymbol.txt)"
 beaconVaultScriptFile="${dir}beaconVaultScript.plutus"
 beaconVaultScriptAddrFile="${dir}beaconVaultScript.addr"
 
-beacon="${beaconSymbol}.1111"
+beaconTokenName="$(cat ${beaconTokenNameFile})"
+beacon="${beaconSymbol}.${beaconTokenName}"
 
 # Create the swap script file
 cabal run cardano-swaps -- create-swap-script \
@@ -50,20 +49,20 @@ cabal run -v0 cardano-swaps -- create-swap-datum \
   --swap-price 1.5 \
   --out-file $swapDatumFile
 
-# # Generate the beacon token name
-# cabal run -v0 cardano-swaps -- create-beacon-token-name \
-#   --offered-asset-is-ada \
-#   --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-#   --asked-asset-token-name 4f74686572546f6b656e0a \
-#   --out-file $beaconTokenNameFile
+# Generate the beacon token name
+cabal run -v0 cardano-swaps -- create-beacon-token-name \
+  --offered-asset-is-ada \
+  --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --asked-asset-token-name 4f74686572546f6b656e0a \
+  --out-file $beaconTokenNameFile
 
 # Create datum for beacon vault deposit
-cabal run -v0 cardano-swaps -- create-staking-redeemer \
-  --out-file $unitDatumFile
+cabal run -v0 cardano-swaps -- create-beacon-datum \
+  --out-file $beaconDatumFile
 
 # Create beacon redeemer
 cabal run -v0 cardano-swaps -- create-beacon-redeemer \
-  --mint-beacon 1111 \
+  --mint-beacon $beaconTokenName \
   --out-file $beaconRedeemer
 
 # Deposit offered asset into swap address
@@ -73,14 +72,14 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 96baac9bb4189acf9b9cb49573e9c0a4a492344a4e4216fa7e90e48966434b10#1 \
-  --tx-out "$(cat ${swapScriptAddrFile}) + 23000000 lovelace + 1 ${beacon}" \
+  --tx-in a270a2d853a848b7d5134b8fca847cf9b4f51123cc56e7252100cd0a5500e3bc#0 \
+  --tx-out "$(cat ${swapScriptAddrFile}) + 24000000 lovelace + 1 ${beacon}" \
   --tx-out-inline-datum-file $swapDatumFile \
   --tx-out-reference-script-file $swapScriptFile \
   --tx-out "$(cat ${swapScriptAddrFile}) + 500000000 lovelace + 0 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out-inline-datum-file $swapDatumFile \
-  --tx-out "$(cat ${beaconVaultScriptAddrFile}) + 1000000 lovelace" \
-  --tx-out-inline-datum-file $unitDatumFile \
+  --tx-out "$(cat ${beaconVaultScriptAddrFile}) + 2000000 lovelace" \
+  --tx-out-inline-datum-file $beaconDatumFile \
   --mint "1 ${beacon}" \
   --mint-script-file $beaconScriptFile \
   --mint-redeemer-file $beaconRedeemer \

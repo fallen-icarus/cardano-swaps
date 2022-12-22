@@ -81,7 +81,7 @@ import PlutusTx.AssocMap (keys)
 -------------------------------------------------
 -- | Create the beacon token name for a trading pair
 --
--- The token name is the sha3-256 hash of 
+-- The token name is the sha2-256 hash of 
 -- "offeredCurrSymbol.offeredTokName/askedCurrSym.askedTokName"
 --
 -- When ada is part of the pair, that portion of the token name is left blank like:
@@ -96,7 +96,7 @@ genBeaconTokenName (offeredCurrSym,offeredTokName) (askedCurrSym,askedTokName) =
         if askedCurrSym Haskell.== BS.empty
         then BS.empty
         else BS.append askedCurrSym $ BS.append "." askedTokName
-  in TokenName $ sha3_256 $ toBuiltin (BS.append askedName $ BS.append "/" offeredName)
+  in TokenName $ sha2_256 $ toBuiltin (BS.append askedName $ BS.append "/" offeredName)
 
 data UtxoPriceInfo = UtxoPriceInfo
   { utxoAmount :: Integer
@@ -197,8 +197,9 @@ PlutusTx.unstableMakeIsData ''Action
 -------------------------------------------------
 -- On-Chain Swap
 -------------------------------------------------
+-- | The price is not used individually. Instead it is obtain by traversing the script context.
 mkSwap :: BasicInfo -> Price -> Action -> ScriptContext -> Bool
-mkSwap BasicInfo{..} price action ctx@ScriptContext{scriptContextTxInfo = info} = case action of
+mkSwap BasicInfo{..} _ action ctx@ScriptContext{scriptContextTxInfo = info} = case action of
   Info -> traceError ("Owner's payment pubkey hash:\n" <> ownerAsString)
   Close ->
     -- | Must be signed by owner.

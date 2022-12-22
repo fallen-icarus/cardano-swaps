@@ -33,9 +33,12 @@ runCreateSwapScript pkh oa aa file = do
 
 runCreateDatum :: SwapDatumInfo -> FilePath -> IO ()
 runCreateDatum d file = case d of
-     SwapDatum price -> do
-       writeData file price
-       putStrLn "Datum file created successfully."
+     SwapDatum price ->
+       if price > fromGHC (toRational (0 :: Integer))
+       then do
+         writeData file price
+         putStrLn "Datum file created successfully."
+       else putStrLn "Invalid swap datum. Price must be greater than 0."
      SwapDatumUtxos utxoFile -> do
        utxos <- BL.readFile utxoFile
        case decode utxos of

@@ -9,7 +9,7 @@ module CLI.Parsers
 ) where
 
 import Options.Applicative
-import qualified Data.ByteString as BS
+import Data.ByteString (ByteString)
 
 import CardanoSwaps
 import CLI.Query
@@ -27,7 +27,7 @@ data Command
   | Advanced !AdvancedOption !FilePath
 
 data Asset = Ada | Asset !CurrencySymbol !TokenName
-data RawAsset = RawAda | RawAsset !BS.ByteString !BS.ByteString
+data RawAsset = RawAda | RawAsset !ByteString !ByteString
 
 data SwapDatumInfo
   = SwapDatum !Price
@@ -35,9 +35,9 @@ data SwapDatumInfo
   | SwapDatumUtxosTemplate  -- ^ If a JSON template file is necessary
 
 data AdvancedOption
-  = BeaconPolicyId
-  | BeaconPolicy
-  | BeaconVaultScript
+  = ExportBeaconPolicyId
+  | ExportBeaconPolicyScript
+  | ExportBeaconVaultScript
 
 parseCreateSwapScript :: Parser Command
 parseCreateSwapScript = 
@@ -201,25 +201,25 @@ parseQuery =
 parseAdvanced :: Parser Command
 parseAdvanced = 
    Advanced
-     <$> (pBeaconPolicyId <|> pBeaconPolicy <|> pBeaconVaultScript)
+     <$> (pExportBeaconPolicyId <|> pBeaconPolicy <|> pBeaconVaultScript)
      <*> pOutputFile
   where
-    pBeaconPolicyId :: Parser AdvancedOption
-    pBeaconPolicyId = flag' BeaconPolicyId
+    pExportBeaconPolicyId :: Parser AdvancedOption
+    pExportBeaconPolicyId = flag' ExportBeaconPolicyId
       (  long "beacon-policy-id"
-      <> help "Output the policy id (currency symbol) for the beacons used by the DEX."
+      <> help "Export the policy id (currency symbol) for the beacons used by the DEX."
       )
 
     pBeaconPolicy :: Parser AdvancedOption
-    pBeaconPolicy = flag' BeaconPolicy
+    pBeaconPolicy = flag' ExportBeaconPolicyScript
       (  long "beacon-policy-script"
-      <> help "Output the beacon policy script."
+      <> help "Export the beacon policy script."
       )
 
     pBeaconVaultScript :: Parser AdvancedOption
-    pBeaconVaultScript = flag' BeaconVaultScript
+    pBeaconVaultScript = flag' ExportBeaconVaultScript
       (  long "beacon-vault-script"
-      <> help "Output the beacon's deposit vault script."
+      <> help "Export the beacon vault script."
       )
 
 parseCommand :: Parser Command
@@ -227,15 +227,15 @@ parseCommand = hsubparser $
   command "create-swap-script" 
     (info parseCreateSwapScript (progDesc "Create a personal swap script.")) <>
   command "create-swap-datum" 
-    (info parseCreateSwapDatum (progDesc "Create a datum for the swap script.")) <>
+    (info parseCreateSwapDatum (progDesc "Create a datum for a swap script.")) <>
   command "create-swap-redeemer"
-    (info parseCreateSwapRedeemer (progDesc "Create a redeemer for a swap transaction.")) <>
+    (info parseCreateSwapRedeemer (progDesc "Create a redeemer for a swap script.")) <>
   command "create-staking-script"
     (info parseCreateStakingScript (progDesc "Create a personal staking script.")) <>
   command "create-staking-redeemer"
-    (info parseCreateStakingRedeemer (progDesc "Create the redeemer for the staking script")) <>
+    (info parseCreateStakingRedeemer (progDesc "Create a redeemer for a staking script")) <>
   command "create-beacon-token-name"
-    (info parseCreateBeaconTokenName (progDesc "Generate the beacon token name.")) <>
+    (info parseCreateBeaconTokenName (progDesc "Generate a beacon token name.")) <>
   command "create-beacon-redeemer"
     (info parseCreateBeaconRedeemer (progDesc "Create a redeemer for the beacon policy.")) <>
   command "create-beacon-datum"
@@ -285,14 +285,14 @@ pOfferedRaw = pOfferedAda <|> (RawAsset <$> pOfferedCurrencySymbol <*> pOfferedT
       <> help "The asset being offered is ADA"
       )
 
-    pOfferedCurrencySymbol :: Parser BS.ByteString
+    pOfferedCurrencySymbol :: Parser ByteString
     pOfferedCurrencySymbol = strOption
       (  long "offered-asset-policy-id" 
       <> metavar "STRING" 
       <> help "The policy id of the offered asset."
       )
 
-    pOfferedTokenName :: Parser BS.ByteString
+    pOfferedTokenName :: Parser ByteString
     pOfferedTokenName = strOption
       (  long "offered-asset-token-name"
       <> metavar "STRING"
@@ -331,14 +331,14 @@ pAskedRaw = pAskedAda <|> (RawAsset <$> pAskedCurrencySymbol <*> pAskedTokenName
       <> help "The asset asked for is ADA"
       )
 
-    pAskedCurrencySymbol :: Parser BS.ByteString
+    pAskedCurrencySymbol :: Parser ByteString
     pAskedCurrencySymbol = strOption
       (  long "asked-asset-policy-id" 
       <> metavar "STRING" 
       <> help "The policy id of the asked asset."
       )
 
-    pAskedTokenName :: Parser BS.ByteString
+    pAskedTokenName :: Parser ByteString
     pAskedTokenName = strOption
       (  long "asked-asset-token-name"
       <> metavar "STRING"

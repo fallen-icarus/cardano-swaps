@@ -92,18 +92,18 @@ runCreateBeaconDatum file = do
 
 runAdvancedCommands :: AdvancedOption -> FilePath -> IO ()
 runAdvancedCommands o file = case o of
-  BeaconPolicyId -> do
+  ExportBeaconPolicyId -> do
     writeFile file $ show beaconSymbol
-    putStrLn "Beacon policy id save successfully."
-  BeaconPolicy -> do
+    putStrLn "Beacon policy id exported successfully."
+  ExportBeaconPolicyScript -> do
     res <- writeScript file beaconScript
     case res of
-      Right _ -> putStrLn "Beacon policy saved successfully."
+      Right _ -> putStrLn "Beacon policy script exported successfully."
       Left err -> putStrLn $ "There was an error: " <> show err
-  BeaconVaultScript -> do
+  ExportBeaconVaultScript -> do
     res <- writeScript file beaconVaultScript
     case res of
-      Right _ -> putStrLn "Beacon vault script saved successfully."
+      Right _ -> putStrLn "Beacon vault script exported successfully."
       Left err -> putStrLn $ "There was an error: " <> show err
 
 runCommand :: Command -> IO ()

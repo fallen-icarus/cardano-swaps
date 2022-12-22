@@ -79,16 +79,24 @@ import PlutusTx.AssocMap (keys)
 -------------------------------------------------
 -- Misc Functions
 -------------------------------------------------
+-- | Create the beacon token name for a trading pair
+--
+-- The token name is the sha3-256 hash of 
+-- "offeredCurrSymbol.offeredTokName/askedCurrSym.askedTokName"
+--
+-- When ada is part of the pair, that portion of the token name is left blank like:
+-- "offeredCurrSymbol.offeredTokName/" or "/askedCurrSym.askedTokName"
 genBeaconTokenName :: (BS.ByteString,BS.ByteString) -> (BS.ByteString,BS.ByteString) -> TokenName
 genBeaconTokenName (offeredCurrSym,offeredTokName) (askedCurrSym,askedTokName) = 
-  let offeredName = BS.append offeredCurrSym offeredTokName
-      askedName = BS.append askedCurrSym askedTokName
+  let offeredName = 
+        if offeredCurrSym Haskell.== BS.empty
+        then BS.empty
+        else BS.append offeredCurrSym $ BS.append "." offeredTokName
+      askedName = 
+        if askedCurrSym Haskell.== BS.empty
+        then BS.empty
+        else BS.append askedCurrSym $ BS.append "." askedTokName
   in TokenName $ sha3_256 $ toBuiltin (BS.append askedName $ BS.append "/" offeredName)
--- genBeaconTokenName :: (CurrencySymbol,TokenName) -> (CurrencySymbol,TokenName) -> TokenName
--- genBeaconTokenName (offeredCurrSym,offeredTokName) (askedCurrSym,askedTokName) = 
---   let offeredName = unCurrencySymbol offeredCurrSym <> unTokenName offeredTokName
---       askedName = unCurrencySymbol askedCurrSym <> unTokenName askedTokName
---   in TokenName $ sha3_256 (askedName <> "/" <> offeredName)
 
 data UtxoPriceInfo = UtxoPriceInfo
   { utxoAmount :: Integer

@@ -18,7 +18,9 @@ data Command
   | CreateSwapRedeemer !Action !FilePath
   | CreateStakingScript !PaymentPubKeyHash (Maybe Asset) (Maybe Asset) !FilePath
   | CreateStakingRedeemer !FilePath
+  | CreateBeaconTokenName !Asset !Asset !FilePath
   | CreateBeaconRedeemer !BeaconRedeemer !FilePath
+  | CreateBeaconDatum !FilePath
   | Query !CurrencySymbol !TokenName !CurrencySymbol !TokenName !Network
   | Advanced !AdvancedOption !FilePath
 
@@ -49,6 +51,16 @@ parseCreateStakingScript =
     <*> optional pOffered
     <*> optional pAsked
     <*> pOutputFile
+
+parseCreateBeaconTokenName :: Parser Command
+parseCreateBeaconTokenName =
+  CreateBeaconTokenName
+    <$> pOffered
+    <*> pAsked
+    <*> pOutputFile
+
+parseCreateBeaconDatum :: Parser Command
+parseCreateBeaconDatum = CreateBeaconDatum <$> pOutputFile
 
 parseCreateStakingRedeemer :: Parser Command
 parseCreateStakingRedeemer = CreateStakingRedeemer <$> pOutputFile
@@ -219,8 +231,12 @@ parseCommand = hsubparser $
     (info parseCreateStakingScript (progDesc "Create a personal staking script.")) <>
   command "create-staking-redeemer"
     (info parseCreateStakingRedeemer (progDesc "Create the redeemer for the staking script")) <>
+  command "create-beacon-token-name"
+    (info parseCreateBeaconTokenName (progDesc "Generate the beacon token name.")) <>
   command "create-beacon-redeemer"
     (info parseCreateBeaconRedeemer (progDesc "Create a redeemer for the beacon policy.")) <>
+  command "create-beacon-datum"
+    (info parseCreateBeaconDatum (progDesc "Create the datum for the beacon vault.")) <>
   command "query" 
     (info parseQuery (progDesc "Query available swaps for a trading pair.")) <>
   command "advanced"

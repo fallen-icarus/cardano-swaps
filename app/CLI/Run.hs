@@ -65,10 +65,25 @@ runCreateStakingScript pkh moa maa file = do
     Right _ -> putStrLn "Staking script created successfully."
     Left err -> putStrLn $ "There was an error: " <> show err
 
+runCreateBeaconTokenName :: Asset -> Asset -> FilePath -> IO ()
+runCreateBeaconTokenName oa aa file = do
+  writeFile file $ show $ genBeaconTokenName (assetInfo oa) (assetInfo aa)
+  putStrLn "Beacon token name generated successfully."
+
 runCreateStakingRedeemer :: FilePath -> IO ()
 runCreateStakingRedeemer file = do
   writeData file ()
   putStrLn "Redeemer file created successfully."
+
+runCreateBeaconRedeemer :: BeaconRedeemer -> FilePath -> IO ()
+runCreateBeaconRedeemer r file = do
+  writeData file r
+  putStrLn "Redeemer file created successfully."
+
+runCreateBeaconDatum :: FilePath -> IO ()
+runCreateBeaconDatum file = do
+  writeData file beaconSymbol
+  putStrLn "Beacon vault datum created successfully."
 
 runAdvancedCommands :: AdvancedOption -> FilePath -> IO ()
 runAdvancedCommands o file = case o of
@@ -93,5 +108,8 @@ runCommand cmd = case cmd of
   CreateSwapRedeemer action file -> runCreateSwapRedeemer action file
   CreateStakingScript pkh moa maa file -> runCreateStakingScript pkh moa maa file
   CreateStakingRedeemer file -> runCreateStakingRedeemer file
+  CreateBeaconRedeemer r file -> runCreateBeaconRedeemer r file
+  CreateBeaconTokenName oa aa file -> runCreateBeaconTokenName oa aa file
+  CreateBeaconDatum file -> runCreateBeaconDatum file
   Advanced advancedOptions file -> runAdvancedCommands advancedOptions file
   _ -> return ()

@@ -73,6 +73,7 @@ import PlutusTx.Numeric as Num
 import Plutus.V2.Ledger.Tx
 import Ledger.Ada (lovelaceValueOf,lovelaceOf,fromValue)
 import PlutusTx.Ratio (fromGHC)
+import PlutusTx.AssocMap (keys)
 
 -------------------------------------------------
 -- Misc Functions
@@ -431,17 +432,20 @@ PlutusTx.unstableMakeIsData ''BeaconRedeemer
 -- On-Chain Beacon
 -------------------------------------------------
 -- | Script responsible for holding deposits
-mkBeaconVault :: () -> BeaconRedeemer -> ScriptContext -> Bool
-mkBeaconVault () r ctx@ScriptContext{scriptContextTxInfo = info} = case r of
+-- The currency symbol is that of the beacon
+mkBeaconVault :: CurrencySymbol -> BeaconRedeemer -> ScriptContext -> Bool
+mkBeaconVault cn r ctx@ScriptContext{scriptContextTxInfo = info} = case r of
    -- | Disallow minting redeemer with beacon vault script
    MintBeacon _ -> 
     traceError "Executing beacon vault script is not necessary for minting a beacon."
-   BurnBeacon _ ->
-     -- | Only allow burning if 1 ADA is also withdrawn from this script.
-     --   Only check amount of ADA withdrawn. If other assets are accidentally deposited,
-     --   they can be withdrawn along with the 1 ADA.
-     traceIfFalse "Must withdraw exactly 1 ADA to burn beacon. Must withdraw and burn in same tx." 
-       (containsOnly1ADA withdrawalValue)
+   BurnBeacon tokName ->
+     -- | Only allow withdrawing from this script if beacon token also burned.
+     traceIfFalse "Must burn one beacon." (mintCheck tokName (-1) minted) &&
+     -- | Make sure only 2 ADA is withdrawn.
+     -- Only check amount of ADA withdrawn. If other assets are accidentally deposited,
+     -- they can be withdrawn along with the 2 ADA.
+     traceIfFalse "Must withdraw exactly 1 ADA to burn beacon." 
+       (containsOnly2ADA withdrawalValue)
 
   where
     scriptValidatorHash :: ValidatorHash
@@ -450,8 +454,8 @@ mkBeaconVault () r ctx@ScriptContext{scriptContextTxInfo = info} = case r of
     emptyVal :: Value
     emptyVal = lovelaceValueOf 0
 
-    containsOnly1ADA :: Value -> Bool
-    containsOnly1ADA v = lovelaceOf 1_000_000 == fromValue v
+    containsOnly2ADA :: Value -> Bool
+    containsOnly2ADA v = lovelaceOf 2_000_000 == fromValue v
 
     -- | Separate script input value from rest of input value (can be from other scripts).
     --   Throws an error if there is a ref script among script inputs.
@@ -468,12 +472,22 @@ mkBeaconVault () r ctx@ScriptContext{scriptContextTxInfo = info} = case r of
                  else si <> txOutValue (txInInfoResolved i)
             else si
       in foldl foo emptyVal inputs
+
+    minted :: [(CurrencySymbol,TokenName,Integer)]
+    minted = flattenValue $ txInfoMint info
+
+    mintCheck :: TokenName -> Integer -> [(CurrencySymbol,TokenName,Integer)] -> Bool
+    mintCheck tokName target [(cn',tn,n)] = cn == cn' && tn == tokName && n == target
+    mintCheck _ _ _ = traceError 
+      ( "A beacon token must be burned to withdraw from this vault." <> 
+        "\nOnly the beacon token can be burned in this tx."
+      )
     
 
 data BeaconVault
 instance ValidatorTypes BeaconVault where
   type instance RedeemerType BeaconVault = BeaconRedeemer
-  type instance DatumType BeaconVault = ()
+  type instance DatumType BeaconVault = CurrencySymbol
 
 beaconVaultValidator :: Validator
 beaconVaultValidator = Plutonomy.optimizeUPLC $ validatorScript $ mkTypedValidator @BeaconVault
@@ -491,19 +505,27 @@ beaconVaultValidatorHash = Scripts.validatorHash beaconVaultValidator
 mkBeacon :: ValidatorHash -> BeaconRedeemer -> ScriptContext -> Bool
 mkBeacon vaultHash r ScriptContext{scriptContextTxInfo = info} = case r of
    MintBeacon tokName ->
-     -- | Must deposit 1 ADA to beacon vault.
-     traceIfFalse "Must deposit 1 ADA to the beacon vault." (containsOnly1ADA depositsToVault) &&
+     -- | Must deposit 2 ADA to beacon vault.
+     traceIfFalse "Must deposit exactly 2 ADA to the beacon vault." (containsOnly2ADA depositsToVault) &&
      -- | Only one token minted
-     traceIfFalse "Too many beacons minted." (mintCheck tokName 1 minted)
+     traceIfFalse "Wrong number of beacons minted. Only one at a time." (mintCheck tokName 1 minted)
 
    -- | Delegate checking withdrawal amount to beacon vault script
    BurnBeacon tokName ->
      -- | Beacon vault executed
-     traceIfFalse "Must withdraw 1 ADA from the beacon vault." withdrawsFromVault &&
+     traceIfFalse "Must withdraw exactly 2 ADA from the beacon vault." withdrawsFromVault &&
      -- | Only one token burned
-     traceIfFalse "Too many beacons burned." (mintCheck tokName (-1) minted)
+     traceIfFalse "Wrong number of beacons burned. Only one at a time." (mintCheck tokName (-1) minted)
 
   where
+    thisCurrencySymbol :: CurrencySymbol
+    thisCurrencySymbol =
+      let rs = keys $ txInfoRedeemers info
+          isMint (Minting _) = True
+          isMint _ = False
+          Just (Minting cn) = find isMint rs
+      in cn
+
     minted :: [(CurrencySymbol,TokenName,Integer)]
     minted = flattenValue $ txInfoMint info
 
@@ -523,15 +545,15 @@ mkBeacon vaultHash r ScriptContext{scriptContextTxInfo = info} = case r of
     emptyVal :: Value
     emptyVal = lovelaceValueOf 0
 
-    containsOnly1ADA :: Value -> Bool
-    containsOnly1ADA v = lovelaceOf 1_000_000 == fromValue v
+    containsOnly2ADA :: Value -> Bool
+    containsOnly2ADA v = lovelaceOf 2_000_000 == fromValue v
 
-    parseDatum :: TxOut -> ()
+    parseDatum :: TxOut -> CurrencySymbol
     parseDatum o = case txOutDatum o of
       (OutputDatum (Datum d)) -> case fromBuiltinData d of
-        Nothing -> traceError "Beacon vault datum must be the unit datum."
+        Nothing -> traceError "Beacon vault datum must be the beacon policy id."
         Just p -> p
-      _ -> traceError "Deposits to beacon vault must include the inline unit datum."
+      _ -> traceError "Deposits to beacon vault must include an inline datum."
 
     -- | Find deposits to beacon vault
     depositsToVault :: Value
@@ -544,9 +566,9 @@ mkBeacon vaultHash r ScriptContext{scriptContextTxInfo = info} = case r of
               if h == vaultHash 
               then -- | Check if output to beacon vault script contains proper datum.
                    --   Throws error if invalid datum.
-                   if parseDatum o == ()
+                   if parseDatum o == thisCurrencySymbol
                    then so <> txOutValue o
-                   else traceError "Output to beacon vault does not contain unit datum."
+                   else traceError "The beacon vault datum is not the beacon policy id."
               else so
             _ -> so
       in foldl foo emptyVal outputs

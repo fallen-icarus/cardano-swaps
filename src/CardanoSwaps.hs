@@ -436,9 +436,9 @@ stakingScript = unStakeValidatorScript . staking
 -------------------------------------------------
 -- | Beacon Redeemer
 data BeaconRedeemer
-  -- | To mint a beacon, 1 ADA must be depositing into the proper script address.
+  -- | To mint a beacon, 2 ADA must be depositing into the proper script address.
   = MintBeacon TokenName  -- ^ TokenName of token to be minted
-  -- | To burn a beacon, 1 ADA must be withdrawn from the proper script address.
+  -- | To burn a beacon, 2 ADA must be withdrawn from the proper script address.
   | BurnBeacon TokenName  -- ^ TokenName of token to be burned
 
 PlutusTx.unstableMakeIsData ''BeaconRedeemer

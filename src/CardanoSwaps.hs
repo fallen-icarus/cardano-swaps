@@ -491,25 +491,19 @@ beaconVaultValidatorHash = Scripts.validatorHash beaconVaultValidator
 mkBeacon :: ValidatorHash -> BeaconRedeemer -> ScriptContext -> Bool
 mkBeacon vaultHash r ScriptContext{scriptContextTxInfo = info} = case r of
    MintBeacon tokName ->
-     -- | Must deposit 1 ADA to proper script address.
-     traceIfFalse ("Must deposit 1 ADA to this script address: " <> hashToString vaultHash)
-       (containsOnly1ADA depositsToVault) &&
+     -- | Must deposit 1 ADA to beacon vault.
+     traceIfFalse "Must deposit 1 ADA to the beacon vault." (containsOnly1ADA depositsToVault) &&
      -- | Only one token minted
      traceIfFalse "Too many beacons minted." (mintCheck tokName 1 minted)
 
    -- | Delegate checking withdrawal amount to beacon vault script
    BurnBeacon tokName ->
      -- | Beacon vault executed
-     traceIfFalse 
-       ("Must withdraw 1 ADA from this script address: " <> hashToString vaultHash) 
-       withdrawsFromVault &&
+     traceIfFalse "Must withdraw 1 ADA from the beacon vault." withdrawsFromVault &&
      -- | Only one token burned
      traceIfFalse "Too many beacons burned." (mintCheck tokName (-1) minted)
 
   where
-    hashToString :: ValidatorHash -> BuiltinString
-    hashToString (ValidatorHash vh) = decodeUtf8 vh
-
     minted :: [(CurrencySymbol,TokenName,Integer)]
     minted = flattenValue $ txInfoMint info
 
@@ -535,9 +529,9 @@ mkBeacon vaultHash r ScriptContext{scriptContextTxInfo = info} = case r of
     parseDatum :: TxOut -> ()
     parseDatum o = case txOutDatum o of
       (OutputDatum (Datum d)) -> case fromBuiltinData d of
-        Nothing -> traceError "Datum must be the unit datum."
+        Nothing -> traceError "Beacon vault datum must be the unit datum."
         Just p -> p
-      _ -> traceError "All datums must be inline datums."
+      _ -> traceError "Deposits to beacon vault must include the inline unit datum."
 
     -- | Find deposits to beacon vault
     depositsToVault :: Value

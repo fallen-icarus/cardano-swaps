@@ -121,8 +121,8 @@ instance ToJSON UtxoPriceInfo where
 
 -- | Helper function to calculate the weighted price.
 --   Will match the weighted price calculation done by script.
-calcWeightedPrice :: [UtxoPriceInfo] -> (Integer,Rational)
-calcWeightedPrice xs = foldl foo (0,fromInteger 0) xs
+calcWeightedPrice :: [UtxoPriceInfo] -> Rational
+calcWeightedPrice xs = snd $ foldl foo (0,fromInteger 0) xs
   where
     convert :: (UtxoPriceInfo) -> Rational 
     convert upi@UtxoPriceInfo{priceNumerator = num,priceDenominator = den} = 
@@ -294,8 +294,8 @@ mkSwap BasicInfo{..} _ action ctx@ScriptContext{scriptContextTxInfo = info} = ca
     --   Get the weighted average price for all the utxo inputs from this script. This will
     --   throw an error if the datum is not an inline datum or if it is not a price.
     --
-    --   returns (Total Value from Script,(Total Offered Asset in Inputs,Weighted Price))
-    scriptInputInfo :: (Value,(Integer,Price))
+    --   returns (Total Value from Script,Weighted Price)
+    scriptInputInfo :: (Value,Price)
     scriptInputInfo =
       let inputs = txInfoInputs info
           addrCred i = addressCredential $ txOutAddress $ txInInfoResolved i
@@ -314,7 +314,7 @@ mkSwap BasicInfo{..} _ action ctx@ScriptContext{scriptContextTxInfo = info} = ca
                          , (newAmount,newWeightedPrice)
                          )
             else (si,(on,wp))
-      in foldl foo (emptyVal,(0,fromInteger 0)) inputs
+      in fmap snd $ foldl foo (emptyVal,(0,fromInteger 0)) inputs
 
     -- | Separate output value to script from rest of output value (can be to other scripts).
     --   Throw error if output to script doesn't contain proper inline datum.
@@ -339,7 +339,7 @@ mkSwap BasicInfo{..} _ action ctx@ScriptContext{scriptContextTxInfo = info} = ca
     swapCheck :: Bool
     swapCheck =
       let -- | Input info
-          (scriptInputValue,(_,weightedPrice)) = scriptInputInfo
+          (scriptInputValue,weightedPrice) = scriptInputInfo
 
           -- | Convert price if necessary
           correctedPrice

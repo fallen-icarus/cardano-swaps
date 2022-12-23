@@ -130,7 +130,7 @@ runSwapScriptCmd swapCmd = case swapCmd of
         case decode utxos of
           Nothing -> putStrLn "There was an error parsing the utxos file."
           Just uis -> do
-            writeData file $ snd $ calcWeightedPrice uis
+            writeData file $ calcWeightedPrice uis
             putStrLn "Swap datum created successfully."
       SwapDatumUtxosTemplate -> do
         BL.writeFile file $ encodePretty template

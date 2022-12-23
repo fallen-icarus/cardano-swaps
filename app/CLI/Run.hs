@@ -1,15 +1,151 @@
 module CLI.Run
 (
-  runCommand
+  runCommand,
 ) where
 
 import Data.Aeson
 import Data.Aeson.Encode.Pretty
-import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BL
 
 import CardanoSwaps
 import CLI.Parsers
+
+runCommand :: Command -> IO ()
+runCommand cmd = case cmd of
+  SwapScript swapCmd -> runSwapScriptCmd swapCmd
+  StakingScript stakingCmd -> runStakingScriptCmd stakingCmd
+  Beacon beaconCmd -> runBeaconCmd beaconCmd
+  Advanced advancedCmd file -> runAdvancedCmd advancedCmd file
+
+runAdvancedCmd :: AdvancedCmd -> FilePath -> IO ()
+runAdvancedCmd advancedCmd file = case advancedCmd of
+    ExportBeaconPolicyScript -> runExportPolicy
+    ExportBeaconVaultScript -> runExportVaultScript
+
+  where
+    runExportPolicy :: IO ()
+    runExportPolicy = do
+      res <- writeScript file beaconScript
+      case res of
+        Right _ -> putStrLn "Beacon policy script exported successfully."
+        Left err -> putStrLn $ "There was an error: " <> show err
+
+    runExportVaultScript :: IO ()
+    runExportVaultScript = do
+      res <- writeScript file beaconVaultScript
+      case res of
+        Right _ -> putStrLn "Beacon vault script exported successfully."
+        Left err -> putStrLn $ "There was an error: " <> show err
+
+
+runBeaconCmd :: BeaconCmd -> IO ()
+runBeaconCmd beaconCmd = case beaconCmd of
+    GenerateBeaconTokenName rOfferedAsset rAskedAsset output ->
+      runGenTokenName rOfferedAsset rAskedAsset output
+    ExportBeaconPolicyId output -> runExportBeaconPolicyId output
+    CreateBeaconRedeemer beaconRedeemer file -> runCreateRedeemer beaconRedeemer file
+    CreateBeaconDatum file -> runCreateDatum file
+  
+  where
+    runGenTokenName :: RawAsset -> RawAsset -> Output -> IO ()
+    runGenTokenName rOfferedAsset rAskedAsset output = do
+      let name = drop 2 
+               $ show 
+               $ genBeaconTokenName (rawAssetInfo rOfferedAsset) (rawAssetInfo rAskedAsset)
+      case output of
+        StdOut -> putStr name
+        File file -> writeFile file name >> putStrLn "Beacon token name generated successfully."
+
+    runExportBeaconPolicyId :: Output -> IO ()
+    runExportBeaconPolicyId output = do
+      let policyId = show beaconSymbol
+      case output of
+        StdOut -> putStr $ show beaconSymbol
+        File file -> writeFile file policyId >> putStrLn "Beacon policy id exported successfully."
+
+    runCreateRedeemer :: BeaconRedeemer -> FilePath -> IO ()
+    runCreateRedeemer r file = do
+      writeData file r
+      putStrLn "Beacon redeemer created successfully."
+
+    runCreateDatum :: FilePath -> IO ()
+    runCreateDatum file = do
+      writeData file beaconSymbol
+      putStrLn "Beacon vault datum created successfully."
+
+runStakingScriptCmd :: StakingScriptCmd -> IO ()
+runStakingScriptCmd stakingCmd = case stakingCmd of
+    CreateStakingScript pkh offeredAsset askedAsset file -> 
+      runCreateScript pkh offeredAsset askedAsset file
+    CreateStakingRedeemer file -> runCreateRedeemer file
+
+  where
+    runCreateScript :: PaymentPubKeyHash -> Maybe Asset -> Maybe Asset -> FilePath -> IO ()
+    runCreateScript pkh offeredAsset askedAsset file = do
+      let stakeConfig = StakeConfig
+                     { stakeOwner = pkh
+                     , stakeOfferedAsset = assetInfo <$> offeredAsset
+                     , stakeAskedAsset = assetInfo <$> askedAsset
+                     }
+      res <- writeScript file $ stakingScript stakeConfig
+      case res of
+        Right _ -> putStrLn "Staking script created successfully."
+        Left err -> putStrLn $ "There was an error: " <> show err
+
+    runCreateRedeemer :: FilePath -> IO ()
+    runCreateRedeemer file = do
+      writeData file ()
+      putStrLn "Staking redeemer file created successfully."
+
+runSwapScriptCmd :: SwapScriptCmd -> IO ()
+runSwapScriptCmd swapCmd = case swapCmd of
+    CreateSwapScript pkh offeredAsset askedAsset file -> 
+      runCreateScript pkh offeredAsset askedAsset file
+    CreateSwapDatum datumInfo file -> runCreateDatum datumInfo file
+    CreateSwapRedeemer action file -> runCreateRedeemer action file
+
+  where
+    runCreateScript :: PaymentPubKeyHash -> Asset -> Asset -> FilePath -> IO ()
+    runCreateScript pkh offeredAsset askedAsset file = do
+      let basicInfo = BasicInfo
+            { owner = pkh
+            , offerAsset = assetInfo offeredAsset
+            , askAsset = assetInfo askedAsset
+            }
+      res <- writeScript file $ swapScript basicInfo
+      case res of
+        Right _ -> putStrLn "Swap script created successfully."
+        Left err -> putStrLn $ "There was an error: " <> show err
+
+    runCreateDatum :: SwapDatumInfo -> FilePath -> IO ()
+    runCreateDatum datumInfo file = case datumInfo of
+      SwapDatum price ->
+        if price > fromGHC (toRational (0 :: Integer))
+        then do
+          writeData file price
+        else putStrLn "Invalid swap datum. Price must be greater than 0."
+      SwapDatumUtxos utxoFile -> do
+        utxos <- BL.readFile utxoFile
+        case decode utxos of
+          Nothing -> putStrLn "There was an error parsing the utxos file."
+          Just uis -> do
+            writeData file $ snd $ calcWeightedPrice uis
+            putStrLn "Swap datum created successfully."
+      SwapDatumUtxosTemplate -> do
+        BL.writeFile file $ encodePretty template
+        putStrLn "Template file created successfully."
+    
+    runCreateRedeemer :: Action -> FilePath -> IO ()
+    runCreateRedeemer action file = do
+      writeData file action
+      putStrLn "Swap redeemer created successfully."
+
+template :: [UtxoPriceInfo]
+template =
+  [ UtxoPriceInfo { utxoAmount = 100, priceNumerator = 1, priceDenominator = 1 }
+  , UtxoPriceInfo { utxoAmount = 200, priceNumerator = 2, priceDenominator = 1 }
+  ]
 
 assetInfo :: Asset -> (CurrencySymbol,TokenName)
 assetInfo Ada = (adaSymbol,adaToken)
@@ -18,106 +154,3 @@ assetInfo (Asset currSym tokName) = (currSym,tokName)
 rawAssetInfo :: RawAsset -> (BS.ByteString,BS.ByteString)
 rawAssetInfo RawAda = (BS.empty,BS.empty)
 rawAssetInfo (RawAsset currSym tokName) = (currSym,tokName)
-
-runCreateSwapScript :: PaymentPubKeyHash -> Asset -> Asset -> FilePath -> IO ()
-runCreateSwapScript pkh oa aa file = do
-  let basicInfo = BasicInfo 
-                    { owner = pkh
-                    , offerAsset = assetInfo oa
-                    , askAsset = assetInfo aa
-                    }
-  res <- writeScript file $ swapScript basicInfo
-  case res of
-    Right _ -> putStrLn "Swap script created successfully."
-    Left err -> putStrLn $ "There was an error: " <> show err
-
-runCreateDatum :: SwapDatumInfo -> FilePath -> IO ()
-runCreateDatum d file = case d of
-     SwapDatum price ->
-       if price > fromGHC (toRational (0 :: Integer))
-       then do
-         writeData file price
-         putStrLn "Datum file created successfully."
-       else putStrLn "Invalid swap datum. Price must be greater than 0."
-     SwapDatumUtxos utxoFile -> do
-       utxos <- BL.readFile utxoFile
-       case decode utxos of
-         Nothing -> putStrLn "There was an error parsing the utxos file."
-         Just uis -> do
-           writeData file $ snd $ calcWeightedPrice uis
-           putStrLn "Datum file created successfully."
-     SwapDatumUtxosTemplate -> do
-       BL.writeFile file $ encodePretty template
-       putStrLn "Template file created successfully."
-  where
-    template :: [UtxoPriceInfo]
-    template =
-      [ UtxoPriceInfo { utxoAmount = 100, priceNumerator = 1, priceDenominator = 1 }
-      , UtxoPriceInfo { utxoAmount = 200, priceNumerator = 2, priceDenominator = 1 }
-      ]
-
-runCreateSwapRedeemer :: Action -> FilePath -> IO ()
-runCreateSwapRedeemer action file = do
-  writeData file action
-  putStrLn "Redeemer file created successfully."
-
-runCreateStakingScript :: PaymentPubKeyHash -> Maybe Asset -> Maybe Asset -> FilePath -> IO ()
-runCreateStakingScript pkh moa maa file = do
-  let stakeConfig = StakeConfig
-                     { stakeOwner = pkh
-                     , stakeOfferedAsset = assetInfo <$> moa
-                     , stakeAskedAsset = assetInfo <$> maa
-                     }
-  res <- writeScript file $ stakingScript stakeConfig
-  case res of
-    Right _ -> putStrLn "Staking script created successfully."
-    Left err -> putStrLn $ "There was an error: " <> show err
-
-runCreateBeaconTokenName :: RawAsset -> RawAsset -> FilePath -> IO ()
-runCreateBeaconTokenName oa aa file = do
-  writeFile file $ drop 2 $ show $ genBeaconTokenName (rawAssetInfo oa) (rawAssetInfo aa)
-  putStrLn "Beacon token name generated successfully."
-
-runCreateStakingRedeemer :: FilePath -> IO ()
-runCreateStakingRedeemer file = do
-  writeData file ()
-  putStrLn "Redeemer file created successfully."
-
-runCreateBeaconRedeemer :: BeaconRedeemer -> FilePath -> IO ()
-runCreateBeaconRedeemer r file = do
-  writeData file r
-  putStrLn "Redeemer file created successfully."
-
-runCreateBeaconDatum :: FilePath -> IO ()
-runCreateBeaconDatum file = do
-  writeData file beaconSymbol
-  putStrLn "Beacon vault datum created successfully."
-
-runAdvancedCommands :: AdvancedOption -> FilePath -> IO ()
-runAdvancedCommands o file = case o of
-  ExportBeaconPolicyId -> do
-    writeFile file $ show beaconSymbol
-    putStrLn "Beacon policy id exported successfully."
-  ExportBeaconPolicyScript -> do
-    res <- writeScript file beaconScript
-    case res of
-      Right _ -> putStrLn "Beacon policy script exported successfully."
-      Left err -> putStrLn $ "There was an error: " <> show err
-  ExportBeaconVaultScript -> do
-    res <- writeScript file beaconVaultScript
-    case res of
-      Right _ -> putStrLn "Beacon vault script exported successfully."
-      Left err -> putStrLn $ "There was an error: " <> show err
-
-runCommand :: Command -> IO ()
-runCommand cmd = case cmd of
-  CreateSwapScript pkh oa aa file -> runCreateSwapScript pkh oa aa file
-  CreateSwapDatum d file -> runCreateDatum d file
-  CreateSwapRedeemer action file -> runCreateSwapRedeemer action file
-  CreateStakingScript pkh moa maa file -> runCreateStakingScript pkh moa maa file
-  CreateStakingRedeemer file -> runCreateStakingRedeemer file
-  CreateBeaconRedeemer r file -> runCreateBeaconRedeemer r file
-  CreateBeaconTokenName oa aa file -> runCreateBeaconTokenName oa aa file
-  CreateBeaconDatum file -> runCreateBeaconDatum file
-  Advanced advancedOptions file -> runAdvancedCommands advancedOptions file
-  _ -> return ()

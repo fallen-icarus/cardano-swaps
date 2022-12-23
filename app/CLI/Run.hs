@@ -9,7 +9,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 
 import CardanoSwaps
-import CLI.Parsers
+import CLI.Types
 
 runCommand :: Command -> IO ()
 runCommand cmd = case cmd of

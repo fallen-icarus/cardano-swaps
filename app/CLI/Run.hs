@@ -16,6 +16,7 @@ runCommand cmd = case cmd of
   SwapScript swapCmd -> runSwapScriptCmd swapCmd
   StakingScript stakingCmd -> runStakingScriptCmd stakingCmd
   Beacon beaconCmd -> runBeaconCmd beaconCmd
+  QueryAvailableSwaps rOfferedAsset rAskedAsset network output -> return ()
 
 runBeaconCmd :: BeaconCmd -> IO ()
 runBeaconCmd beaconCmd = case beaconCmd of

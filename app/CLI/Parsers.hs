@@ -16,7 +16,9 @@ parseCommand = hsubparser $
   command "staking-script"
     (info parseStakingScriptCmd $ progDesc "Commands for using a staking script.") <>
   command "beacon"
-    (info parseBeaconCmd $ progDesc "Commands for using beacons.")
+    (info parseBeaconCmd $ progDesc "Commands for using beacons.") <>
+  command "query-swaps"
+    (info parseQueryAvailableSwaps $ progDesc "Query available swaps.")
 
 parseSwapScriptCmd :: Parser Command
 parseSwapScriptCmd = fmap SwapScript . hsubparser $
@@ -48,6 +50,28 @@ parseBeaconCmd = fmap Beacon . hsubparser $
     (info pBeaconPolicyScript $ progDesc "Export the beacon policy script.") <>
   command "vault-script"
     (info pBeaconVaultScript $ progDesc "Export the beacon deposit vault script.")
+
+parseQueryAvailableSwaps :: Parser Command
+parseQueryAvailableSwaps = 
+  QueryAvailableSwaps
+    <$> pOfferedRaw
+    <*> pAskedRaw
+    <*> pNetwork
+    <*> pOutput
+
+pNetwork :: Parser Network
+pNetwork = pMainnet <|> pPreProdTestnet
+  where
+    pMainnet :: Parser Network
+    pMainnet = flag' Mainnet
+      (  long "mainnet"
+      <> help "Query the mainnet using the Koios api.")
+    
+    pPreProdTestnet :: Parser Network
+    pPreProdTestnet = PreProdTestnet <$> strOption
+      (  long "preprod-testnet"
+      <> metavar "STRING"
+      <> help "Query the preproduction testnet using the Blockfrost Api with the supplied api key.")
 
 pBeaconPolicyScript :: Parser BeaconCmd
 pBeaconPolicyScript = ExportBeaconPolicyScript <$> pOutputFile

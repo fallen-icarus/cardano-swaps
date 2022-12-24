@@ -50,3 +50,19 @@ data Network
   -- | Koios REST api does not support the PreProduction Testnet.
   --   Until they do, Blockfrost will be used for querying the PreProduction Testnet.
   | PreProdTestnet String  -- ^ Api key
+
+-- | Type that captures all info a user needs to interact with swap scripts
+data AvailableSwap = AvailableSwap
+  { swapAddress :: String
+  , swapRefScriptTxIx :: String
+  , swapUTxOTxIx :: String
+  , swapUTxOAmount :: [AvailableAsset]
+  , swapUTxOPriceNum :: Integer
+  , swapUTxOPriceDen :: Integer
+  } deriving (Show)
+
+data AvailableAsset = AvailableAsset
+  { assetPolicyId :: String
+  , assetTokenName :: String
+  , assetQuantity :: Integer
+  } deriving (Show)

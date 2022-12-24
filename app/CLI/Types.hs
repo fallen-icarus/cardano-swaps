@@ -22,7 +22,7 @@ data Command
   = SwapScript SwapScriptCmd
   | StakingScript StakingScriptCmd
   | Beacon BeaconCmd
-  | Advanced AdvancedCmd !FilePath
+  -- | Advanced AdvancedCmd !FilePath
   -- | Query
 
 data SwapScriptCmd
@@ -39,10 +39,12 @@ data BeaconCmd
   | ExportBeaconPolicyId !Output
   | CreateBeaconRedeemer !BeaconRedeemer !FilePath
   | CreateBeaconDatum !FilePath  -- ^ For use with the beacon vault script
+  | ExportBeaconPolicyScript !FilePath
+  | ExportBeaconVaultScript !FilePath
 
-data AdvancedCmd
-  = ExportBeaconPolicyScript
-  | ExportBeaconVaultScript
+-- data AdvancedCmd
+--   = ExportBeaconPolicyScript
+--   | ExportBeaconVaultScript
 
 data Network
   -- | Uses the Koios REST api. 

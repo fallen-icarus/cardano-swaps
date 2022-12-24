@@ -16,28 +16,6 @@ runCommand cmd = case cmd of
   SwapScript swapCmd -> runSwapScriptCmd swapCmd
   StakingScript stakingCmd -> runStakingScriptCmd stakingCmd
   Beacon beaconCmd -> runBeaconCmd beaconCmd
-  Advanced advancedCmd file -> runAdvancedCmd advancedCmd file
-
-runAdvancedCmd :: AdvancedCmd -> FilePath -> IO ()
-runAdvancedCmd advancedCmd file = case advancedCmd of
-    ExportBeaconPolicyScript -> runExportPolicy
-    ExportBeaconVaultScript -> runExportVaultScript
-
-  where
-    runExportPolicy :: IO ()
-    runExportPolicy = do
-      res <- writeScript file beaconScript
-      case res of
-        Right _ -> putStrLn "Beacon policy script exported successfully."
-        Left err -> putStrLn $ "There was an error: " <> show err
-
-    runExportVaultScript :: IO ()
-    runExportVaultScript = do
-      res <- writeScript file beaconVaultScript
-      case res of
-        Right _ -> putStrLn "Beacon vault script exported successfully."
-        Left err -> putStrLn $ "There was an error: " <> show err
-
 
 runBeaconCmd :: BeaconCmd -> IO ()
 runBeaconCmd beaconCmd = case beaconCmd of
@@ -46,6 +24,8 @@ runBeaconCmd beaconCmd = case beaconCmd of
     ExportBeaconPolicyId output -> runExportBeaconPolicyId output
     CreateBeaconRedeemer beaconRedeemer file -> runCreateRedeemer beaconRedeemer file
     CreateBeaconDatum file -> runCreateDatum file
+    ExportBeaconPolicyScript file -> runExportPolicy file
+    ExportBeaconVaultScript file -> runExportVaultScript file
   
   where
     runGenTokenName :: RawAsset -> RawAsset -> Output -> IO ()
@@ -73,6 +53,20 @@ runBeaconCmd beaconCmd = case beaconCmd of
     runCreateDatum file = do
       writeData file beaconSymbol
       putStrLn "Beacon vault datum created successfully."
+    
+    runExportPolicy :: FilePath -> IO ()
+    runExportPolicy file = do
+      res <- writeScript file beaconScript
+      case res of
+        Right _ -> putStrLn "Beacon policy script exported successfully."
+        Left err -> putStrLn $ "There was an error: " <> show err
+
+    runExportVaultScript :: FilePath -> IO ()
+    runExportVaultScript file = do
+      res <- writeScript file beaconVaultScript
+      case res of
+        Right _ -> putStrLn "Beacon vault script exported successfully."
+        Left err -> putStrLn $ "There was an error: " <> show err
 
 runStakingScriptCmd :: StakingScriptCmd -> IO ()
 runStakingScriptCmd stakingCmd = case stakingCmd of

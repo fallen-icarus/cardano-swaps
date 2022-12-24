@@ -16,9 +16,7 @@ parseCommand = hsubparser $
   command "staking-script"
     (info parseStakingScriptCmd $ progDesc "Commands for using a staking script.") <>
   command "beacon"
-    (info parseBeaconCmd $ progDesc "Commands for using beacons.") <>
-  command "advanced"
-    (info parseAdvancedCmd $ progDesc "Advanced commands for developers.")
+    (info parseBeaconCmd $ progDesc "Commands for using beacons.")
 
 parseSwapScriptCmd :: Parser Command
 parseSwapScriptCmd = fmap SwapScript . hsubparser $
@@ -45,26 +43,17 @@ parseBeaconCmd = fmap Beacon . hsubparser $
   command "create-redeemer"
     (info pCreateBeaconRedeemer $ progDesc "Create a redeemer for minting/burning beacons.") <>
   command "create-datum"
-    (info pCreateBeaconDatum $ 
-      progDesc "Create a datum for minting beacons. Used with the beacon deposit vault.")
+    (info pCreateBeaconDatum $ progDesc "Create the datum for the beacon deposit vault.") <>
+  command "policy-script"
+    (info pBeaconPolicyScript $ progDesc "Export the beacon policy script.") <>
+  command "vault-script"
+    (info pBeaconVaultScript $ progDesc "Export the beacon deposit vault script.")
 
-parseAdvancedCmd :: Parser Command
-parseAdvancedCmd =
-   Advanced
-     <$> (pBeaconPolicy <|> pBeaconVaultScript)
-     <*> pOutputFile
-  where
-    pBeaconPolicy :: Parser AdvancedCmd
-    pBeaconPolicy = flag' ExportBeaconPolicyScript
-      (  long "beacon-policy-script"
-      <> help "Export the beacon policy script."
-      )
+pBeaconPolicyScript :: Parser BeaconCmd
+pBeaconPolicyScript = ExportBeaconPolicyScript <$> pOutputFile
 
-    pBeaconVaultScript :: Parser AdvancedCmd
-    pBeaconVaultScript = flag' ExportBeaconVaultScript
-      (  long "beacon-vault-script"
-      <> help "Export the beacon vault script."
-      )
+pBeaconVaultScript :: Parser BeaconCmd
+pBeaconVaultScript = ExportBeaconVaultScript <$> pOutputFile
 
 pGenerateBeaconTokenName :: Parser BeaconCmd
 pGenerateBeaconTokenName =

@@ -1,6 +1,10 @@
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module CLI.Types where
 
 import Data.ByteString (ByteString)
+import Data.Aeson
 
 import CardanoSwaps
 
@@ -61,8 +65,26 @@ data AvailableSwap = AvailableSwap
   , swapUTxOPriceDen :: Integer
   } deriving (Show)
 
+instance ToJSON AvailableSwap where
+  toJSON AvailableSwap{..} =
+    object [ "swap_address" .= swapAddress
+           , "swap_ref_script_id" .= swapRefScriptTxIx
+           , "utxo_id" .= swapUTxOTxIx
+           , "assets" .= swapUTxOAmount
+           , "price_numerator" .= swapUTxOPriceNum
+           , "price_denominator" .= swapUTxOPriceDen 
+           ]
+
 data AvailableAsset = AvailableAsset
   { assetPolicyId :: String
   , assetTokenName :: String
   , assetQuantity :: Integer
   } deriving (Show)
+
+instance ToJSON AvailableAsset where
+  toJSON AvailableAsset{..} =
+    object [ "asset" .= if assetPolicyId == "lovelace" 
+                        then "lovelace" 
+                        else assetPolicyId <> "." <> assetTokenName
+           , "quantity" .= assetQuantity
+           ]

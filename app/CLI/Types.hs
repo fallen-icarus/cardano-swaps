@@ -10,6 +10,9 @@ data Asset = Ada | Asset !CurrencySymbol !TokenName
 -- | Used to generate beacon token name
 data RawAsset = RawAda | RawAsset !ByteString !ByteString
 
+-- | Used in runQuery
+newtype QueryAsset = QueryAsset { unQueryAsset :: (String,String) }
+
 -- | For when saving to file is optional
 data Output = StdOut | File !FilePath
 

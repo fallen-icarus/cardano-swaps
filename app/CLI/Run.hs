@@ -7,16 +7,39 @@ import Data.Aeson
 import Data.Aeson.Encode.Pretty
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.UTF8 as BSU
 
 import CardanoSwaps
 import CLI.Types
+import CLI.QuerySwaps
 
 runCommand :: Command -> IO ()
 runCommand cmd = case cmd of
   SwapScript swapCmd -> runSwapScriptCmd swapCmd
   StakingScript stakingCmd -> runStakingScriptCmd stakingCmd
   Beacon beaconCmd -> runBeaconCmd beaconCmd
-  QueryAvailableSwaps rOfferedAsset rAskedAsset network output -> return ()
+  QueryAvailableSwaps rOfferedAsset rAskedAsset network output ->
+    runQueryAvailableSwaps rOfferedAsset rAskedAsset network output
+
+runQueryAvailableSwaps :: RawAsset -> RawAsset -> Network -> Output -> IO ()
+runQueryAvailableSwaps rOfferedAsset rAskedAsset network output = do
+    avail <- runQuery beaconQueryAsset (rawToQuery rOfferedAsset) network
+    case output of
+      StdOut -> print avail
+      File file -> return ()
+  where
+    rawToQuery :: RawAsset -> QueryAsset
+    rawToQuery RawAda = QueryAsset ("lovelace","")
+    rawToQuery (RawAsset sym tok) = QueryAsset (BSU.toString sym, BSU.toString tok)
+
+    beaconTokenName :: String
+    beaconTokenName 
+      = drop 2 
+      $ show 
+      $ genBeaconTokenName (rawAssetInfo rOfferedAsset) (rawAssetInfo rAskedAsset)
+
+    beaconQueryAsset :: QueryAsset
+    beaconQueryAsset = QueryAsset (show beaconSymbol, beaconTokenName)
 
 runBeaconCmd :: BeaconCmd -> IO ()
 runBeaconCmd beaconCmd = case beaconCmd of

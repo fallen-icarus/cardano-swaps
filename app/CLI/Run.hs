@@ -25,8 +25,8 @@ runQueryAvailableSwaps :: RawAsset -> RawAsset -> Network -> Output -> IO ()
 runQueryAvailableSwaps rOfferedAsset rAskedAsset network output = do
     avail <- runQuery beaconQueryAsset (rawToQuery rOfferedAsset) network
     case output of
-      StdOut -> print avail
-      File file -> return ()
+      StdOut -> BL.putStr $ encode avail
+      File file -> BL.writeFile file $ encodePretty avail
   where
     rawToQuery :: RawAsset -> QueryAsset
     rawToQuery RawAda = QueryAsset ("lovelace","")

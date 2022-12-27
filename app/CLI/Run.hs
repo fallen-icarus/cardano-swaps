@@ -101,12 +101,12 @@ runStakingScriptCmd stakingCmd = case stakingCmd of
   where
     runCreateScript :: PaymentPubKeyHash -> Maybe Asset -> Maybe Asset -> FilePath -> IO ()
     runCreateScript pkh offeredAsset askedAsset file = do
-      let stakeConfig = StakeConfig
+      let stakingConfig = StakingConfig
                      { stakeOwner = pkh
                      , stakeOfferedAsset = assetInfo <$> offeredAsset
                      , stakeAskedAsset = assetInfo <$> askedAsset
                      }
-      res <- writeScript file $ stakingScript stakeConfig
+      res <- writeScript file $ stakingScript stakingConfig
       case res of
         Right _ -> putStrLn "Staking script created successfully."
         Left err -> putStrLn $ "There was an error: " <> show err
@@ -126,12 +126,12 @@ runSwapScriptCmd swapCmd = case swapCmd of
   where
     runCreateScript :: PaymentPubKeyHash -> Asset -> Asset -> FilePath -> IO ()
     runCreateScript pkh offeredAsset askedAsset file = do
-      let basicInfo = BasicInfo
+      let swapConfig = SwapConfig
             { owner = pkh
             , offerAsset = assetInfo offeredAsset
             , askAsset = assetInfo askedAsset
             }
-      res <- writeScript file $ swapScript basicInfo
+      res <- writeScript file $ swapScript swapConfig
       case res of
         Right _ -> putStrLn "Swap script created successfully."
         Left err -> putStrLn $ "There was an error: " <> show err

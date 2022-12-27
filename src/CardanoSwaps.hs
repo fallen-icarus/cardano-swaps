@@ -26,7 +26,7 @@ module CardanoSwaps
   readCurrencySymbol,
   readTokenName,
 
-  BasicInfo (..),
+  SwapConfig (..),
   Price,
   Action (..),
   CurrencySymbol(..),
@@ -36,7 +36,7 @@ module CardanoSwaps
   BeaconRedeemer (..),
   adaSymbol,
   adaToken,
-  StakeConfig (..),
+  StakingConfig (..),
 
   swapScript,
   stakingScript,
@@ -146,15 +146,15 @@ ratio' num den = if den == 0 then fromInteger 0 else unsafeRatio num den
 -- Swap Settings
 -------------------------------------------------
 -- | For use as extra parameter to the swap script.
---   This creates a unique address for every BasicInfo configuration.
-data BasicInfo = BasicInfo
+--   This creates a unique address for every SwapConfig configuration.
+data SwapConfig = SwapConfig
   {
     owner :: PaymentPubKeyHash,
     offerAsset :: (CurrencySymbol,TokenName),
     askAsset :: (CurrencySymbol,TokenName)
   }
 
-PlutusTx.makeLift ''BasicInfo
+PlutusTx.makeLift ''SwapConfig
 
 -- | Parse PaymentPubKeyHash from user supplied String
 readPubKeyHash :: Haskell.String -> Either Haskell.String PaymentPubKeyHash
@@ -198,8 +198,8 @@ PlutusTx.unstableMakeIsData ''Action
 -- On-Chain Swap
 -------------------------------------------------
 -- | The price is not used individually. Instead it is obtain by traversing the script context.
-mkSwap :: BasicInfo -> Price -> Action -> ScriptContext -> Bool
-mkSwap BasicInfo{..} _ action ctx@ScriptContext{scriptContextTxInfo = info} = case action of
+mkSwap :: SwapConfig -> Price -> Action -> ScriptContext -> Bool
+mkSwap SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo = info} = case action of
   Info -> traceError ("Owner's payment pubkey hash:\n" <> ownerAsString)
   Close ->
     -- | Must be signed by owner.
@@ -379,20 +379,20 @@ instance ValidatorTypes Swap where
   type instance RedeemerType Swap = Action
   type instance DatumType Swap = Price
 
-swapValidator :: BasicInfo -> Validator
+swapValidator :: SwapConfig -> Validator
 swapValidator basicInfo = Plutonomy.optimizeUPLC $ validatorScript $ mkTypedValidator @Swap
     ($$(PlutusTx.compile [|| mkSwap ||])
       `PlutusTx.applyCode` PlutusTx.liftCode basicInfo)
     $$(PlutusTx.compile [|| wrap ||])
   where wrap = mkUntypedValidator
 
-swapScript :: BasicInfo -> Script
+swapScript :: SwapConfig -> Script
 swapScript = unValidatorScript . swapValidator
 
 -------------------------------------------------
 -- Stake Settings
 -------------------------------------------------
-data StakeConfig = StakeConfig
+data StakingConfig = StakingConfig
   { stakeOwner :: PaymentPubKeyHash
   -- | Not used directly by staking script. Only meant to
   --   generate unique staking address if desired.
@@ -402,14 +402,14 @@ data StakeConfig = StakeConfig
   , stakeAskedAsset :: Maybe (CurrencySymbol,TokenName) 
   }
 
-PlutusTx.makeLift ''StakeConfig
+PlutusTx.makeLift ''StakingConfig
 
 -------------------------------------------------
 -- On-Chain Staking
 -------------------------------------------------
 -- | allow any staking related action as long as owner has signed
-mkStaking :: StakeConfig -> () -> ScriptContext -> Bool
-mkStaking StakeConfig{stakeOwner = owner} () ctx = 
+mkStaking :: StakingConfig -> () -> ScriptContext -> Bool
+mkStaking StakingConfig{stakeOwner = owner} () ctx = 
     case purpose of
       Rewarding _  -> 
         traceIfFalse "not signed by owner" (txSignedBy info $ unPaymentPubKeyHash owner)
@@ -423,12 +423,12 @@ mkStaking StakeConfig{stakeOwner = owner} () ctx =
     info :: TxInfo
     info = scriptContextTxInfo ctx
 
-staking :: StakeConfig -> StakeValidator
+staking :: StakingConfig -> StakeValidator
 staking sc = mkStakeValidatorScript
   ($$(PlutusTx.compile [|| mkUntypedStakeValidator . mkStaking ||])
     `PlutusTx.applyCode` PlutusTx.liftCode sc)
 
-stakingScript :: StakeConfig -> Script
+stakingScript :: StakingConfig -> Script
 stakingScript = unStakeValidatorScript . staking
 
 -------------------------------------------------

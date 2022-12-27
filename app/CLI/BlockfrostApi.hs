@@ -2,6 +2,8 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE OverloadedStrings #-}
 
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
+
 module CLI.BlockfrostApi
 (
   BlockfrostApiKey (..),
@@ -16,13 +18,11 @@ import Data.Proxy
 import Servant.Client
 import Control.Monad
 import qualified Data.Text as T
-import Data.List (intersperse,nub,find)
+import Data.List (nub,find)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Vector as Vector
-import Data.Maybe (isJust,fromJust)
-
-import Control.Monad.IO.Class
+import Data.Maybe (isJust)
 
 import CLI.Types (AvailableSwap(..),AvailableAsset(..))
 

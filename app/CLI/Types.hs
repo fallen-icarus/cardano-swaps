@@ -48,11 +48,8 @@ data BeaconCmd
   | ExportBeaconPolicyScript !FilePath
   | ExportBeaconVaultScript !FilePath
 
-data Network
-  -- | Uses the Koios REST api. 
-  = Mainnet
-  -- | Koios REST api does not support the PreProduction Testnet.
-  --   Until they do, Blockfrost will be used for querying the PreProduction Testnet.
+data Network 
+  = Mainnet String  -- ^ Api key
   | PreProdTestnet String  -- ^ Api key
 
 -- | Type that captures all info a user needs to interact with swap scripts

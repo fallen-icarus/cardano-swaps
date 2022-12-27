@@ -63,9 +63,10 @@ pNetwork :: Parser Network
 pNetwork = pMainnet <|> pPreProdTestnet
   where
     pMainnet :: Parser Network
-    pMainnet = flag' Mainnet
+    pMainnet = Mainnet <$> strOption
       (  long "mainnet"
-      <> help "Query the mainnet using the Koios api.")
+      <> metavar "STRING"
+      <> help "Query the mainnet using the Blockfrost Api with the supplied api key.")
     
     pPreProdTestnet :: Parser Network
     pPreProdTestnet = PreProdTestnet <$> strOption

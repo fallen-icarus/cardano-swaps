@@ -24,7 +24,7 @@ extra-source-files: CHANGELOG.md
 common lang
   build-depends: base ^>=4.14
   default-language: Haskell2010
-  ghc-options: -Wall -Wredundant-constraints -Wunused-packages
+  ghc-options: -Wall -Wredundant-constraints
 
 library
   import: lang
@@ -39,9 +39,13 @@ library
     bytestring,
     serialise,
     aeson,
-    plutonomy
+    plutonomy,
   hs-source-dirs: src
-  ghc-options: -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas -fno-specialise
+  ghc-options: 
+    -fobject-code 
+    -fno-ignore-interface-pragmas 
+    -fno-omit-interface-pragmas 
+    -fno-specialise
 
 executable cardano-swaps
     import: lang
@@ -49,9 +53,10 @@ executable cardano-swaps
 
     -- Modules included in this executable, other than Main.
     other-modules: CLI.Parsers,
-                   CLI.Query,
-                   CLI.Run
-
+                   CLI.QuerySwaps,
+                   CLI.Run,
+                   CLI.Types,
+                   CLI.BlockfrostApi
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
     build-depends:    cardano-swaps,
@@ -64,5 +69,8 @@ executable cardano-swaps
                       text,
                       containers,
                       vector,
+                      aeson-pretty,
+                      bytestring,
+                      utf8-string,
     hs-source-dirs:   app
     default-language: Haskell2010

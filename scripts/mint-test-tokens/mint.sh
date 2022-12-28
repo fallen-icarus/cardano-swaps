@@ -1,5 +1,5 @@
 alwaysSucceedSymbol="c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d"
-tokenName=$(echo "OtherToken" | xxd -ps)
+tokenName=$(echo -n "OtherToken" | xxd -ps)
 tmpDir="../../assets/tmp/"
 
 cardano-cli query protocol-parameters \

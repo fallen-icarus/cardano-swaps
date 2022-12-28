@@ -139,6 +139,8 @@ quantityAskedAssets/quantityOfferedAssets
 When assets are added to the swap address, there is no way to guarantee the utxo being locked at the swap address has a valid price datum attached. Further, there is no way to ensure a realistic price is supplied. **All prices must be greater than 0 or else the swap contract will not properly protect your assets!**
 It is the user's responsibility to ensure the proper inline datum is attached. Once assets are locked at the swap address, the swap contract is now capabable of checking datums are properly used. It is only the "initialization" that users need to be careful with. `cardano-swaps` checks whether the supplied price is greater than 0 so it is recommended to rely on `cardano-swaps` CLI.
 
+When ADA is part of the pair, the price should be in units of ADA. The swap contract will correctly convert to lovelace if necessary. This was to improve usability.
+
 By using prices like this, no oracles are needed for this DEX.
 
 ### The Swap Contract Logic
@@ -178,7 +180,7 @@ The `Swap` redeemer checks all of the assets leaving the swap address and all of
 4. The weighted average price is supplied as an inline datum.
 5. QuantityOfferedAssetTaken * price <= quantityAskedAssetGiven
 
-Custom error messages are included to help troubleshoot why a swap failed.
+Custom error messages are included to help troubleshoot why a swap failed. The weighted average price supplied as the datum must match exactly what the swap contract calculates. To help with this, `cardano-swaps` allows calculating the weighted price from a JSON file. The function `cardano-swaps` uses is the same function the on-chain swap contract uses.
 
 ---
 ## Beacon Tokens

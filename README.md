@@ -2,6 +2,33 @@
 
 :warning: Knowledge of basic Haskell syntax and cardano-cli usage is assumed
 
+---
+## Table of Contents
+- [Motivation](#motivation)
+  - [Liquidity Pools](#liquidity-pools)
+  - [Programmable Swaps](#programmable-swaps)
+  - [Cardano-Swap DEX](#the-cardano-swaps-dex)
+- [Personal Swap Contracts](#personal-swap-contracts)
+  - [SwapConfig](#swap-config)
+  - [Delegating](#delegating)
+  - [Price Inline Datum](#the-price-inline-datum)
+  - [Swap Contract Logic](#the-swap-contract-logic)
+- [Beacon Tokens](#beacon-tokens)
+  - [Beacon Tokens with Cardano-Swaps](#beacon-tokens-with-cardano-swaps)
+  - [How Do Beacon Tokens Differentiate Between Trading Pairs?](#how-do-beacons-differentiate-between-trading-pairs)
+  - [Defending Against Beacon Abuse](#defending-against-beacon-abuse)
+  - [Generalizing Beacon Tokens](#generalizing-beacon-tokens)
+- [Liquidity](#liquidity)
+  - [The Contrived Example](#the-contrived-example)
+  - [The Realistic Example](#the-realistic-example)
+  - [Liquidity Naturally Flows To The Less Liquid Pairs](#liquidity-naturally-flows-to-the-less-liquid-pairs)
+  - [What If Two Arbitragers Compete For The Same Swap?](#what-if-two-arbitragers-compete-for-the-same-swap)
+  - [Transaction Fee Estimation For Chaining Swaps](#transaction-fee-estimation-for-chaining-swaps)
+- [Upgradability](#upgradability)
+- [Frontend Agnostic](#frontend-agnostic)
+- [Conclusion](#conclusion)
+
+---
 ## Motivation
 Any DEX that operates on a Proof-of-Stake (PoS) blockchain **MUST** include delegation control as a foundational feature for the protocol. It is existentially important for the long-term sustainability of the underlying blockchain. Yet all Cardano DEXs either cannot by design or delegation control is just an afterthought.
 
@@ -307,7 +334,7 @@ The transaction fee increases linearly for every utxo (inputs + outputs) in the 
 Since the swap script validates based off the transaction as a whole and not based off any individual utxo, the extra executions for each utxo coming from a swap address are completely redundant. There is a Cardano Problem Statement (CPS) [pull request](https://github.com/cardano-foundation/CIPs/pull/418) that looks to address this issue.
 
 ---
-## Upgradability of the Swap Contracts
+## Upgradability
 Being that users can close their swaps at any time, whenever there is a potential upgrade, users can choose to close their current swaps and recreate them with the new contracts. Users are able to use different versions of the contracts (assuming the new logic allows it) thanks to the beacon tokens still being able to link swaps across the blockchain. Upgrading the beacons would functions exactly the same way. It is very similar to how Cardano Stake Pool Operators can currently choose which version of `cardano-node` to use.
 
 ---

@@ -24,7 +24,7 @@ Even more concerning is that, even if governance tokens are fairly distributed, 
 Programmable Swaps are a more promising design than liquidity pools and was first proposed by Axo (formerly known as Maladex). However, in Axo's [whitepaper](https://www.axo.trade/whitepaper.pdf), there is no mention of giving users full delegation control of their own assets. When they were asked on discord about it, they said it was possible but delegation control would not be included in the first version.
 
 ### The Cardano-Swaps DEX
-`cardano-swaps` took inspiration from Axo's programmable swaps design but added delegation control as a foundational feature. `cardano-swaps` is both the name of the CLI program included to help use the DEX and the name of the DEX. 
+Cardano-Swaps took inspiration from Axo's programmable swaps design but added delegation control as a foundational feature. `cardano-swaps` is the name of the CLI program included to help use the DEX.
 
 Interestingly, by starting with the requirement of delegation control, other nice properties naturally emerged:
 
@@ -110,7 +110,7 @@ quantityAskedAssets/quantityOfferedAssets
 ```
 
 When assets are added to the swap address, there is no way to guarantee the utxo being locked at the swap address has a valid price datum attached. Further, there is no way to ensure a realistic price is supplied. **All prices must be greater than 0 or else the swap contract will not properly protect your assets!**
-It is the user's responsibility to ensure the proper inline datum is attached. Once assets are locked at the swap address, the swap contract is now capabable of checking datums are properly used. It is only the "initialization" that users need to be careful with. `cardano-swaps` checks whether the supplied price is greater than 0 so it is recommended to rely on `cardano-swaps`.
+It is the user's responsibility to ensure the proper inline datum is attached. Once assets are locked at the swap address, the swap contract is now capabable of checking datums are properly used. It is only the "initialization" that users need to be careful with. `cardano-swaps` checks whether the supplied price is greater than 0 so it is recommended to rely on `cardano-swaps` CLI.
 
 By using prices like this, no oracles are needed for this DEX.
 
@@ -125,13 +125,13 @@ Swap contracts have four possible actions, aka redeemers:
 Only the owner (as defined by `SwapConfig`) is allowed to use the `Close` or `UpdatePrices` redeemers. Anyone can use `Info` or `Swap` redeemers.
 
 #### `Info` Redeemer
-The `Info` redeemer is guaranteed to fail and will display the `owner` of the `SwapConfig`. It is guaranteed to fail at the `cardano-cli transaction build` step so there is no risk of losing collateral. This option was added in case someone wanted to check if the swap is using the proper swap contract. Since you will know the offered asset and asked asset (thanks to beacon tokens discussed later), armed with the owner's payment pubkey hash, you can now try recreating the swap contract and swap address. If you end up with a different swap address, the swap contract being used is guaranteed to be different. In short, this option adds an auditability feature to `cardano-swaps`.
+The `Info` redeemer is guaranteed to fail and will display the `owner` of the `SwapConfig`. It is guaranteed to fail at the `cardano-cli transaction build` step so there is no risk of losing collateral. This option was added in case someone wanted to check if the swap is using the proper swap contract. Since you will know the offered asset and asked asset (thanks to beacon tokens discussed later), armed with the owner's payment pubkey hash, you can now try recreating the swap contract and swap address. If you end up with a different swap address, the swap contract being used is guaranteed to be different. In short, this option adds an auditability feature to Cardano-Swaps.
 
 #### `Close` Redeemer
 The `Close` redeemer makes it possible for the owner (as defined by `SwapConfig`) to withdraw all assets from the swap address, this includes any utxos with reference scripts. This is effectively closing the swap, hence the name.
 
 #### `UpdatePrice` Redeemer
-As previously mentioned, `cardano-swaps` uses inline price datums. However, sometimes an owner will want to change the asking price of his/her assets. This redeemer allows the owner to change the inline price datum supplied. This action includes checks to ensure the new datum is properly used. The requirements for a successful update are:
+As previously mentioned, Cardano-Swaps uses inline price datums. However, sometimes an owner will want to change the asking price of his/her assets. This redeemer allows the owner to change the inline price datum supplied. This action includes checks to ensure the new datum is properly used. The requirements for a successful update are:
 
 1. Transaction must be signed by owner.
 2. The new price must be greater than zero.
@@ -180,7 +180,7 @@ Just like all native tokens, beacon tokens have two fields:
 1. The currency symbol (policy id)
 2. The token name
 
-All beacons used by `cardano-swaps` have the same policy id. The token name is how the trading pair information is captured. 
+All beacons used by Cardano-Swaps have the same policy id. The token name is how the trading pair information is captured. 
 
 A naive approach would be to use the token names of the trading pair, like "AGIX/ADA", the beacon token name. However, two different native tokens can technically have the same token names. For example, imagine you had the following native tokens:
 
@@ -235,7 +235,7 @@ By simply adding an extra parameter to the `mkBeaconVault` function in the [sour
 
 ---
 ## Liquidity
-Liquidity on `cardano-swaps` is entirely due to properly incentivized abritrage combined with being able to chain swaps together into one transaction.
+Liquidity on Cardano-Swaps is entirely due to properly incentivizing abritrage combined with being able to chain swaps together into one transaction.
 
 ### The Contrived Example
 
@@ -312,7 +312,7 @@ Being that users can close their swaps at any time, whenever there is a potentia
 
 ---
 ## Frontend Agnostic
-By using the beacon tokens, it is trivial for any wallet to integrate with `cardano-swaps`. For example, the new Lace wallet by IOHK can integrate the DEX by simply adding support for querying the beacon tokens. They can also add their own user friendly way to create and use swaps. The only requirement is that all frontends agree to use the same beacon token standard. There is no need for risky extensions or dedicated frontends in order to use this DEX.
+By using the beacon tokens, it is trivial for any wallet to integrate with Cardano-Swaps. For example, the new Lace wallet by IOHK can integrate the DEX by simply adding support for querying the beacon tokens. They can also add their own user friendly way to create and use swaps. The only requirement is that all frontends agree to use the same beacon token standard (the same policy id and the same way of generating beacon token names). There is no need for risky extensions or dedicated frontends in order to use this DEX.
 
 ---
 ## Conclusion
@@ -323,4 +323,4 @@ This DEX protocol has all of the desired properties of a DEX:
 3. There is no impermanent loss since users can declare their desired minimum price.
 4. No secondary token is needed to interact with the DEX, only ADA is needed to pay the transaction fees.
 5. Upgrades can happen easily and democratically. Plus maintaining backwards compatibility is easy.
-6. Any wallet can easily add `cardano-swap` DEX support without opening up security holes in their software.
+6. Any wallet can easily add Cardano-Swap support without opening up security holes in their software.

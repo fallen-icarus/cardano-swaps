@@ -459,7 +459,7 @@ mkBeaconVault cn r ctx@ScriptContext{scriptContextTxInfo = info} = case r of
      -- | Make sure only 2 ADA is withdrawn.
      -- Only check amount of ADA withdrawn. If other assets are accidentally deposited,
      -- they can be withdrawn along with the 2 ADA.
-     traceIfFalse "Must withdraw exactly 1 ADA to burn beacon." 
+     traceIfFalse "Must withdraw exactly 2 ADA to burn beacon." 
        (containsOnly2ADA withdrawalValue)
 
   where

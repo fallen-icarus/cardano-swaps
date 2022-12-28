@@ -226,7 +226,7 @@ mkSwap SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo = info} = c
               --  <> "\nUtxo output to swap address must contain proper datum (must match input datum)"
                <> "\nOnly the offered asset is allowed to leave the swap address."
                <> "\nUser must supply the extra ADA (if necessary) for each output with native tokens."
-               <> "\nOffered asset leaving <= Asked asset given * price") swapCheck
+               <> "\nOffered asset leaving * price <= Asked asset given") swapCheck
 
   where
     ownerAsString :: BuiltinString

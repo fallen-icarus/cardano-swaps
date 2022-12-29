@@ -1,32 +1,31 @@
 # Variables
-dir="../assets/plutus-files/"
+dir="../assets/plutus-files2/"
 tmpDir="../assets/tmp/"
-swapScriptFile="${dir}swap03.plutus"
-swapScriptAddrFile="${dir}swap03.addr"
-stakingScriptFile="${dir}staking03.plutus"
-stakingScriptAddrFile="${dir}staking03.addr"
+swapScriptFile="${dir}swap01.plutus"
+swapScriptAddrFile="${dir}swap01.addr"
+stakingScriptFile="${dir}staking01.plutus"
+stakingScriptAddrFile="${dir}staking01.addr"
 swapDatumFile="${dir}price.json"
 beaconDatumFile="${dir}beaconDatum.json"
 beaconRedeemerFile="${dir}beaconRedeemer.json"
-beaconVaultScriptFile="${dir}beaconVaultScript.plutus"
-beaconVaultScriptAddrFile="${dir}beaconVaultScript.addr"
-
+beaconVaultScriptFile="${dir}beaconVault.plutus"
+beaconVaultScriptAddrFile="${dir}beaconVault.addr"
 beaconPolicyFile="${dir}beaconPolicy.plutus"
 
-# Create the swap script file
-cabal run cardano-swaps -- swap-script create-script \
-  --owner-payment-key-hash $(cat ../assets/wallets/03.pkh) \
+# Create the personal swap script file
+cardano-swaps swap-script create-script \
+  --owner-payment-key-hash $(cat ../assets/wallets/01.pkh) \
   --offered-asset-is-ada \
   --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --asked-asset-token-name 4f74686572546f6b656e0a \
   --out-file $swapScriptFile
 
 # Create the staking script file
-cabal run -v0 cardano-swaps -- staking-script create-script \
-  --owner-payment-key-hash $(cat ../assets/wallets/03.pkh) \
+cardano-swaps staking-script create-script \
+  --owner-payment-key-hash $(cat ../assets/wallets/01.pkh) \
   --out-file $stakingScriptFile
 
-# Create the script address with staking capabilities
+# Create the swap address with staking capabilities
 cardano-cli address build \
   --payment-script-file $swapScriptFile \
   --stake-script-file $stakingScriptFile \
@@ -40,15 +39,15 @@ cardano-cli stake-address build \
   --out-file $stakingScriptAddrFile
 
 # Create the desired Price datum
-cabal run -v0 cardano-swaps -- swap-script create-datum \
-  --swap-price 1 \
+cardano-swaps swap-script create-datum \
+  --swap-price 1.5 \
   --out-file $swapDatumFile
 
 # Get the beacon policy id
-beaconPolicyId=$(cabal run -v0 cardano-swaps -- beacon policy-id --stdout)
+beaconPolicyId=$(cardano-swaps beacon policy-id --stdout)
 
 # Generate the beacon token name
-beaconTokenName=$(cabal run -v0 cardano-swaps -- beacon generate-token-name \
+beaconTokenName=$(cardano-swaps beacon generate-token-name \
   --offered-asset-is-ada \
   --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --asked-asset-token-name 4f74686572546f6b656e0a \
@@ -58,7 +57,7 @@ beaconTokenName=$(cabal run -v0 cardano-swaps -- beacon generate-token-name \
 beacon="${beaconPolicyId}.${beaconTokenName}"
 
 # Get the beacon vault address
-cabal run -v0 cardano-swaps -- beacon vault-script --out-file $beaconVaultScriptFile
+cardano-swaps beacon vault-script --out-file $beaconVaultScriptFile
 
 cardano-cli address build \
   --payment-script-file $beaconVaultScriptFile \
@@ -66,12 +65,15 @@ cardano-cli address build \
   --out-file $beaconVaultScriptAddrFile
 
 # Create the datum for the beacon vault deposit
-cabal run -v0 cardano-swaps -- beacon create-datum --out-file $beaconDatumFile
+cardano-swaps beacon create-datum --out-file $beaconDatumFile
 
 # Create beacon redeemer
-cabal run -v0 cardano-swaps -- beacon create-redeemer \
+cardano-swaps beacon create-redeemer \
   --mint-beacon $beaconTokenName \
   --out-file $beaconRedeemerFile
+
+# Get the beacon policy script
+cardano-swaps beacon policy-script --out-file $beaconPolicyFile
 
 # Deposit offered asset into swap address
 # Save reference script at swap address in same utxo as beacon
@@ -80,7 +82,7 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 00267b3dafac0bbc886b44377a33bb2a2d131526668b1d1e31db6279094e1d7e#1 \
+  --tx-in 077686b65e44b5bc89f90ce60b1f62f57725ae2a5227d21c7024ca1e78b515ae#0 \
   --tx-out "$(cat ${swapScriptAddrFile}) + 24000000 lovelace + 1 ${beacon}" \
   --tx-out-inline-datum-file $swapDatumFile \
   --tx-out-reference-script-file $swapScriptFile \
@@ -91,15 +93,15 @@ cardano-cli transaction build \
   --mint "1 ${beacon}" \
   --mint-script-file $beaconPolicyFile \
   --mint-redeemer-file $beaconRedeemerFile \
-  --change-address $(cat ../assets/wallets/03.addr) \
-  --tx-in-collateral 00267b3dafac0bbc886b44377a33bb2a2d131526668b1d1e31db6279094e1d7e#0 \
+  --change-address $(cat ../assets/wallets/01.addr) \
+  --tx-in-collateral a4ccc449681f7e99869def7a88807d6f5064ae1f8e5e4178003b40b6cb9852fc#0 \
   --testnet-magic 1 \
   --protocol-params-file "${tmpDir}protocol.json" \
   --out-file "${tmpDir}tx.body"
 
 cardano-cli transaction sign \
   --tx-body-file "${tmpDir}tx.body" \
-  --signing-key-file ../assets/wallets/03.skey \
+  --signing-key-file ../assets/wallets/01.skey \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.signed"
 

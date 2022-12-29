@@ -1,12 +1,12 @@
 # Variables
-dir="../assets/plutus-files/"
+dir="../assets/plutus-files2/"
 tmpDir="../assets/tmp/"
-stakingScriptFile="${dir}staking.plutus"
-stakingScriptAddrFile="${dir}staking.addr"
+stakingScriptFile="${dir}staking01.plutus"
+stakingScriptAddrFile="${dir}staking01.addr"
 stakingRedeemerFile="${dir}stakingRedeemer.json"
 
 # Create the staking redeemer
-cabal run -v0 cardano-swaps -- create-staking-redeemer \
+cardano-swaps staking-script create-redeemer \
   --out-file $stakingRedeemerFile
 
 # Create the registration certificate
@@ -29,14 +29,14 @@ cardano-cli query protocol-parameters \
 # The transaction fee and deposit CANNOT come from the swap address. The owner must
 # pay them from his/her personal address.
 cardano-cli transaction build \
-  --tx-in b3eebf98d8edeabd0d1813da1e8aa6d95d557d99dce9a9a2cbdbb1c1e72750b3#2 \
+  --tx-in bfc39666bcfa83a5ed1bbbb67de4b9a2bb33d3f9af03ab35fd7a4e6ac28e411b#0 \
   --tx-in-collateral bc54229f0755611ba14a2679774a7c7d394b0a476e59c609035e06244e1572bb#0 \
   --change-address $(cat ../assets/wallets/01.addr) \
   --certificate-file "${tmpDir}registration.cert" \
   --certificate-file "${tmpDir}delegation.cert" \
   --certificate-script-file $stakingScriptFile \
   --certificate-redeemer-file $stakingRedeemerFile \
-  --required-signer-hash fe90abc294e5f876d44f9b39583f2e6d905322c4735e3bda2928342f \
+  --required-signer-hash $(cat ../assets/wallets/01.pkh) \
   --protocol-params-file "${tmpDir}protocol.json" \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.body"

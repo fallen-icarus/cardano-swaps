@@ -1,11 +1,11 @@
 # Variables
-dir="../assets/plutus-files/"
-swapScriptFile="${dir}swap.plutus"
+dir="../assets/plutus-files2/"
+swapScriptFile="${dir}swap01.plutus"
 infoRedeemerFile="${dir}info.json"
 tmpDir="../assets/tmp/"
 
 # Create Info redeemer file
-cabal run -v0 cardano-swaps -- create-swap-redeemer \
+cardano-swaps swap-script create-redeemer \
   --owner-info \
   --out-file $infoRedeemerFile
 
@@ -15,13 +15,13 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 622034715b64318e9e2176b7ad9bb22c3432f360293e9258729ce23c1999b9d8#0 \
-  --spending-tx-in-reference 622034715b64318e9e2176b7ad9bb22c3432f360293e9258729ce23c1999b9d8#0 \
+  --tx-in 325f5c8028f867c3dfdcacf750cab0fb43b2ad82d8d606c5b94142a5eb4fd58f#0 \
+  --spending-tx-in-reference 325f5c8028f867c3dfdcacf750cab0fb43b2ad82d8d606c5b94142a5eb4fd58f#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $infoRedeemerFile \
-  --tx-in-collateral af3b8901a464f53cb69e6e240a506947154b1fedbe89ab7ff9263ed2263f5cf5#0 \
-  --change-address $(cat ../assets/wallets/02.addr) \
+  --tx-in-collateral bc54229f0755611ba14a2679774a7c7d394b0a476e59c609035e06244e1572bb#0 \
+  --change-address $(cat ../assets/wallets/01.addr) \
   --protocol-params-file "${tmpDir}protocol.json" \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.body"

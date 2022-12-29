@@ -1,26 +1,38 @@
 # Variables
-dir="../assets/plutus-files/"
-swapScriptFile="${dir}swap.plutus"
+dir="../assets/plutus-files2/"
+swapScriptFile="${dir}swap01.plutus"
 closeRedeemerFile="${dir}close.json"
 beaconRedeemer="${dir}beaconRedeemer.json"
-beaconTokenNameFile="${dir}beaconTokenName.txt"
 tmpDir="../assets/tmp/"
-
-beaconScriptFile="${dir}beaconScript.plutus"
-beaconSymbol="$(cat ${dir}beaconSymbol.txt)"
-beaconVaultScriptFile="${dir}beaconVaultScript.plutus"
-beaconVaultScriptAddrFile="${dir}beaconVaultScript.addr"
-
-beaconTokenName="$(cat ${beaconTokenNameFile})"
-beacon="${beaconSymbol}.ce48dd16f80225ea3c8d74de877b93d333e69e2d1d39ede3287e25685a09f483"
+beaconPolicyFile="${dir}beaconPolicy.plutus"
+beaconVaultScriptFile="${dir}beaconVault.plutus"
 
 # Create Close redeemer file
-cabal run -v0 cardano-swaps -- create-swap-redeemer \
+cardano-swaps swap-script create-redeemer \
   --close-swap \
   --out-file $closeRedeemerFile
 
+# Get the beacon policy id
+beaconPolicyId=$(cardano-swaps beacon policy-id --stdout)
+
+# Generate the beacon token name
+beaconTokenName=$(cardano-swaps beacon generate-token-name \
+  --offered-asset-is-ada \
+  --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --asked-asset-token-name 4f74686572546f6b656e0a \
+  --stdout)
+
+# Helper beacon variable
+beacon="${beaconPolicyId}.${beaconTokenName}"
+
+# Get the beacon policy script
+cardano-swaps beacon policy-script --out-file $beaconPolicyFile
+
+# Get the beacon vault script
+cardano-swaps beacon vault-script --out-file $beaconVaultScriptFile
+
 # Create beacon redeemer
-cabal run -v0 cardano-swaps -- create-beacon-redeemer \
+cardano-swaps beacon create-redeemer \
   --burn-beacon $beaconTokenName \
   --out-file $beaconRedeemer
 
@@ -30,34 +42,34 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 8553bceb870c7954177eebe6528adf99ab47e84fd276078fce2eef03e2fab5b4#3 \
-  --tx-in 8553bceb870c7954177eebe6528adf99ab47e84fd276078fce2eef03e2fab5b4#0 \
-  --spending-tx-in-reference 8553bceb870c7954177eebe6528adf99ab47e84fd276078fce2eef03e2fab5b4#0 \
+  --tx-in 325f5c8028f867c3dfdcacf750cab0fb43b2ad82d8d606c5b94142a5eb4fd58f#3 \
+  --tx-in 325f5c8028f867c3dfdcacf750cab0fb43b2ad82d8d606c5b94142a5eb4fd58f#0 \
+  --spending-tx-in-reference 325f5c8028f867c3dfdcacf750cab0fb43b2ad82d8d606c5b94142a5eb4fd58f#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $closeRedeemerFile \
-  --tx-in 8553bceb870c7954177eebe6528adf99ab47e84fd276078fce2eef03e2fab5b4#1 \
-  --spending-tx-in-reference 8553bceb870c7954177eebe6528adf99ab47e84fd276078fce2eef03e2fab5b4#0 \
+  --tx-in 325f5c8028f867c3dfdcacf750cab0fb43b2ad82d8d606c5b94142a5eb4fd58f#1 \
+  --spending-tx-in-reference 325f5c8028f867c3dfdcacf750cab0fb43b2ad82d8d606c5b94142a5eb4fd58f#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $closeRedeemerFile \
-  --tx-in 8553bceb870c7954177eebe6528adf99ab47e84fd276078fce2eef03e2fab5b4#2 \
+  --tx-in 325f5c8028f867c3dfdcacf750cab0fb43b2ad82d8d606c5b94142a5eb4fd58f#2 \
   --tx-in-script-file $beaconVaultScriptFile \
   --tx-in-inline-datum-present \
   --tx-in-redeemer-file $beaconRedeemer \
-  --tx-in-collateral 62d4e442d8f01e035003fc60d448289440ca9b390c71385f11a55ac07b695ee0#2 \
+  --tx-in-collateral a4ccc449681f7e99869def7a88807d6f5064ae1f8e5e4178003b40b6cb9852fc#0 \
   --mint "-1 ${beacon}" \
-  --mint-script-file $beaconScriptFile \
+  --mint-script-file $beaconPolicyFile \
   --mint-redeemer-file $beaconRedeemer \
-  --change-address $(cat ../assets/wallets/02.addr) \
-  --required-signer-hash $(cat ../assets/wallets/02.pkh) \
+  --change-address $(cat ../assets/wallets/01.addr) \
+  --required-signer-hash $(cat ../assets/wallets/01.pkh) \
   --protocol-params-file "${tmpDir}protocol.json" \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.body"
 
 cardano-cli transaction sign \
   --tx-body-file "${tmpDir}tx.body" \
-  --signing-key-file ../assets/wallets/02.skey \
+  --signing-key-file ../assets/wallets/01.skey \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.signed"
 

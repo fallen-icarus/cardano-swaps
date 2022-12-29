@@ -506,8 +506,9 @@ cardano-cli transaction sign \
   --testnet-magic 1 \
   --out-file tx.signed
 ```
-
 Redelegating and deregistering are built similarly.
+
+**When the staking script is used staking actions require the owner's payment skey signature, not the owner's staking skey.**
 
 If the transaction successfully builds, then the transaction is guaranteed to work on-chain. 
 

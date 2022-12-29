@@ -445,7 +445,7 @@ The `--required-signer-hash` is needed to successfully build the transaction. **
 
 The reason the `Update` redeemer takes a price argument is to improve script execution efficiency. It is used to make sure the datums are of the proper price.
 
-*You do not need to update all utxos.* You can selectively update utxos as desired.
+*You do not need to update all utxos.* You can selectively update utxos as desired. You can also consolidate utxos if desired.
 
 The utxo with the reference script cannot be updated. This is to minimize transaction fees. The reference script can never be consumed in a swap so the datum attached to the reference script is never used. This makes it safe to ignore when updating prices.
 

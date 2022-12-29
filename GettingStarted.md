@@ -8,10 +8,7 @@ All examples use the PreProduction Testnet.
 
 ---
 ## Table of Contents
-- installing
-  - with nix
-  - without nix
-
+- [Installing](#installing)
 - [Minting test tokens](#minting-test-tokens)
 - [Create a swap](#creating-a-swap)
 - [Close a swap](#close-a-swap)
@@ -20,6 +17,37 @@ All examples use the PreProduction Testnet.
 - [Delegate the swap address](#delegate-the-swap-address)
 - [Get swap owner](#get-swap-owner)
 - [Query available swaps](#query-available-swaps)
+
+---
+## Installing
+Instructions adapted from [plutus-pioneers-program](https://github.com/input-output-hk/plutus-pioneer-program) week 1 exercise.
+
+1. Install NixOS cross-referencing the following resources.
+     - https://nixos.org/download.html
+     - https://docs.plutus-community.com
+     - A few resources to understand the what and why regarding NixOS
+       - https://nixos.org/manual/nix/stable
+       - https://serokell.io/blog/what-is-nix
+2. Set-up IOHK binary caches [How to set up the IOHK binary caches](https://github.com/input-output-hk/plutus-apps#iohk-binary-cache). "If you do not do this, you will end up building GHC, which takes several hours. If you find yourself building GHC, *stop* and fix the cache."
+
+3. Execute the following:
+```
+git clone https://github.com/fallen-icarus/cardano-swaps
+git clone https://github.com/input-output-hk/plutus-apps
+cd plutus-apps
+git checkout v1.0.0
+nix-shell           # this may take a while the first time
+
+# Your terminal should now have a nix-shell prompt
+
+cd ../cardano-swaps
+cabal clean
+cabal update
+cabal build
+```
+The `cardano-swaps` CLI program should now be at `dist-newstyle/build/x86_64-linux/ghc-8.10.7/cardano-swaps-0.1.0.0/x/cardano-swaps/build/cardano-swaps/cardano-swaps`. Move the program to somewhere in your $PATH.
+
+You can now exit the nix-shell with `exit`.
 
 --- 
 ## Minting test tokens

@@ -14,6 +14,7 @@ All examples use the PreProduction Testnet.
 - [Close a swap](#close-a-swap)
 - [Perform a swap](#perform-a-swap)
 - [Update swap prices](#update-the-swap-prices)
+- [Add to swap position](#add-to-swap-position)
 - [Delegate the swap address](#delegate-the-swap-address)
 - [Get swap owner](#get-swap-owner)
 - [Query available swaps](#query-available-swaps)
@@ -454,6 +455,10 @@ The utxo with the reference script cannot be updated. This is to minimize transa
 If the transaction is successfully built, it is guaranteed to work on-chain as long as the tx-in utxos still exist.
 
 Submit the transaction however you like.
+
+---
+## Add to swap position
+New positions can always be added to swap addresses. Just output the desired utxo to the swap address and make sure to include the desired price inline datum. There is a template bash script for this, too.
 
 ---
 ## Delegate the swap address

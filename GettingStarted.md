@@ -390,6 +390,8 @@ You are responsible for properly giving the change back to the swap address. Mak
 
 There is no requirement that swap utxos must come from the same swap address. You can "chain" swaps together by including utxos from different swap addresses; just make sure to keep track of which reference script is for which utxo. When you "chain" swaps, you will need to account for the change to ALL the swap addresses used.
 
+It is possible to create a swap transaction where nothing is actually removed from the swap address. This feature was added for being useful for gradually building up chain swaps when testing.
+
 If the transaction successfully builds, then the swap is guaranteed to work on-chain as long as the tx-in utxos still exist when it gets added to a block. In the event that the utxos no longer exist, the transaction will fail without executing the scripts. This means the user's collateral is safe.
 
 All of the information necessary for generating this transaction can be easily aquired with the `cardano-swaps query-swaps` command.

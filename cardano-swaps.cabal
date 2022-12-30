@@ -2,23 +2,11 @@ cabal-version:      2.4
 name:               cardano-swaps
 version:            0.1.0.0
 
--- A short (one-line) description of the package.
--- synopsis:
-
--- A longer description of the package.
--- description:
-
--- A URL where users can report bugs.
--- bug-reports:
-
--- The license under which the package is released.
--- license:
-author:             fallen-icarus
-maintainer:         modern.daidalos+git@gmail.com
-
--- A copyright notice.
--- copyright:
--- category:
+synopsis: A layer 1 Cardano DEX proof-of-concept
+license: Apache-2.0
+author: fallen-icarus
+maintainer: modern.daidalos+git@gmail.com
+copyright: 2023 fallen-icarus
 extra-source-files: CHANGELOG.md
 
 common lang
@@ -57,8 +45,6 @@ executable cardano-swaps
                    CLI.Run,
                    CLI.Types,
                    CLI.BlockfrostApi
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
     build-depends:    cardano-swaps,
                       optparse-applicative,
                       servant,

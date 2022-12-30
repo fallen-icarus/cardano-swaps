@@ -6,7 +6,7 @@ synopsis: A layer 1 Cardano DEX proof-of-concept
 license: Apache-2.0
 author: fallen-icarus
 maintainer: modern.daidalos+git@gmail.com
-copyright: 2023 fallen-icarus
+copyright: 2022 fallen-icarus
 extra-source-files: CHANGELOG.md
 
 common lang

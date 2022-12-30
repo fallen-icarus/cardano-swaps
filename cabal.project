@@ -24,6 +24,8 @@ extra-packages:
 
 packages: ./.
 
+with-compiler: ghc-8.10.7
+
 -- You never, ever, want this.
 write-ghc-environment-files: never
 

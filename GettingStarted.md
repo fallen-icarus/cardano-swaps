@@ -21,7 +21,7 @@ All examples use the PreProduction Testnet.
 
 ---
 ## Installing
-Instructions adapted from [plutus-pioneers-program](https://github.com/input-output-hk/plutus-pioneer-program) week 1 exercise.
+Instructions are adapted from the [plutus-pioneers-program](https://github.com/input-output-hk/plutus-pioneer-program) week 1 exercise.
 
 1. Install NixOS cross-referencing the following resources.
      - https://nixos.org/download.html
@@ -49,6 +49,8 @@ cabal build
 The `cardano-swaps` CLI program should now be at `dist-newstyle/build/x86_64-linux/ghc-8.10.7/cardano-swaps-0.1.0.0/x/cardano-swaps/build/cardano-swaps/cardano-swaps`. Move the program to somewhere in your $PATH.
 
 You can now exit the nix-shell with `exit`.
+
+All `cardano-swaps` subcommands have an associated `--help` option. The functionality is meant to feel like `cardano-cli`.
 
 --- 
 ## Minting test tokens
@@ -115,7 +117,7 @@ cardano-swaps swap-script create-datum \
 cardano-swaps beacon policy-id --stdout
 ```
 
-The beacon policy id can be saved to a file if `--out-file` is used instead of `--stdout`.
+The beacon policy id can be saved to a file if `--out-file` is used instead of `--stdout`. The stdout option makes it easy to use in bash scripts.
 
 ### 8. Generate the beacon token name
 ``` Bash
@@ -292,7 +294,7 @@ This part should be repeated for every utxo at the swap address:
   --spending-reference-tx-in-redeemer-file close.json \
 ```
 
-The `--required-signer-hash` option is required to tell the smart contract what to look for. **This cannot make it so that a non-owner can close a swap**; it just needs to be present to properly build the transaction.
+The `--required-signer-hash` option is required to tell the smart contract what key to look for. **This cannot make it so that a non-owner can close a swap**; it just needs to be present to properly build the transaction.
 
 If the transaction is successfully built, then it is guaranteed to work on-chain as long as all tx-in utxos still exist when a stake pool operator goes to add your transaction. Submit the transaction however you like.
 
@@ -395,7 +397,7 @@ It is possible to create a swap transaction where nothing is actually removed fr
 
 If the transaction successfully builds, then the swap is guaranteed to work on-chain as long as the tx-in utxos still exist when it gets added to a block. In the event that the utxos no longer exist, the transaction will fail without executing the scripts. This means the user's collateral is safe.
 
-All of the information necessary for generating this transaction can be easily aquired with the `cardano-swaps query-swaps` command.
+All of the information necessary for generating this transaction can be easily aquired with the `cardano-swaps query-swaps` subcommand (shown later).
 
 Submit the transaction however you like.
 
@@ -511,9 +513,9 @@ cardano-cli transaction sign \
   --testnet-magic 1 \
   --out-file tx.signed
 ```
-Redelegating and deregistering are built similarly.
+Redelegating and deregistering are done similarly.
 
-**When the staking script is used staking actions require the owner's payment skey signature, not the owner's staking skey.**
+**When the staking script is used, staking actions require the owner's payment skey signature, not the owner's staking skey.**
 
 If the transaction successfully builds, then the transaction is guaranteed to work on-chain. 
 
@@ -561,7 +563,7 @@ Caused by: [
 Script debugging logs: 
 ```
 
-`fe90abc294e5f876d44f9b39583f2e6d905322c4735e3bda2928342f` is the owner's pubkey hash.
+`fe90abc294e5f876d44f9b39583f2e6d905322c4735e3bda2928342f` is the owner's payment pubkey hash.
 
 ---
 ## Query available swaps
@@ -601,7 +603,7 @@ When the above result is piped to `jq`, here is how it looks:
 
 Only one utxo was found and that utxo only has lovelace in it. This output contains everything you need to remotely swap with it.
 
-As of right now, the `cardano-swaps query-swap` command will return the error of `"The requested component has not been found."` when there are no swap addresses with that beacon. This is due to the beacon name being part of the api url like:
+As of right now, the `cardano-swaps query-swap` command will return the error of `"The requested component has not been found."` when there are no swap addresses with that beacon. This is due to the beacon name being part of the Blockfrost api url like:
 
 ``` Url
 https://cardano-preprod.blockfrost.io/api/v0/assets/{beacon_name}/addresses

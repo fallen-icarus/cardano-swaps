@@ -31,7 +31,9 @@ Instructions are adapted from the [plutus-pioneers-program](https://github.com/i
        - https://serokell.io/blog/what-is-nix
 2. Set-up IOHK binary caches [How to set up the IOHK binary caches](https://github.com/input-output-hk/plutus-apps#iohk-binary-cache). "If you do not do this, you will end up building GHC, which takes several hours. If you find yourself building GHC, *stop* and fix the cache."
 
-3. Execute the following:
+3. After adding the cache, you will need to restart the nix service. This can be done by executing `sudo systemctl restart nix` or by restarting your machine. If the cache was configured properly, you should see a lot of `copying path ... from 'https://cache.iog.io'` when you execute `nix-shell` in the next step.
+
+4. Execute the following:
 ```
 git clone https://github.com/fallen-icarus/cardano-swaps
 git clone https://github.com/input-output-hk/plutus-apps

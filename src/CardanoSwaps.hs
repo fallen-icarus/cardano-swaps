@@ -446,13 +446,21 @@ PlutusTx.unstableMakeIsData ''BeaconRedeemer
 -------------------------------------------------
 -- On-Chain Beacon
 -------------------------------------------------
+-- | Used to generalize the beacon code.
+-- This allows a separate beacon and beacon vault for every application.
+-- To force uniqueness, it is used in the error message as the name of the vault.
+type AppName = BuiltinString
+
 -- | Script responsible for holding deposits
 -- The currency symbol is that of the beacon
-mkBeaconVault :: CurrencySymbol -> BeaconRedeemer -> ScriptContext -> Bool
-mkBeaconVault cn r ctx@ScriptContext{scriptContextTxInfo = info} = case r of
+mkBeaconVault :: AppName -> CurrencySymbol -> BeaconRedeemer -> ScriptContext -> Bool
+mkBeaconVault appName cn r ctx@ScriptContext{scriptContextTxInfo = info} = case r of
    -- | Disallow minting redeemer with beacon vault script
+   -- Name used here to force uniqueness.
    MintBeacon _ -> 
-    traceError "Executing beacon vault script is not necessary for minting a beacon."
+    traceError ( "Executing the " 
+              <> appName 
+              <> " beacon vault script is not necessary for minting a beacon.")
    BurnBeacon tokName ->
      -- | Only allow withdrawing from this script if beacon token also burned.
      traceIfFalse "Must burn one beacon." (mintCheck tokName (-1) minted) &&
@@ -504,17 +512,22 @@ instance ValidatorTypes BeaconVault where
   type instance RedeemerType BeaconVault = BeaconRedeemer
   type instance DatumType BeaconVault = CurrencySymbol
 
-beaconVaultValidator :: Validator
-beaconVaultValidator = Plutonomy.optimizeUPLC $ validatorScript $ mkTypedValidator @BeaconVault
-    $$(PlutusTx.compile [|| mkBeaconVault ||])
+beaconVaultValidator :: AppName -> Validator
+beaconVaultValidator appName = Plutonomy.optimizeUPLC $ validatorScript $ mkTypedValidator @BeaconVault
+    ($$(PlutusTx.compile [|| mkBeaconVault ||])
+       `PlutusTx.applyCode` PlutusTx.liftCode appName)
     $$(PlutusTx.compile [|| wrap ||])
   where wrap = mkUntypedValidator
 
+-- | Change the string to create a different beaconPolicy/beaconVault pair
+beaconVault :: Validator
+beaconVault = beaconVaultValidator "cardano-swaps"
+
 beaconVaultScript :: Script
-beaconVaultScript = unValidatorScript beaconVaultValidator
+beaconVaultScript = unValidatorScript beaconVault
 
 beaconVaultValidatorHash :: ValidatorHash
-beaconVaultValidatorHash = Scripts.validatorHash beaconVaultValidator
+beaconVaultValidatorHash = Scripts.validatorHash beaconVault
 
 -- | Beacon minting policy
 mkBeacon :: ValidatorHash -> BeaconRedeemer -> ScriptContext -> Bool

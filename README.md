@@ -2,6 +2,8 @@
 
 :warning: Knowledge of basic Haskell syntax and cardano-cli usage is assumed
 
+The Getting Started instructions can be found [here](GettingStarted.md).
+
 ---
 ## Table of Contents
 - [Motivation](#motivation)
@@ -48,7 +50,7 @@ Each of these downsides have their own corresponding "solution": yield farming, 
 Even more concerning is that, even if governance tokens are fairly distributed, this doesn't change the fact that a liquidity pool can only be delegated to one stake pool. Fractionalizing liquidity pools help but it still results in a more centralized PoS blockchain than if each user was able to delegate their assets independently.
 
 ### Programmable Swaps
-Programmable Swaps are a more promising design than liquidity pools and was first proposed by Axo (formerly known as Maladex). However, in Axo's [whitepaper](https://www.axo.trade/whitepaper.pdf), there is no mention of giving users full delegation control of their own assets. When they were asked on discord about it, they said it was possible but delegation control would not be included in the first version.
+Programmable Swaps are a more promising design than liquidity pools and were first proposed by Axo (formerly known as Maladex). However, in Axo's [whitepaper](https://www.axo.trade/whitepaper.pdf), there is no mention of giving users full delegation control of their own assets. When they were asked on discord about it, they said it was possible but delegation control would not be included in the first version.
 
 ### The Cardano-Swaps DEX
 Cardano-Swaps took inspiration from Axo's programmable swaps design but added delegation control as a foundational feature. `cardano-swaps` is the name of the CLI program included to help use the DEX.
@@ -69,7 +71,7 @@ In addition to these nice properties, the novel use of *Beacon Tokens* can be ge
 In order for users to maintain full delegation control of their assets, it is required for user assets to be kept siloed. The reason for this is that, on Cardano, all ADA at an address is delegated entirely or not at all. So for a user to maintain delegation control of their assets, only that user's assets should be at the address he/she is delegating.
 
 ### Swap Config
-Siloing is accomplished by passing an extra parameter to the plutus contract before officially compiling it. Here is the extra parameter data type:
+Siloing is accomplished by passing an extra parameter to the swap plutus contract before officially compiling it. Here is the extra parameter's data type:
 
 ``` Haskell
 data SwapConfig = SwapConfig
@@ -80,7 +82,7 @@ data SwapConfig = SwapConfig
   }
 ```
 
-Every possible `SwapConfig` will have its own unique swap contract and swap address. So if Alice and Bob both used the same `offerAsset` and `askAsset` but had different `owner`s (Alice was the owner of hers while Bob was the owner of his), Alice and Bob would have different swap contracts and swap addresses. Thanks to the fact payment pubkey hashes are cryptographically guaranteed to be unique, every user is guaranteed to have their own personal swap contract and swap address. In addition to this, every trading pair will result in a unique swap contract and swap address due to `CurrencySymbol` also being a cryptographic hash.
+Every possible `SwapConfig` will have its own unique swap contract and swap address. So if Alice and Bob both use the same `offerAsset` and `askAsset` but have different `owner`s (Alice is the owner of hers while Bob is the owner of his), Alice and Bob would have different swap contracts and swap addresses. Thanks to the fact payment pubkey hashes are cryptographically guaranteed to be unique, every user is guaranteed to have their own personal swap contract and swap address. In addition to this, every trading pair will result in a unique swap contract and swap address due to `CurrencySymbol` also being a cryptographic hash.
 
 **All swap contracts are exactly the same except for this `SwapConfig`.**
 
@@ -95,7 +97,7 @@ cardano-cli address build \
   --out-file aliceSwap.addr
 ```
 
-The usage is almost identical to building a traditional payment address. All assets at the `aliceSwap.addr` address are now delegated according to `aliceStaking.vkey`. `cardano-swaps` also provides the option of using a staking plutus contract to allow greater flexibility. The staking plutus script also takes a similar config parameter to guarantee unique staking contract and staking addresses:
+The usage is almost identical to building a traditional payment address. All assets at the `aliceSwap.addr` address are now delegated according to `aliceStaking.vkey`. The `cardano-swaps` CLI also provides the option of using a staking plutus contract to allow greater flexibility. The staking plutus script also takes a similar config parameter to guarantee unique staking contract and staking addresses:
 
 ``` Haskell
 data StakingConfig = StakingConfig
@@ -139,9 +141,9 @@ quantityAskedAssets/quantityOfferedAssets
 When assets are added to the swap address, there is no way to guarantee the utxo being locked at the swap address has a valid price datum attached. Further, there is no way to ensure a realistic price is supplied. **All prices must be greater than 0 or else the swap contract will not properly protect your assets!**
 It is the user's responsibility to ensure the proper inline datum is attached. Once assets are locked at the swap address, the swap contract is now capabable of checking datums are properly used. It is only the "initialization" that users need to be careful with. `cardano-swaps` checks whether the supplied price is greater than 0 so it is recommended to rely on `cardano-swaps` CLI.
 
-When ADA is part of the pair, the price should be in units of ADA. The swap contract will correctly convert to lovelace if necessary. This was to improve usability.
+When ADA is part of the pair, the price **MUST** be in units of ADA. The swap contract will correctly convert to lovelace if necessary. This was to improve usability.
 
-By using prices like this, no oracles are needed for this DEX.
+By using prices like this, no oracles are needed for this DEX. Every user can set their own desired swap ratio. This is very similar to how order books, on centralized exchanges, are just the sorted limit orders between bids and asks. The "global" price naturally emerges where the bids and asks meet.
 
 ### The Swap Contract Logic
 Swap contracts have four possible actions, aka redeemers:
@@ -151,20 +153,20 @@ Swap contracts have four possible actions, aka redeemers:
 3. `UpdatePrices` - update the asking price for the utxos at the swap address
 4. `Swap` - try swapping with assets at the swap address
 
-Only the owner (as defined by `SwapConfig`) is allowed to use the `Close` or `UpdatePrices` redeemers. Anyone can use `Info` or `Swap` redeemers.
+Only the owner (as defined by `SwapConfig`) is allowed to use the `Close` or `UpdatePrices` redeemers. Anyone can use the `Info` or `Swap` redeemers.
 
 #### `Info` Redeemer
-The `Info` redeemer is guaranteed to fail and will display the `owner` of the `SwapConfig`. It is guaranteed to fail at the `cardano-cli transaction build` step so there is no risk of losing collateral. This option was added in case someone wanted to check if the swap is using the proper swap contract. Since you will know the offered asset and asked asset (thanks to beacon tokens discussed later), armed with the owner's payment pubkey hash, you can now try recreating the swap contract and swap address. If you end up with a different swap address, the swap contract being used is guaranteed to be different. In short, this option adds an auditability feature to Cardano-Swaps.
+The `Info` redeemer is guaranteed to fail and will display the `owner` of the `SwapConfig` in the produced error message. It is guaranteed to fail at the `cardano-cli transaction build` step so there is no risk of losing collateral. This option was added in case someone wanted to check if the swap is using the proper swap contract. Since you will know the offered asset and asked asset (thanks to beacon tokens discussed later), armed with the owner's payment pubkey hash, you can now try recreating the swap contract and swap address. If you end up with a different swap address, the swap contract you are trying to use is guaranteed to be different. In short, this option adds an auditability feature to Cardano-Swaps.
 
 #### `Close` Redeemer
-The `Close` redeemer makes it possible for the owner (as defined by `SwapConfig`) to withdraw all assets from the swap address, this includes any utxos with reference scripts. This is effectively closing the swap, hence the name.
+The `Close` redeemer makes it possible for the owner (as defined by `SwapConfig`) to withdraw all assets from the swap address, this includes any utxos with reference scripts. This option allows the owner to selectively close swap positions at his/her address.
 
 #### `UpdatePrice` Redeemer
-As previously mentioned, Cardano-Swaps uses inline price datums. However, sometimes an owner will want to change the asking price of his/her assets. This redeemer allows the owner to change the inline price datum supplied. This action includes checks to ensure the new datum is properly used. The requirements for a successful update are:
+As previously mentioned, Cardano-Swaps uses inline price datums. However, sometimes the owner will want to change the asking price of his/her positions. This redeemer allows the owner to change the inline price datum supplied. This action includes checks to ensure the new datum is properly used. The requirements for a successful update are:
 
 1. Transaction must be signed by owner.
 2. The new price must be greater than zero.
-3. All datums must be inline datums for price.
+3. All datums must be inline datums of a price.
 4. All datums must match the price passed with the redeemer (this is for more efficient checks).
 5. All transaction outputs must either go to the originating swap address or the swap owner's address.
 6. No reference script utxos are updated.
@@ -175,10 +177,10 @@ The last requirement might seem strange but this is to minimize transaction fees
 The `Swap` redeemer checks all of the assets leaving the swap address and all of the assets entering the swap address. For a successful swap, all of the following must be true:
 
 1. No reference script utxos are consumed.
-2. Only the offered asset is leaving the swap address.
+2. Only the offered asset (as defined in `SwapConfig`) is leaving the swap address.
 3. All utxos being locked at the script address contain the weighted average price of all utxos leaving the swap address. 
 4. The weighted average price is supplied as an inline datum.
-5. QuantityOfferedAssetTaken * price <= quantityAskedAssetGiven
+5. QuantityOfferedAssetTaken * weighted average price <= quantityAskedAssetGiven
 
 Custom error messages are included to help troubleshoot why a swap failed. The weighted average price supplied as the datum must match exactly what the swap contract calculates. To help with this, `cardano-swaps` allows calculating the weighted price from a JSON file. The function `cardano-swaps` uses is the same function the on-chain swap contract uses.
 
@@ -203,6 +205,13 @@ When a user creates a new swap address, the "creation" is not complete until:
 
 The use of reference scripts is why the `Swap` redeemer protects against consuming them. By storing the beacon with the reference script, the beacon token is also protected by default. Once these two steps are completed, the swap address is now easily discoverable by other users.
 
+Likewise, "closing" a swap position is not complete until:
+
+1. The reference script is consumed.
+2. The beacon token is burned.
+
+Consuming the reference script prevents anyone from remotely interacting with a swap address and burning the token makes that address "undiscoverable". Important to note that the `Close` redeemer can technically be used without fulfilling the above requirements. The only real difference between the `Close` redeemer and the `UpdateRedeemer` is that the `Close` redeemer allows the owner to consume the reference script at the swap address.
+
 ### How Do Beacons Differentiate Between Trading Pairs?
 Just like all native tokens, beacon tokens have two fields:
 
@@ -211,7 +220,7 @@ Just like all native tokens, beacon tokens have two fields:
 
 All beacons used by Cardano-Swaps have the same policy id. The token name is how the trading pair information is captured. 
 
-A naive approach would be to use the token names of the trading pair, like "AGIX/ADA", the beacon token name. However, two different native tokens can technically have the same token names. For example, imagine you had the following native tokens:
+A naive approach would be to use the token names of the trading pair, like "AGIX/ADA", for the beacon token name. However, two different native tokens can technically have the same token names. For example, imagine you had the following native tokens:
 
 ``` Haskell
 token1 = Asset
@@ -246,7 +255,7 @@ $ echo -n "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f7468657254
 ### Defending Against Beacon Abuse
 While using the Koios and Blockfrost apis are technically off-chain, when there are hundreds of thousands of address with beacons, the apis can become too slow to use. Thus minting the beacon tokens must be guarded to prevent a denial-of-service attack.
 
-To this end, minting beacon tokens require a 2 ADA deposit to a beacon vault address which can be redeemed upon burning the beacon token. The beacon vault address is hardcoded into the beacon minting policy. Beacon minting will only succeed if:
+To this end, minting beacon tokens require a 2 ADA deposit to a beacon vault address which can be redeemed upon burning the beacon token. The beacon vault address is hardcoded into the beacon minting policy which means it can tell whether the necessary deposit has been made. Beacon minting will only succeed if:
 
 1. Exactly 2 ADA is deposited to the beacon vault address.
 2. Only one beacon token is minted in the transaction.
@@ -254,17 +263,19 @@ To this end, minting beacon tokens require a 2 ADA deposit to a beacon vault add
 
 The datum for the 2 ADA deposit is the inline currency symbol for the beacon token. This is necessary for the beacon vault to only allow redeeming deposits if the correct beacon token is burned. Burning beacons requires:
 
-1. Must withdraw exactly 2 ADA from the beacon vault address.
-2. Only one beacon token is burned in the transaction.
+1. Withdrawing exactly 2 ADA from the beacon vault address.
+2. Burning only one beacon token in the transaction.
 
 By hardcoding the beacon vault address into the beacon policy and requiring the beacon currency symbol to be used as the datum for the beacon vault, the beacon policy and beacon vault are inextricably linked together.
 
 ### Generalizing Beacon Tokens
-By simply adding an extra parameter to the `mkBeaconVault` function in the [source code](src/CardanoSwaps.hs), a completely unique beacon policy and beacon vault contract can be created. This allows different DeFi applications to use their own beacon tokens. This extra parameter can be a simple string like "cardano-swaps".
+By simply adding an extra parameter to the `mkBeaconVault` function in the [source code](src/CardanoSwaps.hs#L447), a completely unique beacon policy and beacon vault contract pair can be created. This allows different DeFi applications to use their own beacon tokens. This extra parameter can be a simple string like "cardano-swaps".
+
+The beacon policy and vault pair used by Cardano-Swaps was created by using the string "cardano-swaps", seen [here](src/CardanoSwaps.hs#L524).
 
 ---
 ## Liquidity
-Liquidity on Cardano-Swaps is entirely due to properly incentivizing abritrage combined with being able to chain swaps together into one transaction.
+Liquidity on Cardano-Swaps is entirely due to combining properly incentivized abritrage with being able to chain swaps together into one transaction.
 
 ### The Contrived Example
 
@@ -280,11 +291,11 @@ Charlie looks up all swap addresses willing to swap AGIX/ADA. Charlie finds Alic
 Charlie looks up all swap addresses willing to swap ADA/AGIX. Charlie finds Bob's address.
 Using Bob's reference script, Charlie gives Bob 10 ADA and receives 10 AGIX.
 Using Alice's reference script, Charlie gives Alice 5 AGIX and receives 10 ADA.
-Charlie now has his original 10 ADA plus and additional 5 AGIX.
+Charlie now has his original 10 ADA plus an additional 5 AGIX.
 This all occurs in one transaction where Charlie paid the transaction fee.
 ```
 
-In short, Charlie pays the transaction fee and in return receives 5 AGIX. And as a consequence, both Alice's and Bob's swaps were fulfilled.
+In short, Charlie pays the transaction fee and in return receives 5 AGIX. As a consequence, both Alice's and Bob's swaps were fulfilled.
 
 ### The Realistic Example
 
@@ -310,7 +321,7 @@ Sarah now has her original 10 ADA plus an additional 5 AGIX.
 This all occurs in one transaction where Sarah paid the transaction fee.
 ```
 
-In short, Sarah pays the transaction fee and in return receives 5 AGIX. And as a consequence, four swaps were fulfilled.
+In short, Sarah pays the transaction fee and in return receives 5 AGIX. As a consequence, four swaps were fulfilled.
 
 ### Liquidity naturally flows to the less liquid pairs
 As you saw in the realistic example, Sarah was able to fulfill both the AGIX/DUST swap and the HOSKY/AGIX swap simply by "passing through" those pairs on her way back to ADA. As long as the entry and exit pairs (in this case ADA/HOSKY and DUST/ADA) have plenty of liquidity, arbitragers can spread that liquidity into the less liquid pairs.

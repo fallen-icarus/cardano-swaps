@@ -19,6 +19,7 @@ The Getting Started instructions can be found [here](GettingStarted.md).
   - [Beacon Tokens with Cardano-Swaps](#beacon-tokens-with-cardano-swaps)
   - [How Do Beacon Tokens Differentiate Between Trading Pairs?](#how-do-beacons-differentiate-between-trading-pairs)
   - [Defending Against Beacon Abuse](#defending-against-beacon-abuse)
+  - [Beacons with reference scripts](#beacons-with-reference-scripts)
   - [Generalizing Beacon Tokens](#generalizing-beacon-tokens)
 - [Liquidity](#liquidity)
   - [The Contrived Example](#the-contrived-example)
@@ -267,6 +268,11 @@ The datum for the 2 ADA deposit is the inline currency symbol for the beacon tok
 2. Burning only one beacon token in the transaction.
 
 By hardcoding the beacon vault address into the beacon policy and requiring the beacon currency symbol to be used as the datum for the beacon vault, the beacon policy and beacon vault are inextricably linked together.
+
+### Beacons with reference scripts
+To minimize transaction fees, the beacon policy and beacon vault script can be used as reference scripts. The beacon vault script as logic to protect any reference scripts stored in the vault from being consumed. This means both the beacon policy and the beacon vault script can be stored inside the beacon vault.
+
+**There is no way to withdraw ADA from the beacon vault when it is stored with a reference script. Thus saving reference scripts inside the beacon vault effectively means burning that ADA.** There was no way to allow withdrawing the ADA without opening up centralization pressures.
 
 ### Generalizing Beacon Tokens
 By simply adding an extra parameter to the `mkBeaconVault` function in the [source code](src/CardanoSwaps.hs#L447), a completely unique beacon policy and beacon vault contract pair can be created. This allows different DeFi applications to use their own beacon tokens. This extra parameter can be a simple string like "cardano-swaps".

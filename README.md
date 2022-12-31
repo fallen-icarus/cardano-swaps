@@ -30,6 +30,7 @@ The Getting Started instructions can be found [here](GettingStarted.md).
 - [Upgradability](#upgradability)
 - [Frontend Agnostic](#frontend-agnostic)
 - [Conclusion](#conclusion)
+- [Potential Adaptation of the Design](#potential-adaptation-of-the-design)
 
 ---
 ## Motivation
@@ -378,3 +379,20 @@ This DEX protocol has all of the desired properties of a DEX:
 4. No secondary token is needed to interact with the DEX, only ADA is needed to pay the transaction fees.
 5. Upgrades can happen easily and democratically. Plus maintaining backwards compatibility is easy.
 6. Any wallet can easily add Cardano-Swap support without opening up security holes in their software.
+
+---
+## Potential Adaptation of the Design
+Since this approach gives each user a unique spending script per trading pair, each user must store each script on-chain for other people to find and use. This means the user is required to "deposit" about 20 ADA for every script they are using. While this has benefits such as disincentivizing creating empty swap addresses, the deposit may be considered steep.
+
+Another potential approach is to give every user the same spending script but still give them unique addresses by building the swap address with the user's own personal staking key or staking script. This still ensures full delegation control while using the DEX. Since the spending script no longer has information on the owner, trading pair, or its own unique hash, this information will need to be provided in the datum of each utxo at the swap address along with the price. In a nutshell, this means all of Alice's swaps will be found in the same address, regardless of the trading pair; the only thing distinguishing them would be the data they contain.
+
+In this alternative approach, the beacon tokens, with their deposit requirement, would still be used to find the available swaps by storing it inside the user's address. This would still require an additional deposit since the beacon cannot be stored without ADA, but the deposit will only be about 2 ADA. The separation of utxos based off trading pairs can then be done off-chain since the beacon will broadcast all of the utxos at the address. 
+
+Finally, since all users would be using the same spending script, the spending script can be stored on-chain inside the beacon vault (and be locked forever) with the transaction ID hardcoded into `cardano-swaps`. Then all swaps would just reference this spending script. Thus this approach is just as concurrent as the original.
+
+This design opens a few questions:
+
+1. How much sorting would need to be done to filter out utxos of the wrong pair? With 10000 users, you could be looking at sorting at least 10000 utxos each query. Would Koios and Blockfrost even be able to handle this level of querying without causing more centralization of these apis?
+2. With the increased size of the datum, how much ADA will need to be stored with each available swap utxo? How many utxos would it take to cancel out the gain from a smaller deposit?
+
+Segregating trading pairs into separate addresses dramatically minimizes the amount of sorting required off-chain and the load on the apis. Given this, the 20 ADA deposits of the original approach seem like a fair trade off. That is why this proof-of-concept does not use this alternative approach.

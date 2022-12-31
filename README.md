@@ -277,9 +277,15 @@ To minimize transaction fees, the beacon policy and beacon vault script can be u
 **There is no way to withdraw ADA from the beacon vault when it is stored with a reference script. Thus saving reference scripts inside the beacon vault effectively means burning that ADA.** There was no way to allow withdrawing the ADA without opening up centralization pressures.
 
 ### Generalizing Beacon Tokens
-By simply adding an extra parameter to the `mkBeaconVault` function in the [source code](src/CardanoSwaps.hs#L447), a completely unique beacon policy and beacon vault contract pair can be created. This allows different DeFi applications to use their own beacon tokens. This extra parameter can be a simple string like "cardano-swaps".
+By simply adding an extra parameter to the `mkBeaconVault` function in the [source code](src/CardanoSwaps.hs#L447), a completely unique beacon policy and beacon vault contract pair can be created. This allows different DeFi applications to use their own beacon tokens. This extra parameter can be a simple string like "cardano-swaps". The beacon policy and vault pair used by Cardano-Swaps was created by using that very string, seen [here](src/CardanoSwaps.hs#L524).
 
-The beacon policy and vault pair used by Cardano-Swaps was created by using the string "cardano-swaps", seen [here](src/CardanoSwaps.hs#L524).
+While these beacons are used to broadcast all necessary information for remotely executing swaps (reference script utxos and available swap utxos), they can be used for broadcasting ANY information tied to:
+
+1. The address they are inside
+2. The utxo they are stored in
+3. The transaction history of the beacon. 
+
+For example, the last use case allows the beacons to be used to also broadcast the metadata of the last transaction they were part of. This feature can create a "metadata history" trail. Here is the Blockfrost [api](https://docs.blockfrost.io/#tag/Cardano-Assets/paths/~1assets~1%7Basset%7D~1transactions/get) that can give you the transaction history for a beacon. Here is the Koios [api](https://api.koios.rest/#get-/asset_txs) for the same thing. All of this information is broadcasted automatically by beacon tokens; no configuration of the tokens is necessary. You can simply decide which information to use.
 
 ---
 ## Liquidity

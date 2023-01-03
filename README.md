@@ -140,8 +140,7 @@ The price should always be the ratio of:
 quantityAskedAssets/quantityOfferedAssets
 ```
 
-When assets are added to the swap address, there is no way to guarantee the utxo being locked at the swap address has a valid price datum attached. Further, there is no way to ensure a realistic price is supplied. **All prices must be greater than 0 or else the swap contract will not properly protect your assets!**
-It is the user's responsibility to ensure the proper inline datum is attached. Once assets are locked at the swap address, the swap contract is now capabable of checking datums are properly used. It is only the "initialization" that users need to be careful with. `cardano-swaps` checks whether the supplied price is greater than 0 so it is recommended to rely on `cardano-swaps` CLI.
+Prices set to zero or a negative ratio mean the assets are effectively free. To prevent this and a possible attack, swaps will fail unless all prices are greater than zero. `cardano-swaps` checks whether the supplied price is greater than 0 so it is recommended to rely on `cardano-swaps` CLI.
 
 When ADA is part of the pair, the price **MUST** be in units of ADA. The swap contract will correctly convert to lovelace if necessary. This was to improve usability.
 

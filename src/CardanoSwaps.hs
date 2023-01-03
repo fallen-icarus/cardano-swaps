@@ -310,9 +310,11 @@ mkSwap SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo = info} = c
                           newWeightedPrice =
                             ratio' on newAmount * wp +
                             ratio' offeredInInput newAmount * price'
-                      in ( si <> txOutValue (txInInfoResolved i)
-                         , (newAmount,newWeightedPrice)
-                         )
+                      in if price' <= fromInteger 0
+                         then traceError "All prices must be greater than 0."
+                         else ( si <> txOutValue (txInInfoResolved i)
+                              , (newAmount,newWeightedPrice)
+                              )
             else (si,(on,wp))
       in fmap snd $ foldl foo (emptyVal,(0,fromInteger 0)) inputs
 

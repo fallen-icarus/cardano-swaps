@@ -523,7 +523,7 @@ beaconVaultValidator appName = Plutonomy.optimizeUPLC $ validatorScript $ mkType
 
 -- | Change the string to create a different beaconPolicy/beaconVault pair
 beaconVault :: Validator
-beaconVault = beaconVaultValidator "cardano-swaps"
+beaconVault = beaconVaultValidator "cardano-swaps-dex-testing"
 
 beaconVaultScript :: Script
 beaconVaultScript = unValidatorScript beaconVault
@@ -602,8 +602,6 @@ mkBeacon vaultHash r ScriptContext{scriptContextTxInfo = info} = case r of
               else so
             _ -> so
       in foldl foo emptyVal outputs
-
-    
 
 beaconPolicy :: ValidatorHash -> MintingPolicy
 beaconPolicy vh = Plutonomy.optimizeUPLC $ mkMintingPolicyScript

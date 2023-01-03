@@ -33,6 +33,7 @@
 - [x] Succeeds if no other errors and offered asset taken <= asked asset given * price
 - [x] Succeeds when consuming multiple utxos with the same price for the datums
 - [x] Succeeds when consuming multiple utxos with different prices for the datums
+- [x] Fails unless all prices are greater than zero. 
 
 ### Scenario Tests
 #### Third party executes two complementary scripts in one tx; one utxo each

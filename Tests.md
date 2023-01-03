@@ -76,6 +76,3 @@
 ## Cli Tests
 - [x] Catches invalid price
 - [x] Roundtrip template encoding/decoding for price calc
-
-Current Tests:
-1. swap(Tok2-ADA): owned by 01, testing staking based off just owner, tok2 = 4f74686572546f6b656e0a

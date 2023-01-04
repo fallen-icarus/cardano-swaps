@@ -4,9 +4,9 @@
 
 Template bash scripts that follow these steps are available [here](scripts/).
 
-All examples use the PreProduction Testnet.
+All examples use the PreProduction Testnet. It is assumed that you have a PreProduction node running locally.
 
-When testing, it is highly recommended that you change the string passed to the beacon vault pair [here](src/CardanoSwaps.hs#L526). When developers make mistakes (myself included), it can create bad/locked utxos that will appear when you query the beacons. This can complicate your own testing. To avoid this, change the string to something unique to you. **Do this before building the executable in the installations section.** You should remember to change it back when ready to deploy.
+When testing, it is highly recommended that you change the string passed to the beacon vault pair [here](src/CardanoSwaps.hs#L331). When developers make mistakes (myself included), it can create bad/locked utxos that will appear when you query the beacons. This can complicate your own testing. To avoid this, change the string to something unique to you. **Do this before building the executable in the installations section.** You should remember to change it back when ready to deploy.
 
 ---
 ## Table of Contents
@@ -81,7 +81,7 @@ cardano-swaps swap-script create-script \
 ``` 
 To see all possible options, execute `cardano-swaps swap-script create-script --help`. The `offered-asset-is-ada` and `asked-asset-is-ada` options are there to make swapping ADA easier.
 
-### 3. Create staking script file (Optional)
+### 3. Create the staking script file (Optional)
 ``` Bash
 cardano-swaps staking-script create-script \
   --owner-payment-key-hash $(cat owner.pkh) \
@@ -90,7 +90,7 @@ cardano-swaps staking-script create-script \
 
 To see all possible options, execute `cardano-swaps staking-script create-script --help`.
 
-### 4. Create swap address with staking capabilities
+### 4. Create the swap address with staking capabilities
 ``` Bash
 cardano-cli address build \
   --payment-script-file swapScript.plutus \
@@ -159,7 +159,7 @@ cardano-swaps beacon create-datum --out-file beaconVaultDatum.json
 ### 12. Create the beacon redeemer
 ``` Bash
 cardano-swaps beacon create-redeemer \
-  --mint-beacon <beacon_token_name> \
+  --mint-beacon <beacon_token_name_NOT_THE_FULL_BEACON_NAME> \
   --out-file beaconRedeemer.json
 ```
 
@@ -197,17 +197,19 @@ cardano-cli transaction sign \
   --signing-key-file owner.skey \
   --testnet-magic 1 \
   --out-file tx.signed
+
+cardano-cli transaction submit \
+  --testnet-magic 1 \
+  --tx-file tx.signed
 ```
 
 The first two tx-outs will be the same for every swap. 24 ADA is required to store the reference script on-chain. This can be recovered upon closing the swap as long as the utxo is given a price datum.
 
 If this transaction successfully builds, then the transaction is guaranteed to succeed on-chain as long as the tx-in utxos still exist.
 
-You can submit using any method you like (cardano-node,Blockfrost,Koios,etc.).
-
 ---
 ## Close a swap
-### 1. Create close redeemer
+### 1. Create the close redeemer
 ``` Bash
 cardano-swaps swap-script create-redeemer \
   --close-swap \
@@ -246,7 +248,7 @@ cardano-swaps beacon vault-script --out-file beaconVault.plutus
 ### 7. Create beacon redeemer
 ``` Bash
 cardano-swaps beacon create-redeemer \
-  --burn-beacon <beacon_token_name> \
+  --burn-beacon <beacon_token_name_NOT_THE_FULL_BEACON_NAME> \
   --out-file beaconRedeemer.json
 ```
 
@@ -287,9 +289,13 @@ cardano-cli transaction sign \
   --signing-key-file owner.skey \
   --testnet-magic 1 \
   --out-file tx.signed
+
+cardano-cli transaction submit \
+  --testnet-magic 1 \
+  --tx-file tx.signed
 ```
 
-This part should be repeated for every utxo at the swap address:
+This part should be repeated for every utxo a swap address:
 ``` Bash
   --tx-in <other_utxo_at_swap_address> \
   --spending-tx-in-reference <utxo_with_swap_reference_script> \
@@ -297,10 +303,11 @@ This part should be repeated for every utxo at the swap address:
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file close.json \
 ```
+Make sure to correctly match up all of the swap utxos with the proper reference scripts.
 
 The `--required-signer-hash` option is required to tell the smart contract what key to look for. **This cannot make it so that a non-owner can close a swap**; it just needs to be present to properly build the transaction.
 
-If the transaction is successfully built, then it is guaranteed to work on-chain as long as all tx-in utxos still exist when a stake pool operator goes to add your transaction. Submit the transaction however you like.
+If the transaction is successfully built, then it is guaranteed to work on-chain as long as all tx-in utxos still exist when a stake pool operator goes to add your transaction.
 
 ---
 ## Perform a swap
@@ -312,7 +319,7 @@ cardano-swaps swap-script create-redeemer \
 ```
 
 ### 2. Create the swap datum for any change being returned to the swap address
-This part will depend on how many utxos you are looking to use from a swap address. If there is only one utxo being consumed, the following can suffice:
+This part will depend on how many utxos you are looking to use from the swap address. If there is only one utxo being consumed, the following can suffice:
 
 ``` Bash
 cardano-swaps swap-script create-datum \
@@ -322,7 +329,7 @@ cardano-swaps swap-script create-datum \
 
 However, this method may not work for all cases. Imagine a fraction like 54322819 / 1128891. A calculator may be forced to round the decimal version which will mean the price datum will defer from the one actually on-chain.
 
-The other method you can use in this case, and in the case where there are multiple utxos being consumed from a swap address, is to create a JSON file with the necessary information. `cardano-swaps` can properly create the price datum from this file. First, export the JSON template:
+The other method you can use in this case, and in the case where there are multiple utxos being consumed from the same swap address, is to create a JSON file with the necessary information. `cardano-swaps` can properly create the price datum from this file. First, export the JSON template:
 
 ``` Bash
 cardano-swaps swap-script create-datum \
@@ -347,7 +354,7 @@ The JSON file will look like this:
 ]
 ```
 
-The `utxoAmount` is the amount of the offered asset in the swap. Any other assets included in the utxo can be ignored. This is just for calculating the weighted average asking price. 
+The `utxoAmount` is the amount of the offered asset in the swap. Any other assets included in the utxo can be ignored. This is just for calculating the weighted average price. 
 
 Properly edit the template for the necessary number of utxos. You can then create the correct datum using this file:
 
@@ -391,19 +398,19 @@ cardano-cli transaction sign \
   --signing-key-file user.skey \
   --testnet-magic 1 \
   --out-file tx.signed
+
+cardano-cli transaction submit \
+  --testnet-magic 1 \
+  --tx-file tx.signed
 ```
 
-You are responsible for properly giving the change back to the swap address. Make sure to remember that only the offered asset is allowed to leave the swap address. Therefore, if the offered asset is a native token, make sure to include the ADA the native token was stored with in the change to the swap address.
+You are responsible for properly giving the change back to each swap address. Make sure to remember that only the offered asset is allowed to leave each swap address. Therefore, if the offered asset is a native token, make sure to include the ADA the native token was stored with in the change to each swap address.
 
-There is no requirement that swap utxos must come from the same swap address. You can "chain" swaps together by including utxos from different swap addresses; just make sure to keep track of which reference script is for which utxo. When you "chain" swaps, you will need to account for the change to ALL the swap addresses used.
-
-It is possible to create a swap transaction where nothing is actually removed from the swap address. This feature was added for being useful for gradually building up chain swaps when testing.
+It is possible to create a swap transaction where nothing is actually removed from the swap address. This feature was added for being useful for gradually building up composed swaps when testing.
 
 If the transaction successfully builds, then the swap is guaranteed to work on-chain as long as the tx-in utxos still exist when it gets added to a block. In the event that the utxos no longer exist, the transaction will fail without executing the scripts. This means the user's collateral is safe.
 
 All of the information necessary for generating this transaction can be easily aquired with the `cardano-swaps query-swaps` subcommand (shown later).
-
-Submit the transaction however you like.
 
 ---
 ## Update the swap prices
@@ -448,6 +455,10 @@ cardano-cli transaction sign \
   --signing-key-file owner.skey \
   --testnet-magic 1 \
   --out-file tx.signed
+
+cardano-cli transaction submit \
+  --testnet-magic 1 \
+  --tx-file tx.signed
 ```
 
 The `--required-signer-hash` is needed to successfully build the transaction. **This does not make non-owners capable of updating the asking price.** It is just necessary to successfully build the transaction.
@@ -459,8 +470,6 @@ The reason the `Update` redeemer takes a price argument is to improve script exe
 The utxo with the reference script cannot be updated. This is to minimize transaction fees. The reference script can never be consumed in a swap so the datum attached to the reference script is never used. This makes it safe to ignore when updating prices.
 
 If the transaction is successfully built, it is guaranteed to work on-chain as long as the tx-in utxos still exist.
-
-Submit the transaction however you like.
 
 ---
 ## Add to swap position
@@ -516,10 +525,14 @@ cardano-cli transaction sign \
   --signing-key-file owner.skey \
   --testnet-magic 1 \
   --out-file tx.signed
+
+cardano-cli transaction submit \
+  --testnet-magic 1 \
+  --tx-file tx.signed
 ```
 Redelegating and deregistering are done similarly.
 
-**When the staking script is used, staking actions require the owner's payment skey signature, not the owner's staking skey.**
+**When the staking script is used, staking actions require the owner's payment skey signature, not the owner's staking skey signature.**
 
 If the transaction successfully builds, then the transaction is guaranteed to work on-chain. 
 
@@ -551,7 +564,7 @@ cardano-cli transaction build \
   --out-file tx.body
 ```
 
-Building this transaction is guaranteed to fail. In order to see the owner information, it must look legitamite which is why the user must still provide the collateral. The collateral is safe since this transaction will not actually be submitted.
+Building this transaction is guaranteed to fail. In order to see the owner information, it must look legitimate which is why the user must still provide the collateral. The collateral is safe since this transaction will not actually be submitted.
 
 Here is what the output looks like:
 
@@ -567,7 +580,7 @@ Caused by: [
 Script debugging logs: 
 ```
 
-`fe90abc294e5f876d44f9b39583f2e6d905322c4735e3bda2928342f` is the owner's payment pubkey hash.
+`fe90abc294e5f876d44f9b39583f2e6d905322c4735e3bda2928342f` is the owner's payment pubkey hash. This is not the proper use of `decodeUtf8` but it works.
 
 ---
 ## Query available swaps

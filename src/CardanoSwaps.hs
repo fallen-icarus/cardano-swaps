@@ -71,7 +71,6 @@ import Ledger.Bytes (fromHex)
 import qualified Plutonomy
 import Ledger.Value (valueOf,split,flattenValue)
 import PlutusTx.Numeric as Num
-import Plutus.V2.Ledger.Tx
 import Ledger.Ada (lovelaceValueOf,lovelaceOf,fromValue)
 import PlutusTx.Ratio (fromGHC)
 import PlutusTx.AssocMap (keys)
@@ -510,31 +509,6 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
               then True
               else traceError "Tx outputs can only go to the swap address or the owner's address."
       in all foo outputs
-
-    -- selfOutputs :: [TxOut]
-    -- selfOutputs = getContinuingOutputs ctx
-
-    -- outputsToSelfOrOwner :: Bool
-    -- outputsToSelfOrOwner = 
-    --   let isOwnerOutput z = case txOutPubKey z of
-    --         Nothing -> False
-    --         Just pkh -> pkh == unPaymentPubKeyHash owner
-    --   in all (\z -> z `elem` selfOutputs || isOwnerOutput z) $ txInfoOutputs info
-
-    -- -- | Check datums of new outputs to script. If new datum is not an inline datum,
-    -- --   it will throw an error.
-    -- allDatumsMatchRedeemerPrice :: Price -> Bool
-    -- allDatumsMatchRedeemerPrice newPrice = 
-    --   let outputs = txInfoOutputs info
-    --       foo o = case (addressCredential $ txOutAddress o, parseDatum outputDatumError o) of
-    --         -- | if output is to the script, check its datum too
-    --           (ScriptCredential vh,price') -> 
-    --             if vh == scriptValidatorHash
-    --             then -- | Check if output to swap script contains proper datum.
-    --                  price' == newPrice
-    --             else True -- ^ If output to other script, ignore datum
-    --           _ -> True -- ^ If output to user wallet, ignore datum
-    --   in all foo outputs
 
     emptyVal :: Value
     emptyVal = lovelaceValueOf 0

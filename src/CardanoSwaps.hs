@@ -142,20 +142,6 @@ calcWeightedPrice xs = snd $ foldl foo (0,fromInteger 0) xs
 ratio' :: Integer -> Integer -> Rational
 ratio' num den = if den == 0 then fromInteger 0 else unsafeRatio num den
 
--------------------------------------------------
--- Swap Settings
--------------------------------------------------
--- | For use as extra parameter to the swap script.
---   This creates a unique address for every SwapConfig configuration.
-data SwapConfig = SwapConfig
-  {
-    owner :: PaymentPubKeyHash,
-    offerAsset :: (CurrencySymbol,TokenName),
-    askAsset :: (CurrencySymbol,TokenName)
-  }
-
-PlutusTx.makeLift ''SwapConfig
-
 -- | Parse PaymentPubKeyHash from user supplied String
 readPubKeyHash :: Haskell.String -> Either Haskell.String PaymentPubKeyHash
 readPubKeyHash s = case fromHex $ fromString s of
@@ -174,6 +160,19 @@ readTokenName s = case fromHex $ fromString s of
   Right (LedgerBytes bytes') -> Right $ TokenName bytes'
   Left msg                   -> Left $ "could not convert: " <> msg
 
+-------------------------------------------------
+-- Swap Settings
+-------------------------------------------------
+-- | For use as extra parameter to the swap script.
+--   This creates a unique address for every SwapConfig configuration.
+data SwapConfig = SwapConfig
+  {
+    owner :: PaymentPubKeyHash,
+    offerAsset :: (CurrencySymbol,TokenName),
+    askAsset :: (CurrencySymbol,TokenName)
+  }
+
+PlutusTx.makeLift ''SwapConfig
 
 -- | Swap Datum
 type Price = Rational  -- ^ askedAsset/offeredAsset

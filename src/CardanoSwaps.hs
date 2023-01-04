@@ -119,7 +119,8 @@ instance ToJSON UtxoPriceInfo where
            ]
 
 -- | Helper function to calculate the weighted price.
---   Will match the weighted price calculation done by script.
+-- Will match the weighted price calculation done by script.
+-- Will throw an error if a price is negative.
 calcWeightedPrice :: [UtxoPriceInfo] -> Rational
 calcWeightedPrice xs = snd $ foldl foo (0,fromInteger 0) xs
   where
@@ -166,7 +167,7 @@ readTokenName s = case fromHex $ fromString s of
 -- Swap Settings
 -------------------------------------------------
 -- | For use as extra parameter to the swap script.
---   This creates a unique address for every SwapConfig configuration.
+-- This creates a unique address for every SwapConfig configuration.
 data SwapConfig = SwapConfig
   {
     swapOwner :: PaymentPubKeyHash,
@@ -184,13 +185,13 @@ data Action
   -- | Owner can spend any utxo at the script address.
   = Close
   -- | Owner can update all datums at the script address.
-  --   The datum with the reference script cannot be updated to conserve fees.
+  -- The datum with the reference script cannot be updated to conserve fees.
   | UpdatePrices Price
   -- | User can try swapping with assets at the script address.
   | Swap
   -- | Dedicated Redeemer for getting the owner's pub key hash of the script.
-  --   This allows for checking the target script has not been tampered with.
-  --   To check for tampering: recreate the script using the owner's pkh and assets.
+  -- This allows for checking the target script has not been tampered with.
+  -- To check for tampering: recreate the script using the owner's pkh and assets.
   | Info
 
 PlutusTx.unstableMakeIsData ''Action
@@ -201,10 +202,10 @@ PlutusTx.unstableMakeIsData ''Action
 data StakingConfig = StakingConfig
   { stakeOwner :: PaymentPubKeyHash
   -- | Not used directly by staking script. Only meant to
-  --   generate unique staking address if desired.
+  -- generate unique staking address if desired.
   , stakeOfferedAsset :: Maybe (CurrencySymbol,TokenName)
   -- | Not used directly by staking script. Only meant to
-  --   generate unique staking address if desired.
+  -- generate unique staking address if desired.
   , stakeAskedAsset :: Maybe (CurrencySymbol,TokenName) 
   }
 
@@ -213,7 +214,7 @@ PlutusTx.makeLift ''StakingConfig
 -------------------------------------------------
 -- On-Chain Staking
 -------------------------------------------------
--- | allow any staking related action as long as owner has signed
+-- | Allow any staking related action as long as owner has signed
 mkStaking :: StakingConfig -> () -> ScriptContext -> Bool
 mkStaking StakingConfig{stakeOwner = owner} () ctx = 
     case purpose of
@@ -287,7 +288,7 @@ mkBeaconVault appName cn r ctx@ScriptContext{scriptContextTxInfo = info} = case 
     containsOnly2ADA v = lovelaceOf 2_000_000 == fromValue v
 
     -- | Separate script input value from rest of input value (can be from other scripts).
-    --   Throws an error if there is a ref script among script inputs.
+    -- Throws an error if there is a ref script among script inputs.
     withdrawalValue :: Value
     withdrawalValue =
       let inputs = txInfoInputs info
@@ -295,7 +296,7 @@ mkBeaconVault appName cn r ctx@ScriptContext{scriptContextTxInfo = info} = case 
           foo si i = 
             -- | Check if input belongs to this script
             if ScriptCredential scriptValidatorHash == addrCred i
-            then -- | check if input contains a ref script from the beacon vault script
+            then -- | Check if input contains a ref script from the beacon vault script
                  if isJust $ txOutReferenceScript $ txInInfoResolved i
                  then traceError "Cannot consume reference script from beacon vault address."
                  else si <> txOutValue (txInInfoResolved i)
@@ -399,7 +400,7 @@ mkBeacon vaultHash r ScriptContext{scriptContextTxInfo = info} = case r of
               -- | check if it belongs to this script
               if h == vaultHash 
               then -- | Check if output to beacon vault script contains proper datum.
-                   --   Throws error if invalid datum.
+                   -- Throws error if invalid datum.
                    if parseDatum o == thisCurrencySymbol
                    then so <> txOutValue o
                    else traceError "The beacon vault datum is not the beacon policy id."
@@ -450,10 +451,10 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
     traceIfFalse "updateCheck Failure." (updateCheck newPrice)
   Swap -> 
     -- | Should not consume reference script from swap script address.
-    --   Utxo output to the script must have the proper datum and datum must not differ from input.
-    --   Only offered asset should leave the swap script address.
-    --   User must supply the 1 ADA for each utxo with native tokens.
-    --   Max offered asset taken <= given asset * price.
+    -- Utxo output to the script must have the proper datum and datum must not differ from input.
+    -- Only offered asset should leave the swap script address.
+    -- User must supply the 1 ADA for each utxo with native tokens.
+    -- Max offered asset taken <= given asset * price.
     traceIfFalse ("Invalid swap:" 
               --  <> "\nShould not consume reference script from swap address"
               --  <> "\nUtxo output to swap address must contain proper datum (must match input datum)"
@@ -523,11 +524,11 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
       )
     
     -- | Separate script input value from rest of input value (can be from other scripts).
-    --   Throws an error if there is a ref script among script inputs.
-    --   Get the weighted average price for all the utxo inputs from this script. This will
-    --   throw an error if the datum is not an inline datum or if it is not a price.
+    -- Throws an error if there is a ref script among script inputs.
+    -- Get the weighted average price for all the utxo inputs from this script. This will
+    -- throw an error if the datum is not an inline datum or if it is not a price.
     --
-    --   returns (Total Value from Script,Weighted Price)
+    -- returns (Total Value from Script,Weighted Price)
     scriptInputInfo :: (Value,Price)
     scriptInputInfo =
       let inputs = txInfoInputs info
@@ -553,18 +554,18 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
       in fmap snd $ foldl foo (emptyVal,(0,fromInteger 0)) inputs
 
     -- | Separate output value to script from rest of output value (can be to other scripts).
-    --   Throw error if output to script doesn't contain proper inline datum.
-    --   The supplied price is the weighted average of all script input prices.
+    -- Throw error if output to script doesn't contain proper inline datum.
+    -- The supplied price is the weighted average of all script input prices.
     scriptOutputValue :: Price -> Value
     scriptOutputValue weightedPrice =
       let outputs = txInfoOutputs info
           foo so o = case addressCredential $ txOutAddress o of
             -- | Also checks if proper datum is attached.
             ScriptCredential vh ->
-              -- | check if it belongs to swap script
+              -- | Check if it belongs to swap script
               if vh == scriptValidatorHash 
               then -- | Check if output to swap script contains proper datum.
-                   --   Throws error if invalid datum.
+                   -- Throws error if invalid datum.
                    if parseDatum outputDatumError o == weightedPrice
                    then so <> txOutValue o
                    else traceError "output datum is not the weighted price of all utxo inputs"
@@ -601,13 +602,13 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
           isOnlyOfferedAsset _ = False
       in
         -- | Only the offered asset is allowed to leave the script address.
-        --   When ADA is not being offered, the user is required to supply the ADA for native token utxos.
-        --   This means that, when ADA is not offered, the script's ADA value can only increase.
+        -- When ADA is not being offered, the user is required to supply the ADA for native token utxos.
+        -- This means that, when ADA is not offered, the script's ADA value can only increase.
         isOnlyOfferedAsset leavingAssets &&
 
         -- | Ratio sets the maximum amount of the offered asset that can be taken.
-        --   To withdraw more of the offered asset, more of the asked asset must be deposited to the script.
-        --   Uses the corrected price to account for converting ADA to lovelace 
+        -- To withdraw more of the offered asset, more of the asked asset must be deposited to the script.
+        -- Uses the corrected price to account for converting ADA to lovelace 
         offeredTaken * (correctedPrice) <= askedGiven
 
 data Swap

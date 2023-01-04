@@ -445,9 +445,10 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
     -- | Datum must be valid price. Any number great than zero.
     traceIfFalse "invalid new asking price" (newPrice > fromInteger 0) &&
     -- | All outputs must contain same datum as specified in redeemer
-    traceIfFalse "new datums do not match price in redeemer" (allDatumsMatchRedeemerPrice newPrice) &&
-    -- | Must output to swap script address or owner address.
-    traceIfFalse "all outputs must go to either the script or the owner" outputsToSelfOrOwner
+    -- Must output to swap script address or owner address.
+    -- This error message should never actually be called since there are trace errors in
+    -- updateCheck.
+    traceIfFalse "updateCheck Failure." (updateCheck newPrice)
   Swap -> 
     -- | Should not consume reference script from swap script address.
     --   Utxo output to the script must have the proper datum and datum must not differ from input.
@@ -471,35 +472,9 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
           mintCheck (cn,_,n) = cn == beaconSym && n == (-1)
       in any mintCheck burned
 
-    selfOutputs :: [TxOut]
-    selfOutputs = getContinuingOutputs ctx
-
-    outputsToSelfOrOwner :: Bool
-    outputsToSelfOrOwner = 
-      let isOwnerOutput z = case txOutPubKey z of
-            Nothing -> False
-            Just pkh -> pkh == unPaymentPubKeyHash owner
-      in all (\z -> z `elem` selfOutputs || isOwnerOutput z) $ txInfoOutputs info
-
-    inputsWithRefScripts :: [TxOut]
-    inputsWithRefScripts = filter (isJust . txOutReferenceScript)
-                         $ map txInInfoResolved
-                         $ txInfoInputs info
-
-    -- | Check datums of new outputs to script. If new datum is not an inline datum,
-    --   it will throw an error.
-    allDatumsMatchRedeemerPrice :: Price -> Bool
-    allDatumsMatchRedeemerPrice newPrice = 
-      let outputs = txInfoOutputs info
-          foo o = case (addressCredential $ txOutAddress o, parseDatum outputDatumError o) of
-            -- | if output is to the script, check its datum too
-              (ScriptCredential vh,price') -> 
-                if vh == scriptValidatorHash
-                then -- | Check if output to swap script contains proper datum.
-                     price' == newPrice
-                else True -- ^ If output to other script, ignore datum
-              _ -> True -- ^ If output to user wallet, ignore datum
-      in all foo outputs
+    -- | ValidatorHash of this script
+    scriptValidatorHash :: ValidatorHash
+    scriptValidatorHash = ownHash ctx
 
     outputDatumError :: BuiltinString
     outputDatumError = "Invalid price datum for swap script output."
@@ -514,9 +489,52 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
         Just p -> p
       _ -> traceError "All datums must be inline datums."
 
-    -- | ValidatorHash of this script
-    scriptValidatorHash :: ValidatorHash
-    scriptValidatorHash = ownHash ctx
+    inputsWithRefScripts :: [TxOut]
+    inputsWithRefScripts = filter (isJust . txOutReferenceScript)
+                         $ map txInInfoResolved
+                         $ txInfoInputs info
+
+    updateCheck :: Price -> Bool
+    updateCheck reqPrice =
+      let outputs = txInfoOutputs info
+          foo o = case (addressCredential $ txOutAddress o, parseDatum outputDatumError o) of
+            (ScriptCredential vh, price') ->
+              if vh == scriptValidatorHash
+              then -- | Check if datum matches reqPrice
+                   if price' == reqPrice
+                   then True
+                   else traceError "Datums do not match then Update redeemer's price."
+              else traceError "Tx outputs can only go to the swap address or the owner's address."
+            (PubKeyCredential pkh,_) ->
+              if pkh == unPaymentPubKeyHash owner
+              then True
+              else traceError "Tx outputs can only go to the swap address or the owner's address."
+      in all foo outputs
+
+    -- selfOutputs :: [TxOut]
+    -- selfOutputs = getContinuingOutputs ctx
+
+    -- outputsToSelfOrOwner :: Bool
+    -- outputsToSelfOrOwner = 
+    --   let isOwnerOutput z = case txOutPubKey z of
+    --         Nothing -> False
+    --         Just pkh -> pkh == unPaymentPubKeyHash owner
+    --   in all (\z -> z `elem` selfOutputs || isOwnerOutput z) $ txInfoOutputs info
+
+    -- -- | Check datums of new outputs to script. If new datum is not an inline datum,
+    -- --   it will throw an error.
+    -- allDatumsMatchRedeemerPrice :: Price -> Bool
+    -- allDatumsMatchRedeemerPrice newPrice = 
+    --   let outputs = txInfoOutputs info
+    --       foo o = case (addressCredential $ txOutAddress o, parseDatum outputDatumError o) of
+    --         -- | if output is to the script, check its datum too
+    --           (ScriptCredential vh,price') -> 
+    --             if vh == scriptValidatorHash
+    --             then -- | Check if output to swap script contains proper datum.
+    --                  price' == newPrice
+    --             else True -- ^ If output to other script, ignore datum
+    --           _ -> True -- ^ If output to user wallet, ignore datum
+    --   in all foo outputs
 
     emptyVal :: Value
     emptyVal = lovelaceValueOf 0

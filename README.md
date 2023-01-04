@@ -59,18 +59,19 @@ Cardano-Swaps took inspiration from Axo's programmable swaps design but added de
 
 Interestingly, by starting with the requirement of delegation control, other nice properties naturally emerged:
 
-  1. Naturally concurrent and gets more concurrent the more users there are. No batchers are required.
-  2. Liquidity naturally spreads to all trading pairs instead of being siloed into specific trading pairs.
-  3. There is no impermanent loss.
-  4. ADA is all you need to interact with the DEX.
-  5. Upgradability is extremely easy and doesn't introduce any security holes.
-  6. Easy to integrate into any Cardano wallet software.
+  1. Composable atomic swaps
+  2. Naturally concurrent and gets more concurrent the more users there are. No batchers are required.
+  3. Liquidity naturally spreads to all trading pairs instead of being siloed into specific trading pairs.
+  4. There is no impermanent loss.
+  5. ADA is all you need to interact with the DEX.
+  6. Upgradability is extremely easy and doesn't introduce any security holes.
+  7. Easy to integrate into any Cardano wallet software.
 
 In addition to these nice properties, the novel use of *Beacon Tokens* can be generalized to any Decentralized Finance (DeFi) application on Cardano.
 
 ---
 ## Personal Swap Contracts
-In order for users to maintain full delegation control of their assets, it is required for user assets to be kept siloed. The reason for this is that, on Cardano, all ADA at an address is delegated entirely or not at all. So for a user to maintain delegation control of their assets, only that user's assets should be at the address he/she is delegating.
+In order for users to maintain full delegation control of their assets, it is required for user assets to be kept siloed. The reason for this is that, on Cardano, all ADA at an address is delegated entirely or not at all (atomic delegation is not possible). So for a user to maintain delegation control of their assets, only that user's assets should be at the address he/she is using.
 
 ### Swap Config
 Siloing is accomplished by passing an extra parameter to the swap plutus contract before officially compiling it. Here is the extra parameter's data type:
@@ -78,18 +79,18 @@ Siloing is accomplished by passing an extra parameter to the swap plutus contrac
 ``` Haskell
 data SwapConfig = SwapConfig
   {
-    owner :: PaymentPubKeyHash,
-    offerAsset :: (CurrencySymbol,TokenName),  -- ^ CurrencySymbol is the policy id of the token
-    askAsset :: (CurrencySymbol,TokenName)
+    swapOwner :: PaymentPubKeyHash,
+    swapOffer :: (CurrencySymbol,TokenName),  -- ^ CurrencySymbol is the policy id of the token
+    swapAsk :: (CurrencySymbol,TokenName)
   }
 ```
 
-Every possible `SwapConfig` will have its own unique swap contract and swap address. So if Alice and Bob both use the same `offerAsset` and `askAsset` but have different `owner`s (Alice is the owner of hers while Bob is the owner of his), Alice and Bob would have different swap contracts and swap addresses. Thanks to the fact payment pubkey hashes are cryptographically guaranteed to be unique, every user is guaranteed to have their own personal swap contract and swap address. In addition to this, every trading pair will result in a unique swap contract and swap address due to `CurrencySymbol` also being a cryptographic hash.
+Every possible `SwapConfig` will have its own unique swap contract and swap address. So if Alice and Bob both use the same `swapOffer` and `swapAsk` but have different `swapOwner`s (Alice is the owner of hers while Bob is the owner of his), Alice and Bob would have different swap contracts and swap addresses. Thanks to the fact payment pubkey hashes are cryptographically guaranteed to be unique, every user is guaranteed to have their own personal swap contract and swap address. In addition to this, every trading pair will result in a unique swap contract and swap address due to `CurrencySymbol` also being a cryptographic hash.
 
 **All swap contracts are exactly the same except for this `SwapConfig`.**
 
 ### Delegating
-With each user having their own swap address, delegating the swap assets is trivial:
+With each user having their own swap address, delegating his/her swap assets is trivial:
 
 ``` Bash
 cardano-cli address build \
@@ -120,10 +121,11 @@ cardano-cli address build \
 ```
 
 ### The Price Inline Datum
-All utxos at a swap address are assumed to have the proper inline datum for a price. The actual data type is this:
+All utxos at a swap address are assumed to have the proper inline datum for a price. A swap is guaranteed to fail if the utxo being used does not have a valid price inline datum. The actual data type is this:
 
 ``` Haskell
-type Price = Rational  -- ^ A fraction with an Integer for both the numerator and denominator
+-- | A fraction with an Integer for both the numerator and denominator
+type Price = Rational  -- ^ Always quantityAskedAsset/quantityOfferedAsset
 ```
 
 On-chain, this inline datum looks like this:
@@ -132,19 +134,15 @@ On-chain, this inline datum looks like this:
 (ScriptDataConstructor 0 [ScriptDataNumber 3,ScriptDataNumber 2])
 ```
 
-The first `ScriptDataNumber` is the numerator and the second `ScriptDataNumber` is the denominator. The `ScriptDataConstructor` number can be ignored, it will always be `0`. In this example, the asking price is 1.5. Fractions are used on-chain due to the inability to properly use decimal types on-chain. The good news is there is no loss of functionality from using fractions. Users are able to supply decimals to `cardano-swaps` and it will properly convert the decimal to `Rational`.
+The first `ScriptDataNumber` is the numerator and the second `ScriptDataNumber` is the denominator. The `ScriptDataConstructor` number can be ignored, it will always be `0`. In this example, the asking price is 1.5. This price means you must deposit 1.5 of the asked asset for every 1 of the offered asset you take. 
 
-The price should always be the ratio of:
+Fractions are used on-chain due to the inability to properly use decimal types on-chain. The good news is there is no loss of functionality from using fractions. Users are able to supply decimals to `cardano-swaps` and it will properly convert the decimal to `Rational`.
 
-``` Haskell
-quantityAskedAssets/quantityOfferedAssets
-```
+Prices set to zero or a negative ratio mean the assets are effectively free. To prevent this and a possible attack, swaps will fail unless all prices are greater than zero. `cardano-swaps` checks whether the supplied price is greater than 0 so it is recommended to rely on `cardano-swaps` CLI when creating datums for the DEX.
 
-Prices set to zero or a negative ratio mean the assets are effectively free. To prevent this and a possible attack, swaps will fail unless all prices are greater than zero. `cardano-swaps` checks whether the supplied price is greater than 0 so it is recommended to rely on `cardano-swaps` CLI.
+When ADA is part of the pair, the price **MUST** be in units of ADA. The swap contract will correctly convert to lovelace if necessary. This was to improve usability. If you accidentally provide the price in terms of lovelace, the price will still undergo the conversion when the script executes and produce undesired behavior.
 
-When ADA is part of the pair, the price **MUST** be in units of ADA. The swap contract will correctly convert to lovelace if necessary. This was to improve usability.
-
-By using prices like this, no oracles are needed for this DEX. Every user can set their own desired swap ratio. This is very similar to how order books, on centralized exchanges, are just the sorted limit orders between bids and asks. The "global" price naturally emerges where the bids and asks meet.
+By using prices like this, no oracles are needed for this DEX. Every user can set their own desired swap ratio. This is very similar to how order books, on centralized exchanges, are just the sorted limit orders between bids and asks. The "global" price naturally emerges where the local bids and asks meet.
 
 ### The Swap Contract Logic
 Swap contracts have four possible actions, aka redeemers:
@@ -157,24 +155,26 @@ Swap contracts have four possible actions, aka redeemers:
 Only the owner (as defined by `SwapConfig`) is allowed to use the `Close` or `UpdatePrices` redeemers. Anyone can use the `Info` or `Swap` redeemers.
 
 #### `Info` Redeemer
-The `Info` redeemer is guaranteed to fail and will display the `owner` of the `SwapConfig` in the produced error message. It is guaranteed to fail at the `cardano-cli transaction build` step so there is no risk of losing collateral. This option was added in case someone wanted to check if the swap is using the proper swap contract. Since you will know the offered asset and asked asset (thanks to beacon tokens discussed later), armed with the owner's payment pubkey hash, you can now try recreating the swap contract and swap address. If you end up with a different swap address, the swap contract you are trying to use is guaranteed to be different. In short, this option adds an auditability feature to Cardano-Swaps.
+The `Info` redeemer is guaranteed to fail and will display the `swapOwner` of the `SwapConfig` in the produced error message. It is guaranteed to fail at the `cardano-cli transaction build` step so there is no risk of losing collateral. This option was added in case someone wanted to check if the swap is using the proper swap contract. Since you will know the offered asset and asked asset (thanks to beacon tokens discussed later), armed with the owner's payment pubkey hash, you can now try recreating the swap contract and swap address. If you end up with a different swap address, the swap contract you are trying to use is guaranteed to be different. In short, this option adds an auditability feature to Cardano-Swaps.
 
 #### `Close` Redeemer
-The `Close` redeemer makes it possible for the owner (as defined by `SwapConfig`) to withdraw all assets from the swap address, this includes any utxos with reference scripts. This option also allows the owner to selectively close swap positions at his/her address by removing them from the swap address. The purpose of this redeemer is to allow the user to stop their swap address from being executable by removing his/her reference script. This is also how the deposit is recovered (since it is stored with the reference script). This would effectively close the swap, hence the redeemer name.
+The `Close` redeemer makes it possible for the owner (as defined by `SwapConfig`) to withdraw all assets from the swap address, this includes any utxos with reference scripts. This option also allows the owner to selectively "close" swap positions at his/her address by removing them from the swap address.
 
-Right now, this redeemer does not check if the associated beacon is burned (see [Beacon Tokens](#beacon-tokens) below). However, the beacon currency symbol can be hardcoded into every swap contract by passing it in as another extra parameter. With the currency symbol now available, this redeemer would also be able to check if the associated beacon is burned when the reference script is removed. This would help minimize the case where beacons are used with none swap addresses. Given that beacons require a small deposit anyway, the deposit combined with the burn check should help incentivize proper use of the beacons.
+The purpose of this redeemer is to also allow the user to stop their swap address from being executable by removing his/her reference script. This would close all swap positions, even if there are utxos still at the swap address. This is also how the deposit is recovered (since it is stored with the reference script).
+
+In the case the user would like to completely close their swap address by removing his/her reference script, there is also a check to make sure the beacon is burned. This is to prevent "dead" swaps from being broadcasted to other users.
 
 #### `UpdatePrice` Redeemer
-As previously mentioned, Cardano-Swaps uses inline price datums. However, sometimes the owner will want to change the asking price of his/her positions. This redeemer allows the owner to change the inline price datum supplied. This action includes checks to ensure the new datum is properly used. The requirements for a successful update are:
+As previously mentioned, Cardano-Swaps uses inline price datums. However, sometimes the owner will want to change the asking price of his/her positions. This redeemer allows the owner to change the inline price datum attached to his/her utxos. This action includes checks to ensure the new datum is properly used. The requirements for a successful update are:
 
-1. Transaction must be signed by owner.
+1. The transaction must be signed by owner.
 2. The new price must be greater than zero.
 3. All datums must be inline datums of a price.
 4. All datums must match the price passed with the redeemer (this is for more efficient checks).
 5. All transaction outputs must either go to the originating swap address or the swap owner's address.
 6. No reference script utxos are updated.
 
-The last requirement might seem strange but this is to minimize transaction fees. The `Swap` redeemer ensures no reference script utxos are consumed so there is no risk in leaving the datum attached to these utxos alone.
+The last requirement might seem strange but this is to minimize transaction fees. The `Swap` redeemer ensures no reference script utxos are consumed so there is no risk in leaving the datum attached to reference script utxos alone.
 
 #### `Swap` Redeemer
 The `Swap` redeemer checks all of the assets leaving the swap address and all of the assets entering the swap address. For a successful swap, all of the following must be true:
@@ -189,7 +189,7 @@ Custom error messages are included to help troubleshoot why a swap failed. The w
 
 ---
 ## Beacon Tokens
-Upon reading how all user assets are siloed, it is natural to ask how potential "swappers" can find all available swaps. The answer is to use beacon tokens.
+Upon reading how all user assets are siloed, it is natural to ask how potential "swappers" can find all available swaps and their associated reference scripts. The answer is to use beacon tokens.
 
 Using [Koios](https://api.koios.rest/#overview) or [Blockfrost](https://docs.blockfrost.io/) apis, it is possible to find all addresses that contain a specific native token. Once you have the address, you can then use Koios or Blockfrost again to get all utxos locked at those addresses. These native tokens act as beacons which is where *Beacon Token* comes from.
 
@@ -198,7 +198,7 @@ Using [Koios](https://api.koios.rest/#overview) or [Blockfrost](https://docs.blo
 | Addresses with a beacon | [api](https://api.koios.rest/#get-/asset_address_list) | [api](https://docs.blockfrost.io/#tag/Cardano-Assets/paths/~1assets~1%7Basset%7D~1addresses/get)|
 | UTxOs at the address | [api](https://api.koios.rest/#post-/address_info) | [api](https://docs.blockfrost.io/#tag/Cardano-Addresses/paths/~1addresses~1%7Baddress%7D~1utxos/get)|
 
-The utxos api also returns which utxos contain reference scripts. This is important for remotely executing swap contracts.
+The utxos api also returns which utxos contain reference scripts. This is how users can remotely execute swap contracts.
 
 ### Beacon Tokens with Cardano-Swaps
 When a user creates a new swap address, the "creation" is not complete until:

@@ -1,10 +1,10 @@
 # Getting Started
 
-:warning: Assumes `cardano-cli` installed since it is used to actually build and sign transactions.
+:warning: Assumes a local PreProduction Testnet node running locally and `cardano-cli` installed since it is used to actually build and sign transactions.
 
 Template bash scripts that follow these steps are available [here](scripts/).
 
-All examples use the PreProduction Testnet. It is assumed that you have a PreProduction node running locally.
+All examples use the PreProduction Testnet.
 
 When testing, it is highly recommended that you change the string passed to the beacon vault pair [here](src/CardanoSwaps.hs#L331). When developers make mistakes (myself included), it can create bad/locked utxos that will appear when you query the beacons. This can complicate your own testing. To avoid this, change the string to something unique to you. **Do this before building the executable in the installations section.** You should remember to change it back when ready to deploy.
 

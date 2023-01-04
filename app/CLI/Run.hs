@@ -142,6 +142,7 @@ runSwapScriptCmd swapCmd = case swapCmd of
         if price > fromGHC (toRational (0 :: Integer))
         then do
           writeData file price
+          putStrLn "Swap datum created successfully."
         else putStrLn "Invalid swap datum. Price must be greater than 0."
       SwapDatumUtxos utxoFile -> do
         utxos <- BL.readFile utxoFile

@@ -216,6 +216,27 @@ Likewise, "closing" a swap position is not complete until:
 
 Consuming the reference script prevents anyone from remotely interacting with a swap address and burning the token makes that address "undiscoverable".
 
+Below is an example response from querying the beacon tokens:
+``` JSON
+[
+  {
+    "assets": [
+      {
+        "asset": "lovelace",
+        "quantity": 150000000
+      }
+    ],
+    "price_denominator": 1,
+    "price_numerator": 1,
+    "swap_address": "addr_test1xqc8dluz63hw3z5jf38nj8vc8hr6w3zffqype75rwzhfqtmgzy4wvf0pv6q4z499a70zm6sadjzwc0w6xx622s2fx30qsq8ppj",
+    "swap_ref_script_id": "325f5c8028f867c3dfdcacf750cab0fb43b2ad82d8d606c5b94142a5eb4fd58f#0",
+    "utxo_id": "325f5c8028f867c3dfdcacf750cab0fb43b2ad82d8d606c5b94142a5eb4fd58f#1"
+  }
+]
+```
+
+Only one utxo was found and that utxo only has lovelace in it. Notice how this utxo's required reference script ID was also returned. This response has everything a user needs to remotely swap with it.
+
 ### How Do Beacons Differentiate Between Trading Pairs?
 Just like all native tokens, beacon tokens have two fields:
 

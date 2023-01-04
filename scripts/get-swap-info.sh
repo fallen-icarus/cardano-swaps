@@ -1,6 +1,5 @@
 # Variables
 dir="../assets/plutus-files2/"
-swapScriptFile="${dir}swap01.plutus"
 infoRedeemerFile="${dir}info.json"
 tmpDir="../assets/tmp/"
 

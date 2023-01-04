@@ -4,7 +4,6 @@ swapRedeemerFile="${dir}swap.json"
 tmpDir="../assets/tmp/"
 swapScriptAddrFile="${dir}swap01.addr"
 swapDatumFile="${dir}price.json"
-swapScriptFile="${dir}swap01.plutus"
 
 # Create Swap redeemer file
 cardano-swaps swap-script create-redeemer \

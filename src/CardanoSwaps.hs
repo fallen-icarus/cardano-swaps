@@ -498,6 +498,7 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
       let outputs = txInfoOutputs info
           foo o = case (addressCredential $ txOutAddress o, parseDatum outputDatumError o) of
             (ScriptCredential vh, price') ->
+              -- | Check if script is this script
               if vh == scriptValidatorHash
               then -- | Check if datum matches reqPrice
                    if price' == reqPrice
@@ -505,6 +506,7 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
                    else traceError "Datums do not match then Update redeemer's price."
               else traceError "Tx outputs can only go to the swap address or the owner's address."
             (PubKeyCredential pkh,_) ->
+              -- | Check if pubkey is the owner
               if pkh == unPaymentPubKeyHash swapOwner
               then True
               else traceError "Tx outputs can only go to the swap address or the owner's address."
@@ -533,7 +535,7 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
           foo (si,(on,wp)) i = 
             -- | Check if input belongs to this script
             if ScriptCredential scriptValidatorHash == addrCred i
-            then -- | check if input contains a ref script from the swap script
+            then -- | Check if input contains a ref script from the swap script
                  if isJust $ txOutReferenceScript $ txInInfoResolved i
                  then traceError "Cannot consume reference script from swap address."
                  else let (offeredInInput,price') = priceTier $ txInInfoResolved i
@@ -541,7 +543,8 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
                           newWeightedPrice =
                             ratio' on newAmount * wp +
                             ratio' offeredInInput newAmount * price'
-                      in if price' <= fromInteger 0
+                      in -- | Fail if the price is not > 0
+                         if price' <= fromInteger 0
                          then traceError "All prices must be greater than 0."
                          else ( si <> txOutValue (txInInfoResolved i)
                               , (newAmount,newWeightedPrice)

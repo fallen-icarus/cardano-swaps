@@ -127,9 +127,9 @@ runSwapScriptCmd swapCmd = case swapCmd of
     runCreateScript :: PaymentPubKeyHash -> Asset -> Asset -> FilePath -> IO ()
     runCreateScript pkh offeredAsset askedAsset file = do
       let swapConfig = SwapConfig
-            { owner = pkh
-            , offerAsset = assetInfo offeredAsset
-            , askAsset = assetInfo askedAsset
+            { swapOwner = pkh
+            , swapOffer = assetInfo offeredAsset
+            , swapAsk = assetInfo askedAsset
             }
       res <- writeScript file $ swapScript swapConfig
       case res of

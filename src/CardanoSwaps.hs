@@ -197,203 +197,6 @@ data Action
 PlutusTx.unstableMakeIsData ''Action
 
 -------------------------------------------------
--- On-Chain Swap
--------------------------------------------------
--- | The price is not used individually. Instead it is obtain by traversing the script context.
-mkSwap :: SwapConfig -> Price -> Action -> ScriptContext -> Bool
-mkSwap SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo = info} = case action of
-  Info -> traceError ("Owner's payment pubkey hash:\n" <> ownerAsString)
-  Close ->
-    -- | Must be signed by owner.
-    traceIfFalse "owner didn't sign" (txSignedBy info $ unPaymentPubKeyHash owner)
-  UpdatePrices newPrice ->
-    -- | Must be signed by owner.
-    traceIfFalse "owner didn't sign" (txSignedBy info $ unPaymentPubKeyHash owner) &&
-    -- | Must not consume reference script (to save on fees).
-    traceIfFalse "updating reference script utxo's datum is not necessary" (null inputsWithRefScripts) &&
-    -- | Datum must be valid price. Any number great than zero.
-    traceIfFalse "invalid new asking price" (newPrice > fromInteger 0) &&
-    -- | All outputs must contain same datum as specified in redeemer
-    traceIfFalse "new datums do not match price in redeemer" (allDatumsMatchRedeemerPrice newPrice) &&
-    -- | Must output to swap script address or owner address.
-    traceIfFalse "all outputs must go to either the script or the owner" outputsToSelfOrOwner
-  Swap -> 
-    -- | Should not consume reference script from swap script address.
-    --   Utxo output to the script must have the proper datum and datum must not differ from input.
-    --   Only offered asset should leave the swap script address.
-    --   User must supply the 1 ADA for each utxo with native tokens.
-    --   Max offered asset taken <= given asset * price.
-    traceIfFalse ("Invalid swap:" 
-              --  <> "\nShould not consume reference script from swap address"
-              --  <> "\nUtxo output to swap address must contain proper datum (must match input datum)"
-               <> "\nOnly the offered asset is allowed to leave the swap address."
-               <> "\nUser must supply the extra ADA (if necessary) for each output with native tokens."
-               <> "\nOffered asset leaving * price <= Asked asset given") swapCheck
-
-  where
-    ownerAsString :: BuiltinString
-    ownerAsString = decodeUtf8 $ getPubKeyHash $ unPaymentPubKeyHash $ owner
-
-    selfOutputs :: [TxOut]
-    selfOutputs = getContinuingOutputs ctx
-
-    outputsToSelfOrOwner :: Bool
-    outputsToSelfOrOwner = 
-      let isOwnerOutput z = case txOutPubKey z of
-            Nothing -> False
-            Just pkh -> pkh == unPaymentPubKeyHash owner
-      in all (\z -> z `elem` selfOutputs || isOwnerOutput z) $ txInfoOutputs info
-
-    inputsWithRefScripts :: [TxOut]
-    inputsWithRefScripts = filter (isJust . txOutReferenceScript)
-                         $ map txInInfoResolved
-                         $ txInfoInputs info
-
-    -- | Check datums of new outputs to script. If new datum is not an inline datum,
-    --   it will throw an error.
-    allDatumsMatchRedeemerPrice :: Price -> Bool
-    allDatumsMatchRedeemerPrice newPrice = 
-      let outputs = txInfoOutputs info
-          foo o = case (addressCredential $ txOutAddress o, parseDatum outputDatumError o) of
-            -- | if output is to the script, check its datum too
-              (ScriptCredential vh,price') -> 
-                if vh == scriptValidatorHash
-                then -- | Check if output to swap script contains proper datum.
-                     price' == newPrice
-                else True -- ^ If output to other script, ignore datum
-              _ -> True -- ^ If output to user wallet, ignore datum
-      in all foo outputs
-
-    outputDatumError :: BuiltinString
-    outputDatumError = "Invalid price datum for swap script output."
-
-    inputDatumError :: BuiltinString
-    inputDatumError = "Failed to parse input datum."
-
-    parseDatum :: BuiltinString -> TxOut -> Price
-    parseDatum err o = case txOutDatum o of
-      (OutputDatum (Datum d)) -> case fromBuiltinData d of
-        Nothing -> traceError err
-        Just p -> p
-      _ -> traceError "All datums must be inline datums."
-
-    -- | ValidatorHash of this script
-    scriptValidatorHash :: ValidatorHash
-    scriptValidatorHash = ownHash ctx
-
-    emptyVal :: Value
-    emptyVal = lovelaceValueOf 0
-
-    -- | How much of the offered asset is available in this utxo input and for what price.
-    priceTier :: TxOut -> (Integer,Price)
-    priceTier o = 
-      ( valueOf (txOutValue o) (fst offerAsset) (snd offerAsset)
-      , parseDatum inputDatumError o
-      )
-    
-    -- | Separate script input value from rest of input value (can be from other scripts).
-    --   Throws an error if there is a ref script among script inputs.
-    --   Get the weighted average price for all the utxo inputs from this script. This will
-    --   throw an error if the datum is not an inline datum or if it is not a price.
-    --
-    --   returns (Total Value from Script,Weighted Price)
-    scriptInputInfo :: (Value,Price)
-    scriptInputInfo =
-      let inputs = txInfoInputs info
-          addrCred i = addressCredential $ txOutAddress $ txInInfoResolved i
-          foo (si,(on,wp)) i = 
-            -- | Check if input belongs to this script
-            if ScriptCredential scriptValidatorHash == addrCred i
-            then -- | check if input contains a ref script from the swap script
-                 if isJust $ txOutReferenceScript $ txInInfoResolved i
-                 then traceError "Cannot consume reference script from swap address."
-                 else let (offeredInInput,price') = priceTier $ txInInfoResolved i
-                          newAmount = on + offeredInInput
-                          newWeightedPrice =
-                            ratio' on newAmount * wp +
-                            ratio' offeredInInput newAmount * price'
-                      in if price' <= fromInteger 0
-                         then traceError "All prices must be greater than 0."
-                         else ( si <> txOutValue (txInInfoResolved i)
-                              , (newAmount,newWeightedPrice)
-                              )
-            else (si,(on,wp))
-      in fmap snd $ foldl foo (emptyVal,(0,fromInteger 0)) inputs
-
-    -- | Separate output value to script from rest of output value (can be to other scripts).
-    --   Throw error if output to script doesn't contain proper inline datum.
-    --   The supplied price is the weighted average of all script input prices.
-    scriptOutputValue :: Price -> Value
-    scriptOutputValue weightedPrice =
-      let outputs = txInfoOutputs info
-          foo so o = case addressCredential $ txOutAddress o of
-            -- | Also checks if proper datum is attached.
-            ScriptCredential vh ->
-              -- | check if it belongs to swap script
-              if vh == scriptValidatorHash 
-              then -- | Check if output to swap script contains proper datum.
-                   --   Throws error if invalid datum.
-                   if parseDatum outputDatumError o == weightedPrice
-                   then so <> txOutValue o
-                   else traceError "output datum is not the weighted price of all utxo inputs"
-              else so
-            _ -> so
-      in foldl foo emptyVal outputs
-
-    swapCheck :: Bool
-    swapCheck =
-      let -- | Input info
-          (scriptInputValue,weightedPrice) = scriptInputInfo
-
-          -- | Convert price if necessary
-          correctedPrice
-            -- | If ADA is offered, divide the weighted price by 1,000,000
-            | offerAsset == (adaSymbol,adaToken) = weightedPrice * ratio' 1 1_000_000
-            -- | If ADA is asked, multiply the weighted price by 1,000,000
-            | askAsset == (adaSymbol,adaToken) = weightedPrice * ratio' 1_000_000 1
-            | otherwise = weightedPrice
-          
-          -- | Value differences
-          scriptValueDiff 
-            =  scriptOutputValue weightedPrice -- ^ checks if outputs contain weighted price
-            <> Num.negate scriptInputValue
-
-          -- | Amounts
-          askedGiven = fromInteger $ uncurry (valueOf scriptValueDiff) askAsset
-          offeredTaken = fromInteger $ Num.negate $ uncurry (valueOf scriptValueDiff) offerAsset
-
-          -- | Assets leaving script address
-          leavingAssets = flattenValue $ fst $ split scriptValueDiff -- zero diff amounts removed
-          isOnlyOfferedAsset [(cn,tn,_)] = (cn,tn) == offerAsset
-          isOnlyOfferedAsset [] = True -- ^ allows consolidating utxos at swap script address
-          isOnlyOfferedAsset _ = False
-      in
-        -- | Only the offered asset is allowed to leave the script address.
-        --   When ADA is not being offered, the user is required to supply the ADA for native token utxos.
-        --   This means that, when ADA is not offered, the script's ADA value can only increase.
-        isOnlyOfferedAsset leavingAssets &&
-
-        -- | Ratio sets the maximum amount of the offered asset that can be taken.
-        --   To withdraw more of the offered asset, more of the asked asset must be deposited to the script.
-        --   Uses the corrected price to account for converting ADA to lovelace 
-        offeredTaken * (correctedPrice) <= askedGiven
-
-data Swap
-instance ValidatorTypes Swap where
-  type instance RedeemerType Swap = Action
-  type instance DatumType Swap = Price
-
-swapValidator :: SwapConfig -> Validator
-swapValidator basicInfo = Plutonomy.optimizeUPLC $ validatorScript $ mkTypedValidator @Swap
-    ($$(PlutusTx.compile [|| mkSwap ||])
-      `PlutusTx.applyCode` PlutusTx.liftCode basicInfo)
-    $$(PlutusTx.compile [|| wrap ||])
-  where wrap = mkUntypedValidator
-
-swapScript :: SwapConfig -> Script
-swapScript = unValidatorScript . swapValidator
-
--------------------------------------------------
 -- Stake Settings
 -------------------------------------------------
 data StakingConfig = StakingConfig
@@ -617,6 +420,216 @@ beaconScript = unMintingPolicyScript $ beaconPolicy beaconVaultValidatorHash
 
 beaconSymbol :: CurrencySymbol
 beaconSymbol = scriptCurrencySymbol $ beaconPolicy beaconVaultValidatorHash
+
+-------------------------------------------------
+-- On-Chain Swap
+-------------------------------------------------
+-- | The price is not used individually. Instead it is obtain by traversing the script context.
+mkSwap :: CurrencySymbol -> SwapConfig -> Price -> Action -> ScriptContext -> Bool
+mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo = info} = case action of
+  Info -> traceError ("Owner's payment pubkey hash:\n" <> ownerAsString)
+  Close ->
+    -- | Must be signed by owner.
+    traceIfFalse "owner didn't sign" (txSignedBy info $ unPaymentPubKeyHash owner) &&
+    -- | If reference script consumed, must burn beacon.
+    traceIfFalse "If reference script is consumed, the beacon must be burned." 
+      ( if not $ null inputsWithRefScripts
+        then beaconBurned
+        else True
+      )
+  UpdatePrices newPrice ->
+    -- | Must be signed by owner.
+    traceIfFalse "owner didn't sign" (txSignedBy info $ unPaymentPubKeyHash owner) &&
+    -- | Must not consume reference script (to save on fees).
+    traceIfFalse "updating reference script utxo's datum is not necessary" (null inputsWithRefScripts) &&
+    -- | Datum must be valid price. Any number great than zero.
+    traceIfFalse "invalid new asking price" (newPrice > fromInteger 0) &&
+    -- | All outputs must contain same datum as specified in redeemer
+    traceIfFalse "new datums do not match price in redeemer" (allDatumsMatchRedeemerPrice newPrice) &&
+    -- | Must output to swap script address or owner address.
+    traceIfFalse "all outputs must go to either the script or the owner" outputsToSelfOrOwner
+  Swap -> 
+    -- | Should not consume reference script from swap script address.
+    --   Utxo output to the script must have the proper datum and datum must not differ from input.
+    --   Only offered asset should leave the swap script address.
+    --   User must supply the 1 ADA for each utxo with native tokens.
+    --   Max offered asset taken <= given asset * price.
+    traceIfFalse ("Invalid swap:" 
+              --  <> "\nShould not consume reference script from swap address"
+              --  <> "\nUtxo output to swap address must contain proper datum (must match input datum)"
+               <> "\nOnly the offered asset is allowed to leave the swap address."
+               <> "\nUser must supply the extra ADA (if necessary) for each output with native tokens."
+               <> "\nOffered asset leaving * price <= Asked asset given") swapCheck
+
+  where
+    ownerAsString :: BuiltinString
+    ownerAsString = decodeUtf8 $ getPubKeyHash $ unPaymentPubKeyHash $ owner
+
+    beaconBurned :: Bool
+    beaconBurned = 
+      let burned = flattenValue $ txInfoMint info
+          mintCheck (cn,_,n) = cn == beaconSym && n == (-1)
+      in any mintCheck burned
+
+    selfOutputs :: [TxOut]
+    selfOutputs = getContinuingOutputs ctx
+
+    outputsToSelfOrOwner :: Bool
+    outputsToSelfOrOwner = 
+      let isOwnerOutput z = case txOutPubKey z of
+            Nothing -> False
+            Just pkh -> pkh == unPaymentPubKeyHash owner
+      in all (\z -> z `elem` selfOutputs || isOwnerOutput z) $ txInfoOutputs info
+
+    inputsWithRefScripts :: [TxOut]
+    inputsWithRefScripts = filter (isJust . txOutReferenceScript)
+                         $ map txInInfoResolved
+                         $ txInfoInputs info
+
+    -- | Check datums of new outputs to script. If new datum is not an inline datum,
+    --   it will throw an error.
+    allDatumsMatchRedeemerPrice :: Price -> Bool
+    allDatumsMatchRedeemerPrice newPrice = 
+      let outputs = txInfoOutputs info
+          foo o = case (addressCredential $ txOutAddress o, parseDatum outputDatumError o) of
+            -- | if output is to the script, check its datum too
+              (ScriptCredential vh,price') -> 
+                if vh == scriptValidatorHash
+                then -- | Check if output to swap script contains proper datum.
+                     price' == newPrice
+                else True -- ^ If output to other script, ignore datum
+              _ -> True -- ^ If output to user wallet, ignore datum
+      in all foo outputs
+
+    outputDatumError :: BuiltinString
+    outputDatumError = "Invalid price datum for swap script output."
+
+    inputDatumError :: BuiltinString
+    inputDatumError = "Failed to parse input datum."
+
+    parseDatum :: BuiltinString -> TxOut -> Price
+    parseDatum err o = case txOutDatum o of
+      (OutputDatum (Datum d)) -> case fromBuiltinData d of
+        Nothing -> traceError err
+        Just p -> p
+      _ -> traceError "All datums must be inline datums."
+
+    -- | ValidatorHash of this script
+    scriptValidatorHash :: ValidatorHash
+    scriptValidatorHash = ownHash ctx
+
+    emptyVal :: Value
+    emptyVal = lovelaceValueOf 0
+
+    -- | How much of the offered asset is available in this utxo input and for what price.
+    priceTier :: TxOut -> (Integer,Price)
+    priceTier o = 
+      ( valueOf (txOutValue o) (fst offerAsset) (snd offerAsset)
+      , parseDatum inputDatumError o
+      )
+    
+    -- | Separate script input value from rest of input value (can be from other scripts).
+    --   Throws an error if there is a ref script among script inputs.
+    --   Get the weighted average price for all the utxo inputs from this script. This will
+    --   throw an error if the datum is not an inline datum or if it is not a price.
+    --
+    --   returns (Total Value from Script,Weighted Price)
+    scriptInputInfo :: (Value,Price)
+    scriptInputInfo =
+      let inputs = txInfoInputs info
+          addrCred i = addressCredential $ txOutAddress $ txInInfoResolved i
+          foo (si,(on,wp)) i = 
+            -- | Check if input belongs to this script
+            if ScriptCredential scriptValidatorHash == addrCred i
+            then -- | check if input contains a ref script from the swap script
+                 if isJust $ txOutReferenceScript $ txInInfoResolved i
+                 then traceError "Cannot consume reference script from swap address."
+                 else let (offeredInInput,price') = priceTier $ txInInfoResolved i
+                          newAmount = on + offeredInInput
+                          newWeightedPrice =
+                            ratio' on newAmount * wp +
+                            ratio' offeredInInput newAmount * price'
+                      in if price' <= fromInteger 0
+                         then traceError "All prices must be greater than 0."
+                         else ( si <> txOutValue (txInInfoResolved i)
+                              , (newAmount,newWeightedPrice)
+                              )
+            else (si,(on,wp))
+      in fmap snd $ foldl foo (emptyVal,(0,fromInteger 0)) inputs
+
+    -- | Separate output value to script from rest of output value (can be to other scripts).
+    --   Throw error if output to script doesn't contain proper inline datum.
+    --   The supplied price is the weighted average of all script input prices.
+    scriptOutputValue :: Price -> Value
+    scriptOutputValue weightedPrice =
+      let outputs = txInfoOutputs info
+          foo so o = case addressCredential $ txOutAddress o of
+            -- | Also checks if proper datum is attached.
+            ScriptCredential vh ->
+              -- | check if it belongs to swap script
+              if vh == scriptValidatorHash 
+              then -- | Check if output to swap script contains proper datum.
+                   --   Throws error if invalid datum.
+                   if parseDatum outputDatumError o == weightedPrice
+                   then so <> txOutValue o
+                   else traceError "output datum is not the weighted price of all utxo inputs"
+              else so
+            _ -> so
+      in foldl foo emptyVal outputs
+
+    swapCheck :: Bool
+    swapCheck =
+      let -- | Input info
+          (scriptInputValue,weightedPrice) = scriptInputInfo
+
+          -- | Convert price if necessary
+          correctedPrice
+            -- | If ADA is offered, divide the weighted price by 1,000,000
+            | offerAsset == (adaSymbol,adaToken) = weightedPrice * ratio' 1 1_000_000
+            -- | If ADA is asked, multiply the weighted price by 1,000,000
+            | askAsset == (adaSymbol,adaToken) = weightedPrice * ratio' 1_000_000 1
+            | otherwise = weightedPrice
+          
+          -- | Value differences
+          scriptValueDiff 
+            =  scriptOutputValue weightedPrice -- ^ checks if outputs contain weighted price
+            <> Num.negate scriptInputValue
+
+          -- | Amounts
+          askedGiven = fromInteger $ uncurry (valueOf scriptValueDiff) askAsset
+          offeredTaken = fromInteger $ Num.negate $ uncurry (valueOf scriptValueDiff) offerAsset
+
+          -- | Assets leaving script address
+          leavingAssets = flattenValue $ fst $ split scriptValueDiff -- zero diff amounts removed
+          isOnlyOfferedAsset [(cn,tn,_)] = (cn,tn) == offerAsset
+          isOnlyOfferedAsset [] = True -- ^ allows consolidating utxos at swap script address
+          isOnlyOfferedAsset _ = False
+      in
+        -- | Only the offered asset is allowed to leave the script address.
+        --   When ADA is not being offered, the user is required to supply the ADA for native token utxos.
+        --   This means that, when ADA is not offered, the script's ADA value can only increase.
+        isOnlyOfferedAsset leavingAssets &&
+
+        -- | Ratio sets the maximum amount of the offered asset that can be taken.
+        --   To withdraw more of the offered asset, more of the asked asset must be deposited to the script.
+        --   Uses the corrected price to account for converting ADA to lovelace 
+        offeredTaken * (correctedPrice) <= askedGiven
+
+data Swap
+instance ValidatorTypes Swap where
+  type instance RedeemerType Swap = Action
+  type instance DatumType Swap = Price
+
+swapValidator :: CurrencySymbol -> SwapConfig -> Validator
+swapValidator beaconSym swapConfig = Plutonomy.optimizeUPLC $ validatorScript $ mkTypedValidator @Swap
+    ($$(PlutusTx.compile [|| mkSwap ||])
+      `PlutusTx.applyCode` PlutusTx.liftCode beaconSym
+      `PlutusTx.applyCode` PlutusTx.liftCode swapConfig)
+    $$(PlutusTx.compile [|| wrap ||])
+  where wrap = mkUntypedValidator
+
+swapScript :: SwapConfig -> Script
+swapScript = unValidatorScript . (swapValidator beaconSymbol)
 
 -------------------------------------------------
 -- Serialization

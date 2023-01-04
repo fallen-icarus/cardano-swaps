@@ -21,6 +21,7 @@ The Getting Started instructions can be found [here](GettingStarted.md).
   - [Defending Against Beacon Abuse](#defending-against-beacon-abuse)
   - [Beacons with reference scripts](#beacons-with-reference-scripts)
   - [Generalizing Beacon Tokens](#generalizing-beacon-tokens)
+- [Composable Atomic Swaps](#composable-atomic-swaps)
 - [Liquidity](#liquidity)
   - [The Contrived Example](#the-contrived-example)
   - [The Realistic Example](#the-realistic-example)
@@ -30,7 +31,7 @@ The Getting Started instructions can be found [here](GettingStarted.md).
 - [Upgradability](#upgradability)
 - [Frontend Agnostic](#frontend-agnostic)
 - [Conclusion](#conclusion)
-- [Potential Adaptation of the Design](#potential-adaptation-of-the-design)
+- [Potential Adaptations of the Design](#potential-adaptations-of-the-design)
 
 ---
 ## Motivation
@@ -206,14 +207,14 @@ When a user creates a new swap address, the "creation" is not complete until:
 1. The swap contract is stored as a reference script inside the swap address.
 2. The proper beacon token is minted AND stored in the same utxo as the reference script.
 
-The use of reference scripts is why the `Swap` redeemer protects against consuming them. By storing the beacon with the reference script, the beacon token is also protected by default. Once these two steps are completed, the swap address is now easily discoverable by other users.
+The use of reference scripts is why the `Swap` redeemer protects against consuming them. By storing the beacon with the reference script, the beacon token is also protected by default against accidentally removing them with the UpdatePrice redeemer. Once these two steps are completed, the swap address is now easily discoverable by other users.
 
 Likewise, "closing" a swap position is not complete until:
 
 1. The reference script is consumed.
 2. The beacon token is burned.
 
-Consuming the reference script prevents anyone from remotely interacting with a swap address and burning the token makes that address "undiscoverable". Important to note that the `Close` redeemer can technically be used without fulfilling the above requirements. The only real difference between the `Close` redeemer and the `UpdateRedeemer` is that the `Close` redeemer allows the owner to consume the reference script at the swap address.
+Consuming the reference script prevents anyone from remotely interacting with a swap address and burning the token makes that address "undiscoverable".
 
 ### How Do Beacons Differentiate Between Trading Pairs?
 Just like all native tokens, beacon tokens have two fields:
@@ -244,7 +245,7 @@ token3 = Asset
 
 If you saw the trading pair of "DUST/AGIX", which DUST token name does this refer to: `token1` or `token2`? This is why only using the token name is not enough. A better solution would be to also include the currency symbols, like "abc123.DUST/abc123.AGIX". Now you can easily tell which tokens are included in the pair. 
 
-Using currency symbols too creates another problem: the amount of ADA that needs to be stored with native tokens is directly correlated to the length of the native token's token name. So while our above contrived example has short names, a real example would look like this:
+Using the currency symbols too creates another problem: the amount of ADA that needs to be stored with native tokens is directly correlated to the length of the native token's token name. So while our above contrived example has short names, a real example would look like this:
 
 `c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a/c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e0a`
 
@@ -255,8 +256,10 @@ To test this yourself on Linux, you can do:
 $ echo -n "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a/c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e0a" | openssl dgst -sha256
 ```
 
+**Just like the price datum, the beacon token name is always askedAsset/offeredAsset.**
+
 ### Defending Against Beacon Abuse
-While using the Koios and Blockfrost apis are technically off-chain, when there are hundreds of thousands of address with beacons, the apis can become too slow to use. Thus minting the beacon tokens must be guarded to prevent a denial-of-service attack.
+While using the Koios and Blockfrost apis are technically off-chain, when there are hundreds of thousands of address with beacons, the apis can become too slow to use. Thus use of the beacon tokens must be guarded to prevent a denial-of-service attack.
 
 To this end, minting beacon tokens require a 2 ADA deposit to a beacon vault address which can be redeemed upon burning the beacon token. The beacon vault address is hardcoded into the beacon minting policy which means it can tell whether the necessary deposit has been made. Beacon minting will only succeed if:
 
@@ -272,12 +275,12 @@ The datum for the 2 ADA deposit is the inline currency symbol for the beacon tok
 By hardcoding the beacon vault address into the beacon policy and requiring the beacon currency symbol to be used as the datum for the beacon vault, the beacon policy and beacon vault are inextricably linked together.
 
 ### Beacons with reference scripts
-To minimize transaction fees, the beacon policy and beacon vault script can be used as reference scripts. The beacon vault script as logic to protect any reference scripts stored in the vault from being consumed. This means both the beacon policy and the beacon vault script can be stored inside the beacon vault.
+To minimize transaction fees, the beacon policy and beacon vault script can be used as reference scripts. The beacon vault script has logic to protect any reference scripts stored in the vault from being consumed. This means both the beacon policy and the beacon vault script can be stored inside the beacon vault.
 
-**There is no way to withdraw ADA from the beacon vault when it is stored with a reference script. Thus saving reference scripts inside the beacon vault effectively means burning that ADA.** There was no way to allow withdrawing the ADA without opening up centralization pressures.
+**There is no way to withdraw ADA from the beacon vault when it is stored with a reference script. Thus storing reference scripts inside the beacon vault effectively means burning the associated ADA.** There was no way to allow withdrawing the ADA without opening up centralization problems.
 
 ### Generalizing Beacon Tokens
-By simply adding an extra parameter to the `mkBeaconVault` function in the [source code](src/CardanoSwaps.hs#L458), a completely unique beacon policy and beacon vault contract pair can be created. This allows different DeFi applications to use their own beacon tokens. This extra parameter can be a simple string like "cardano-swaps-dex". The beacon policy and vault pair used by Cardano-Swaps was created by using "cardano-swaps-dex-testing", seen [here](src/CardanoSwaps.hs#L526).
+By simply adding an extra parameter to the `mkBeaconVault` function in the [source code](src/CardanoSwaps.hs#L263), a completely unique beacon policy and beacon vault contract pair can be created. This allows different DeFi applications to use their own beacon tokens. This extra parameter can be a simple string like "cardano-swaps-dex". The beacon policy and vault pair used by Cardano-Swaps was created by using "cardano-swaps-dex-testing", seen [here](src/CardanoSwaps.hs#L331).
 
 While these beacons are used to broadcast all necessary information for remotely executing swaps (reference script utxos and available swap utxos), they can be used for broadcasting ANY information tied to:
 
@@ -285,11 +288,27 @@ While these beacons are used to broadcast all necessary information for remotely
 2. The utxo they are stored in
 3. The transaction history of the beacon. 
 
-For example, the last use case allows the beacons to be used to also broadcast the metadata of the last transaction they were part of. This feature can create a "metadata history" trail. Here is the Blockfrost [api](https://docs.blockfrost.io/#tag/Cardano-Assets/paths/~1assets~1%7Basset%7D~1transactions/get) that can give you the transaction history for a beacon. Here is the Koios [api](https://api.koios.rest/#get-/asset_txs) for the same thing. All of this information is broadcasted automatically by beacon tokens; no configuration of the tokens is necessary. You can simply decide which information to use.
+For example, the last use case allows the beacons to be used to also broadcast the metadata of the last transaction they were part of. This feature can create a trustless "metadata history" trail. Here is the Blockfrost [api](https://docs.blockfrost.io/#tag/Cardano-Assets/paths/~1assets~1%7Basset%7D~1transactions/get) that can give you the transaction history for a beacon. Here is the Koios [api](https://api.koios.rest/#get-/asset_txs) for the same thing. This same technique can also be used to trustlessly check a datum history. 
+
+All of this information is broadcasted automatically and trustlessly by the beacon tokens; no configuration of the tokens is necessary. You can simply decide which information to use.
+
+---
+## Composable Atomic Swaps
+Thanks to being able to securely combine atomic swaps into one transaction, any arbitrarily complex swap transaction can be created. 
+
+Do you want to convert 10 ADA into 5 DUST and 5 AGIX? No problem! This can be done in one transaction.
+What about converting 10 ADA, 5 DUST, and 3 WMT into 16 AGIX and 1 of your favorite NFTs? Piece of cake!
+
+By composing these atomic swaps, in one transaction, you can easily and securely do:
+``` Haskell
+many assets -> many assets
+```
+
+The only limit is the maximum transaction size for Cardano.
 
 ---
 ## Liquidity
-Liquidity on Cardano-Swaps is entirely due to combining properly incentivized abritrage with being able to chain swaps together into one transaction.
+Liquidity on Cardano-Swaps is entirely due to combining properly incentivized abritrage with being able to chain (compose) swaps together into one transaction.
 
 ### The Contrived Example
 
@@ -306,10 +325,10 @@ Charlie looks up all swap addresses willing to swap ADA/AGIX. Charlie finds Bob'
 Using Bob's reference script, Charlie gives Bob 10 ADA and receives 10 AGIX.
 Using Alice's reference script, Charlie gives Alice 5 AGIX and receives 10 ADA.
 Charlie now has his original 10 ADA plus an additional 5 AGIX.
-This all occurs in one transaction where Charlie paid the transaction fee.
+This all occurs in one transaction where Charlie pays the transaction fee.
 ```
 
-In short, Charlie pays the transaction fee and in return receives 5 AGIX. As a consequence, both Alice's and Bob's swaps were fulfilled.
+In short, Charlie pays the transaction fee and in return receives 5 AGIX. As a bonus, both Alice's and Bob's swaps were fulfilled.
 
 ### The Realistic Example
 
@@ -332,10 +351,10 @@ Sarah gives Charlie 10 HOSKY and receives 10 AGIX.
 Sarah gives Bob 5 AGIX and receives 10 DUST.
 Sarah gives Alice 10 DUST and receives 10 ADA.
 Sarah now has her original 10 ADA plus an additional 5 AGIX.
-This all occurs in one transaction where Sarah paid the transaction fee.
+This all occurs in one transaction where Sarah pays the transaction fee.
 ```
 
-In short, Sarah pays the transaction fee and in return receives 5 AGIX. As a consequence, four swaps were fulfilled.
+In short, Sarah pays the transaction fee and in return receives 5 AGIX. As a bonus, four swaps were fulfilled.
 
 ### Liquidity naturally flows to the less liquid pairs
 As you saw in the realistic example, Sarah was able to fulfill both the AGIX/DUST swap and the HOSKY/AGIX swap simply by "passing through" those pairs on her way back to ADA. As long as the entry and exit pairs (in this case ADA/HOSKY and DUST/ADA) have plenty of liquidity, arbitragers can spread that liquidity into the less liquid pairs.
@@ -348,21 +367,23 @@ Recall the contrived example above. What would happen if Charlie and Mike try to
 1. Charlie and Mike successfully build their transactions since the UTxOs still exist.
 2. Charlie and Mike submit their transaction at the same time.
 3. Charlie's is added to a block first.
-4. When Mike's transaction is then picked to go into a block, the UTxOs no longer exist. The transaction fails without needed to run the swap contracts.
+4. When Mike's transaction is then picked to go into a block, the UTxOs no longer exist. The transaction fails without needing to run the swap contracts.
 
-Since the Mike's transaction will fail without needing to run the swap script, Mike's collateral is safe. Further, the more available swaps their are, the less likely these "collisions" will be.
+Since Mike's transaction will fail without needing to run the swap script, Mike's collateral is safe. Further, the more available swaps their are, the less likely these "collisions" are.
 
 ### Transaction Fee Estimation For Chaining Swaps
 ``` Txt
 fee = # ref scripts executed * ( 0.3 ADA + 0.02 ADA * ( # input utxos + # output utxos ) )
 ``` 
-The transaction fee increases linearly for every utxo (inputs + outputs) in the transaction, then quadratically for every reference script that needs to be executed. The reason for this is that the script must traverse all of the inputs and all of the outputs every time it is executed. The reference script must be executed once for every utxo coming from that script address.
+The transaction fee increases linearly for every utxo (inputs + outputs) in the transaction, then quadratically for every reference script that needs to be executed. The reason for this is that the script must traverse all of the inputs and all of the outputs every time it is executed. 
 
-Since the swap script validates based off the transaction as a whole and not based off any individual utxo, the extra executions for each utxo coming from a swap address are completely redundant. There is a Cardano Problem Statement (CPS) [pull request](https://github.com/cardano-foundation/CIPs/pull/418) that looks to address this issue.
+Currenctly, the reference script must be executed once for every utxo coming from that script address. Since the swap script validates based off the transaction as a whole and not based off any individual utxo, the extra executions for each utxo coming from the same swap address are completely redundant. There is a Cardano Problem Statement (CPS) [pull request](https://github.com/cardano-foundation/CIPs/pull/418) that looks to address this issue.
 
 ---
 ## Upgradability
-Being that users can close their swaps at any time, whenever there is a potential upgrade, users can choose to close their current swaps and recreate them with the new contracts. Users are able to use different versions of the contracts (assuming the new logic allows it) thanks to the beacon tokens still being able to link swaps across the blockchain. Upgrading the beacons would functions exactly the same way. It is very similar to how Cardano Stake Pool Operators can currently choose which version of `cardano-node` to use.
+Being that users can close their swaps at any time, whenever there is a potential upgrade, users can choose to close their current swaps and recreate them with the new contracts. Users are able to use different versions of the contracts (assuming the new logic allows it) thanks to the beacon tokens still being able to link swaps across the blockchain. 
+
+Upgrading the beacons would functions exactly the same way. It is very similar to how Cardano Stake Pool Operators can currently choose which version of `cardano-node` to use. The only difficulty with upgrading beacon tokens is that enough users need to upgrade for there to be enough liquidity for the DEX.
 
 ---
 ## Frontend Agnostic
@@ -373,25 +394,29 @@ By using the beacon tokens, it is trivial for any wallet to integrate with Carda
 This DEX protocol has all of the desired properties of a DEX:
 
 1. Users maintain delegation control at all times.
-2. Naturally concurrent and gets more concurrent the more available swaps there are.
-3. There is no impermanent loss since users can declare their desired minimum price.
-4. No secondary token is needed to interact with the DEX, only ADA is needed to pay the transaction fees.
-5. Upgrades can happen easily and democratically. Plus maintaining backwards compatibility is easy.
-6. Any wallet can easily add Cardano-Swap support without opening up security holes in their software.
+2. Composable atomic swaps allow creating arbitrarily complex swap transactions.
+3. Naturally concurrent and gets more concurrent the more available swaps there are.
+4. There is no impermanent loss since users can declare their desired minimum price.
+5. No secondary token is needed to interact with the DEX, only ADA is needed for the fees and deposits.
+6. Upgrades can happen easily and democratically. Plus maintaining backwards compatibility is easy.
+7. Any wallet can easily add Cardano-Swap support without opening up security holes in their software.
 
 ---
-## Potential Adaptation of the Design
+## Potential Adaptations of the Design
 Since this approach gives each user a unique spending script per trading pair, each user must store each script on-chain for other people to find and use. This means the user is required to "deposit" about 20 ADA for every script they are using. While this has benefits such as disincentivizing creating empty swap addresses, the deposit may be considered steep.
 
-Another potential approach is to give every user the same spending script but still give them unique addresses by building the swap address with the user's own personal staking key or staking script. This still ensures full delegation control while using the DEX. Since the spending script no longer has information on the owner, trading pair, or its own unique hash, this information will need to be provided in the datum of each utxo at the swap address along with the price. In a nutshell, this means all of Alice's swaps will be found in the same address, regardless of the trading pair; the only thing distinguishing them would be the data they contain.
+### Adaption 1
+Another potential approach is to have a universal spending script for each trading pair. Users would still get unique addresses by building the actual swap address with the user's own personal staking key or staking script. This still ensures full delegation control while using the DEX and all of the trading pairs would still be siloed into separate addresses.
 
-In this alternative approach, the beacon tokens, with their deposit requirement, would still be used to find the available swaps by storing it inside the user's address. This would still require an additional deposit since the beacon cannot be stored without ADA, but the deposit will only be about 2 ADA. The separation of utxos based off trading pairs can then be done off-chain since the beacon will broadcast all of the utxos at the address. 
+#### Drawbacks
+Since the spending script would no longer have information on the owner, this would make securing `Close` and `UpdatePrice` actions more difficult. Datums would likely be needed to compensate but since datums are mutable, this would make the DEX less secure by default. The DEX's security would now heavily depend on ensuring the integrity of the datums.
 
-Finally, since all users would be using the same spending script, the spending script can be stored on-chain inside the beacon vault (and be locked forever) with the transaction ID hardcoded into `cardano-swaps`. Then all swaps would just reference this spending script. Thus this approach is just as concurrent as the original.
+### Adaptation 2
+Instead of giving each user the a universal spending script for each trading pair (like in Adaptation 1), each user can be given one unique spending script that would work on all trading pairs. Since each user has a unique spending script, their addresses would also be unique which means full delegation control is still ensured. All trading pairs would now be grouped together into the same swap address.
 
-This design opens a few questions:
+#### Drawbacks
+Since the trading pair utxos are all grouped together into the same address, there needs to be a way to differentiate which utxos are for which trading pairs. You could give every utxo for a specific trading pair the corresponding beacon token but this would require a 2 ADA deposit for each utxo. This would quickly cancel out the gains from not having the user store their own reference scripts on-chain.
 
-1. How much sorting would need to be done to filter out utxos of the wrong pair? With 10000 users, you could be looking at sorting at least 10000 utxos each query. Would Koios and Blockfrost even be able to handle this level of querying without causing more centralization of these apis?
-2. With the increased size of the datum, how much ADA will need to be stored with each available swap utxo? How many utxos would it take to cancel out the gain from a smaller deposit?
+Another problem is that this puts a much larger load on the off-chain use of beacons. How much sorting would need to be done to filter out utxos of the wrong pairs? With 10000 users, you could be looking at sorting at least 10000 utxos each query, regardless of the trading pair. Would Koios and Blockfrost even be able to handle this level of querying without causing more centralization of these apis? The maximum amount of work possible would need to be done for every query, no matter how many utxos there actually are for a specific trading pair. Segregating trading pairs into separate addresses dramatically minimizes the amount of sorting required off-chain and the load on the apis.
 
-Segregating trading pairs into separate addresses dramatically minimizes the amount of sorting required off-chain and the load on the apis. Given this, the 20 ADA deposits of the original approach seem like a fair trade off. That is why this proof-of-concept does not use this alternative approach.
+Having all the trading pairs together also makes it harder to write an easily composable atomic swap since you know need to account for not having all utxos pre-sorted into the respective trading pairs. This extra complexity could easily lead to security holes in the DEX.

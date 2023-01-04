@@ -128,7 +128,10 @@ calcWeightedPrice xs = snd $ foldl foo (0,fromInteger 0) xs
     convert upi@UtxoPriceInfo{priceNumerator = num,priceDenominator = den} = 
       case ratio num den of
         Nothing -> Haskell.error $ "Denominator was zero: " <> Haskell.show upi
-        Just r -> r
+        Just r ->
+          if r <= fromInteger 0
+          then Haskell.error $ "Price was not greater than zero: " <> Haskell.show upi
+          else r
     
     foo :: (Integer,Rational) -> UtxoPriceInfo -> (Integer,Rational) 
     foo (runningTot,wp) ui@UtxoPriceInfo{..} =

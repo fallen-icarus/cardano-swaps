@@ -170,9 +170,9 @@ readTokenName s = case fromHex $ fromString s of
 --   This creates a unique address for every SwapConfig configuration.
 data SwapConfig = SwapConfig
   {
-    owner :: PaymentPubKeyHash,
-    offerAsset :: (CurrencySymbol,TokenName),
-    askAsset :: (CurrencySymbol,TokenName)
+    swapOwner :: PaymentPubKeyHash,
+    swapOffer :: (CurrencySymbol,TokenName), -- ^ Asset being offered
+    swapAsk :: (CurrencySymbol,TokenName)  -- ^ Asset being asked for
   }
 
 PlutusTx.makeLift ''SwapConfig
@@ -430,7 +430,7 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
   Info -> traceError ("Owner's payment pubkey hash:\n" <> ownerAsString)
   Close ->
     -- | Must be signed by owner.
-    traceIfFalse "owner didn't sign" (txSignedBy info $ unPaymentPubKeyHash owner) &&
+    traceIfFalse "owner didn't sign" (txSignedBy info $ unPaymentPubKeyHash swapOwner) &&
     -- | If reference script consumed, must burn beacon.
     traceIfFalse "If reference script is consumed, the beacon must be burned." 
       ( if not $ null inputsWithRefScripts
@@ -439,7 +439,7 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
       )
   UpdatePrices newPrice ->
     -- | Must be signed by owner.
-    traceIfFalse "owner didn't sign" (txSignedBy info $ unPaymentPubKeyHash owner) &&
+    traceIfFalse "owner didn't sign" (txSignedBy info $ unPaymentPubKeyHash swapOwner) &&
     -- | Must not consume reference script (to save on fees).
     traceIfFalse "updating reference script utxo's datum is not necessary" (null inputsWithRefScripts) &&
     -- | Datum must be valid price. Any number great than zero.
@@ -464,7 +464,7 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
 
   where
     ownerAsString :: BuiltinString
-    ownerAsString = decodeUtf8 $ getPubKeyHash $ unPaymentPubKeyHash $ owner
+    ownerAsString = decodeUtf8 $ getPubKeyHash $ unPaymentPubKeyHash $ swapOwner
 
     beaconBurned :: Bool
     beaconBurned = 
@@ -506,7 +506,7 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
                    else traceError "Datums do not match then Update redeemer's price."
               else traceError "Tx outputs can only go to the swap address or the owner's address."
             (PubKeyCredential pkh,_) ->
-              if pkh == unPaymentPubKeyHash owner
+              if pkh == unPaymentPubKeyHash swapOwner
               then True
               else traceError "Tx outputs can only go to the swap address or the owner's address."
       in all foo outputs
@@ -542,7 +542,7 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
     -- | How much of the offered asset is available in this utxo input and for what price.
     priceTier :: TxOut -> (Integer,Price)
     priceTier o = 
-      ( valueOf (txOutValue o) (fst offerAsset) (snd offerAsset)
+      ( valueOf (txOutValue o) (fst swapOffer) (snd swapOffer)
       , parseDatum inputDatumError o
       )
     
@@ -603,9 +603,9 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
           -- | Convert price if necessary
           correctedPrice
             -- | If ADA is offered, divide the weighted price by 1,000,000
-            | offerAsset == (adaSymbol,adaToken) = weightedPrice * ratio' 1 1_000_000
+            | swapOffer == (adaSymbol,adaToken) = weightedPrice * ratio' 1 1_000_000
             -- | If ADA is asked, multiply the weighted price by 1,000,000
-            | askAsset == (adaSymbol,adaToken) = weightedPrice * ratio' 1_000_000 1
+            | swapAsk == (adaSymbol,adaToken) = weightedPrice * ratio' 1_000_000 1
             | otherwise = weightedPrice
           
           -- | Value differences
@@ -614,12 +614,12 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
             <> Num.negate scriptInputValue
 
           -- | Amounts
-          askedGiven = fromInteger $ uncurry (valueOf scriptValueDiff) askAsset
-          offeredTaken = fromInteger $ Num.negate $ uncurry (valueOf scriptValueDiff) offerAsset
+          askedGiven = fromInteger $ uncurry (valueOf scriptValueDiff) swapAsk
+          offeredTaken = fromInteger $ Num.negate $ uncurry (valueOf scriptValueDiff) swapOffer
 
           -- | Assets leaving script address
           leavingAssets = flattenValue $ fst $ split scriptValueDiff -- zero diff amounts removed
-          isOnlyOfferedAsset [(cn,tn,_)] = (cn,tn) == offerAsset
+          isOnlyOfferedAsset [(cn,tn,_)] = (cn,tn) == swapOffer
           isOnlyOfferedAsset [] = True -- ^ allows consolidating utxos at swap script address
           isOnlyOfferedAsset _ = False
       in

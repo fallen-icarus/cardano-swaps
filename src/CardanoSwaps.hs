@@ -74,6 +74,7 @@ import PlutusTx.Numeric as Num
 import Ledger.Ada (lovelaceValueOf,lovelaceOf,fromValue)
 import PlutusTx.Ratio (fromGHC)
 import PlutusTx.AssocMap (keys)
+import Plutus.V2.Ledger.Tx
 
 -------------------------------------------------
 -- Misc Functions
@@ -328,7 +329,7 @@ beaconVaultValidator appName = Plutonomy.optimizeUPLC $ validatorScript $ mkType
 
 -- | Change the string to create a different beaconPolicy/beaconVault pair
 beaconVault :: Validator
-beaconVault = beaconVaultValidator "cardano-swaps-dex-testing"
+beaconVault = beaconVaultValidator "cardano-swaps-dex-testing-aklsdfja"
 
 beaconVaultScript :: Script
 beaconVaultScript = unValidatorScript beaconVault
@@ -445,10 +446,9 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
     -- | Datum must be valid price. Any number great than zero.
     traceIfFalse "invalid new asking price" (newPrice > fromInteger 0) &&
     -- | All outputs must contain same datum as specified in redeemer
-    -- Must output to swap script address or owner address.
-    -- This error message should never actually be called since there are trace errors in
-    -- updateCheck.
-    traceIfFalse "updateCheck Failure." (updateCheck newPrice)
+    traceIfFalse "new datums do not match price in redeemer" (allDatumsMatchRedeemerPrice newPrice) &&
+    -- | Must output to swap script address or owner address.
+    traceIfFalse "all outputs must go to either the script or the owner" outputsToSelfOrOwner
   Swap -> 
     -- | Should not consume reference script from swap script address.
     -- Utxo output to the script must have the proper datum and datum must not differ from input.
@@ -494,23 +494,27 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
                          $ map txInInfoResolved
                          $ txInfoInputs info
 
-    updateCheck :: Price -> Bool
-    updateCheck reqPrice =
+    selfOutputs :: [TxOut]
+    selfOutputs = getContinuingOutputs ctx
+
+    outputsToSelfOrOwner :: Bool
+    outputsToSelfOrOwner = 
+      let isOwnerOutput z = case txOutPubKey z of
+            Nothing -> False
+            Just pkh -> pkh == unPaymentPubKeyHash swapOwner
+      in all (\z -> z `elem` selfOutputs || isOwnerOutput z) $ txInfoOutputs info
+    
+    allDatumsMatchRedeemerPrice :: Price -> Bool
+    allDatumsMatchRedeemerPrice newPrice = 
       let outputs = txInfoOutputs info
           foo o = case (addressCredential $ txOutAddress o, parseDatum outputDatumError o) of
-            (ScriptCredential vh, price') ->
-              -- | Check if script is this script
-              if vh == scriptValidatorHash
-              then -- | Check if datum matches reqPrice
-                   if price' == reqPrice
-                   then True
-                   else traceError "Datums do not match then Update redeemer's price."
-              else traceError "Tx outputs can only go to the swap address or the owner's address."
-            (PubKeyCredential pkh,_) ->
-              -- | Check if pubkey is the owner
-              if pkh == unPaymentPubKeyHash swapOwner
-              then True
-              else traceError "Tx outputs can only go to the swap address or the owner's address."
+            -- | if output is to the script, check its datum too
+              (ScriptCredential vh,price') -> 
+                if vh == scriptValidatorHash
+                then -- | Check if output to swap script contains proper datum.
+                     price' == newPrice
+                else True -- ^ If output to other script, ignore datum
+              _ -> True -- ^ If output to user wallet, ignore datum
       in all foo outputs
 
     emptyVal :: Value

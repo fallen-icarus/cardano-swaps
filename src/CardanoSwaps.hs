@@ -74,6 +74,7 @@ import Ledger.Ada (lovelaceValueOf,lovelaceOf,fromValue)
 import PlutusTx.Ratio (fromGHC)
 import PlutusTx.AssocMap (keys)
 import PlutusPrelude (foldl')
+import qualified PlutusTx.AssocMap as Map
 
 -------------------------------------------------
 -- Misc Functions
@@ -454,6 +455,7 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
     traceIfFalse "invalid new asking price" (newPrice > fromInteger 0) &&
     -- | All outputs must contain same datum as specified in redeemer
     -- Must output to swap script address or owner address.
+    -- Cannot remove beacon from swap address.
     traceIfFalse "New price datums do not match price supplied in redeemer." (updateCheck newPrice)
   Swap ->
     -- | Should not consume reference script from swap script address.
@@ -497,7 +499,7 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
     updateCheck :: Price -> Bool
     updateCheck newPrice =
       let outputs = txInfoOutputs info
-          foo TxOut{txOutDatum=d,txOutAddress=Address{addressCredential=addrCred}} =
+          foo TxOut{txOutDatum=d,txOutValue=oVal,txOutAddress=Address{addressCredential=addrCred}} =
             case addrCred of
               ScriptCredential vh ->
                 -- | Check if script is this script.
@@ -510,7 +512,11 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
               PubKeyCredential pkh -> 
                 -- | Check if pkh is the owner's.
                 if pkh == unPaymentPubKeyHash swapOwner
-                then True
+                then
+                  -- | Check if beacon removed. 
+                  case Map.lookup beaconSym (getValue oVal) of
+                    Nothing -> True
+                    Just _ -> traceError "Cannot remove beacon from swap address."
                 else traceError "Tx outputs can only to to the swap address or the owner's address."
       in all foo outputs
 

@@ -461,14 +461,9 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
     -- | Should not consume reference script from swap script address.
     -- Utxo output to the script must have the proper datum and datum must not differ from input.
     -- Only offered asset should leave the swap script address.
-    -- User must supply the 1 ADA for each utxo with native tokens.
+    -- User must supply the ADA for each utxo with native tokens.
     -- Max offered asset taken <= given asset * price.
-    traceIfFalse ("Invalid swap:" 
-              --  <> "\nShould not consume reference script from swap address"
-              --  <> "\nUtxo output to swap address must contain proper datum (must match input datum)"
-               <> "\nOnly the offered asset is allowed to leave the swap address."
-               <> "\nUser must supply the extra ADA (if necessary) for each output with native tokens."
-               <> "\nOffered asset leaving * price <= Asked asset given") swapCheck
+    swapCheck
 
   where
     ownerAsString :: BuiltinString
@@ -617,12 +612,12 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
         -- | Only the offered asset is allowed to leave the script address.
         -- When ADA is not being offered, the user is required to supply the ADA for native token utxos.
         -- This means that, when ADA is not offered, the script's ADA value can only increase.
-        isOnlyOfferedAsset leavingAssets &&
+        traceIfFalse "Only the offered asset is allowed to leave." (isOnlyOfferedAsset leavingAssets) &&
 
         -- | Ratio sets the maximum amount of the offered asset that can be taken.
         -- To withdraw more of the offered asset, more of the asked asset must be deposited to the script.
         -- Uses the corrected price to account for converting ADA to lovelace 
-        offeredTaken * correctedPrice <= askedGiven
+        traceIfFalse "Not enough of the asked asset given: offeredTaken * price <= askedGiven" (offeredTaken * correctedPrice <= askedGiven)
 
 data Swap
 instance ValidatorTypes Swap where

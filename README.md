@@ -303,7 +303,7 @@ To minimize transaction fees, the beacon policy and beacon vault script can be u
 **There is no way to withdraw ADA from the beacon vault when it is stored with a reference script. Thus storing reference scripts inside the beacon vault effectively means burning the associated ADA.** There was no way to allow withdrawing the ADA without opening up centralization problems.
 
 ### Generalizing Beacon Tokens
-By simply adding an extra parameter to the `mkBeaconVault` function in the [source code](src/CardanoSwaps.hs#L263), a completely unique beacon policy and beacon vault contract pair can be created. This allows different DeFi applications to use their own beacon tokens. This extra parameter can be a simple string like "cardano-swaps". The beacon policy and vault pair used by Cardano-Swaps was created by using "cardano-swaps-testing", seen [here](src/CardanoSwaps.hs#L338).
+By simply adding an extra parameter to the `mkBeaconVault` function in the [source code](src/CardanoSwaps.hs#L264), a completely unique beacon policy and beacon vault contract pair can be created. This allows different DeFi applications to use their own beacon tokens. This extra parameter can be a simple string like "cardano-swaps". The beacon policy and vault pair used by Cardano-Swaps was created by using "cardano-swaps-testing", seen [here](src/CardanoSwaps.hs#L339).
 
 While these beacons are used to broadcast all necessary information for remotely executing swaps (reference script utxos and available swap utxos), they can be used for broadcasting ANY information tied to:
 

@@ -174,7 +174,8 @@ As previously mentioned, Cardano-Swaps uses inline price datums. However, someti
 3. All datums must be inline datums of a price.
 4. All datums must match the price passed with the redeemer (this is for more efficient checks).
 5. All transaction outputs must either go to the originating swap address or the swap owner's address.
-6. No reference script utxos are updated.
+6. The beacon is not removed from the swap address.
+7. No reference script utxos are updated.
 
 The last requirement might seem strange but this is to minimize transaction fees. The `Swap` redeemer ensures no reference script utxos are consumed so there is no risk in leaving the datum attached to reference script utxos alone.
 
@@ -206,9 +207,9 @@ The utxos api also returns which utxos contain reference scripts. This is how us
 When a user creates a new swap address, the "creation" is not complete until:
 
 1. The swap contract is stored as a reference script inside the swap address.
-2. The proper beacon token is minted AND stored in the same utxo as the reference script.
+2. The proper beacon token is minted AND stored in the swap address.
 
-The use of reference scripts is why the `Swap` redeemer protects against consuming them. By storing the beacon with the reference script, the beacon token is also protected by default against accidentally removing them with the UpdatePrice redeemer. Once these two steps are completed, the swap address is now easily discoverable by other users.
+It is recommended to store the beacon with the reference script but this isn't necessary. Once these two steps are completed, the swap address is now easily discoverable by other users.
 
 Likewise, "closing" a swap position is not complete until:
 

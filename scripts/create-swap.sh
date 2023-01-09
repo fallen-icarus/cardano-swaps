@@ -1,5 +1,5 @@
 # Variables
-dir="../assets/plutus-files2/"
+dir="../assets/plutus-files4/"
 tmpDir="../assets/tmp/"
 swapScriptFile="${dir}swap01.plutus"
 swapScriptAddrFile="${dir}swap01.addr"
@@ -82,8 +82,8 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 077686b65e44b5bc89f90ce60b1f62f57725ae2a5227d21c7024ca1e78b515ae#0 \
-  --tx-out "$(cat ${swapScriptAddrFile}) + 24000000 lovelace + 1 ${beacon}" \
+  --tx-in aab3e03a7e1b3f9b462f1887d511e58c2dfafd65eb4b4a79834b967c0af98ce5#1 \
+  --tx-out "$(cat ${swapScriptAddrFile}) + 22000000 lovelace + 1 ${beacon}" \
   --tx-out-inline-datum-file $swapDatumFile \
   --tx-out-reference-script-file $swapScriptFile \
   --tx-out "$(cat ${swapScriptAddrFile}) + 150000000 lovelace" \

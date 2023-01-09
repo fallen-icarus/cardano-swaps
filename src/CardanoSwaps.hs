@@ -125,7 +125,7 @@ instance ToJSON UtxoPriceInfo where
 calcWeightedPrice :: [UtxoPriceInfo] -> Rational
 calcWeightedPrice xs = snd $ foldl' foo (0,fromInteger 0) xs
   where
-    convert :: (UtxoPriceInfo) -> Rational 
+    convert :: UtxoPriceInfo -> Rational 
     convert upi@UtxoPriceInfo{priceNumerator = num,priceDenominator = den} = 
       case ratio num den of
         Nothing -> Haskell.error $ "Denominator was zero: " <> Haskell.show upi
@@ -450,7 +450,7 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
     -- | Must be signed by owner.
     traceIfFalse "owner didn't sign" (txSignedBy info $ unPaymentPubKeyHash swapOwner) &&
     -- | Must not consume reference script (to save on fees).
-    traceIfFalse "updating reference script utxo's datum is not necessary" (noInputsWithRefScripts) &&
+    traceIfFalse "updating reference script utxo's datum is not necessary" noInputsWithRefScripts &&
     -- | Datum must be valid price. Any number great than zero.
     traceIfFalse "invalid new asking price" (newPrice > fromInteger 0) &&
     -- | All outputs must contain same datum as specified in redeemer
@@ -472,7 +472,7 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
 
   where
     ownerAsString :: BuiltinString
-    ownerAsString = decodeUtf8 $ getPubKeyHash $ unPaymentPubKeyHash $ swapOwner
+    ownerAsString = decodeUtf8 $ getPubKeyHash $ unPaymentPubKeyHash swapOwner
 
     beaconBurned :: Bool
     beaconBurned = 
@@ -622,7 +622,7 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
         -- | Ratio sets the maximum amount of the offered asset that can be taken.
         -- To withdraw more of the offered asset, more of the asked asset must be deposited to the script.
         -- Uses the corrected price to account for converting ADA to lovelace 
-        offeredTaken * (correctedPrice) <= askedGiven
+        offeredTaken * correctedPrice <= askedGiven
 
 data Swap
 instance ValidatorTypes Swap where
@@ -638,7 +638,7 @@ swapValidator beaconSym swapConfig = Plutonomy.optimizeUPLC $ validatorScript $ 
   where wrap = mkUntypedValidator
 
 swapScript :: SwapConfig -> Script
-swapScript = unValidatorScript . (swapValidator beaconSymbol)
+swapScript = unValidatorScript . swapValidator beaconSymbol
 
 -------------------------------------------------
 -- Serialization
@@ -665,4 +665,4 @@ writeScript file script = writeFileTextEnvelope @(PlutusScript PlutusScriptV2) f
                         $ serialisedScript script
 
 writeData :: PlutusTx.ToData a => FilePath -> a -> IO ()
-writeData file d = writeJSON file d
+writeData = writeJSON

@@ -61,12 +61,13 @@ Cardano-Swaps took inspiration from Axo's programmable swaps design but added de
 Interestingly, by starting with the requirement of delegation control, other nice properties naturally emerged:
 
   1. Composable atomic swaps
-  2. Naturally concurrent and gets more concurrent the more users there are. No batchers are required.
-  3. Liquidity naturally spreads to all trading pairs instead of being siloed into specific trading pairs.
-  4. There is no impermanent loss.
-  5. ADA is all you need to interact with the DEX.
-  6. Upgradability is extremely easy and doesn't introduce any security holes.
-  7. Easy to integrate into any Cardano wallet software.
+  2. Users maintain custody of their assets at all times.
+  3. Naturally concurrent and gets more concurrent the more users there are. No batchers are required.
+  4. Liquidity naturally spreads to all trading pairs instead of being siloed into specific trading pairs.
+  5. There is no impermanent loss.
+  6. ADA is all you need to interact with the DEX.
+  7. Upgradability is extremely easy and doesn't introduce any security holes.
+  8. Easy to integrate into any Cardano wallet software.
 
 In addition to these nice properties, the novel use of *Beacon Tokens* can be generalized to any Decentralized Finance (DeFi) application on Cardano.
 
@@ -101,7 +102,7 @@ cardano-cli address build \
   --out-file aliceSwap.addr
 ```
 
-The usage is almost identical to building a traditional payment address. All assets at the `aliceSwap.addr` address are now delegated according to `aliceStaking.vkey`. The `cardano-swaps` CLI also provides the option of using a staking plutus contract to allow greater flexibility. The staking plutus script also takes a similar config parameter to guarantee unique staking contract and staking addresses:
+The usage is almost identical to building a traditional payment address. All assets at the `aliceSwap.addr` address are now delegated according to `aliceStaking.vkey`. The `cardano-swaps` CLI also provides the option of using a staking plutus contract to allow greater flexibility. The staking plutus script also takes a similar config parameter to guarantee unique staking contracts and staking addresses:
 
 ``` Haskell
 data StakingConfig = StakingConfig
@@ -141,7 +142,7 @@ Fractions are used on-chain due to the inability to properly use decimal types o
 
 Prices set to zero or a negative ratio mean the assets are effectively free. To prevent this and a possible attack, swaps will fail unless all prices are greater than zero. `cardano-swaps` checks whether the supplied price is greater than 0 so it is recommended to rely on `cardano-swaps` CLI when creating datums for the DEX.
 
-When ADA is part of the pair, the price **MUST** be in units of ADA. The swap contract will correctly convert to lovelace if necessary. This was to improve usability. If you accidentally provide the price in terms of lovelace, the price will still undergo the conversion when the script executes and produce undesired behavior.
+When ADA is part of the pair, the price **MUST** be in units of ADA. The swap contract will correctly convert to lovelace when necessary. This was to improve usability. If you accidentally provide the price in terms of lovelace, the price will still undergo the conversion when the script executes and produce undesired behavior.
 
 By using prices like this, no oracles are needed for this DEX. Every user can set their own desired swap ratio. This is very similar to how order books, on centralized exchanges, are just the sorted limit orders between bids and asks. The "global" price naturally emerges where the local bids and asks meet.
 
@@ -161,7 +162,7 @@ The `Info` redeemer is guaranteed to fail and will display the `swapOwner` of th
 #### `Close` Redeemer
 The `Close` redeemer makes it possible for the owner (as defined by `SwapConfig`) to withdraw all assets from the swap address, this includes any utxos with reference scripts. This option also allows the owner to selectively "close" swap positions at his/her address by removing them from the swap address.
 
-The purpose of this redeemer is to also allow the user to stop their swap address from being executable by removing his/her reference script. This would close all swap positions, even if there are utxos still at the swap address. This is also how the deposit is recovered (since it is stored with the reference script).
+The purpose of this redeemer is to allow the user to stop their swap address from being executable by removing his/her reference script. This would close all swap positions, even if there are utxos still at the swap address. This is also how the deposit is recovered (since it is stored with the reference script).
 
 In the case the user would like to completely close their swap address by removing his/her reference script, there is also a check to make sure the beacon is burned. This is to prevent "dead" swaps from being broadcasted to other users.
 
@@ -301,7 +302,7 @@ To minimize transaction fees, the beacon policy and beacon vault script can be u
 **There is no way to withdraw ADA from the beacon vault when it is stored with a reference script. Thus storing reference scripts inside the beacon vault effectively means burning the associated ADA.** There was no way to allow withdrawing the ADA without opening up centralization problems.
 
 ### Generalizing Beacon Tokens
-By simply adding an extra parameter to the `mkBeaconVault` function in the [source code](src/CardanoSwaps.hs#L263), a completely unique beacon policy and beacon vault contract pair can be created. This allows different DeFi applications to use their own beacon tokens. This extra parameter can be a simple string like "cardano-swaps-dex". The beacon policy and vault pair used by Cardano-Swaps was created by using "cardano-swaps-dex-testing", seen [here](src/CardanoSwaps.hs#L331).
+By simply adding an extra parameter to the `mkBeaconVault` function in the [source code](src/CardanoSwaps.hs#L263), a completely unique beacon policy and beacon vault contract pair can be created. This allows different DeFi applications to use their own beacon tokens. This extra parameter can be a simple string like "cardano-swaps". The beacon policy and vault pair used by Cardano-Swaps was created by using "cardano-swaps-testing", seen [here](src/CardanoSwaps.hs#L338).
 
 While these beacons are used to broadcast all necessary information for remotely executing swaps (reference script utxos and available swap utxos), they can be used for broadcasting ANY information tied to:
 
@@ -396,9 +397,9 @@ Since Mike's transaction will fail without needing to run the swap script, Mike'
 ``` Txt
 fee = # ref scripts executed * ( 0.3 ADA + 0.02 ADA * ( # input utxos + # output utxos ) )
 ``` 
-The transaction fee increases linearly for every utxo (inputs + outputs) in the transaction, then quadratically for every reference script that needs to be executed. The reason for this is that the script must traverse all of the inputs and all of the outputs every time it is executed. 
+The transaction fee increases slowly for every utxo (inputs + outputs) in the transaction, then much more quickly for every reference script that needs to be executed. The reason for this is that the script must traverse all of the inputs and all of the outputs every time it is executed. 
 
-Currenctly, the reference script must be executed once for every utxo coming from that script address. Since the swap script validates based off the transaction as a whole and not based off any individual utxo, the extra executions for each utxo coming from the same swap address are completely redundant. There is a Cardano Problem Statement (CPS) [pull request](https://github.com/cardano-foundation/CIPs/pull/418) that looks to address this issue.
+Currenctly with the design of Cardano, the reference script must be executed once for every utxo coming from that script address. Since the swap script validates based off the transaction as a whole and not based off any individual utxo, the extra executions for each utxo coming from the same swap address are completely redundant. There is a Cardano Problem Statement (CPS) [pull request](https://github.com/cardano-foundation/CIPs/pull/418) that looks to address this issue.
 
 ---
 ## Upgradability

@@ -59,10 +59,10 @@
 - [x] Succeeds if owner tries withdrawing rewards
 
 ## Beacon Tests
-- [x] Cannot mint beacon token without depositing 1 ADA to beacon vault
-- [x] Cannot burn beacon token without withdrawing 1 ADA from beacon vault
+- [x] Cannot mint beacon token without depositing 2 ADA to beacon vault
+- [x] Cannot burn beacon token without withdrawing 2 ADA from beacon vault
 - [x] Cannot spend reference script in beacon vault
-- [x] Cannot deposit 1 ADA without correct datum
+- [x] Cannot deposit 2 ADA without correct datum
 - [x] Cannot withdraw ADA from beacon vault without burning
 - [x] Cannot mint more than one beacon at a time
 - [x] Cannot burn more than one beacon at a time

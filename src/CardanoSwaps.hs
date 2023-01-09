@@ -292,16 +292,23 @@ mkBeaconVault appName cn r ctx@ScriptContext{scriptContextTxInfo = info} = case 
     withdrawalValue :: Value
     withdrawalValue =
       let inputs = txInfoInputs info
-          addrCred i = addressCredential $ txOutAddress $ txInInfoResolved i
-          foo si i = 
-            -- | Check if input belongs to this script
-            if ScriptCredential scriptValidatorHash == addrCred i
-            then -- | Check if input contains a ref script from the beacon vault script
-                 if isJust $ txOutReferenceScript $ txInInfoResolved i
-                 then traceError "Cannot consume reference script from beacon vault address."
-                 else si <> txOutValue (txInInfoResolved i)
-            else si
-      in foldl foo emptyVal inputs
+          foo wVal TxInInfo{txInInfoResolved=TxOut{txOutValue=oVal
+                                                  ,txOutReferenceScript=maybeRef
+                                                  ,txOutAddress=Address{addressCredential=addrCred}
+                                                  }} =
+            case (addrCred,maybeRef) of
+              (ScriptCredential vh,Nothing) ->
+                if vh == scriptValidatorHash
+                then wVal <> oVal
+                else wVal
+              
+              (ScriptCredential vh,Just _) ->
+                if vh == scriptValidatorHash
+                then traceError "Cannot consumer reference script from beacon vault."
+                else wVal
+
+              (PubKeyCredential _,_) -> wVal
+      in foldl' foo emptyVal inputs
 
     minted :: [(CurrencySymbol,TokenName,Integer)]
     minted = flattenValue $ txInfoMint info
@@ -328,7 +335,7 @@ beaconVaultValidator appName = Plutonomy.optimizeUPLC $ validatorScript $ mkType
 
 -- | Change the string to create a different beaconPolicy/beaconVault pair
 beaconVault :: Validator
-beaconVault = beaconVaultValidator "cardano-swaps-dex-testing-aklsdfja"
+beaconVault = beaconVaultValidator "cardano-swaps-testing"
 
 beaconVaultScript :: Script
 beaconVaultScript = unValidatorScript beaconVault
@@ -383,9 +390,9 @@ mkBeacon vaultHash r ScriptContext{scriptContextTxInfo = info} = case r of
     containsOnly2ADA :: Value -> Bool
     containsOnly2ADA v = lovelaceOf 2_000_000 == fromValue v
 
-    parseDatum :: TxOut -> CurrencySymbol
-    parseDatum o = case txOutDatum o of
-      (OutputDatum (Datum d)) -> case fromBuiltinData d of
+    parseDatum :: OutputDatum -> CurrencySymbol
+    parseDatum d = case d of
+      (OutputDatum (Datum d')) -> case fromBuiltinData d' of
         Nothing -> traceError "Beacon vault datum must be the beacon policy id."
         Just p -> p
       _ -> traceError "Deposits to beacon vault must include an inline datum."
@@ -394,19 +401,20 @@ mkBeacon vaultHash r ScriptContext{scriptContextTxInfo = info} = case r of
     depositsToVault :: Value
     depositsToVault = 
       let outputs = txInfoOutputs info
-          foo so o = case addressCredential $ txOutAddress o of
-            -- | Also checks if proper datum is attached.
-            ScriptCredential h ->
-              -- | check if it belongs to this script
-              if h == vaultHash 
-              then -- | Check if output to beacon vault script contains proper datum.
-                   -- Throws error if invalid datum.
-                   if parseDatum o == thisCurrencySymbol
-                   then so <> txOutValue o
-                   else traceError "The beacon vault datum is not the beacon policy id."
-              else so
-            _ -> so
-      in foldl foo emptyVal outputs
+          foo dVal TxOut{txOutValue=oVal
+                        ,txOutDatum=d
+                        ,txOutAddress=Address{addressCredential=addrCred}} =
+            case addrCred of
+              ScriptCredential vh ->
+                if vh == vaultHash
+                then -- | Check if output to beacon vualt script contains proper datum.
+                     if parseDatum d == thisCurrencySymbol
+                     then dVal <> oVal
+                     else traceError "The beacon vault datum is not the beacon policy id."
+                else dVal -- ^ Skip this output.
+
+              PubKeyCredential _ -> dVal  -- ^ Skip this output.
+      in foldl' foo emptyVal outputs
 
 beaconPolicy :: ValidatorHash -> MintingPolicy
 beaconPolicy vh = Plutonomy.optimizeUPLC $ mkMintingPolicyScript

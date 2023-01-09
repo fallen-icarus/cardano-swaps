@@ -20,6 +20,7 @@ library
   build-depends:
     plutus-ledger,
     plutus-ledger-api,
+    plutus-core,
     plutus-tx-plugin,
     plutus-tx,
     plutus-script-utils,

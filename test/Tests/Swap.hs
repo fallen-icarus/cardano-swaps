@@ -19,6 +19,8 @@ module Tests.Swap
 ) where
 
 import Data.Void (Void)
+import qualified Data.Map as Map
+import Text.Printf
 import Control.Monad (void)
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
@@ -83,12 +85,14 @@ createSwap SwapParams{..} = do
         }
       swap = swapTypedValidator beaconSymbol swapConfig
       swapHash = Scripts.validatorHash swap
+      swapAddress = scriptValidatorHashAddress swapHash Nothing
       beaconPolicyHash = mintingPolicyHash $ beaconPolicy beaconVaultValidatorHash
       beaconVal = singleton beaconSymbol "TestBeacon" beaconMint
       beaconMintRedeemer = Redeemer $ PlutusTx.dataToBuiltinData $ PlutusTx.toData $ (MintBeacon "TestBeacon")
       beaconVaultDatum = Datum $ PlutusTx.dataToBuiltinData $ PlutusTx.toData beaconSymbol
       refDeposit = lovelaceValueOf refScriptDeposit <> beaconVal
       beaconVaultAddress = scriptValidatorHashAddress beaconVaultValidatorHash Nothing
+      priceDatum = Datum $ PlutusTx.dataToBuiltinData $ PlutusTx.toData initialPrice
       lookups = plutusV2OtherScript beaconVault
              <> plutusV2MintingPolicy (beaconPolicy beaconVaultValidatorHash)
              <> typedValidatorLookups swap
@@ -100,10 +104,12 @@ createSwap SwapParams{..} = do
         -- | Store reference script in swap address with deposit and beacon
         <> mustPayToScriptWithInlineDatumAndRefScript initialPrice swapHash refDeposit
         -- | Add first position
-        <> mustPayToTheScriptWithInlineDatum initialPrice ((uncurry singleton $ swapOffer swapConfig) initialPosition)
+        <> mustPayToAddressWithInlineDatum swapAddress priceDatum ((uncurry singleton $ swapOffer swapConfig) initialPosition)
   ledgerTx <- submitTxConstraintsWith lookups tx
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
-  logInfo @String "opened a swap"
+  
+  utxos <- utxosAt swapAddress
+  logInfo @String $ printf "opened a swap with %d utxos" (Map.size utxos)
 
 endpoints :: Contract () SwapSchema Text ()
 endpoints = awaitPromise (endpoint @"create-swap" createSwap) >> endpoints

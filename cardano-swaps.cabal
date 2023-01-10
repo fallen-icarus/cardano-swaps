@@ -58,6 +58,7 @@ test-suite cardano-swaps-tests
     plutus-script-utils,
     text,
     playground-common,
+    containers,
 
 executable cardano-swaps
     import: lang

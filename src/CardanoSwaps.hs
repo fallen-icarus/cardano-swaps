@@ -45,6 +45,9 @@ module CardanoSwaps
 
   writeScript,
   writeData,
+
+  -- For testing
+  swapTypedValidator,
 ) where
 
 import Data.Aeson hiding (Value)
@@ -624,13 +627,18 @@ instance ValidatorTypes Swap where
   type instance RedeemerType Swap = Action
   type instance DatumType Swap = Price
 
-swapValidator :: CurrencySymbol -> SwapConfig -> Validator
-swapValidator beaconSym swapConfig = Plutonomy.optimizeUPLC $ validatorScript $ mkTypedValidator @Swap
+swapTypedValidator :: CurrencySymbol -> SwapConfig -> TypedValidator Swap
+swapTypedValidator beaconSym swapConfig = mkTypedValidator
     ($$(PlutusTx.compile [|| mkSwap ||])
       `PlutusTx.applyCode` PlutusTx.liftCode beaconSym
       `PlutusTx.applyCode` PlutusTx.liftCode swapConfig)
     $$(PlutusTx.compile [|| wrap ||])
   where wrap = mkUntypedValidator
+
+swapValidator :: CurrencySymbol -> SwapConfig -> Validator
+swapValidator beaconSym swapConfig = Plutonomy.optimizeUPLC 
+                                   $ validatorScript 
+                                   $ swapTypedValidator beaconSym swapConfig
 
 swapScript :: SwapConfig -> Script
 swapScript = unValidatorScript . swapValidator beaconSymbol

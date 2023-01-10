@@ -36,6 +36,21 @@ library
     -fno-omit-interface-pragmas 
     -fno-specialise
 
+test-suite cardano-swaps-tests
+  import: lang
+  type: exitcode-stdio-1.0
+  main-is: Test.hs
+  hs-source-dirs: test
+  default-language: Haskell2010
+  ghc-options:
+    -fobject-code 
+    -fno-ignore-interface-pragmas 
+    -fno-omit-interface-pragmas 
+    -fno-specialise
+  build-depends:
+    cardano-swaps,
+    plutus-contract
+
 executable cardano-swaps
     import: lang
     main-is:          Main.hs

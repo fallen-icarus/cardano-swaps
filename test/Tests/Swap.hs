@@ -20,6 +20,7 @@ module Tests.Swap
 
 import Data.Void (Void)
 import qualified Data.Map as Map
+import Data.Default
 import Text.Printf
 import Control.Monad (void)
 import Data.Aeson (FromJSON, ToJSON)
@@ -122,7 +123,7 @@ swapTrace = do
     SwapParams
       { swapParamsOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
       , swapParamsOffer = (adaSymbol,adaToken)
-      , swapParamsAsk = ("c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","TestToken")
+      , swapParamsAsk = ("c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","TestToken1")
       , initialPrice = unsafeRatio 3 2
       , initialPosition = 10_000_000
       , beaconDeposit = 2_000_000
@@ -132,5 +133,27 @@ swapTrace = do
 
   void $ waitUntilSlot 2
 
+emulatorConfig :: EmulatorConfig
+emulatorConfig = EmulatorConfig (Left $ Map.fromList wallets) def
+  where
+    currSym :: CurrencySymbol
+    currSym = "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d"
+
+    user1 :: Value
+    user1 = lovelaceValueOf 1_000_000_000 <> singleton currSym "TestToken1" 100
+
+    user2 :: Value
+    user2 = lovelaceValueOf 1_000_000_000 <> singleton currSym "TestToken1" 100
+
+    user3 :: Value
+    user3 = lovelaceValueOf 1_000_000_000 <> singleton currSym "TestToken1" 100 
+
+    wallets :: [(Wallet,Value)]
+    wallets = 
+      [ (knownWallet 1, user1)
+      , (knownWallet 2, user2)
+      , (knownWallet 3, user3)
+      ]
+
 test :: IO ()
-test = runEmulatorTraceIO swapTrace
+test = runEmulatorTraceIO' def emulatorConfig swapTrace

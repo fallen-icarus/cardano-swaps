@@ -48,6 +48,11 @@ module CardanoSwaps
 
   -- For testing
   swapTypedValidator,
+  -- beaconVaultTypedValidator,
+  swapValidator,
+  beaconPolicy,
+  beaconVaultValidatorHash,
+  beaconVault,
 ) where
 
 import Data.Aeson hiding (Value)
@@ -330,12 +335,15 @@ instance ValidatorTypes BeaconVault where
   type instance RedeemerType BeaconVault = BeaconRedeemer
   type instance DatumType BeaconVault = CurrencySymbol
 
-beaconVaultValidator :: AppName -> Validator
-beaconVaultValidator appName = Plutonomy.optimizeUPLC $ validatorScript $ mkTypedValidator @BeaconVault
+beaconVaultTypedValidator :: AppName -> TypedValidator BeaconVault
+beaconVaultTypedValidator appName = mkTypedValidator @BeaconVault
     ($$(PlutusTx.compile [|| mkBeaconVault ||])
        `PlutusTx.applyCode` PlutusTx.liftCode appName)
     $$(PlutusTx.compile [|| wrap ||])
   where wrap = mkUntypedValidator
+
+beaconVaultValidator :: AppName -> Validator
+beaconVaultValidator = Plutonomy.optimizeUPLC . validatorScript . beaconVaultTypedValidator
 
 -- | Change the string to create a different beaconPolicy/beaconVault pair
 beaconVault :: Validator

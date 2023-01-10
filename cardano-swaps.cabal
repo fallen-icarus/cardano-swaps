@@ -49,7 +49,15 @@ test-suite cardano-swaps-tests
     -fno-specialise
   build-depends:
     cardano-swaps,
-    plutus-contract
+    plutus-contract,
+    plutus-tx,
+    plutus-ledger-api,
+    plutus-ledger,
+    plutus-ledger-constraints,
+    aeson,
+    plutus-script-utils,
+    text,
+    playground-common,
 
 executable cardano-swaps
     import: lang

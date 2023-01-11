@@ -19,6 +19,7 @@ module Tests.Swap
 ) where
 
 import Data.Void (Void)
+import Control.Lens
 import qualified Data.Map as Map
 import Data.Default
 import Text.Printf
@@ -40,10 +41,21 @@ import Playground.Contract (printJson, printSchemas, ensureKnownCurrencies, stag
 import Playground.TH (mkKnownCurrencies, mkSchemaDefinitions)
 import Plutus.Trace
 import Wallet.Emulator.Wallet
+import Plutus.Contract.Test as Test
+import Test.Tasty
 
 import Prelude as Haskell (Semigroup (..), Show, foldMap,String,IO)
 
 import CardanoSwaps
+
+-------------------------------------------------
+-- Helper Functions
+-------------------------------------------------
+toDatum :: PlutusTx.ToData a => a -> Datum
+toDatum = Datum . PlutusTx.dataToBuiltinData . PlutusTx.toData
+
+toRedeemer :: PlutusTx.ToData a => a -> Redeemer
+toRedeemer = Redeemer . PlutusTx.dataToBuiltinData . PlutusTx.toData
 
 -------------------------------------------------
 -- Helper Constraints
@@ -77,7 +89,7 @@ instance Scripts.ValidatorTypes Swap where
   type instance RedeemerType Swap = Action
   type instance DatumType Swap = Price
 
-createSwap :: AsContractError e => SwapParams -> Contract w s e ()
+createSwap :: SwapParams -> Contract () s Text ()
 createSwap SwapParams{..} = do
   let swapConfig = SwapConfig
         { swapOwner = swapParamsOwner
@@ -89,11 +101,11 @@ createSwap SwapParams{..} = do
       swapAddress = scriptValidatorHashAddress swapHash Nothing
       beaconPolicyHash = mintingPolicyHash $ beaconPolicy beaconVaultValidatorHash
       beaconVal = singleton beaconSymbol "TestBeacon" beaconMint
-      beaconMintRedeemer = Redeemer $ PlutusTx.dataToBuiltinData $ PlutusTx.toData $ (MintBeacon "TestBeacon")
-      beaconVaultDatum = Datum $ PlutusTx.dataToBuiltinData $ PlutusTx.toData beaconSymbol
+      beaconMintRedeemer = toRedeemer (MintBeacon "TestBeacon")
+      beaconVaultDatum = toDatum beaconSymbol
       refDeposit = lovelaceValueOf refScriptDeposit <> beaconVal
       beaconVaultAddress = scriptValidatorHashAddress beaconVaultValidatorHash Nothing
-      priceDatum = Datum $ PlutusTx.dataToBuiltinData $ PlutusTx.toData initialPrice
+      priceDatum = toDatum initialPrice
       lookups = plutusV2OtherScript beaconVault
              <> plutusV2MintingPolicy (beaconPolicy beaconVaultValidatorHash)
              <> typedValidatorLookups swap
@@ -109,17 +121,54 @@ createSwap SwapParams{..} = do
   ledgerTx <- submitTxConstraintsWith lookups tx
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
   
-  utxos <- utxosAt swapAddress
-  logInfo @String $ printf "opened a swap with %d utxos" (Map.size utxos)
+  logInfo @String "opened a swap"
 
 endpoints :: Contract () SwapSchema Text ()
 endpoints = awaitPromise (endpoint @"create-swap" createSwap) >> endpoints
 
-swapTrace :: EmulatorTrace ()
-swapTrace = do
+-- | A trace where the beacon deposit is deliberately too small.
+-- This should produce a failed transaction when createSwap is called.
+beaconDepositTooSmallTrace :: EmulatorTrace ()
+beaconDepositTooSmallTrace = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  callEndpoint @"create-swap" h1 $ 
+  callEndpoint @"create-swap" h1 $
+    SwapParams
+      { swapParamsOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , swapParamsOffer = (adaSymbol,adaToken)
+      , swapParamsAsk = ("c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","TestToken1")
+      , initialPrice = unsafeRatio 3 2
+      , initialPosition = 10_000_000
+      , beaconDeposit = 1_000_000
+      , beaconMint = 1
+      , refScriptDeposit = 28_000_000
+      }
+
+  void $ waitUntilSlot 2
+
+beaconDepositTooLargeTrace :: EmulatorTrace ()
+beaconDepositTooLargeTrace = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"create-swap" h1 $
+    SwapParams
+      { swapParamsOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , swapParamsOffer = (adaSymbol,adaToken)
+      , swapParamsAsk = ("c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","TestToken1")
+      , initialPrice = unsafeRatio 3 2
+      , initialPosition = 10_000_000
+      , beaconDeposit = 3_000_000
+      , beaconMint = 1
+      , refScriptDeposit = 28_000_000
+      }
+
+  void $ waitUntilSlot 2
+
+successfullCreateSwapTrace :: EmulatorTrace ()
+successfullCreateSwapTrace = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"create-swap" h1 $
     SwapParams
       { swapParamsOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
       , swapParamsOffer = (adaSymbol,adaToken)
@@ -133,8 +182,8 @@ swapTrace = do
 
   void $ waitUntilSlot 2
 
-emulatorConfig :: EmulatorConfig
-emulatorConfig = EmulatorConfig (Left $ Map.fromList wallets) def
+emConfig :: EmulatorConfig
+emConfig = EmulatorConfig (Left $ Map.fromList wallets) def
   where
     currSym :: CurrencySymbol
     currSym = "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d"
@@ -155,5 +204,14 @@ emulatorConfig = EmulatorConfig (Left $ Map.fromList wallets) def
       , (knownWallet 3, user3)
       ]
 
-test :: IO ()
-test = runEmulatorTraceIO' def emulatorConfig swapTrace
+test :: TestTree
+test = do
+  let opts = defaultCheckOptions & emulatorConfig .~ emConfig
+  testGroup "Create Swap"
+    [ checkPredicateOptions opts "Beacon Deposit Too Small" 
+        (Test.not assertNoFailedTransactions) beaconDepositTooSmallTrace
+    , checkPredicateOptions opts "Beacon Deposit Too Large" 
+        (Test.not assertNoFailedTransactions) beaconDepositTooLargeTrace
+    , checkPredicateOptions opts "Successfull Create Swap" 
+        assertNoFailedTransactions successfullCreateSwapTrace
+    ]

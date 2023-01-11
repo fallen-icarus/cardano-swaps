@@ -59,7 +59,9 @@ test-suite cardano-swaps-tests
     text,
     playground-common,
     containers,
-    data-default
+    data-default,
+    tasty,
+    lens,
 
 executable cardano-swaps
     import: lang

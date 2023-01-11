@@ -54,6 +54,7 @@ test-suite cardano-swaps-tests
     plutus-ledger-api,
     plutus-ledger,
     plutus-ledger-constraints,
+    plutus-tx-plugin,
     aeson,
     plutus-script-utils,
     text,

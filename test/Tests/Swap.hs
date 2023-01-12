@@ -139,47 +139,32 @@ createSwap CreateSwapParams{..} = do
         , swapOffer = createSwapOffer
         , swapAsk = createSwapAsk
         }
-      -- | Swap Contract
       swap = swapTypedValidator beaconSymbol swapConfig
-      swapHash@(ValidatorHash h)= Scripts.validatorHash swap
-      swapAddress = scriptValidatorHashAddress swapHash Nothing
-
-      -- | Beacon Contract
+      swapHash = Scripts.validatorHash swap
       beaconPolicyHash = mintingPolicyHash $ beaconPolicy beaconVaultValidatorHash
-      
-      -- | Datums, Redeemers, and Values
       beaconVal = singleton beaconSymbol "TestBeacon" beaconMint
-      beaconMintRedeemer = toRedeemer (MintBeacon "TestBeacon")
+      beaconMintRedeemer = toRedeemer $ (MintBeacon "TestBeacon")
       beaconVaultDatum = toDatum beaconSymbol
-      refDeposit = lovelaceValueOf refScriptDeposit <> beaconVal
-        -- if beaconStoredWithRefScript
-        -- then lovelaceValueOf refScriptDeposit <> beaconVal
-        -- else lovelaceValueOf refScriptDeposit
-      priceDatum = initialPrice
-      initialVal = uncurry singleton (swapOffer swapConfig) $ initialPosition
-      initialPos = initialVal
-        -- if beaconStoredWithRefScript 
-        -- then initialVal 
-        -- else beaconVal <> initialVal 
-      
+      initialPosVal = uncurry singleton (swapOffer swapConfig) $ initialPosition
+      (refDeposit,pos) = 
+        if beaconStoredWithRefScript
+        then (lovelaceValueOf refScriptDeposit <> beaconVal, lovelaceValueOf initialPosition)
+        else (lovelaceValueOf refScriptDeposit, initialPosVal <> beaconVal)
+      beaconVaultAddress = scriptValidatorHashAddress beaconVaultValidatorHash Nothing
       lookups = plutusV2OtherScript beaconVault
              <> plutusV2MintingPolicy (beaconPolicy beaconVaultValidatorHash)
              <> typedValidatorLookups swap
-      tx' = 
+      tx = 
         -- | Mint beacon
         mustMintCurrencyWithRedeemer beaconPolicyHash beaconMintRedeemer "TestBeacon" beaconMint
         -- | Send deposit amount to beacon vault
-        <> if beaconDeposit > 0
-           then mustPayToOtherScriptWithInlineDatum beaconVaultValidatorHash beaconVaultDatum (lovelaceValueOf beaconDeposit)
-           else mempty
+        <> mustPayToOtherScriptWithInlineDatum beaconVaultValidatorHash beaconVaultDatum (lovelaceValueOf beaconDeposit)
         -- | Store reference script in swap address with deposit and beacon
-        <> mustPayToScriptWithInlineDatumAndRefScript priceDatum swapHash refDeposit
+        <> mustPayToScriptWithInlineDatumAndRefScript initialPrice swapHash refDeposit
         -- | Add first position
-        <> Constraints.singleton 
-            (MustPayToAddress swapAddress (Just (TxOutDatumInline $ toDatum priceDatum)) Nothing initialPos)
-  ledgerTx <- submitTxConstraintsWith lookups tx'
+        <> mustPayToTheScriptWithInlineDatum initialPrice pos
+  ledgerTx <- submitTxConstraintsWith lookups tx
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
-  
   logInfo @String "opened a swap"
 
 updatePrices :: UpdatePricesParams -> Contract () SwapSchema Text ()
@@ -384,7 +369,7 @@ updatesPriceOfRefScript = do
   -- void $ waitUntilSlot 4
 
 test :: IO ()
-test = runEmulatorTraceIO' def emConfig updatesPriceOfRefScript -- do
+test = -- do
   -- let opts = defaultCheckOptions & emulatorConfig .~ emConfig
   -- testGroup "Cardano-Swaps"
   --   [ -- testGroup "Create Swap"
@@ -398,9 +383,11 @@ test = runEmulatorTraceIO' def emConfig updatesPriceOfRefScript -- do
   --     --     (Test.not assertNoFailedTransactions) tooManyBeaconsMintedTrace
   --     -- , checkPredicateOptions opts "Successfull Create Swap" 
   --     --     assertNoFailedTransactions successfullCreateSwapTrace
-  --     -- ]
+  --     ]
   --    testGroup "Update Prices"
   --     [ checkPredicateOptions opts "Tries to update reference script price"
   --         assertNoFailedTransactions updatesPriceOfRefScript
   --     ]
   --   ]
+
+  runEmulatorTraceIO' def emConfig updatesPriceOfRefScript

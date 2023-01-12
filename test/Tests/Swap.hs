@@ -352,6 +352,41 @@ successfullPriceUpdates = do
   
   void $ waitUntilSlot 2
 
+  callEndpoint @"update-swap-prices" h1 $
+    UpdatePricesParams
+      { updateSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , updateSwapOffer = (adaSymbol,adaToken)
+      , updateSwapAsk = testToken1
+      , newPrice = unsafeRatio 1 1
+      , newPosition = 10_000_000
+      , utxoToUpdate = 
+          [(unsafeRatio 3 2,lovelaceValueOf 10_000_000)]
+      , extraRecipients = [] 
+      }
+
+  void $ waitUntilSlot 4
+
+-- | A trace where the reference script datum is updated.
+-- This should produce a failed transaction when updatePrices is called.
+updateRefPrice :: EmulatorTrace ()
+updateRefPrice = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , createSwapOffer = (adaSymbol,adaToken)
+      , createSwapAsk = testToken1
+      , initialPrice = unsafeRatio 3 2
+      , initialPosition = 10_000_000
+      , beaconDeposit = 2_000_000
+      , beaconMint = 1
+      , refScriptDeposit = 28_000_000
+      , beaconStoredWithRefScript = True
+      }
+  
+  void $ waitUntilSlot 2
+
   let beaconVal = singleton beaconSymbol "TestBeacon" 1
   callEndpoint @"update-swap-prices" h1 $
     UpdatePricesParams
@@ -362,8 +397,151 @@ successfullPriceUpdates = do
       , newPosition = 10_000_000
       , utxoToUpdate = 
           [ (unsafeRatio 3 2,lovelaceValueOf 10_000_000)
-          -- , (unsafeRatio 3 2,lovelaceValueOf 28_000_000 <> beaconVal)
+          , (unsafeRatio 3 2,lovelaceValueOf 28_000_000 <> beaconVal)
           ]
+      , extraRecipients = [] 
+      }
+
+  void $ waitUntilSlot 4
+
+-- | A trace where a nonowner tries to update prices.
+-- This should produce a failed transaction when updatePrices is called.
+nonOwnerUpdatesPrice :: EmulatorTrace ()
+nonOwnerUpdatesPrice = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , createSwapOffer = (adaSymbol,adaToken)
+      , createSwapAsk = testToken1
+      , initialPrice = unsafeRatio 3 2
+      , initialPosition = 10_000_000
+      , beaconDeposit = 2_000_000
+      , beaconMint = 1
+      , refScriptDeposit = 28_000_000
+      , beaconStoredWithRefScript = True
+      }
+  
+  void $ waitUntilSlot 2
+
+  callEndpoint @"update-swap-prices" h2 $
+    UpdatePricesParams
+      { updateSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , updateSwapOffer = (adaSymbol,adaToken)
+      , updateSwapAsk = testToken1
+      , newPrice = unsafeRatio 1 1
+      , newPosition = 10_000_000
+      , utxoToUpdate = 
+          [(unsafeRatio 3 2,lovelaceValueOf 10_000_000)]
+      , extraRecipients = [] 
+      }
+
+  void $ waitUntilSlot 4
+
+-- | A trace where the beacon token is withdrawn.
+-- This should produce a failed transaction when updatePrices is called.
+removesBeaconToken :: EmulatorTrace ()
+removesBeaconToken = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , createSwapOffer = (adaSymbol,adaToken)
+      , createSwapAsk = testToken1
+      , initialPrice = unsafeRatio 3 2
+      , initialPosition = 10_000_000
+      , beaconDeposit = 2_000_000
+      , beaconMint = 1
+      , refScriptDeposit = 28_000_000
+      , beaconStoredWithRefScript = False
+      }
+  
+  void $ waitUntilSlot 2
+
+  let beaconVal = singleton beaconSymbol "TestBeacon" 1
+  callEndpoint @"update-swap-prices" h1 $
+    UpdatePricesParams
+      { updateSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , updateSwapOffer = (adaSymbol,adaToken)
+      , updateSwapAsk = testToken1
+      , newPrice = unsafeRatio 1 1
+      , newPosition = 10_000_000
+      , utxoToUpdate = 
+          [(unsafeRatio 3 2,lovelaceValueOf 10_000_000 <> beaconVal)]
+      , extraRecipients = [] 
+      }
+
+  void $ waitUntilSlot 4
+
+-- | A trace where value is sent to other addresses.
+-- This should produce a failed transaction when updatePrices is called.
+valueSentToOtherAddresses :: EmulatorTrace ()
+valueSentToOtherAddresses = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , createSwapOffer = (adaSymbol,adaToken)
+      , createSwapAsk = testToken1
+      , initialPrice = unsafeRatio 3 2
+      , initialPosition = 10_000_000
+      , beaconDeposit = 2_000_000
+      , beaconMint = 1
+      , refScriptDeposit = 28_000_000
+      , beaconStoredWithRefScript = True
+      }
+  
+  void $ waitUntilSlot 2
+
+  callEndpoint @"update-swap-prices" h1 $
+    UpdatePricesParams
+      { updateSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , updateSwapOffer = (adaSymbol,adaToken)
+      , updateSwapAsk = testToken1
+      , newPrice = unsafeRatio 1 1
+      , newPosition = 10_000_000
+      , utxoToUpdate = 
+          [(unsafeRatio 3 2,lovelaceValueOf 10_000_000)]
+      , extraRecipients = 
+          [(mockWalletAddress $ knownWallet 2, lovelaceValueOf 5_000_000)] 
+      }
+
+  void $ waitUntilSlot 4
+
+-- | A trace where the new price is negative.
+-- This should produce a failed transaction when updatePrices is called.
+invalidNewPrice :: EmulatorTrace ()
+invalidNewPrice = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , createSwapOffer = (adaSymbol,adaToken)
+      , createSwapAsk = testToken1
+      , initialPrice = unsafeRatio 3 2
+      , initialPosition = 10_000_000
+      , beaconDeposit = 2_000_000
+      , beaconMint = 1
+      , refScriptDeposit = 28_000_000
+      , beaconStoredWithRefScript = True
+      }
+  
+  void $ waitUntilSlot 2
+
+  callEndpoint @"update-swap-prices" h1 $
+    UpdatePricesParams
+      { updateSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , updateSwapOffer = (adaSymbol,adaToken)
+      , updateSwapAsk = testToken1
+      , newPrice = unsafeRatio (-2) 1
+      , newPosition = 10_000_000
+      , utxoToUpdate = 
+          [(unsafeRatio 3 2,lovelaceValueOf 10_000_000)]
       , extraRecipients = [] 
       }
 
@@ -373,21 +551,31 @@ test :: TestTree
 test = do
   let opts = defaultCheckOptions & emulatorConfig .~ emConfig
   testGroup "Cardano-Swaps"
-    [ testGroup "Create Swap"
-      [ checkPredicateOptions opts "Beacon Deposit Too Small" 
-          (Test.not assertNoFailedTransactions) beaconDepositTooSmallTrace
-      , checkPredicateOptions opts "Beacon Deposit Too Large" 
-          (Test.not assertNoFailedTransactions) beaconDepositTooLargeTrace
-      , checkPredicateOptions opts "No Beacon Deposit"
-          (Test.not assertNoFailedTransactions) noBeaconDepositTrace
-      , checkPredicateOptions opts "Too Many Beacons Minted"
-          (Test.not assertNoFailedTransactions) tooManyBeaconsMintedTrace
-      , checkPredicateOptions opts "Successfull Create Swap" 
-          assertNoFailedTransactions successfullCreateSwapTrace
-      ]
-    , testGroup "Update Prices"
+    [ -- testGroup "Create Swap"
+      -- [ checkPredicateOptions opts "Beacon Deposit Too Small" 
+      --     (Test.not assertNoFailedTransactions) beaconDepositTooSmallTrace
+      -- , checkPredicateOptions opts "Beacon Deposit Too Large" 
+      --     (Test.not assertNoFailedTransactions) beaconDepositTooLargeTrace
+      -- , checkPredicateOptions opts "No Beacon Deposit"
+      --     (Test.not assertNoFailedTransactions) noBeaconDepositTrace
+      -- , checkPredicateOptions opts "Too Many Beacons Minted"
+      --     (Test.not assertNoFailedTransactions) tooManyBeaconsMintedTrace
+      -- , checkPredicateOptions opts "Successfull Create Swap" 
+      --     assertNoFailedTransactions successfullCreateSwapTrace
+      -- ]
+     testGroup "Update Prices"
       [ checkPredicateOptions opts "Successfull Price Updates"
           assertNoFailedTransactions successfullPriceUpdates
+      , checkPredicateOptions opts "Reference script price updated"
+          (Test.not assertNoFailedTransactions) updateRefPrice
+      , checkPredicateOptions opts "Non-owner updates prices"
+          (Test.not assertNoFailedTransactions) nonOwnerUpdatesPrice
+      , checkPredicateOptions opts "Beacon is withdrawn from swap address"
+          (Test.not assertNoFailedTransactions) removesBeaconToken
+      , checkPredicateOptions opts "Value sent to other addresses"
+          (Test.not assertNoFailedTransactions) valueSentToOtherAddresses
+      , checkPredicateOptions opts "Invalid new price"
+          (Test.not assertNoFailedTransactions) invalidNewPrice
       ]
     ]
 

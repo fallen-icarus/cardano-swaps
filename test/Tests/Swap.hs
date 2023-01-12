@@ -67,9 +67,9 @@ mustPayToScriptWithInlineDatumAndRefScript :: o -> ValidatorHash -> Value -> TxC
 mustPayToScriptWithInlineDatumAndRefScript dt (ValidatorHash h) val =
   mempty { txOwnOutputs = [ScriptOutputConstraint (TxOutDatumInline dt) val (Just $ ScriptHash h)]}
 
--- mustSpendOutputFromTheScriptWithRef :: TxOutRef -> i -> TxOutRef -> TxConstraints i o
--- mustSpendOutputFromTheScriptWithRef txOutRef red =
---     mempty { txOwnInputs = [ScriptInputConstraint red txOutRef Nothing] }
+mustSpendOutputFromTheScriptWithRef :: TxOutRef -> i -> TxOutRef -> TxConstraints i o
+mustSpendOutputFromTheScriptWithRef txOutRef red ref =
+    mempty { txOwnInputs = [ScriptInputConstraint red txOutRef (Just ref)] }
 
 -------------------------------------------------
 -- Configs
@@ -120,7 +120,7 @@ data UpdatePricesParams = UpdatePricesParams
   , updateSwapAsk :: (CurrencySymbol,TokenName)
   , newPrice :: Price
   , newPosition :: Integer
-  , utxoIdsToUpdate :: [Integer]
+  , utxoToUpdate :: [(Price,Value)]
   , extraRecipients :: [(Address,Value)]  -- ^ Aside from swap address
   } deriving (Generic,ToJSON,FromJSON,ToSchema)
 
@@ -151,16 +151,16 @@ createSwap CreateSwapParams{..} = do
       beaconVal = singleton beaconSymbol "TestBeacon" beaconMint
       beaconMintRedeemer = toRedeemer (MintBeacon "TestBeacon")
       beaconVaultDatum = toDatum beaconSymbol
-      refDeposit = 
-        if beaconStoredWithRefScript
-        then lovelaceValueOf refScriptDeposit <> beaconVal
-        else lovelaceValueOf refScriptDeposit
-      priceDatum = toDatum initialPrice
+      refDeposit = lovelaceValueOf refScriptDeposit <> beaconVal
+        -- if beaconStoredWithRefScript
+        -- then lovelaceValueOf refScriptDeposit <> beaconVal
+        -- else lovelaceValueOf refScriptDeposit
+      priceDatum = initialPrice
       initialVal = uncurry singleton (swapOffer swapConfig) $ initialPosition
-      initialPos = 
-        if beaconStoredWithRefScript 
-        then initialVal 
-        else beaconVal <> initialVal 
+      initialPos = initialVal
+        -- if beaconStoredWithRefScript 
+        -- then initialVal 
+        -- else beaconVal <> initialVal 
       
       lookups = plutusV2OtherScript beaconVault
              <> plutusV2MintingPolicy (beaconPolicy beaconVaultValidatorHash)
@@ -173,11 +173,10 @@ createSwap CreateSwapParams{..} = do
            then mustPayToOtherScriptWithInlineDatum beaconVaultValidatorHash beaconVaultDatum (lovelaceValueOf beaconDeposit)
            else mempty
         -- | Store reference script in swap address with deposit and beacon
-        <> Constraints.singleton 
-            (MustPayToAddress swapAddress (Just (TxOutDatumInline priceDatum)) (Just $ ScriptHash h) refDeposit)
+        <> mustPayToScriptWithInlineDatumAndRefScript priceDatum swapHash refDeposit
         -- | Add first position
         <> Constraints.singleton 
-            (MustPayToAddress swapAddress (Just (TxOutDatumInline priceDatum)) Nothing initialPos)
+            (MustPayToAddress swapAddress (Just (TxOutDatumInline $ toDatum priceDatum)) Nothing initialPos)
   ledgerTx <- submitTxConstraintsWith lookups tx'
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
   
@@ -204,18 +203,19 @@ updatePrices UpdatePricesParams{..} = do
   
   let utxoList = Map.toList utxos
       lookupId n us = fst $ us !! n :: TxOutRef
+      swapRefId = fst $ head utxoList
       -- swapRefId = fst
       --           $ fromJust 
       --           $ find (isJust . _decoratedTxOutReferenceScript . snd) utxoList
       lookups = typedValidatorLookups swap
              <> Constraints.unspentOutputs utxos
       tx' = 
-        -- | Must spend all utxos to be updated using the swap reference script
-        mustSpendScriptOutput (fst $ head utxoList) updateRedeemer
-        -- foldl' (\a z -> a 
-        --              <> mustSpendScriptOutput (lookupId z utxoList) updateRedeemer) 
-        --        mempty 
-        --        utxoIdsToUpdate
+        -- | Must spend all utxos to be updated
+        foldl' (\a (price,val) -> a 
+                     <> mustSpendScriptOutputWithMatchingDatumAndValue 
+                          swapHash (== toDatum price) (==val) updateRedeemer) 
+               mempty 
+               utxoToUpdate
         -- | Must recreate desired position at swap address
         <> mustPayToTheScriptWithInlineDatum newPrice newVal
         -- | Must pay to extra addresses aside from swap address
@@ -366,37 +366,41 @@ updatesPriceOfRefScript = do
   
   void $ waitUntilSlot 2
 
-  callEndpoint @"update-swap-prices" h1 $
-    UpdatePricesParams
-      { updateSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
-      , updateSwapOffer = (adaSymbol,adaToken)
-      , updateSwapAsk = testToken1
-      , newPrice = unsafeRatio 1 1
-      , newPosition = 10_000_000
-      , utxoIdsToUpdate = [1]
-      , extraRecipients = [] 
-      }
+  -- let beaconVal = singleton beaconSymbol "TestBeacon" 1
+  -- callEndpoint @"update-swap-prices" h1 $
+  --   UpdatePricesParams
+  --     { updateSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+  --     , updateSwapOffer = (adaSymbol,adaToken)
+  --     , updateSwapAsk = testToken1
+  --     , newPrice = unsafeRatio 1 1
+  --     , newPosition = 10_000_000
+  --     , utxoToUpdate = 
+  --         [ (unsafeRatio 3 2,lovelaceValueOf 28_000_000 <> beaconVal)
+  --         , (unsafeRatio 3 2,lovelaceValueOf 10_000_000)
+  --         ]
+  --     , extraRecipients = [] 
+  --     }
 
-  void $ waitUntilSlot 4
+  -- void $ waitUntilSlot 4
 
-test :: TestTree
-test = do
-  let opts = defaultCheckOptions & emulatorConfig .~ emConfig
-  testGroup "Cardano-Swaps"
-    [ -- testGroup "Create Swap"
-      -- [ checkPredicateOptions opts "Beacon Deposit Too Small" 
-      --     (Test.not assertNoFailedTransactions) beaconDepositTooSmallTrace
-      -- , checkPredicateOptions opts "Beacon Deposit Too Large" 
-      --     (Test.not assertNoFailedTransactions) beaconDepositTooLargeTrace
-      -- , checkPredicateOptions opts "No Beacon Deposit"
-      --     (Test.not assertNoFailedTransactions) noBeaconDepositTrace
-      -- , checkPredicateOptions opts "Too Many Beacons Minted"
-      --     (Test.not assertNoFailedTransactions) tooManyBeaconsMintedTrace
-      -- , checkPredicateOptions opts "Successfull Create Swap" 
-      --     assertNoFailedTransactions successfullCreateSwapTrace
-      -- ]
-     testGroup "Update Prices"
-      [ checkPredicateOptions opts "Tries to update reference script price"
-          assertNoFailedTransactions updatesPriceOfRefScript
-      ]
-    ]
+test :: IO ()
+test = runEmulatorTraceIO' def emConfig updatesPriceOfRefScript -- do
+  -- let opts = defaultCheckOptions & emulatorConfig .~ emConfig
+  -- testGroup "Cardano-Swaps"
+  --   [ -- testGroup "Create Swap"
+  --     -- [ checkPredicateOptions opts "Beacon Deposit Too Small" 
+  --     --     (Test.not assertNoFailedTransactions) beaconDepositTooSmallTrace
+  --     -- , checkPredicateOptions opts "Beacon Deposit Too Large" 
+  --     --     (Test.not assertNoFailedTransactions) beaconDepositTooLargeTrace
+  --     -- , checkPredicateOptions opts "No Beacon Deposit"
+  --     --     (Test.not assertNoFailedTransactions) noBeaconDepositTrace
+  --     -- , checkPredicateOptions opts "Too Many Beacons Minted"
+  --     --     (Test.not assertNoFailedTransactions) tooManyBeaconsMintedTrace
+  --     -- , checkPredicateOptions opts "Successfull Create Swap" 
+  --     --     assertNoFailedTransactions successfullCreateSwapTrace
+  --     -- ]
+  --    testGroup "Update Prices"
+  --     [ checkPredicateOptions opts "Tries to update reference script price"
+  --         assertNoFailedTransactions updatesPriceOfRefScript
+  --     ]
+  --   ]

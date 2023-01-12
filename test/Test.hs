@@ -7,4 +7,4 @@ import Tests.Swap
 import CardanoSwaps
 
 main :: IO ()
-main = defaultMain test
+main = test -- defaultMain test

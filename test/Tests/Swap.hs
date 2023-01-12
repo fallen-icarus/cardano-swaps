@@ -120,6 +120,7 @@ data UpdatePricesParams = UpdatePricesParams
   , updateSwapOffer :: (CurrencySymbol,TokenName)
   , updateSwapAsk :: (CurrencySymbol,TokenName)
   , newPrice :: Price
+  , asInline :: Bool
   , newPosition :: Integer
   , utxoToUpdate :: [(Price,Value)]
   , extraRecipients :: [(Address,Value)]  -- ^ Aside from swap address
@@ -155,7 +156,7 @@ createSwap CreateSwapParams{..} = do
       lookups = plutusV2OtherScript beaconVault
              <> plutusV2MintingPolicy (beaconPolicy beaconVaultValidatorHash)
              <> typedValidatorLookups swap
-      tx = 
+      tx' = 
         -- | Mint beacon
         mustMintCurrencyWithRedeemer beaconPolicyHash beaconMintRedeemer "TestBeacon" beaconMint
         -- | Send deposit amount to beacon vault
@@ -164,7 +165,7 @@ createSwap CreateSwapParams{..} = do
         <> mustPayToScriptWithInlineDatumAndRefScript initialPrice swapHash refDeposit
         -- | Add first position
         <> mustPayToTheScriptWithInlineDatum initialPrice pos
-  ledgerTx <- submitTxConstraintsWith lookups tx
+  ledgerTx <- submitTxConstraintsWith lookups tx'
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
   logInfo @String "opened a swap"
 
@@ -188,10 +189,7 @@ updatePrices UpdatePricesParams{..} = do
   utxos <- utxosAt swapAddress
   userPubKeyHash <- ownFirstPaymentPubKeyHash
   
-  let utxoList = Map.toList utxos
-      lookupId n us = fst $ us !! n :: TxOutRef
-      swapRefId = fst $ head utxoList
-      lookups = typedValidatorLookups swap
+  let lookups = typedValidatorLookups swap
              <> Constraints.unspentOutputs utxos
       tx' =
         -- | Must be signed by owner
@@ -203,11 +201,13 @@ updatePrices UpdatePricesParams{..} = do
                mempty 
                utxoToUpdate
         -- | Must recreate desired position at swap address
-        <> mustPayToTheScriptWithInlineDatum newPrice newVal
+        <> (if asInline
+           then mustPayToTheScriptWithInlineDatum newPrice newVal
+           else mustPayToTheScriptWithDatumHash newPrice newVal)
         -- | Must pay to extra addresses aside from swap address
-        <> if null extraRecipients
+        <> (if null extraRecipients
            then mempty
-           else foldl' (\a (addr,v) -> a <> mustPayToAddress addr v) mempty extraRecipients
+           else foldl' (\a (addr,v) -> a <> mustPayToAddress addr v) mempty extraRecipients)
 
   ledgerTx <- submitTxConstraintsWith lookups tx'
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
@@ -358,6 +358,7 @@ successfullPriceUpdates = do
       , updateSwapOffer = (adaSymbol,adaToken)
       , updateSwapAsk = testToken1
       , newPrice = unsafeRatio 1 1
+      , asInline = True
       , newPosition = 10_000_000
       , utxoToUpdate = 
           [(unsafeRatio 3 2,lovelaceValueOf 10_000_000)]
@@ -394,6 +395,7 @@ updateRefPrice = do
       , updateSwapOffer = (adaSymbol,adaToken)
       , updateSwapAsk = testToken1
       , newPrice = unsafeRatio 1 1
+      , asInline = True
       , newPosition = 10_000_000
       , utxoToUpdate = 
           [ (unsafeRatio 3 2,lovelaceValueOf 10_000_000)
@@ -432,6 +434,7 @@ nonOwnerUpdatesPrice = do
       , updateSwapOffer = (adaSymbol,adaToken)
       , updateSwapAsk = testToken1
       , newPrice = unsafeRatio 1 1
+      , asInline = True
       , newPosition = 10_000_000
       , utxoToUpdate = 
           [(unsafeRatio 3 2,lovelaceValueOf 10_000_000)]
@@ -468,6 +471,7 @@ removesBeaconToken = do
       , updateSwapOffer = (adaSymbol,adaToken)
       , updateSwapAsk = testToken1
       , newPrice = unsafeRatio 1 1
+      , asInline = True
       , newPosition = 10_000_000
       , utxoToUpdate = 
           [(unsafeRatio 3 2,lovelaceValueOf 10_000_000 <> beaconVal)]
@@ -503,6 +507,7 @@ valueSentToOtherAddresses = do
       , updateSwapOffer = (adaSymbol,adaToken)
       , updateSwapAsk = testToken1
       , newPrice = unsafeRatio 1 1
+      , asInline = True
       , newPosition = 10_000_000
       , utxoToUpdate = 
           [(unsafeRatio 3 2,lovelaceValueOf 10_000_000)]
@@ -539,6 +544,43 @@ invalidNewPrice = do
       , updateSwapOffer = (adaSymbol,adaToken)
       , updateSwapAsk = testToken1
       , newPrice = unsafeRatio (-2) 1
+      , asInline = True
+      , newPosition = 10_000_000
+      , utxoToUpdate = 
+          [(unsafeRatio 3 2,lovelaceValueOf 10_000_000)]
+      , extraRecipients = [] 
+      }
+
+  void $ waitUntilSlot 4
+
+-- | A trace where new price not supplied as inline datum.
+-- This should produce a failed transaction when updatePrices is called.
+nonInlinePrice :: EmulatorTrace ()
+nonInlinePrice = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , createSwapOffer = (adaSymbol,adaToken)
+      , createSwapAsk = testToken1
+      , initialPrice = unsafeRatio 3 2
+      , initialPosition = 10_000_000
+      , beaconDeposit = 2_000_000
+      , beaconMint = 1
+      , refScriptDeposit = 28_000_000
+      , beaconStoredWithRefScript = True
+      }
+  
+  void $ waitUntilSlot 2
+
+  callEndpoint @"update-swap-prices" h1 $
+    UpdatePricesParams
+      { updateSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , updateSwapOffer = (adaSymbol,adaToken)
+      , updateSwapAsk = testToken1
+      , newPrice = unsafeRatio 1 1
+      , asInline = False
       , newPosition = 10_000_000
       , utxoToUpdate = 
           [(unsafeRatio 3 2,lovelaceValueOf 10_000_000)]
@@ -551,19 +593,19 @@ test :: TestTree
 test = do
   let opts = defaultCheckOptions & emulatorConfig .~ emConfig
   testGroup "Cardano-Swaps"
-    [ -- testGroup "Create Swap"
-      -- [ checkPredicateOptions opts "Beacon Deposit Too Small" 
-      --     (Test.not assertNoFailedTransactions) beaconDepositTooSmallTrace
-      -- , checkPredicateOptions opts "Beacon Deposit Too Large" 
-      --     (Test.not assertNoFailedTransactions) beaconDepositTooLargeTrace
-      -- , checkPredicateOptions opts "No Beacon Deposit"
-      --     (Test.not assertNoFailedTransactions) noBeaconDepositTrace
-      -- , checkPredicateOptions opts "Too Many Beacons Minted"
-      --     (Test.not assertNoFailedTransactions) tooManyBeaconsMintedTrace
-      -- , checkPredicateOptions opts "Successfull Create Swap" 
-      --     assertNoFailedTransactions successfullCreateSwapTrace
-      -- ]
-     testGroup "Update Prices"
+    [ testGroup "Create Swap"
+      [ checkPredicateOptions opts "Beacon Deposit Too Small" 
+          (Test.not assertNoFailedTransactions) beaconDepositTooSmallTrace
+      , checkPredicateOptions opts "Beacon Deposit Too Large" 
+          (Test.not assertNoFailedTransactions) beaconDepositTooLargeTrace
+      , checkPredicateOptions opts "No Beacon Deposit"
+          (Test.not assertNoFailedTransactions) noBeaconDepositTrace
+      , checkPredicateOptions opts "Too Many Beacons Minted"
+          (Test.not assertNoFailedTransactions) tooManyBeaconsMintedTrace
+      , checkPredicateOptions opts "Successfull Create Swap" 
+          assertNoFailedTransactions successfullCreateSwapTrace
+      ]
+    , testGroup "Update Prices"
       [ checkPredicateOptions opts "Successfull Price Updates"
           assertNoFailedTransactions successfullPriceUpdates
       , checkPredicateOptions opts "Reference script price updated"
@@ -576,6 +618,8 @@ test = do
           (Test.not assertNoFailedTransactions) valueSentToOtherAddresses
       , checkPredicateOptions opts "Invalid new price"
           (Test.not assertNoFailedTransactions) invalidNewPrice
+      , checkPredicateOptions opts "New price not as inline datum"
+          (Test.not assertNoFailedTransactions) nonInlinePrice
       ]
     ]
 

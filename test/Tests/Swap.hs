@@ -68,9 +68,9 @@ mustPayToScriptWithInlineDatumAndRefScript :: o -> ValidatorHash -> Value -> TxC
 mustPayToScriptWithInlineDatumAndRefScript dt (ValidatorHash h) val =
   mempty { txOwnOutputs = [ScriptOutputConstraint (TxOutDatumInline dt) val (Just $ ScriptHash h)]}
 
-mustSpendOutputFromTheScriptWithRef :: TxOutRef -> i -> TxOutRef -> TxConstraints i o
-mustSpendOutputFromTheScriptWithRef txOutRef red ref =
-    mempty { txOwnInputs = [ScriptInputConstraint red txOutRef (Just ref)] }
+-- mustSpendOutputFromTheScriptWithRef :: TxOutRef -> i -> TxOutRef -> TxConstraints i o
+-- mustSpendOutputFromTheScriptWithRef txOutRef red ref =
+--     mempty { txOwnInputs = [ScriptInputConstraint red txOutRef (Just ref)] }
 
 -------------------------------------------------
 -- Configs
@@ -143,6 +143,11 @@ type SwapSchema =
   .\/ Endpoint "swap" ()
 
 mkSchemaDefinitions ''SwapSchema
+
+data Swap
+instance Scripts.ValidatorTypes Swap where
+  type instance RedeemerType Swap = Action
+  type instance DatumType Swap = Price
 
 createSwap :: CreateSwapParams -> Contract () SwapSchema Text ()
 createSwap CreateSwapParams{..} = do
@@ -244,11 +249,12 @@ closeSwap CloseSwapParams{..} = do
   beaconVaultUtxos <- utxosAt beaconVaultAddress
   userPubKeyHash <- ownFirstPaymentPubKeyHash
 
-  let lookups = plutusV2OtherScript beaconVault
+  let lookups = typedValidatorLookups swap
+             <> plutusV2OtherScript beaconVault
              <> plutusV2MintingPolicy (beaconPolicy beaconVaultValidatorHash)
-             <> typedValidatorLookups swap
              <> Constraints.unspentOutputs swapUtxos
              <> Constraints.unspentOutputs beaconVaultUtxos
+             <> Constraints.otherData beaconVaultDatum
       
       tx' =
         (if burnBeacon
@@ -258,14 +264,14 @@ closeSwap CloseSwapParams{..} = do
              <> mustSpendScriptOutputWithMatchingDatumAndValue beaconVaultValidatorHash (==beaconVaultDatum) (==lovelaceValueOf closeBeaconDeposit) beaconBurnRedeemer
         else mempty)
         -- | Must spend all utxos to be closed
-        <> foldl' (\a (price,val) -> a 
+        <> (foldl' (\a (price,val) -> a 
                      <> mustSpendScriptOutputWithMatchingDatumAndValue 
                           swapHash (== toDatum price) (==val) closeRedeemer) 
                mempty 
-               utxosToClose
+               utxosToClose)
         -- | Must be signed by owner
         <> mustBeSignedBy userPubKeyHash
-        
+  
   ledgerTx <- submitTxConstraintsWith lookups tx'
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
   
@@ -662,11 +668,12 @@ successfullCloseSwap = do
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
-      , beaconStoredWithRefScript = True
+      , beaconStoredWithRefScript = False
       }
   
   void $ waitUntilSlot 2
 
+  let beaconVal = singleton beaconSymbol "TestBeacon" 1
   callEndpoint @"close-swap" h1 $
     CloseSwapParams
       { closeSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
@@ -676,47 +683,49 @@ successfullCloseSwap = do
       , closeBeaconDeposit = 2_000_000
       , closeBeaconBurn = -1
       , utxosToClose = 
-          [(unsafeRatio 3 2,lovelaceValueOf 10_000_000)]
+          [ (unsafeRatio 3 2,lovelaceValueOf 10_000_000 <> beaconVal)
+          , (unsafeRatio 3 2,lovelaceValueOf 28_000_000)
+          ]
       }
 
   void $ waitUntilSlot 4
 
-test :: TestTree
+test :: IO ()
 test = do
-  let opts = defaultCheckOptions & emulatorConfig .~ emConfig
-  testGroup "Cardano-Swaps"
-    [ -- testGroup "Create Swap"
-    --   [ checkPredicateOptions opts "Beacon Deposit Too Small" 
-    --       (Test.not assertNoFailedTransactions) beaconDepositTooSmallTrace
-    --   , checkPredicateOptions opts "Beacon Deposit Too Large" 
-    --       (Test.not assertNoFailedTransactions) beaconDepositTooLargeTrace
-    --   , checkPredicateOptions opts "No Beacon Deposit"
-    --       (Test.not assertNoFailedTransactions) noBeaconDepositTrace
-    --   , checkPredicateOptions opts "Too Many Beacons Minted"
-    --       (Test.not assertNoFailedTransactions) tooManyBeaconsMintedTrace
-    --   , checkPredicateOptions opts "Successfull Create Swap" 
-    --       assertNoFailedTransactions successfullCreateSwapTrace
-    --   ]
-    -- , testGroup "Update Prices"
-    --   [ checkPredicateOptions opts "Successfull Price Updates"
-    --       assertNoFailedTransactions successfullPriceUpdates
-    --   , checkPredicateOptions opts "Reference script price updated"
-    --       (Test.not assertNoFailedTransactions) updateRefPrice
-    --   , checkPredicateOptions opts "Non-owner updates prices"
-    --       (Test.not assertNoFailedTransactions) nonOwnerUpdatesPrice
-    --   , checkPredicateOptions opts "Beacon is withdrawn from swap address"
-    --       (Test.not assertNoFailedTransactions) removesBeaconToken
-    --   , checkPredicateOptions opts "Value sent to other addresses"
-    --       (Test.not assertNoFailedTransactions) valueSentToOtherAddresses
-    --   , checkPredicateOptions opts "Invalid new price"
-    --       (Test.not assertNoFailedTransactions) invalidNewPrice
-    --   , checkPredicateOptions opts "New price not as inline datum"
-    --       (Test.not assertNoFailedTransactions) nonInlinePrice
-    --   ]
-    testGroup "Close Swap"
-      [ checkPredicateOptions opts "Successfull Close Swap"
-          assertNoFailedTransactions successfullCloseSwap
-      ]
-    ]
+  -- let opts = defaultCheckOptions & emulatorConfig .~ emConfig
+  -- testGroup "Cardano-Swaps"
+  --   [ -- testGroup "Create Swap"
+  --   --   [ checkPredicateOptions opts "Beacon Deposit Too Small" 
+  --   --       (Test.not assertNoFailedTransactions) beaconDepositTooSmallTrace
+  --   --   , checkPredicateOptions opts "Beacon Deposit Too Large" 
+  --   --       (Test.not assertNoFailedTransactions) beaconDepositTooLargeTrace
+  --   --   , checkPredicateOptions opts "No Beacon Deposit"
+  --   --       (Test.not assertNoFailedTransactions) noBeaconDepositTrace
+  --   --   , checkPredicateOptions opts "Too Many Beacons Minted"
+  --   --       (Test.not assertNoFailedTransactions) tooManyBeaconsMintedTrace
+  --   --   , checkPredicateOptions opts "Successfull Create Swap" 
+  --   --       assertNoFailedTransactions successfullCreateSwapTrace
+  --   --   ]
+  --   -- , testGroup "Update Prices"
+  --   --   [ checkPredicateOptions opts "Successfull Price Updates"
+  --   --       assertNoFailedTransactions successfullPriceUpdates
+  --   --   , checkPredicateOptions opts "Reference script price updated"
+  --   --       (Test.not assertNoFailedTransactions) updateRefPrice
+  --   --   , checkPredicateOptions opts "Non-owner updates prices"
+  --   --       (Test.not assertNoFailedTransactions) nonOwnerUpdatesPrice
+  --   --   , checkPredicateOptions opts "Beacon is withdrawn from swap address"
+  --   --       (Test.not assertNoFailedTransactions) removesBeaconToken
+  --   --   , checkPredicateOptions opts "Value sent to other addresses"
+  --   --       (Test.not assertNoFailedTransactions) valueSentToOtherAddresses
+  --   --   , checkPredicateOptions opts "Invalid new price"
+  --   --       (Test.not assertNoFailedTransactions) invalidNewPrice
+  --   --   , checkPredicateOptions opts "New price not as inline datum"
+  --   --       (Test.not assertNoFailedTransactions) nonInlinePrice
+  --   --   ]
+  --   testGroup "Close Swap"
+  --     [ checkPredicateOptions opts "Successfull Close Swap"
+  --         assertNoFailedTransactions successfullCloseSwap
+  --     ]
+  --   ]
 
-  -- runEmulatorTraceIO' def emConfig successfullPriceUpdates
+  runEmulatorTraceIO' def emConfig successfullCloseSwap

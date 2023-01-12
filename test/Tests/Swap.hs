@@ -31,6 +31,7 @@ import Data.Text (Text)
 import Ledger hiding (singleton,mintingPolicyHash)
 import Ledger.Constraints as Constraints
 import qualified Ledger.Constraints.TxConstraints as Constraints
+import qualified Ledger.Constraints.OffChain as Constraints (paymentPubKeyHash)
 import qualified Ledger.Typed.Scripts as Scripts
 import Plutus.Contract
 import Plutus.V1.Ledger.Contexts as V
@@ -47,7 +48,7 @@ import Plutus.Contract.Test as Test
 import Test.Tasty
 import Data.List (foldl')
 
-import Prelude as Haskell (Semigroup (..), Show, foldMap,String,IO)
+import Prelude as Haskell (Semigroup (..), Show, foldMap,String,IO,show)
 
 import CardanoSwaps
 
@@ -185,18 +186,18 @@ updatePrices UpdatePricesParams{..} = do
       newVal = uncurry singleton (swapOffer swapConfig) $ newPosition
   
   utxos <- utxosAt swapAddress
+  userPubKeyHash <- ownFirstPaymentPubKeyHash
   
   let utxoList = Map.toList utxos
       lookupId n us = fst $ us !! n :: TxOutRef
       swapRefId = fst $ head utxoList
-      -- swapRefId = fst
-      --           $ fromJust 
-      --           $ find (isJust . _decoratedTxOutReferenceScript . snd) utxoList
       lookups = typedValidatorLookups swap
              <> Constraints.unspentOutputs utxos
-      tx' = 
+      tx' =
+        -- | Must be signed by owner
+        mustBeSignedBy userPubKeyHash
         -- | Must spend all utxos to be updated
-        foldl' (\a (price,val) -> a 
+        <> foldl' (\a (price,val) -> a 
                      <> mustSpendScriptOutputWithMatchingDatumAndValue 
                           swapHash (== toDatum price) (==val) updateRedeemer) 
                mempty 
@@ -330,10 +331,10 @@ successfullCreateSwapTrace = do
 
   void $ waitUntilSlot 2
 
--- | A trace where the reference script is updated.
--- This should produce a failed transaction when updatePrices is called.
-updatesPriceOfRefScript :: EmulatorTrace ()
-updatesPriceOfRefScript = do
+-- | A trace where everything is correct.
+-- This should produce a successfull transaction when updatePrices is called.
+successfullPriceUpdates :: EmulatorTrace ()
+successfullPriceUpdates = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   callEndpoint @"create-swap" h1 $
@@ -351,43 +352,43 @@ updatesPriceOfRefScript = do
   
   void $ waitUntilSlot 2
 
-  -- let beaconVal = singleton beaconSymbol "TestBeacon" 1
-  -- callEndpoint @"update-swap-prices" h1 $
-  --   UpdatePricesParams
-  --     { updateSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
-  --     , updateSwapOffer = (adaSymbol,adaToken)
-  --     , updateSwapAsk = testToken1
-  --     , newPrice = unsafeRatio 1 1
-  --     , newPosition = 10_000_000
-  --     , utxoToUpdate = 
-  --         [ (unsafeRatio 3 2,lovelaceValueOf 28_000_000 <> beaconVal)
-  --         , (unsafeRatio 3 2,lovelaceValueOf 10_000_000)
-  --         ]
-  --     , extraRecipients = [] 
-  --     }
+  let beaconVal = singleton beaconSymbol "TestBeacon" 1
+  callEndpoint @"update-swap-prices" h1 $
+    UpdatePricesParams
+      { updateSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , updateSwapOffer = (adaSymbol,adaToken)
+      , updateSwapAsk = testToken1
+      , newPrice = unsafeRatio 1 1
+      , newPosition = 10_000_000
+      , utxoToUpdate = 
+          [ (unsafeRatio 3 2,lovelaceValueOf 10_000_000)
+          -- , (unsafeRatio 3 2,lovelaceValueOf 28_000_000 <> beaconVal)
+          ]
+      , extraRecipients = [] 
+      }
 
-  -- void $ waitUntilSlot 4
+  void $ waitUntilSlot 4
 
-test :: IO ()
-test = -- do
-  -- let opts = defaultCheckOptions & emulatorConfig .~ emConfig
-  -- testGroup "Cardano-Swaps"
-  --   [ -- testGroup "Create Swap"
-  --     -- [ checkPredicateOptions opts "Beacon Deposit Too Small" 
-  --     --     (Test.not assertNoFailedTransactions) beaconDepositTooSmallTrace
-  --     -- , checkPredicateOptions opts "Beacon Deposit Too Large" 
-  --     --     (Test.not assertNoFailedTransactions) beaconDepositTooLargeTrace
-  --     -- , checkPredicateOptions opts "No Beacon Deposit"
-  --     --     (Test.not assertNoFailedTransactions) noBeaconDepositTrace
-  --     -- , checkPredicateOptions opts "Too Many Beacons Minted"
-  --     --     (Test.not assertNoFailedTransactions) tooManyBeaconsMintedTrace
-  --     -- , checkPredicateOptions opts "Successfull Create Swap" 
-  --     --     assertNoFailedTransactions successfullCreateSwapTrace
-  --     ]
-  --    testGroup "Update Prices"
-  --     [ checkPredicateOptions opts "Tries to update reference script price"
-  --         assertNoFailedTransactions updatesPriceOfRefScript
-  --     ]
-  --   ]
+test :: TestTree
+test = do
+  let opts = defaultCheckOptions & emulatorConfig .~ emConfig
+  testGroup "Cardano-Swaps"
+    [ testGroup "Create Swap"
+      [ checkPredicateOptions opts "Beacon Deposit Too Small" 
+          (Test.not assertNoFailedTransactions) beaconDepositTooSmallTrace
+      , checkPredicateOptions opts "Beacon Deposit Too Large" 
+          (Test.not assertNoFailedTransactions) beaconDepositTooLargeTrace
+      , checkPredicateOptions opts "No Beacon Deposit"
+          (Test.not assertNoFailedTransactions) noBeaconDepositTrace
+      , checkPredicateOptions opts "Too Many Beacons Minted"
+          (Test.not assertNoFailedTransactions) tooManyBeaconsMintedTrace
+      , checkPredicateOptions opts "Successfull Create Swap" 
+          assertNoFailedTransactions successfullCreateSwapTrace
+      ]
+    , testGroup "Update Prices"
+      [ checkPredicateOptions opts "Successfull Price Updates"
+          assertNoFailedTransactions successfullPriceUpdates
+      ]
+    ]
 
-  runEmulatorTraceIO' def emConfig updatesPriceOfRefScript
+  -- runEmulatorTraceIO' def emConfig successfullPriceUpdates

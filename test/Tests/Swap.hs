@@ -722,6 +722,42 @@ nonOwnerCloses = do
 
   void $ waitUntilSlot 4
 
+-- | A trace where the beacon is burned without removing the reference script.
+-- This should produce a Successfull transaction when closeSwap is called.
+beaconBurnedWithoutRemovingRefScript :: EmulatorTrace ()
+beaconBurnedWithoutRemovingRefScript = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , createSwapOffer = (adaSymbol,adaToken)
+      , createSwapAsk = testToken1
+      , initialPrice = unsafeRatio 3 2
+      , initialPosition = 10_000_000
+      , createbeaconDeposit = 2_000_000
+      , createBeaconMint = 1
+      , refScriptDeposit = 28_000_000
+      , beaconStoredWithRefScript = False
+      }
+  
+  void $ waitUntilSlot 2
+
+  let beaconVal = singleton beaconSymbol "TestBeacon" 1
+  callEndpoint @"close-swap" h1 $
+    CloseSwapParams
+      { closeSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , closeSwapOffer = (adaSymbol,adaToken)
+      , closeSwapAsk = testToken1
+      , burnBeacon = True
+      , closeBeaconDeposit = 2_000_000
+      , closeBeaconBurn = -1
+      , utxosToClose = 
+          [ (unsafeRatio 3 2,lovelaceValueOf 10_000_000 <> beaconVal) ]
+      }
+
+  void $ waitUntilSlot 4
+
 test :: TestTree
 test = do
   let opts = defaultCheckOptions & emulatorConfig .~ emConfig
@@ -759,6 +795,8 @@ test = do
           (Test.not assertNoFailedTransactions) refScriptRemovedWithoutBurning
       , checkPredicateOptions opts "Non-owner closes swap"
           (Test.not assertNoFailedTransactions) nonOwnerCloses
+      , checkPredicateOptions opts "Beacon burned without removing reference script"
+          assertNoFailedTransactions beaconBurnedWithoutRemovingRefScript
       ]
     ]
 

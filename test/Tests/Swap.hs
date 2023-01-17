@@ -136,11 +136,22 @@ data CloseSwapParams = CloseSwapParams
   , utxosToClose :: [(Price,Value)]
   } deriving (Generic,ToJSON,FromJSON,ToSchema)
 
+data ExecSwapParams = ExecSwapParams
+  { execSwapSwapOwner :: PaymentPubKeyHash
+  , execSwapSwapOffer :: (CurrencySymbol,TokenName)
+  , execSwapSwapAsk :: (CurrencySymbol,TokenName)
+  , valueToGive :: Value
+  , utxosToSwap :: [(Price,Value)]
+  , weightedAvg :: Price
+  , swapChange :: Value
+  , datumAsInline :: Bool
+  } deriving (Generic,ToJSON,FromJSON,ToSchema)
+
 type SwapSchema =
       Endpoint "create-swap" CreateSwapParams
   .\/ Endpoint "close-swap" CloseSwapParams
   .\/ Endpoint "update-swap-prices" UpdatePricesParams
-  .\/ Endpoint "swap" ()
+  .\/ Endpoint "swap" ExecSwapParams
 
 mkSchemaDefinitions ''SwapSchema
 
@@ -276,16 +287,57 @@ closeSwap CloseSwapParams{..} = do
   
   logInfo @String "swap closed"
 
+swapAssets :: ExecSwapParams -> Contract () SwapSchema Text ()
+swapAssets ExecSwapParams{..} = do
+  let swapConfig = SwapConfig
+        { swapOwner = execSwapSwapOwner
+        , swapOffer = execSwapSwapOffer
+        , swapAsk = execSwapSwapAsk
+        }
+
+      -- | Swap Contract
+      swap = swapTypedValidator beaconSymbol swapConfig
+      swapHash = Scripts.validatorHash swap
+      swapAddress = scriptValidatorHashAddress swapHash Nothing
+
+      -- | Datums, Redeemers, and Values
+      swapRedeemer = toRedeemer Swap
+      newSwapVal = valueToGive <> swapChange
+
+      
+  utxos <- utxosAt swapAddress
+
+  let lookups = typedValidatorLookups swap
+             <> Constraints.unspentOutputs utxos
+      tx' = 
+        -- | Must spend all utxos to be swapped
+        foldl' (\a (price,val) -> a 
+                     <> mustSpendScriptOutputWithMatchingDatumAndValue 
+                          swapHash (== toDatum price) (==val) swapRedeemer) 
+               mempty 
+               utxosToSwap
+        -- | Must return change to swap address
+        <> (if datumAsInline
+            then mustPayToTheScriptWithInlineDatum weightedAvg newSwapVal
+            else mustPayToTheScriptWithDatumHash weightedAvg newSwapVal)
+
+  ledgerTx <- submitTxConstraintsWith lookups tx'
+  void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+  
+  logInfo @String "swapped assets"
+
 endpoints :: Contract () SwapSchema Text ()
 endpoints = selectList choices >> endpoints
   where
     createSwap' = endpoint @"create-swap" createSwap
     updatePrices' = endpoint @"update-swap-prices" updatePrices
     closeSwap' = endpoint @"close-swap" closeSwap
+    swapAssets' = endpoint @"swap" swapAssets
     choices = 
       [ createSwap'
       , updatePrices'
       , closeSwap'
+      , swapAssets'
       ]
 
 -- | A trace where the beacon deposit is deliberately too small.
@@ -758,6 +810,223 @@ beaconBurnedWithoutRemovingRefScript = do
 
   void $ waitUntilSlot 4
 
+-- | A trace where everything is correct.
+-- This should produce a successfull transaction when swapAssets is called.
+successfullSwap :: EmulatorTrace ()
+successfullSwap = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , createSwapOffer = (adaSymbol,adaToken)
+      , createSwapAsk = testToken1
+      , initialPrice = unsafeRatio 2 1
+      , initialPosition = 10_000_000
+      , createbeaconDeposit = 2_000_000
+      , createBeaconMint = 1
+      , refScriptDeposit = 28_000_000
+      , beaconStoredWithRefScript = True
+      }
+  
+  void $ waitUntilSlot 2
+
+  callEndpoint @"swap" h1 $
+    ExecSwapParams
+      { execSwapSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , execSwapSwapOffer = (adaSymbol,adaToken)
+      , execSwapSwapAsk = testToken1
+      , valueToGive = (uncurry singleton testToken1) 10
+      , utxosToSwap =
+          [ (unsafeRatio 2 1, lovelaceValueOf 10_000_000) ]
+      , weightedAvg = unsafeRatio 2 1
+      , swapChange = lovelaceValueOf 5_000_000
+      , datumAsInline = True
+      }
+
+  void $ waitUntilSlot 4
+
+-- | A trace where the price is not an inline datum.
+-- This should produce a failed transaction when swapAssets is called.
+swapChangeDatumNotInline :: EmulatorTrace ()
+swapChangeDatumNotInline = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , createSwapOffer = (adaSymbol,adaToken)
+      , createSwapAsk = testToken1
+      , initialPrice = unsafeRatio 2 1
+      , initialPosition = 10_000_000
+      , createbeaconDeposit = 2_000_000
+      , createBeaconMint = 1
+      , refScriptDeposit = 28_000_000
+      , beaconStoredWithRefScript = True
+      }
+  
+  void $ waitUntilSlot 2
+
+  callEndpoint @"swap" h1 $
+    ExecSwapParams
+      { execSwapSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , execSwapSwapOffer = (adaSymbol,adaToken)
+      , execSwapSwapAsk = testToken1
+      , valueToGive = (uncurry singleton testToken1) 10
+      , utxosToSwap =
+          [ (unsafeRatio 2 1, lovelaceValueOf 10_000_000) ]
+      , weightedAvg = unsafeRatio 2 1
+      , swapChange = lovelaceValueOf 5_000_000
+      , datumAsInline = False
+      }
+
+  void $ waitUntilSlot 4
+
+-- | A trace where change datum is not the weighted average price.
+-- This should produce a failed transaction when swapAssets is called.
+swapChangeDatumNotWeightedAvg :: EmulatorTrace ()
+swapChangeDatumNotWeightedAvg = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , createSwapOffer = (adaSymbol,adaToken)
+      , createSwapAsk = testToken1
+      , initialPrice = unsafeRatio 2 1
+      , initialPosition = 10_000_000
+      , createbeaconDeposit = 2_000_000
+      , createBeaconMint = 1
+      , refScriptDeposit = 28_000_000
+      , beaconStoredWithRefScript = True
+      }
+  
+  void $ waitUntilSlot 2
+
+  callEndpoint @"swap" h1 $
+    ExecSwapParams
+      { execSwapSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , execSwapSwapOffer = (adaSymbol,adaToken)
+      , execSwapSwapAsk = testToken1
+      , valueToGive = (uncurry singleton testToken1) 10
+      , utxosToSwap =
+          [ (unsafeRatio 2 1, lovelaceValueOf 10_000_000) ]
+      , weightedAvg = unsafeRatio 1 1
+      , swapChange = lovelaceValueOf 5_000_000
+      , datumAsInline = True
+      }
+
+  void $ waitUntilSlot 4
+
+-- | A trace where swap ratio not met.
+-- This should produce a failed transaction when swapAssets is called.
+swapRatioNotMet :: EmulatorTrace ()
+swapRatioNotMet = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , createSwapOffer = (adaSymbol,adaToken)
+      , createSwapAsk = testToken1
+      , initialPrice = unsafeRatio 2 1
+      , initialPosition = 10_000_000
+      , createbeaconDeposit = 2_000_000
+      , createBeaconMint = 1
+      , refScriptDeposit = 28_000_000
+      , beaconStoredWithRefScript = True
+      }
+  
+  void $ waitUntilSlot 2
+
+  callEndpoint @"swap" h1 $
+    ExecSwapParams
+      { execSwapSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , execSwapSwapOffer = (adaSymbol,adaToken)
+      , execSwapSwapAsk = testToken1
+      , valueToGive = (uncurry singleton testToken1) 5
+      , utxosToSwap =
+          [ (unsafeRatio 2 1, lovelaceValueOf 10_000_000) ]
+      , weightedAvg = unsafeRatio 2 1
+      , swapChange = lovelaceValueOf 5_000_000
+      , datumAsInline = True
+      }
+
+  void $ waitUntilSlot 4
+
+-- | A trace where a non-offered asset is withdrawn.
+-- This should produce a failed transaction when swapAssets is called.
+swapNonOfferedAsset :: EmulatorTrace ()
+swapNonOfferedAsset = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , createSwapOffer = (adaSymbol,adaToken)
+      , createSwapAsk = testToken1
+      , initialPrice = unsafeRatio 2 1
+      , initialPosition = 10_000_000
+      , createbeaconDeposit = 2_000_000
+      , createBeaconMint = 1
+      , refScriptDeposit = 28_000_000
+      , beaconStoredWithRefScript = False
+      }
+  
+  void $ waitUntilSlot 2
+
+  let beaconVal = singleton beaconSymbol "TestBeacon" 1
+  callEndpoint @"swap" h1 $
+    ExecSwapParams
+      { execSwapSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , execSwapSwapOffer = (adaSymbol,adaToken)
+      , execSwapSwapAsk = testToken1
+      , valueToGive = (uncurry singleton testToken1) 10
+      , utxosToSwap =
+          [ (unsafeRatio 2 1, lovelaceValueOf 10_000_000 <> beaconVal) ]
+      , weightedAvg = unsafeRatio 2 1
+      , swapChange = lovelaceValueOf 5_000_000
+      , datumAsInline = True
+      }
+
+  void $ waitUntilSlot 4
+
+-- | A trace where swap reference script is consumed.
+-- This should produce a failed transaction when swapAssets is called.
+swapRefScriptUtxo :: EmulatorTrace ()
+swapRefScriptUtxo = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , createSwapOffer = (adaSymbol,adaToken)
+      , createSwapAsk = testToken1
+      , initialPrice = unsafeRatio 2 1
+      , initialPosition = 10_000_000
+      , createbeaconDeposit = 2_000_000
+      , createBeaconMint = 1
+      , refScriptDeposit = 28_000_000
+      , beaconStoredWithRefScript = False
+      }
+  
+  void $ waitUntilSlot 2
+
+  callEndpoint @"swap" h1 $
+    ExecSwapParams
+      { execSwapSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , execSwapSwapOffer = (adaSymbol,adaToken)
+      , execSwapSwapAsk = testToken1
+      , valueToGive = (uncurry singleton testToken1) 10
+      , utxosToSwap =
+          [ (unsafeRatio 2 1, lovelaceValueOf 28_000_000) ]
+      , weightedAvg = unsafeRatio 2 1
+      , swapChange = lovelaceValueOf 23_000_000
+      , datumAsInline = True
+      }
+
+  void $ waitUntilSlot 4
+
 test :: TestTree
 test = do
   let opts = defaultCheckOptions & emulatorConfig .~ emConfig
@@ -798,6 +1067,20 @@ test = do
       , checkPredicateOptions opts "Beacon burned without removing reference script"
           assertNoFailedTransactions beaconBurnedWithoutRemovingRefScript
       ]
+    , testGroup "Swap Assets"
+      [ checkPredicateOptions opts "Successfull asset swap"
+          assertNoFailedTransactions successfullSwap
+      , checkPredicateOptions opts "Swap change datum is not inline"
+          (Test.not assertNoFailedTransactions) swapChangeDatumNotInline
+      , checkPredicateOptions opts "Swap change datum is not weighted avg price"
+          (Test.not assertNoFailedTransactions) swapChangeDatumNotWeightedAvg
+      , checkPredicateOptions opts "Swap ratio not met"
+          (Test.not assertNoFailedTransactions) swapRatioNotMet
+      , checkPredicateOptions opts "Non-offered asset swapped"
+          (Test.not assertNoFailedTransactions) swapNonOfferedAsset
+      , checkPredicateOptions opts "Swap reference script utxo spent"
+          (Test.not assertNoFailedTransactions) swapRefScriptUtxo
+      ]
     ]
 
-  -- runEmulatorTraceIO' def emConfig successfullCloseSwap
+  -- runEmulatorTraceIO' def emConfig successfullSwap

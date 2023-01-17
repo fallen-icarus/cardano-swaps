@@ -48,7 +48,6 @@ module CardanoSwaps
 
   -- For testing
   swapTypedValidator,
-  -- beaconVaultTypedValidator,
   swapValidator,
   beaconPolicy,
   beaconVaultValidatorHash,

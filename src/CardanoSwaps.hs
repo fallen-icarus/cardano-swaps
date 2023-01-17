@@ -511,6 +511,7 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
                 -- | Check if script is this script.
                 if vh == scriptValidatorHash
                 then case newPrice' of
+                  -- | Make sure proper datum present to prevent accidental locking
                   Nothing -> parseDatum "Invalid datum in swap output" d > fromInteger 0
                   Just newPrice -> 
                      -- | Check if datum has proper price.

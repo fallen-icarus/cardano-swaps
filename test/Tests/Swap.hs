@@ -106,6 +106,7 @@ data UpdatePricesParams = UpdatePricesParams
   { updateSwapOwner :: PaymentPubKeyHash
   , updateSwapOffer :: (CurrencySymbol,TokenName)
   , updateSwapAsk :: (CurrencySymbol,TokenName)
+  , redeemerPrice :: Price
   , newPrice :: Price
   , asInline :: Bool
   , newPosition :: Integer
@@ -229,7 +230,7 @@ updatePrices UpdatePricesParams{..} = do
       swapAddress = scriptValidatorHashAddress swapHash Nothing
 
       -- | Datums, Redeemers, and Values
-      updateRedeemer = toRedeemer $ UpdatePrices newPrice
+      updateRedeemer = toRedeemer $ UpdatePrices redeemerPrice
       newVal = uncurry singleton (swapOffer swapConfig) $ newPosition
   
   utxos <- utxosAt swapAddress
@@ -511,6 +512,7 @@ successfullPriceUpdates = do
       { updateSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
       , updateSwapOffer = (adaSymbol,adaToken)
       , updateSwapAsk = testToken1
+      , redeemerPrice = unsafeRatio 1 1
       , newPrice = unsafeRatio 1 1
       , asInline = True
       , newPosition = 10_000_000
@@ -547,6 +549,7 @@ updateRefPrice = do
       { updateSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
       , updateSwapOffer = (adaSymbol,adaToken)
       , updateSwapAsk = testToken1
+      , redeemerPrice = unsafeRatio 1 1
       , newPrice = unsafeRatio 1 1
       , asInline = True
       , newPosition = 10_000_000
@@ -585,6 +588,7 @@ nonOwnerUpdatesPrice = do
       { updateSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
       , updateSwapOffer = (adaSymbol,adaToken)
       , updateSwapAsk = testToken1
+      , redeemerPrice = unsafeRatio 1 1
       , newPrice = unsafeRatio 1 1
       , asInline = True
       , newPosition = 10_000_000
@@ -621,6 +625,7 @@ removesBeaconToken = do
       { updateSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
       , updateSwapOffer = (adaSymbol,adaToken)
       , updateSwapAsk = testToken1
+      , redeemerPrice = unsafeRatio 1 1
       , newPrice = unsafeRatio 1 1
       , asInline = True
       , newPosition = 10_000_000
@@ -656,6 +661,7 @@ invalidNewPrice = do
       { updateSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
       , updateSwapOffer = (adaSymbol,adaToken)
       , updateSwapAsk = testToken1
+      , redeemerPrice = unsafeRatio (-2) 1
       , newPrice = unsafeRatio (-2) 1
       , asInline = True
       , newPosition = 10_000_000
@@ -691,8 +697,45 @@ nonInlinePrice = do
       { updateSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
       , updateSwapOffer = (adaSymbol,adaToken)
       , updateSwapAsk = testToken1
+      , redeemerPrice = unsafeRatio 1 1
       , newPrice = unsafeRatio 1 1
       , asInline = False
+      , newPosition = 10_000_000
+      , utxosToUpdate = 
+          [(unsafeRatio 3 2,lovelaceValueOf 10_000_000)]
+      }
+
+  void $ waitUntilSlot 4
+
+-- | A trace where the redeemer price does not match the datum price.
+-- This should produce a failed transaction when updatePrices is called.
+redeemerDoesntMatchDatum :: EmulatorTrace ()
+redeemerDoesntMatchDatum = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , createSwapOffer = (adaSymbol,adaToken)
+      , createSwapAsk = testToken1
+      , initialPrice = unsafeRatio 3 2
+      , initialPosition = 10_000_000
+      , createbeaconDeposit = 2_000_000
+      , createBeaconMint = 1
+      , refScriptDeposit = 28_000_000
+      , beaconStoredWithRefScript = True
+      }
+  
+  void $ waitUntilSlot 2
+
+  callEndpoint @"update-swap-prices" h1 $
+    UpdatePricesParams
+      { updateSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , updateSwapOffer = (adaSymbol,adaToken)
+      , updateSwapAsk = testToken1
+      , redeemerPrice = unsafeRatio 2 1
+      , newPrice = unsafeRatio 1 1
+      , asInline = True
       , newPosition = 10_000_000
       , utxosToUpdate = 
           [(unsafeRatio 3 2,lovelaceValueOf 10_000_000)]
@@ -1137,6 +1180,8 @@ test = do
           (Test.not assertNoFailedTransactions) invalidNewPrice
       , checkPredicateOptions opts "New price not as inline datum"
           (Test.not assertNoFailedTransactions) nonInlinePrice
+      , checkPredicateOptions opts "Redeemer price doesn't match datum price"
+          (Test.not assertNoFailedTransactions) redeemerDoesntMatchDatum
       ]
     , testGroup "Close Swap"
       [ checkPredicateOptions opts "Reference script removed without burning beacon"

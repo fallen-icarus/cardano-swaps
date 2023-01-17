@@ -1,4 +1,4 @@
-# Tests - Executed Manually
+# Tests
 ## Swap Script Tests
 ### Basic Tests
 #### Script Address
@@ -8,8 +8,10 @@
 - [x] Correctly displays owner's pkh
 
 #### Close Redeemer
-- [x] Close redeemer fails if a non-owner tries using it
-- [x] Close redeemer allows owner to withdraw all utxos (including the reference script utxo)
+- [x] Fails if a non-owner tries using it
+- [x] Allows owner to withdraw all utxos (including the reference script utxo)
+- [x] Fails if reference script consumed without burning beacon
+- [x] Allows burning beacon without consuming reference script
 
 #### UpdatePrice Redeemer
 - [x] Fails if an invalid price is given
@@ -18,6 +20,7 @@
 - [x] Fails if a non-owner tries using it
 - [x] Fails if new datums don't match the price supplied to UpdatePrice redeemer
 - [x] Fails if the new datum is not an inline-datum
+- [x] Fails if beacon is removed from swap address
 - [x] Allows the owner to update all utxos (except the reference script utxo) at the script address with the new inline datum
 
 #### Swap Redeemer

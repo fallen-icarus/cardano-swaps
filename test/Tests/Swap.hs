@@ -96,6 +96,7 @@ data CreateSwapParams = CreateSwapParams
   , createSwapAsk :: (CurrencySymbol,TokenName)
   , initialPrice :: Price
   , initialPosition :: Integer
+  , createBeaconDatum :: CurrencySymbol
   , createbeaconDeposit :: Integer  -- ^ In lovelace
   , createBeaconMint :: Integer  -- ^ Only positive is relevant, negative would be unbalanced
   , refScriptDeposit :: Integer  -- ^ In lovelace
@@ -160,7 +161,7 @@ mintBeacon CreateSwapParams{..} = do
       beaconPolicyHash = mintingPolicyHash $ beaconPolicy beaconVaultValidatorHash
       beaconVal = singleton beaconSymbol "TestBeacon" createBeaconMint
       beaconMintRedeemer = toRedeemer $ (MintBeacon "TestBeacon")
-      beaconVaultDatum = toDatum beaconSymbol
+      beaconVaultDatum = toDatum createBeaconDatum
       initialPosVal = uncurry singleton (swapOffer swapConfig) $ initialPosition
       (refDeposit,pos) = 
         if beaconStoredWithRefScript
@@ -194,7 +195,7 @@ createSwap CreateSwapParams{..} = do
       beaconPolicyHash = mintingPolicyHash $ beaconPolicy beaconVaultValidatorHash
       beaconVal = singleton beaconSymbol "TestBeacon" createBeaconMint
       beaconMintRedeemer = toRedeemer $ (MintBeacon "TestBeacon")
-      beaconVaultDatum = toDatum beaconSymbol
+      beaconVaultDatum = toDatum createBeaconDatum
       initialPosVal = uncurry singleton (swapOffer swapConfig) $ initialPosition
       (refDeposit,pos) = 
         if beaconStoredWithRefScript
@@ -373,7 +374,8 @@ beaconMintedToPubKeyAddr = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 3 2
       , initialPosition = 10_000_000
-      , createbeaconDeposit = 1_000_000
+      , createBeaconDatum = beaconSymbol
+      , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
       , beaconStoredWithRefScript = False
@@ -394,6 +396,7 @@ beaconDepositTooSmallTrace = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 3 2
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 1_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -415,6 +418,7 @@ beaconDepositTooLargeTrace = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 3 2
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 3_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -436,6 +440,7 @@ tooManyBeaconsMintedTrace = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 3 2
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 2
       , refScriptDeposit = 28_000_000
@@ -457,7 +462,30 @@ noBeaconDepositTrace = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 3 2
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 0_000_000
+      , createBeaconMint = 1
+      , refScriptDeposit = 28_000_000
+      , beaconStoredWithRefScript = True
+      }
+
+  void $ waitUntilSlot 2
+
+-- | A trace where the beacon vault datum is not the beacon policy id.
+-- This should produce a failed transaction when createSwap is called.
+wrongBeaconVaultDatum :: EmulatorTrace ()
+wrongBeaconVaultDatum = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , createSwapOffer = (adaSymbol,adaToken)
+      , createSwapAsk = testToken1
+      , initialPrice = unsafeRatio 3 2
+      , initialPosition = 10_000_000
+      , createBeaconDatum = adaSymbol
+      , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
       , beaconStoredWithRefScript = True
@@ -478,6 +506,7 @@ successfullCreateSwapTrace = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 3 2
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -499,6 +528,7 @@ successfullPriceUpdates = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 3 2
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -535,6 +565,7 @@ updateRefPrice = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 3 2
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -575,6 +606,7 @@ nonOwnerUpdatesPrice = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 3 2
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -611,6 +643,7 @@ removesBeaconToken = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 3 2
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -648,6 +681,7 @@ invalidNewPrice = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 3 2
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -684,6 +718,7 @@ nonInlinePrice = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 3 2
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -720,6 +755,7 @@ redeemerDoesntMatchDatum = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 3 2
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -756,6 +792,7 @@ refScriptRemovedWithoutBurning = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 3 2
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -792,6 +829,7 @@ nonOwnerCloses = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 3 2
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -827,6 +865,7 @@ beaconBurnedWithoutRemovingRefScript = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 3 2
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -863,6 +902,7 @@ beaconWithdrawnDuringClose = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 3 2
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -900,6 +940,7 @@ successfullSwap = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 2 1
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -937,6 +978,7 @@ swapChangeDatumNotInline = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 2 1
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -974,6 +1016,7 @@ swapChangeDatumNotWeightedAvg = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 2 1
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -1011,6 +1054,7 @@ swapRatioNotMet = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 2 1
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -1048,6 +1092,7 @@ swapNonOfferedAsset = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 2 1
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -1086,6 +1131,7 @@ swapRefScriptUtxo = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio 2 1
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -1123,6 +1169,7 @@ swapPriceNotGreaterThanZero = do
       , createSwapAsk = testToken1
       , initialPrice = unsafeRatio (-2) 1
       , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
       , createbeaconDeposit = 2_000_000
       , createBeaconMint = 1
       , refScriptDeposit = 28_000_000
@@ -1162,6 +1209,8 @@ test = do
           (Test.not assertNoFailedTransactions) tooManyBeaconsMintedTrace
       , checkPredicateOptions opts "Beacon goes to pubkey address after minting"
           (Test.not assertNoFailedTransactions) beaconMintedToPubKeyAddr
+      , checkPredicateOptions opts "Wrong beacon vault datum"
+          (Test.not assertNoFailedTransactions) wrongBeaconVaultDatum
       ]
     , testGroup "Create Swap"
       [ checkPredicateOptions opts "Successfull Create Swap" 

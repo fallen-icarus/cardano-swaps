@@ -18,37 +18,31 @@ module Tests.Swap
   test
 ) where
 
-import Data.Void (Void)
 import Control.Lens
-import Data.Maybe (fromJust)
 import qualified Data.Map as Map
 import Data.Default
-import Text.Printf
 import Control.Monad (void)
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Data.Text (Text)
 import Ledger hiding (singleton,mintingPolicyHash)
 import Ledger.Constraints as Constraints
-import qualified Ledger.Constraints.TxConstraints as Constraints
-import qualified Ledger.Constraints.OffChain as Constraints (paymentPubKeyHash)
 import qualified Ledger.Typed.Scripts as Scripts
 import Plutus.Contract
-import Plutus.V1.Ledger.Contexts as V
 import qualified PlutusTx
 import PlutusTx.Prelude hiding (Semigroup (..), foldMap)
 import Ledger.Value (singleton)
 import Ledger.Ada (lovelaceValueOf)
 import Plutus.Script.Utils.V2.Scripts as UScripts
-import Playground.Contract (printJson, printSchemas, ensureKnownCurrencies, stage, ToSchema)
-import Playground.TH (mkKnownCurrencies, mkSchemaDefinitions)
+import Playground.Contract (ToSchema)
+import Playground.TH (mkSchemaDefinitions)
 import Plutus.Trace
 import Wallet.Emulator.Wallet
 import Plutus.Contract.Test as Test
 import Test.Tasty
 import Data.List (foldl')
 
-import Prelude as Haskell (Semigroup (..), Show, foldMap,String,IO,show)
+import Prelude as Haskell (Semigroup (..), String)
 
 import CardanoSwaps
 
@@ -68,18 +62,11 @@ mustPayToScriptWithInlineDatumAndRefScript :: o -> ValidatorHash -> Value -> TxC
 mustPayToScriptWithInlineDatumAndRefScript dt (ValidatorHash h) val =
   mempty { txOwnOutputs = [ScriptOutputConstraint (TxOutDatumInline dt) val (Just $ ScriptHash h)]}
 
--- mustSpendOutputFromTheScriptWithRef :: TxOutRef -> i -> TxOutRef -> TxConstraints i o
--- mustSpendOutputFromTheScriptWithRef txOutRef red ref =
---     mempty { txOwnInputs = [ScriptInputConstraint red txOutRef (Just ref)] }
-
 -------------------------------------------------
 -- Configs
 -------------------------------------------------
 testToken1 :: (CurrencySymbol,TokenName)
 testToken1 = ("c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","TestToken1")
-
-testToken2 :: (CurrencySymbol,TokenName)
-testToken2 = ("c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","TestToken2")
 
 emConfig :: EmulatorConfig
 emConfig = EmulatorConfig (Left $ Map.fromList wallets) def

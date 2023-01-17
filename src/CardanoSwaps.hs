@@ -454,7 +454,7 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
     traceIfFalse "If reference script is consumed, the beacon must be burned." 
       ( if not noInputsWithRefScripts
         then beaconBurned
-        else True
+        else outputCheck Nothing
       )
   UpdatePrices newPrice ->
     -- | Must be signed by owner.
@@ -466,7 +466,7 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
     -- | All outputs must contain same datum as specified in redeemer
     -- Must output to swap script address or owner address.
     -- Cannot remove beacon from swap address.
-    traceIfFalse "New price datums do not match price supplied in redeemer." (updateCheck newPrice)
+    traceIfFalse "New price datums do not match price supplied in redeemer." (outputCheck $ Just newPrice)
   Swap ->
     -- | Should not consume reference script from swap script address.
     -- Utxo output to the script must have the proper datum and datum must not differ from input.
@@ -501,15 +501,19 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
                          $ map txInInfoResolved
                          $ txInfoInputs info
 
-    updateCheck :: Price -> Bool
-    updateCheck newPrice =
+    -- | Checks outputs for both Close and Update redeemers
+    outputCheck :: Maybe Price -> Bool
+    outputCheck newPrice' =
       let outputs = txInfoOutputs info
           foo TxOut{txOutDatum=d,txOutValue=oVal,txOutAddress=Address{addressCredential=addrCred}} =
             case addrCred of
               ScriptCredential vh ->
                 -- | Check if script is this script.
                 if vh == scriptValidatorHash
-                then -- | Check if datum has proper price.
+                then case newPrice' of
+                  Nothing -> parseDatum "Invalid datum in swap output" d > fromInteger 0
+                  Just newPrice -> 
+                     -- | Check if datum has proper price.
                      -- This will throw an error if datum is not an inline datum for price.
                      parseDatum "Invalid datum in swap output." d == newPrice
                 else traceError "Tx outputs can only to to the swap address or the owner's address."
@@ -521,7 +525,7 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
                   -- | Check if beacon removed. 
                   case Map.lookup beaconSym (getValue oVal) of
                     Nothing -> True
-                    Just _ -> traceError "Cannot remove beacon from swap address."
+                    Just _ -> traceError "Cannot withdraw beacon from swap address."
                 else traceError "Tx outputs can only to to the swap address or the owner's address."
       in all foo outputs
 

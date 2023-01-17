@@ -290,7 +290,9 @@ closeSwap CloseSwapParams{..} = do
         then -- | Burn beacon
              mustMintCurrencyWithRedeemer beaconPolicyHash beaconBurnRedeemer "TestBeacon" closeBeaconBurn
              -- | Withdrawal deposit
-             <> mustSpendScriptOutputWithMatchingDatumAndValue beaconVaultValidatorHash (==beaconVaultDatum) (==lovelaceValueOf closeBeaconDeposit) beaconBurnRedeemer
+             <> (if closeBeaconDeposit /= 0
+                 then mustSpendScriptOutputWithMatchingDatumAndValue beaconVaultValidatorHash (==beaconVaultDatum) (==lovelaceValueOf closeBeaconDeposit) beaconBurnRedeemer
+                 else mempty)
         else mempty)
         -- | Must spend all utxos to be closed
         <> (foldl' (\a (price,val) -> a 
@@ -926,6 +928,43 @@ beaconWithdrawnDuringClose = do
 
   void $ waitUntilSlot 4
 
+-- | A trace where the beacon is burned without withdrawing the deposit from the beacon vault.
+-- This should produce a failed transaction when closeSwap is called.
+beaconBurnedWithoutReclaimingDeposit :: EmulatorTrace ()
+beaconBurnedWithoutReclaimingDeposit = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , createSwapOffer = (adaSymbol,adaToken)
+      , createSwapAsk = testToken1
+      , initialPrice = unsafeRatio 3 2
+      , initialPosition = 10_000_000
+      , createBeaconDatum = beaconSymbol
+      , createbeaconDeposit = 2_000_000
+      , createBeaconMint = 1
+      , refScriptDeposit = 28_000_000
+      , beaconStoredWithRefScript = False
+      }
+  
+  void $ waitUntilSlot 2
+
+  let beaconVal = singleton beaconSymbol "TestBeacon" 1
+  callEndpoint @"close-swap" h1 $
+    CloseSwapParams
+      { closeSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , closeSwapOffer = (adaSymbol,adaToken)
+      , closeSwapAsk = testToken1
+      , burnBeacon = True
+      , closeBeaconDeposit = 0
+      , closeBeaconBurn = -1
+      , utxosToClose = 
+          [ (unsafeRatio 3 2,lovelaceValueOf 10_000_000 <> beaconVal) ]
+      }
+
+  void $ waitUntilSlot 4
+
 -- | A trace where everything is correct.
 -- This should produce a successfull transaction when swapAssets is called.
 successfullSwap :: EmulatorTrace ()
@@ -1241,6 +1280,8 @@ test = do
           assertNoFailedTransactions beaconBurnedWithoutRemovingRefScript
       , checkPredicateOptions opts "Beacon withdrawn instead of burned"
           (Test.not assertNoFailedTransactions) beaconWithdrawnDuringClose
+      , checkPredicateOptions opts "Beacon burned without reclaiming deposit"
+          (Test.not assertNoFailedTransactions) beaconBurnedWithoutReclaimingDeposit
       ]
     , testGroup "Swap Assets"
       [ checkPredicateOptions opts "Successfull asset swap"

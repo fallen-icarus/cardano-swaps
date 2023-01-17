@@ -802,6 +802,7 @@ beaconBurnedWithoutRemovingRefScript = do
 successfullSwap :: EmulatorTrace ()
 successfullSwap = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
 
   callEndpoint @"create-swap" h1 $
     CreateSwapParams
@@ -818,7 +819,7 @@ successfullSwap = do
   
   void $ waitUntilSlot 2
 
-  callEndpoint @"swap" h1 $
+  callEndpoint @"swap" h2 $
     ExecSwapParams
       { execSwapSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
       , execSwapSwapOffer = (adaSymbol,adaToken)
@@ -838,6 +839,7 @@ successfullSwap = do
 swapChangeDatumNotInline :: EmulatorTrace ()
 swapChangeDatumNotInline = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
 
   callEndpoint @"create-swap" h1 $
     CreateSwapParams
@@ -854,7 +856,7 @@ swapChangeDatumNotInline = do
   
   void $ waitUntilSlot 2
 
-  callEndpoint @"swap" h1 $
+  callEndpoint @"swap" h2 $
     ExecSwapParams
       { execSwapSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
       , execSwapSwapOffer = (adaSymbol,adaToken)
@@ -874,6 +876,7 @@ swapChangeDatumNotInline = do
 swapChangeDatumNotWeightedAvg :: EmulatorTrace ()
 swapChangeDatumNotWeightedAvg = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
 
   callEndpoint @"create-swap" h1 $
     CreateSwapParams
@@ -890,7 +893,7 @@ swapChangeDatumNotWeightedAvg = do
   
   void $ waitUntilSlot 2
 
-  callEndpoint @"swap" h1 $
+  callEndpoint @"swap" h2 $
     ExecSwapParams
       { execSwapSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
       , execSwapSwapOffer = (adaSymbol,adaToken)
@@ -910,6 +913,7 @@ swapChangeDatumNotWeightedAvg = do
 swapRatioNotMet :: EmulatorTrace ()
 swapRatioNotMet = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
 
   callEndpoint @"create-swap" h1 $
     CreateSwapParams
@@ -926,7 +930,7 @@ swapRatioNotMet = do
   
   void $ waitUntilSlot 2
 
-  callEndpoint @"swap" h1 $
+  callEndpoint @"swap" h2 $
     ExecSwapParams
       { execSwapSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
       , execSwapSwapOffer = (adaSymbol,adaToken)
@@ -946,6 +950,7 @@ swapRatioNotMet = do
 swapNonOfferedAsset :: EmulatorTrace ()
 swapNonOfferedAsset = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
 
   callEndpoint @"create-swap" h1 $
     CreateSwapParams
@@ -963,7 +968,7 @@ swapNonOfferedAsset = do
   void $ waitUntilSlot 2
 
   let beaconVal = singleton beaconSymbol "TestBeacon" 1
-  callEndpoint @"swap" h1 $
+  callEndpoint @"swap" h2 $
     ExecSwapParams
       { execSwapSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
       , execSwapSwapOffer = (adaSymbol,adaToken)
@@ -983,6 +988,7 @@ swapNonOfferedAsset = do
 swapRefScriptUtxo :: EmulatorTrace ()
 swapRefScriptUtxo = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
 
   callEndpoint @"create-swap" h1 $
     CreateSwapParams
@@ -999,7 +1005,7 @@ swapRefScriptUtxo = do
   
   void $ waitUntilSlot 2
 
-  callEndpoint @"swap" h1 $
+  callEndpoint @"swap" h2 $
     ExecSwapParams
       { execSwapSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
       , execSwapSwapOffer = (adaSymbol,adaToken)

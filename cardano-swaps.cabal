@@ -47,6 +47,8 @@ test-suite cardano-swaps-tests
     -fno-ignore-interface-pragmas 
     -fno-omit-interface-pragmas 
     -fno-specialise
+  other-modules:
+    Tests.Swap
   build-depends:
     cardano-swaps,
     plutus-contract,

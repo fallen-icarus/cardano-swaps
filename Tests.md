@@ -16,7 +16,6 @@
 #### UpdatePrice Redeemer
 - [x] Fails if an invalid price is given
 - [x] Fails if the reference script is to be consumed
-- [x] Fails if the outputs do not go to either the script or the owner
 - [x] Fails if a non-owner tries using it
 - [x] Fails if new datums don't match the price supplied to UpdatePrice redeemer
 - [x] Fails if the new datum is not an inline-datum

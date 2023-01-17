@@ -517,17 +517,15 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
                      -- | Check if datum has proper price.
                      -- This will throw an error if datum is not an inline datum for price.
                      parseDatum "Invalid datum in swap output." d == newPrice
-                else traceError "Tx outputs can only to to the swap address or the owner's address."
+                else case Map.lookup beaconSym (getValue oVal) of
+                  Nothing -> True  -- ^ Fine since owner signed.
+                  Just _ -> traceError "Cannot withdraw beacon from swap address."
 
-              PubKeyCredential pkh -> 
-                -- | Check if pkh is the owner's.
-                if pkh == unPaymentPubKeyHash swapOwner
-                then
-                  -- | Check if beacon removed. 
-                  case Map.lookup beaconSym (getValue oVal) of
-                    Nothing -> True
-                    Just _ -> traceError "Cannot withdraw beacon from swap address."
-                else traceError "Tx outputs can only to to the swap address or the owner's address."
+              PubKeyCredential _ -> 
+                -- | Allow as long as beacon not withdrawn from swap address. 
+                case Map.lookup beaconSym (getValue oVal) of
+                  Nothing -> True  -- ^ Fine since owner signed.
+                  Just _ -> traceError "Cannot withdraw beacon from swap address."
       in all foo outputs
 
     emptyVal :: Value

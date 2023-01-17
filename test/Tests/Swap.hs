@@ -110,7 +110,6 @@ data UpdatePricesParams = UpdatePricesParams
   , asInline :: Bool
   , newPosition :: Integer
   , utxosToUpdate :: [(Price,Value)]
-  , extraRecipients :: [(Address,Value)]  -- ^ Aside from swap address and owner
   } deriving (Generic,ToJSON,FromJSON,ToSchema)
 
 data CloseSwapParams = CloseSwapParams
@@ -216,10 +215,6 @@ updatePrices UpdatePricesParams{..} = do
         <> (if asInline
            then mustPayToTheScriptWithInlineDatum newPrice newVal
            else mustPayToTheScriptWithDatumHash newPrice newVal)
-        -- | Must pay to extra addresses aside from swap address
-        <> (if null extraRecipients
-           then mempty
-           else foldl' (\a (addr,v) -> a <> mustPayToAddress addr v) mempty extraRecipients)
 
   ledgerTx <- submitTxConstraintsWith lookups tx'
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
@@ -463,7 +458,6 @@ successfullPriceUpdates = do
       , newPosition = 10_000_000
       , utxosToUpdate = 
           [(unsafeRatio 3 2,lovelaceValueOf 10_000_000)]
-      , extraRecipients = [] 
       }
 
   void $ waitUntilSlot 4
@@ -502,7 +496,6 @@ updateRefPrice = do
           [ (unsafeRatio 3 2,lovelaceValueOf 10_000_000)
           , (unsafeRatio 3 2,lovelaceValueOf 28_000_000 <> beaconVal)
           ]
-      , extraRecipients = [] 
       }
 
   void $ waitUntilSlot 4
@@ -539,7 +532,6 @@ nonOwnerUpdatesPrice = do
       , newPosition = 10_000_000
       , utxosToUpdate = 
           [(unsafeRatio 3 2,lovelaceValueOf 10_000_000)]
-      , extraRecipients = [] 
       }
 
   void $ waitUntilSlot 4
@@ -576,44 +568,6 @@ removesBeaconToken = do
       , newPosition = 10_000_000
       , utxosToUpdate = 
           [(unsafeRatio 3 2,lovelaceValueOf 10_000_000 <> beaconVal)]
-      , extraRecipients = [] 
-      }
-
-  void $ waitUntilSlot 4
-
--- | A trace where value is sent to other addresses.
--- This should produce a failed transaction when updatePrices is called.
-valueSentToOtherAddresses :: EmulatorTrace ()
-valueSentToOtherAddresses = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
-      , createSwapOffer = (adaSymbol,adaToken)
-      , createSwapAsk = testToken1
-      , initialPrice = unsafeRatio 3 2
-      , initialPosition = 10_000_000
-      , createbeaconDeposit = 2_000_000
-      , createBeaconMint = 1
-      , refScriptDeposit = 28_000_000
-      , beaconStoredWithRefScript = True
-      }
-  
-  void $ waitUntilSlot 2
-
-  callEndpoint @"update-swap-prices" h1 $
-    UpdatePricesParams
-      { updateSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
-      , updateSwapOffer = (adaSymbol,adaToken)
-      , updateSwapAsk = testToken1
-      , newPrice = unsafeRatio 1 1
-      , asInline = True
-      , newPosition = 10_000_000
-      , utxosToUpdate = 
-          [(unsafeRatio 3 2,lovelaceValueOf 10_000_000)]
-      , extraRecipients = 
-          [(mockWalletAddress $ knownWallet 2, lovelaceValueOf 5_000_000)] 
       }
 
   void $ waitUntilSlot 4
@@ -649,7 +603,6 @@ invalidNewPrice = do
       , newPosition = 10_000_000
       , utxosToUpdate = 
           [(unsafeRatio 3 2,lovelaceValueOf 10_000_000)]
-      , extraRecipients = [] 
       }
 
   void $ waitUntilSlot 4
@@ -685,7 +638,6 @@ nonInlinePrice = do
       , newPosition = 10_000_000
       , utxosToUpdate = 
           [(unsafeRatio 3 2,lovelaceValueOf 10_000_000)]
-      , extraRecipients = [] 
       }
 
   void $ waitUntilSlot 4
@@ -1119,8 +1071,6 @@ test = do
           (Test.not assertNoFailedTransactions) nonOwnerUpdatesPrice
       , checkPredicateOptions opts "Beacon is withdrawn from swap address"
           (Test.not assertNoFailedTransactions) removesBeaconToken
-      , checkPredicateOptions opts "Value sent to other addresses"
-          (Test.not assertNoFailedTransactions) valueSentToOtherAddresses
       , checkPredicateOptions opts "Invalid new price"
           (Test.not assertNoFailedTransactions) invalidNewPrice
       , checkPredicateOptions opts "New price not as inline datum"

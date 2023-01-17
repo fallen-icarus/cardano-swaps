@@ -563,7 +563,7 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
                          
               (ScriptCredential vh,Just _) ->
                 if vh == scriptValidatorHash
-                then traceError "Canot consume reference script from swap address."
+                then traceError "Cannot consume reference script from swap address."
                 else x  -- ^ Skip this input
 
               (PubKeyCredential _,_) -> x  -- ^ skip this input

@@ -1020,6 +1020,44 @@ swapRefScriptUtxo = do
 
   void $ waitUntilSlot 4
 
+-- | A trace where swap price is not greater than zero.
+-- This should produce a failed transaction when swapAssets is called.
+swapPriceNotGreaterThanZero :: EmulatorTrace ()
+swapPriceNotGreaterThanZero = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , createSwapOffer = (adaSymbol,adaToken)
+      , createSwapAsk = testToken1
+      , initialPrice = unsafeRatio (-2) 1
+      , initialPosition = 10_000_000
+      , createbeaconDeposit = 2_000_000
+      , createBeaconMint = 1
+      , refScriptDeposit = 28_000_000
+      , beaconStoredWithRefScript = False
+      }
+  
+  void $ waitUntilSlot 2
+
+  let beaconVal = singleton beaconSymbol "TestBeacon" 1
+  callEndpoint @"swap" h2 $
+    ExecSwapParams
+      { execSwapSwapOwner = mockWalletPaymentPubKeyHash $ knownWallet 1
+      , execSwapSwapOffer = (adaSymbol,adaToken)
+      , execSwapSwapAsk = testToken1
+      , valueToGive = (uncurry singleton testToken1) 10
+      , utxosToSwap =
+          [ (unsafeRatio (-2) 1, lovelaceValueOf 10_000_000 <> beaconVal) ]
+      , weightedAvg = unsafeRatio (-2) 1
+      , swapChange = lovelaceValueOf 5_000_000 <> beaconVal
+      , datumAsInline = True
+      }
+
+  void $ waitUntilSlot 4
+
 test :: TestTree
 test = do
   let opts = defaultCheckOptions & emulatorConfig .~ emConfig
@@ -1073,6 +1111,8 @@ test = do
           (Test.not assertNoFailedTransactions) swapNonOfferedAsset
       , checkPredicateOptions opts "Swap reference script utxo spent"
           (Test.not assertNoFailedTransactions) swapRefScriptUtxo
+      , checkPredicateOptions opts "Swap price is not greater than zero"
+          (Test.not assertNoFailedTransactions) swapPriceNotGreaterThanZero
       ]
     ]
 

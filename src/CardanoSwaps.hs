@@ -408,7 +408,9 @@ mkBeacon vaultHash r ScriptContext{scriptContextTxInfo = info} = case r of
         Just p -> p
       _ -> traceError "Deposits to beacon vault must include an inline datum."
 
-    -- | Find deposits to beacon vault
+    -- | Find deposits to beacon vault.
+    -- This function also checks where the beacon is going and throws an error if not going
+    -- to a script address (not the beacon vault address).
     depositsToVault :: Value
     depositsToVault = 
       let outputs = txInfoOutputs info
@@ -420,11 +422,16 @@ mkBeacon vaultHash r ScriptContext{scriptContextTxInfo = info} = case r of
                 if vh == vaultHash
                 then -- | Check if output to beacon vualt script contains proper datum.
                      if parseDatum d == thisCurrencySymbol
-                     then dVal <> oVal
+                     -- | Check if the beacon is going to the vault.
+                     then case Map.lookup thisCurrencySymbol (getValue oVal) of
+                       Nothing -> dVal <> oVal
+                       Just _ -> traceError "The beacon cannot go to the vault."
                      else traceError "The beacon vault datum is not the beacon policy id."
-                else dVal -- ^ Skip this output.
+                else dVal -- ^ Skip this output. It is assumed that the beacon will be in this else.
 
-              PubKeyCredential _ -> dVal  -- ^ Skip this output.
+              PubKeyCredential _ -> case Map.lookup thisCurrencySymbol (getValue oVal) of
+                Nothing -> dVal  -- ^ Skip this output.
+                Just _ -> traceError "The beacon must go to a script address."
       in foldl' foo emptyVal outputs
 
 beaconPolicy :: ValidatorHash -> MintingPolicy

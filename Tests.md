@@ -74,6 +74,7 @@
 - [x] Cannot mint a beacon while using the wrong datum with the beacon vault
 - [x] Can use reference script for minting
 - [x] Can use reference script for depositing/withdrawing from beacon vault
+- [x] Cannot mint beacon to a pubkey address
 
 ## Cli Tests
 - [x] Catches invalid price

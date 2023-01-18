@@ -40,25 +40,25 @@ The Getting Started instructions can be found [here](GettingStarted.md).
 
 ---
 ## Motivation
-Any DEX that operates on a Proof-of-Stake (PoS) blockchain **MUST** include delegation control as a foundational feature for the protocol. It is existentially important for the long-term sustainability of the underlying blockchain. Yet all Cardano DEXs either cannot by design or delegation control is just an afterthought.
+Any DEX that operates on a Proof-of-Stake (PoS) blockchain **MUST** include delegation control as a foundational feature for the protocol. It is existentially important for the long-term sustainability of the underlying blockchain. Yet, all Cardano DEXs either cannot give users full delegation control by design or delegation control is just an afterthought.
 
 ### Liquidity Pools
-The most commonly used DEX design is that of using liquidity pools. These have the well know downsides of:
+The most commonly used DEX design is liquidity pools, which have the well know downsides of:
  
   1. Impermanent Loss
   2. Loss of Delegation Control
   3. Difficulty of Concurrency
 
-Each of these downsides have their own corresponding "solution": yield farming, governance tokens, and batchers, respectively. However these "solutions" have downsides of their own:
+Each of these downsides have their own corresponding "solution": yield farming, governance tokens, and batchers, respectively. However, these "solutions" have downsides of their own:
  
   1. The long term sustainability of yield farming is questionable.
   2. Fairly distributing governance tokens is difficult.
   3. Batchers are effectively middle-men that can take advantage of their position between users and the protocol.
 
-Even more concerning is that, even if governance tokens are fairly distributed, this doesn't change the fact that a liquidity pool can only be delegated to one stake pool. Fractionalizing liquidity pools help but it still results in a more centralized PoS blockchain than if each user was able to delegate their assets independently.
+Even more concerning is that, even if governance tokens are fairly distributed, this doesn't change the fact that a liquidity pool can only be delegated to one stake pool. Fractionalizing liquidity pools helps but it still results in a more centralized PoS blockchain than if each user was able to delegate their assets independently.
 
 ### Programmable Swaps
-Programmable Swaps are a more promising design than liquidity pools and were first proposed by Axo (formerly known as Maladex). However, in Axo's [whitepaper](https://www.axo.trade/whitepaper.pdf), there is no mention of giving users full delegation control of their own assets. When they were asked on discord about it, they said it was possible but delegation control would not be included in the first version.
+Programmable Swaps are a more promising design than liquidity pools and were first proposed by Axo (formerly known as Maladex). However, in Axo's [whitepaper](https://www.axo.trade/whitepaper.pdf), there is no mention of giving users full delegation control of their own assets. When they were asked on Discord about it, they said it was possible but delegation control would not be included in the first version.
 
 ### The Cardano-Swaps DEX
 Cardano-Swaps took inspiration from Axo's programmable swaps design but added delegation control as a foundational feature. `cardano-swaps` is the name of the CLI program included to help use the DEX.
@@ -92,7 +92,7 @@ data SwapConfig = SwapConfig
   }
 ```
 
-Every possible `SwapConfig` will have its own unique swap contract and swap address. So if Alice and Bob both use the same `swapOffer` and `swapAsk` but have different `swapOwner`s (Alice is the owner of hers while Bob is the owner of his), Alice and Bob would have different swap contracts and swap addresses. Thanks to the fact that payment pubkey hashes are cryptographically guaranteed to be unique, every user is guaranteed to have their own personal swap contract and swap address. In addition to this, every trading pair will result in a unique swap contract and swap address due to `CurrencySymbol` also being a cryptographic hash.
+Every possible `SwapConfig` will have its own unique swap contract and swap address. So if Alice and Bob both use the same `swapOffer` and `swapAsk` but have different `swapOwner`s (Alice is the owner of hers while Bob is the owner of his), Alice and Bob would have different swap contracts and swap addresses. Thanks to the fact that payment pubkey hashes are cryptographically guaranteed to be unique, every user is guaranteed to have their own personal swap contract and swap address. In addition to this, every trading pair will result in a unique swap contract and swap address due to the `CurrencySymbol` also being a cryptographic hash.
 
 **All swap contracts are exactly the same except for this `SwapConfig`.**
 

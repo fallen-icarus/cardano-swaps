@@ -27,6 +27,7 @@ import GHC.Generics (Generic)
 import Data.Text (Text)
 import Ledger hiding (singleton,mintingPolicyHash)
 import Ledger.Constraints as Constraints
+import qualified Ledger.Constraints.TxConstraints as Constraints
 import qualified Ledger.Typed.Scripts as Scripts
 import Plutus.Contract
 import qualified PlutusTx
@@ -41,6 +42,7 @@ import Wallet.Emulator.Wallet
 import Plutus.Contract.Test as Test
 import Test.Tasty
 import Data.List (foldl')
+import Plutus.V2.Ledger.Api (Credential(..))
 
 import Prelude as Haskell (Semigroup (..), String)
 
@@ -58,9 +60,13 @@ toRedeemer = Redeemer . PlutusTx.dataToBuiltinData . PlutusTx.toData
 -------------------------------------------------
 -- Helper Constraints
 -------------------------------------------------
-mustPayToScriptWithInlineDatumAndRefScript :: o -> ValidatorHash -> Value -> TxConstraints i o
-mustPayToScriptWithInlineDatumAndRefScript dt (ValidatorHash h) val =
-  mempty { txOwnOutputs = [ScriptOutputConstraint (TxOutDatumInline dt) val (Just $ ScriptHash h)]}
+mustPayToOtherScriptWithInlineDatumAndRefScript :: ValidatorHash -> Datum -> ValidatorHash -> Value -> TxConstraints i o
+mustPayToOtherScriptWithInlineDatumAndRefScript vh dt (ValidatorHash h) val =
+  Constraints.singleton $ MustPayToAddress 
+    (Address (ScriptCredential vh) Nothing) 
+    (Just $ TxOutDatumInline dt) 
+    (Just $ ScriptHash h) 
+    val
 
 -------------------------------------------------
 -- Configs
@@ -156,8 +162,9 @@ mintBeacon CreateSwapParams{..} = do
         , swapOffer = createSwapOffer
         , swapAsk = createSwapAsk
         }
-      swap = swapTypedValidator beaconSymbol swapConfig
-      swapHash = Scripts.validatorHash swap
+      typedSwap = swapTypedValidator beaconSymbol swapConfig
+      optimizedSwap = swapValidator beaconSymbol swapConfig
+      swapHash = UScripts.validatorHash optimizedSwap
       beaconPolicyHash = mintingPolicyHash $ beaconPolicy beaconVaultValidatorHash
       beaconVal = singleton beaconSymbol "TestBeacon" createBeaconMint
       beaconMintRedeemer = toRedeemer $ (MintBeacon "TestBeacon")
@@ -168,17 +175,18 @@ mintBeacon CreateSwapParams{..} = do
         then (lovelaceValueOf refScriptDeposit <> beaconVal, lovelaceValueOf initialPosition)
         else (lovelaceValueOf refScriptDeposit, initialPosVal) -- ^ Do not store beacon in script
       lookups = plutusV2OtherScript beaconVault
+             <> plutusV2OtherScript optimizedSwap
              <> plutusV2MintingPolicy (beaconPolicy beaconVaultValidatorHash)
-             <> typedValidatorLookups swap
+             <> typedValidatorLookups typedSwap
       tx' = 
         -- | Mint beacon
         mustMintCurrencyWithRedeemer beaconPolicyHash beaconMintRedeemer "TestBeacon" createBeaconMint
         -- | Send deposit amount to beacon vault
         <> mustPayToOtherScriptWithInlineDatum beaconVaultValidatorHash beaconVaultDatum (lovelaceValueOf createbeaconDeposit)
         -- | Store reference script in swap address with deposit and beacon
-        <> mustPayToScriptWithInlineDatumAndRefScript initialPrice swapHash refDeposit
+        <> mustPayToOtherScriptWithInlineDatumAndRefScript swapHash (toDatum initialPrice) swapHash refDeposit
         -- | Add first position
-        <> mustPayToTheScriptWithInlineDatum initialPrice pos
+        <> mustPayToOtherScriptWithInlineDatum swapHash (toDatum initialPrice) pos
   ledgerTx <- submitTxConstraintsWith lookups tx'
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
   logInfo @String "opened a swap but user kept beacon"
@@ -190,8 +198,9 @@ createSwap CreateSwapParams{..} = do
         , swapOffer = createSwapOffer
         , swapAsk = createSwapAsk
         }
-      swap = swapTypedValidator beaconSymbol swapConfig
-      swapHash = Scripts.validatorHash swap
+      typedSwap = swapTypedValidator beaconSymbol swapConfig
+      optimizedSwap = swapValidator beaconSymbol swapConfig
+      swapHash = UScripts.validatorHash optimizedSwap
       beaconPolicyHash = mintingPolicyHash $ beaconPolicy beaconVaultValidatorHash
       beaconVal = singleton beaconSymbol "TestBeacon" createBeaconMint
       beaconMintRedeemer = toRedeemer $ (MintBeacon "TestBeacon")
@@ -202,17 +211,18 @@ createSwap CreateSwapParams{..} = do
         then (lovelaceValueOf refScriptDeposit <> beaconVal, lovelaceValueOf initialPosition)
         else (lovelaceValueOf refScriptDeposit, initialPosVal <> beaconVal)
       lookups = plutusV2OtherScript beaconVault
+             <> plutusV2OtherScript optimizedSwap
              <> plutusV2MintingPolicy (beaconPolicy beaconVaultValidatorHash)
-             <> typedValidatorLookups swap
+             <> typedValidatorLookups typedSwap
       tx' = 
         -- | Mint beacon
         mustMintCurrencyWithRedeemer beaconPolicyHash beaconMintRedeemer "TestBeacon" createBeaconMint
         -- | Send deposit amount to beacon vault
         <> mustPayToOtherScriptWithInlineDatum beaconVaultValidatorHash beaconVaultDatum (lovelaceValueOf createbeaconDeposit)
         -- | Store reference script in swap address with deposit and beacon
-        <> mustPayToScriptWithInlineDatumAndRefScript initialPrice swapHash refDeposit
+        <> mustPayToOtherScriptWithInlineDatumAndRefScript swapHash (toDatum initialPrice) swapHash refDeposit
         -- | Add first position
-        <> mustPayToTheScriptWithInlineDatum initialPrice pos
+        <> mustPayToOtherScriptWithInlineDatum swapHash (toDatum initialPrice) pos
   ledgerTx <- submitTxConstraintsWith lookups tx'
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
   logInfo @String "opened a swap"
@@ -226,8 +236,9 @@ updatePrices UpdatePricesParams{..} = do
         }
 
       -- | Swap Contract
-      swap = swapTypedValidator beaconSymbol swapConfig
-      swapHash = Scripts.validatorHash swap
+      typedSwap = swapTypedValidator beaconSymbol swapConfig
+      optimizedSwap = swapValidator beaconSymbol swapConfig
+      swapHash = UScripts.validatorHash optimizedSwap
       swapAddress = scriptValidatorHashAddress swapHash Nothing
 
       -- | Datums, Redeemers, and Values
@@ -237,8 +248,9 @@ updatePrices UpdatePricesParams{..} = do
   utxos <- utxosAt swapAddress
   userPubKeyHash <- ownFirstPaymentPubKeyHash
   
-  let lookups = typedValidatorLookups swap
+  let lookups = typedValidatorLookups typedSwap
              <> Constraints.unspentOutputs utxos
+             <> plutusV2OtherScript optimizedSwap
       tx' =
         -- | Must be signed by owner
         mustBeSignedBy userPubKeyHash
@@ -250,8 +262,8 @@ updatePrices UpdatePricesParams{..} = do
                utxosToUpdate
         -- | Must recreate desired position at swap address
         <> (if asInline
-           then mustPayToTheScriptWithInlineDatum newPrice newVal
-           else mustPayToTheScriptWithDatumHash newPrice newVal)
+           then mustPayToOtherScriptWithInlineDatum swapHash (toDatum newPrice) newVal
+           else mustPayToOtherScriptWithDatumHash swapHash (toDatum newPrice) newVal)
 
   ledgerTx <- submitTxConstraintsWith lookups tx'
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
@@ -265,8 +277,9 @@ closeSwap CloseSwapParams{..} = do
         , swapOffer = closeSwapOffer
         , swapAsk = closeSwapAsk
         }
-      swap = swapTypedValidator beaconSymbol swapConfig
-      swapHash = Scripts.validatorHash swap
+      typedSwap = swapTypedValidator beaconSymbol swapConfig
+      optimizedSwap = swapValidator beaconSymbol swapConfig
+      swapHash = UScripts.validatorHash optimizedSwap
       swapAddress = scriptValidatorHashAddress swapHash Nothing
       beaconPolicyHash = mintingPolicyHash $ beaconPolicy beaconVaultValidatorHash
       beaconBurnRedeemer = toRedeemer $ (BurnBeacon "TestBeacon")
@@ -278,7 +291,8 @@ closeSwap CloseSwapParams{..} = do
   beaconVaultUtxos <- utxosAt beaconVaultAddress
   userPubKeyHash <- ownFirstPaymentPubKeyHash
 
-  let lookups = typedValidatorLookups swap
+  let lookups = typedValidatorLookups typedSwap
+             <> plutusV2OtherScript optimizedSwap
              <> plutusV2OtherScript beaconVault
              <> plutusV2MintingPolicy (beaconPolicy beaconVaultValidatorHash)
              <> Constraints.unspentOutputs swapUtxos
@@ -317,8 +331,9 @@ swapAssets ExecSwapParams{..} = do
         }
 
       -- | Swap Contract
-      swap = swapTypedValidator beaconSymbol swapConfig
-      swapHash = Scripts.validatorHash swap
+      typedSwap = swapTypedValidator beaconSymbol swapConfig
+      optimizedSwap = swapValidator beaconSymbol swapConfig
+      swapHash = UScripts.validatorHash optimizedSwap
       swapAddress = scriptValidatorHashAddress swapHash Nothing
 
       -- | Datums, Redeemers, and Values
@@ -328,7 +343,8 @@ swapAssets ExecSwapParams{..} = do
       
   utxos <- utxosAt swapAddress
 
-  let lookups = typedValidatorLookups swap
+  let lookups = typedValidatorLookups typedSwap
+             <> plutusV2OtherScript optimizedSwap
              <> Constraints.unspentOutputs utxos
       tx' = 
         -- | Must spend all utxos to be swapped
@@ -339,8 +355,8 @@ swapAssets ExecSwapParams{..} = do
                utxosToSwap
         -- | Must return change to swap address
         <> (if datumAsInline
-            then mustPayToTheScriptWithInlineDatum weightedAvg newSwapVal
-            else mustPayToTheScriptWithDatumHash weightedAvg newSwapVal)
+            then mustPayToOtherScriptWithInlineDatum swapHash (toDatum weightedAvg) newSwapVal
+            else mustPayToOtherScriptWithDatumHash swapHash (toDatum weightedAvg) newSwapVal)
 
   ledgerTx <- submitTxConstraintsWith lookups tx'
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx

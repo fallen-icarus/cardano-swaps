@@ -48,7 +48,7 @@ nix-shell           # this may take a while the first time
 cd ../cardano-swaps
 cabal clean
 cabal update
-cabal build
+cabal build all
 ```
 The `cardano-swaps` CLI program should now be at `dist-newstyle/build/x86_64-linux/ghc-8.10.7/cardano-swaps-0.1.0.0/x/cardano-swaps/build/cardano-swaps/cardano-swaps`. Move the program to somewhere in your $PATH.
 

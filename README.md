@@ -247,11 +247,15 @@ $ echo -n "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f7468657254
 ### Defending Against Beacon Abuse
 While using the Koios and Blockfrost apis are technically off-chain, when there are hundreds of thousands of addresses with beacons, the apis can become too slow to use. Thus, use of the beacon tokens must be guarded to prevent a denial-of-service attack.
 
+#### Minting/Burning Requirements
 To this end, minting a beacon token requires depositing 2 ADA to a beacon vault address which can be redeemed upon burning the beacon token. The beacon vault address is hardcoded into the beacon minting policy which means it can tell whether the necessary deposit has been made. Beacon minting will only succeed if:
 
 1. Exactly 2 ADA is deposited to the beacon vault address.
 2. Only one beacon token is minted in the transaction.
 3. The proper datum is attached to the 2 ADA deposit.
+4. The beacon goes to a script address.
+
+It would be an issue if a beacon token is found in a pubkey address since this address would not be remotely executable. While there may be use cases for this, this is not desired for use cases like a DEX. For this reason, when minting a beacon for this DEX, the beacon must go to a script address. While this doesn't completely stop beacons from appearing in pubkey addresses, this measure and the required deposit are meant to encourage proper use of the beacons. (The next section discusses more steps to help defend against this kind of misuse.)
 
 The datum for the 2 ADA deposit is the inline currency symbol for the beacon token. This is necessary for the beacon vault to only allow redeeming deposits if the correct beacon token is burned. Burning beacons requires:
 
@@ -260,9 +264,20 @@ The datum for the 2 ADA deposit is the inline currency symbol for the beacon tok
 
 By hardcoding the beacon vault address into the beacon policy and requiring the beacon currency symbol to be used as the datum for the beacon vault, the beacon policy and beacon vault are inextricably linked together.
 
-Another potential issue is if a beacon token is found in a pubkey address. While there may be use cases for this, this is not desired for use cases like a DEX. For this reason, when minting a beacon, the beacon must go to a script address. While this doesn't completely stop beacons from appearing in pubkey addresses, this measure and the required deposit are meant to encourage proper use of the beacons.
+#### Off-Chain Defenses
+The on-chain code is unable to comletely prevent/defend against three kinds of beacon misuse:
 
-### Beacons with reference scripts
+1. UTxO dusting - when there are thousands of UTxOs at an address, the api could crash when trying to send the info to the user upon querying.
+2. The beacon is found at a pubkey address - these are "dead" addresses since they cannot be used in swaps. The beacon minting requirement only stops the new beacon from appearing at a pubkey address. After the beacon is minting, the beacon could potentially be transferred to a pubkey address.
+3. No reference script found at the address with the beacon - these are another kind of "dead" addresses and can fill up the queries to the point of a denial of service attack.
+
+To stop the beacons from being used in these ways, it falls to the off-chain usage: 
+
+1. UTxO dusting defense - the off-chain apis should only return the first 25-50 UTxOs of a given address. This should be more than enough for the average user of the DEX.
+2. Beacons found at a pubkey address defense - the off-chain apis should only return UTxOs of script addresses; the apis have enough information to be able to tell a pubkey address from a script address.
+3. No reference script found defense - since only 25-50 UTxOs would be returned (as part of the first defense), a user only needs to search through 25-50 UTxOs to find a reference script. If no reference script is found, that address should just be skipped. Keeping the number of UTxOs to search small minimizes the overhead from this defense.
+
+### Using Beacons with reference scripts
 To minimize transaction fees, the beacon policy and beacon vault script can be used as reference scripts. The beacon vault script has logic to protect any reference scripts stored in the vault from being consumed. This means both the beacon policy and the beacon vault script can be stored inside the beacon vault.
 
 **There is no way to withdraw ADA from the beacon vault when it is stored with a reference script. Thus storing reference scripts inside the beacon vault effectively means burning the associated ADA.** There was no way to allow withdrawing the ADA without opening up centralization problems.

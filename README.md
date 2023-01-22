@@ -18,7 +18,7 @@ The Getting Started instructions can be found [here](GettingStarted.md).
   - [Beacon Tokens with Cardano-Swaps](#beacon-tokens-with-cardano-swaps)
   - [How Do Beacon Tokens Differentiate Between Trading Pairs?](#how-do-beacons-differentiate-between-trading-pairs)
   - [Defending Against Beacon Abuse](#defending-against-beacon-abuse)
-  - [Beacons with reference scripts](#beacons-with-reference-scripts)
+  - [Using Beacons with reference scripts](#using-beacons-with-reference-scripts)
   - [Generalizing Beacon Tokens](#generalizing-beacon-tokens)
 - [Required Deposits](#required-deposits)
 - [Swap Contract Logic](#the-swap-contract-logic)

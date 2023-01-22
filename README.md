@@ -273,9 +273,9 @@ The on-chain code is unable to comletely prevent/defend against three kinds of b
 
 To stop the beacons from being used in these ways, it falls to the off-chain usage: 
 
-1. UTxO dusting defense - the off-chain apis should only return the first 25-50 UTxOs of a given address. This should be more than enough for the average user of the DEX.
+1. UTxO dusting defense - the off-chain apis should only return the first 10-20 UTxOs of a given address. The average user will likely only have a handful of positions open for a given trading pair so 10-20 should be more than enough.
 2. Beacons found at a pubkey address defense - the off-chain apis should only return UTxOs of script addresses; the apis have enough information to be able to tell a pubkey address from a script address.
-3. No reference script found defense - since only 25-50 UTxOs would be returned (as part of the first defense), a user only needs to search through 25-50 UTxOs to find a reference script. If no reference script is found, that address should just be skipped. Keeping the number of UTxOs to search small minimizes the overhead from this defense.
+3. No reference script found defense - since only 10-20 UTxOs would be returned (as part of the first defense), a user only needs to search through 10-20 UTxOs to find a reference script. If no reference script is found, that address should just be skipped. Keeping the number of UTxOs to search small minimizes the overhead from this defense.
 
 ### Using Beacons with reference scripts
 To minimize transaction fees, the beacon policy and beacon vault script can be used as reference scripts. The beacon vault script has logic to protect any reference scripts stored in the vault from being consumed. This means both the beacon policy and the beacon vault script can be stored inside the beacon vault.

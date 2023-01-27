@@ -471,7 +471,6 @@ mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo =
     -- | Datum must be valid price. Any number great than zero.
     traceIfFalse "invalid new asking price" (newPrice > fromInteger 0) &&
     -- | All outputs must contain same datum as specified in redeemer
-    -- Must output to swap script address or owner address.
     -- Cannot remove beacon from swap address.
     traceIfFalse "New price datums do not match price supplied in redeemer." (outputCheck $ Just newPrice)
   Swap ->

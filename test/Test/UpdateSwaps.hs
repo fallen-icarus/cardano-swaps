@@ -405,7 +405,7 @@ tests = do
         (Test.not assertNoFailedTransactions) updateDatumBeaconIdNotNothing
     , checkPredicateOptions opts "Fail if new datums are not inline"
         (Test.not assertNoFailedTransactions) updateDatumsNotInline
-    , checkPredicateOptions opts "Fail if stake credential did not approve"
+    , checkPredicateOptions opts "Fail if stake pubkey did not sign"
         (Test.not assertNoFailedTransactions) updateAsNonOwner
     ]
 

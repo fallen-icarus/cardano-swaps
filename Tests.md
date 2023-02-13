@@ -1,81 +1,58 @@
 # Tests
-## Swap Script Tests
-### Basic Tests
-#### Script Address
-- [x] Every script configuration (owner,asked,offered) results in a unique swap script and swap script address
 
-#### Info Redeemer
-- [x] Correctly displays owner's pkh
+:important: `Close`,`Update`, and `Swap` datum all use the same input and output check functions. These functions were only tested once. If different functions are ever used, these tests will need to be re-written.
 
-#### Close Redeemer
-- [x] Fails if a non-owner tries using it
-- [x] Allows owner to withdraw all utxos (including the reference script utxo)
-- [x] Fails if reference script consumed without burning beacon
-- [x] Allows burning beacon without consuming reference script
+## Beacons
 
-#### UpdatePrice Redeemer
-- [x] Fails if an invalid price is given
-- [x] Fails if the reference script is to be consumed
-- [x] Fails if a non-owner tries using it
-- [x] Fails if new datums don't match the price supplied to UpdatePrice redeemer
-- [x] Fails if the new datum is not an inline-datum
-- [x] Fails if beacon is removed from swap address
-- [x] Allows the owner to update all utxos (except the reference script utxo) at the script address with the new inline datum
+### Minting
+- [x] Only one beacon can be minted per tx.
+- [x] Only the beacon with the empty token name can be minted.
+- [x] The beacon must be stored in an address locked by the Dapp's spending script for that swap pair.
+  - [x] Fail if minted to an address locked by a pubkey.
+  - [x] Fail if minted to an address locked by a non-dapp spending script.
+  - [x] Fail if minted to a dapp address for a different swap pair.
+- [x] The beacon must be stored with the reference script for the Dapp's spending script for that swap pair.
+  - [x] Fail if not stored with a reference script.
+  - [x] Fail if stored with a reference script for a non-dapp spending script.
+  - [x] Fail if stored with a dapp reference script for a different swap pair.
+- [x] The beacon must be minted to an address with a staking credential.
+  - [x] Allow if stake pubkey used.
+  - [x] Allow if staking script used.
+- [x] The beacon must be stored in a utxo containing the proper beacon symbol in the datum.
+- [x] Fail if the burn redeemer is used to mint.
 
-#### Swap Redeemer
-- [x] When ADA is asked for, the price (in ADA) is properly converted to lovelaces
-- [x] When ADA is offered, the price (in ADA) is properly converted to lovelaces
-- [x] When ADA is not part of the trading pair, the price is left as is
-- [x] Fails if reference script utxo is to be consumed
-- [x] Fails if change output to script contains a different datum than the input when consuming one utxo
-- [x] Fails if change output to script does not contain the weighted price as datum when consuming multiple utxos
-- [x] Fails if change output to script contains a non-inline-datum
-- [x] Fails if a non-offered asset tries to be withdrawn
-- [x] Fails if offered asset taken > asked asset given * price
-- [x] Succeeds if no other errors and offered asset taken <= asked asset given * price
-- [x] Succeeds when consuming multiple utxos with the same price for the datums
-- [x] Succeeds when consuming multiple utxos with different prices for the datums
-- [x] Fails unless all prices are greater than zero. 
+### Burning
+- [x] Always allow burning.
+- [x] Fail if mint redeemer used to burn.
 
-### Scenario Tests
-#### Third party executes two complementary scripts in one tx; one utxo each
-- [x] Third party pays fee
-- [x] Third party can keep difference between asking prices (arbitrage)
+## DEX
 
-#### Third party executes n complementary scripts in one tx; one utxo each
-- [x] Third party pays fee
-- [x] Third party can keep difference between asking prices (arbitrage)
+### Close
+- [x] All beacons in inputs must be burned.
+- [ ] Staking credential must approve.
+  - [x] Stake pubkey must sign tx.
+  - [ ] Staking script must be executed in tx.
+- [x] All outputs to address must contain proper datum.
+  - [x] Fail if output datum is not inline.
+  - [x] Fail if swapPrice <= 0.
+  - [x] Fail if swapBeacon /= Nothing.
 
-#### Third party executes two complementary scripts in one tx; multiple utxos each
-- [x] Third party pays fee
-- [x] Third party can keep difference between asking prices (arbitrage)
+### Update
+- [x] No beacons allowed in input.
+- [ ] Staking credential must approve.
+  - [x] Stake pubkey must sign tx.
+  - [ ] Staking script must be executed in tx.
+- [x] All outputs to address must contain proper datum.
+  - [x] Fail if output datum is not inline.
+  - [x] Fail if swapPrice <= 0.
+  - [x] Fail if swapBeacon /= Nothing.
 
-#### Third part executes n complementary scripts in one tx; multiple utxos each
-- [x] Third party pays fee
-- [x] Third party can keep difference between asking prices (arbitrage)
-
-## Staking Tests
-- [x] Fails if non-owner tries delegating
-- [x] Fails if non-owner tries withdrawing rewards
-- [x] Succeeds if owner tries delegating
-- [x] Succeeds if owner tries withdrawing rewards
-
-## Beacon Tests
-- [x] Cannot mint beacon token without depositing 2 ADA to beacon vault
-- [x] Cannot burn beacon token without withdrawing 2 ADA from beacon vault
-- [x] Cannot spend reference script in beacon vault
-- [x] Cannot deposit 2 ADA without correct datum
-- [x] Cannot withdraw ADA from beacon vault without burning
-- [x] Cannot mint more than one beacon at a time
-- [x] Cannot burn more than one beacon at a time
-- [x] Cannot mint any other tokens in the same transaction
-- [x] Cannot burn any other tokens in the same transaction
-- [x] Cannot use incorrect redeemers (will just get confusing error messages)
-- [x] Cannot mint a beacon while using the wrong datum with the beacon vault
-- [x] Can use reference script for minting
-- [x] Can use reference script for depositing/withdrawing from beacon vault
-- [x] Cannot mint beacon to a pubkey address
-
-## Cli Tests
-- [x] Catches invalid price
-- [x] Roundtrip template encoding/decoding for price calc
+### Swap
+- [x] No beacons allowed in input.
+- [x] All swap input prices must be > 0.
+- [x] All outputs to address must contain proper datum.
+  - [x] Fail if output datum is not inline.
+  - [x] Fail if swapPrice /= weighted avg.
+  - [x] Fail if swapBeacon /= Nothing.
+- [x] Only offered asset allowed to leave.
+- [x] offered asset taken * price <= given asset

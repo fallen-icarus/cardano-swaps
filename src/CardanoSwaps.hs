@@ -17,41 +17,27 @@
 
 module CardanoSwaps
 (
-  genBeaconTokenName,
-  calcWeightedPrice,
-  UtxoPriceInfo (..),
-  
-  readPubKeyHash,
-  readCurrencySymbol,
-  readTokenName,
-
-  SwapConfig (..),
+  SwapConfig(..),
   Price,
-  Action (..),
+  Action(..),
+  SwapDatum(..),
+  BeaconRedeemer(..),
   CurrencySymbol(..),
   TokenName(..),
-  PaymentPubKeyHash,
-  fromGHC,
-  BeaconRedeemer (..),
+  PaymentPubKeyHash(..),
   adaSymbol,
   adaToken,
-  StakingConfig (..),
 
-  swapScript,
-  stakingScript,
-  beaconVaultScript,
+  swapValidator,
+  swapValidatorScript,
+  swapValidatorHash,
+  
+  beaconPolicy,
   beaconScript,
   beaconSymbol,
 
   writeScript,
-  writeData,
-
-  -- For testing
-  swapTypedValidator,
-  swapValidator,
-  beaconPolicy,
-  beaconVaultValidatorHash,
-  beaconVault,
+  writeData
 ) where
 
 import Data.Aeson hiding (Value)
@@ -59,15 +45,15 @@ import Codec.Serialise (serialise)
 import qualified Data.ByteString.Lazy  as LBS
 import qualified Data.ByteString.Short as SBS
 import qualified Data.ByteString as BS
-import Prelude (IO,FilePath) 
+import Prelude (IO,FilePath,seq) 
 import qualified Prelude as Haskell
 import Data.String (fromString)
 import Control.Monad (mzero)
 
-import           Cardano.Api hiding (Script,Value,TxOut)
-import           Cardano.Api.Shelley   (PlutusScript (..))
+import Cardano.Api hiding (Address,Script,Value,TxOut)
+import Cardano.Api.Shelley (PlutusScript (..))
 import Plutus.V2.Ledger.Contexts
-import Plutus.V2.Ledger.Api
+import Plutus.V2.Ledger.Api as PlutusApi
 import qualified PlutusTx
 import PlutusTx.Prelude
 import Ledger.Address
@@ -75,589 +61,419 @@ import Plutus.Script.Utils.V2.Scripts as Scripts
 import Plutus.Script.Utils.V2.Typed.Scripts
 import Ledger.Bytes (fromHex)
 import qualified Plutonomy
-import Ledger.Value (valueOf,split,flattenValue)
+import Ledger.Value (valueOf,split,flattenValue,isZero)
 import PlutusTx.Numeric as Num
 import Ledger.Ada (lovelaceValueOf,lovelaceOf,fromValue)
 import PlutusTx.Ratio (fromGHC)
-import PlutusTx.AssocMap (keys)
 import PlutusPrelude (foldl')
 import qualified PlutusTx.AssocMap as Map
 
 -------------------------------------------------
--- Misc Functions
--------------------------------------------------
--- | Create the beacon token name for a trading pair
---
--- The token name is the sha2-256 hash of 
--- "offeredCurrSymbol.offeredTokName/askedCurrSym.askedTokName"
---
--- When ada is part of the pair, that portion of the token name is left blank like:
--- "offeredCurrSymbol.offeredTokName/" or "/askedCurrSym.askedTokName"
-genBeaconTokenName :: (BS.ByteString,BS.ByteString) -> (BS.ByteString,BS.ByteString) -> TokenName
-genBeaconTokenName (offeredCurrSym,offeredTokName) (askedCurrSym,askedTokName) = 
-  let offeredName = 
-        if offeredCurrSym Haskell.== BS.empty
-        then BS.empty
-        else BS.append offeredCurrSym $ BS.append "." offeredTokName
-      askedName = 
-        if askedCurrSym Haskell.== BS.empty
-        then BS.empty
-        else BS.append askedCurrSym $ BS.append "." askedTokName
-  in TokenName $ sha2_256 $ toBuiltin (BS.append askedName $ BS.append "/" offeredName)
-
-data UtxoPriceInfo = UtxoPriceInfo
-  { utxoAmount :: Integer
-  , priceNumerator :: Integer
-  , priceDenominator :: Integer
-  } deriving (Haskell.Show)
-
-instance FromJSON UtxoPriceInfo where
-  parseJSON (Object o) = 
-    UtxoPriceInfo 
-      Haskell.<$> o .: "utxoAmount"
-      Haskell.<*> o .: "priceNumerator"
-      Haskell.<*> o .: "priceDenominator"
-  parseJSON _ = mzero
-
-instance ToJSON UtxoPriceInfo where
-  toJSON UtxoPriceInfo{..} =
-    object [ "utxoAmount" .= utxoAmount
-           , "priceNumerator" .= priceNumerator
-           , "priceDenominator" .= priceDenominator
-           ]
-
--- | Helper function to calculate the weighted price.
--- Will match the weighted price calculation done by script.
--- Will throw an error if a price is negative.
-calcWeightedPrice :: [UtxoPriceInfo] -> Rational
-calcWeightedPrice xs = snd $ foldl' foo (0,fromInteger 0) xs
-  where
-    convert :: UtxoPriceInfo -> Rational 
-    convert upi@UtxoPriceInfo{priceNumerator = num,priceDenominator = den} = 
-      case ratio num den of
-        Nothing -> Haskell.error $ "Denominator was zero: " <> Haskell.show upi
-        Just r ->
-          if r <= fromInteger 0
-          then Haskell.error $ "Price was not greater than zero: " <> Haskell.show upi
-          else r
-    
-    foo :: (Integer,Rational) -> UtxoPriceInfo -> (Integer,Rational) 
-    foo (runningTot,wp) ui@UtxoPriceInfo{..} =
-      let !newAmount = runningTot + utxoAmount
-          !wp' = ratio' runningTot newAmount * wp +
-                ratio' utxoAmount newAmount * convert ui
-      in (newAmount,wp')
-
-{-# INLINABLE ratio' #-}
--- | When denominator is zero, returns (fromInteger 0)
-ratio' :: Integer -> Integer -> Rational
-ratio' num den = if den == 0 then fromInteger 0 else unsafeRatio num den
-
--- | Parse PaymentPubKeyHash from user supplied String
-readPubKeyHash :: Haskell.String -> Either Haskell.String PaymentPubKeyHash
-readPubKeyHash s = case fromHex $ fromString s of
-  Right (LedgerBytes bytes') -> Right $ PaymentPubKeyHash $ PubKeyHash bytes'
-  Left msg                   -> Left $ "could not convert: " <> msg
-
--- | Parse Currency from user supplied String
-readCurrencySymbol :: Haskell.String -> Either Haskell.String CurrencySymbol
-readCurrencySymbol s = case fromHex $ fromString s of
-  Right (LedgerBytes bytes') -> Right $ CurrencySymbol bytes'
-  Left msg                   -> Left $ "could not convert: " <> msg
-
--- | Parse TokenName from user supplied String
-readTokenName :: Haskell.String -> Either Haskell.String TokenName
-readTokenName s = case fromHex $ fromString s of
-  Right (LedgerBytes bytes') -> Right $ TokenName bytes'
-  Left msg                   -> Left $ "could not convert: " <> msg
-
--------------------------------------------------
 -- Swap Settings
 -------------------------------------------------
--- | For use as extra parameter to the swap script.
--- This creates a unique address for every SwapConfig configuration.
+-- | Extra parameter for the spending script.
+-- This helps ensure only the target assets are swapped and creates a unique beacon for
+-- each trading pair.
 data SwapConfig = SwapConfig
-  {
-    swapOwner :: PaymentPubKeyHash,
-    swapOffer :: (CurrencySymbol,TokenName), -- ^ Asset being offered
-    swapAsk :: (CurrencySymbol,TokenName)  -- ^ Asset being asked for
+  { tradeOffer :: (CurrencySymbol,TokenName)
+  , tradeAsk :: (CurrencySymbol,TokenName)
   }
 
 PlutusTx.makeLift ''SwapConfig
 
 -- | Swap Datum
 type Price = Rational  -- ^ askedAsset/offeredAsset
-
--- | Swap Redeemer
-data Action 
-  -- | Owner can spend any utxo at the script address.
-  = Close
-  -- | Owner can update all datums at the script address.
-  -- The datum with the reference script cannot be updated to conserve fees.
-  | UpdatePrices Price
-  -- | User can try swapping with assets at the script address.
-  | Swap
-  -- | Dedicated Redeemer for getting the owner's pub key hash of the script.
-  -- This allows for checking the target script has not been tampered with.
-  -- To check for tampering: recreate the script using the owner's pkh and assets.
-  | Info
-
-PlutusTx.unstableMakeIsData ''Action
-
--------------------------------------------------
--- Stake Settings
--------------------------------------------------
-data StakingConfig = StakingConfig
-  { stakeOwner :: PaymentPubKeyHash
-  -- | Not used directly by staking script. Only meant to
-  -- generate unique staking address if desired.
-  , stakeOfferedAsset :: Maybe (CurrencySymbol,TokenName)
-  -- | Not used directly by staking script. Only meant to
-  -- generate unique staking address if desired.
-  , stakeAskedAsset :: Maybe (CurrencySymbol,TokenName) 
+data SwapDatum = SwapDatum
+  { swapPrice :: Price
+  , swapBeacon :: Maybe CurrencySymbol  -- ^ Currency symbol for the beacon.
   }
 
-PlutusTx.makeLift ''StakingConfig
+-- | Swap Redeemer
+data Action
+  -- | Close
+  -- Requirements:
+  -- 1) All beacons in inputs must be burned.
+  --    - since beacons must be stored with the reference script, this also means you cannot
+  --      remove the main reference script while leaving behind the beacon.
+  -- 2) Staking credential signed or was executed.
+  -- 3) All outputs to address contain proper datum.
+  --    - price > 0
+  --    - beacon id == Nothing
+  = Close
 
--------------------------------------------------
--- On-Chain Staking
--------------------------------------------------
--- | Allow any staking related action as long as owner has signed
-mkStaking :: StakingConfig -> () -> ScriptContext -> Bool
-mkStaking StakingConfig{stakeOwner = owner} () ctx = 
-    case purpose of
-      Rewarding _  -> 
-        traceIfFalse "not signed by owner" (txSignedBy info $ unPaymentPubKeyHash owner)
-      Certifying _ -> 
-        traceIfFalse "not signed by owner" (txSignedBy info $ unPaymentPubKeyHash owner)
-      _            -> False
-  where
-    purpose :: ScriptPurpose
-    purpose = scriptContextPurpose ctx
+  -- | Update
+  -- Requirements:
+  -- 1) No beacons in inputs
+  -- 2) Staking credential signed or was executed.
+  -- 3) All outputs to address contain proper datum.
+  --    - price > 0
+  --    - beacon id == Nothing
+  | Update
+  
+  -- | Swap
+  -- Requirements:
+  -- 1) No beacons in inputs - this also protects the main reference script from being consumed.
+  -- 2) All input prices used in swap are > 0
+  -- 3) All outputs to address contain proper datum.
+  --    - price == weighted avg (guaranteed to be positive if all inputs have positive prices)
+  --    - beacon id == Nothing
+  -- 4) offered asset taken * price <= given asset
+  -- 5) Only offered asset leaves address
+  | Swap
 
-    info :: TxInfo
-    info = scriptContextTxInfo ctx
-
-staking :: StakingConfig -> StakeValidator
-staking sc = mkStakeValidatorScript
-  ($$(PlutusTx.compile [|| mkUntypedStakeValidator . mkStaking ||])
-    `PlutusTx.applyCode` PlutusTx.liftCode sc)
-
-stakingScript :: StakingConfig -> Script
-stakingScript = unStakeValidatorScript . staking
+PlutusTx.unstableMakeIsData ''SwapDatum
+PlutusTx.unstableMakeIsData ''Action
 
 -------------------------------------------------
 -- Beacon Settings
 -------------------------------------------------
 -- | Beacon Redeemer
 data BeaconRedeemer
-  -- | To mint a beacon, 2 ADA must be depositing into the proper script address.
-  = MintBeacon TokenName  -- ^ TokenName of token to be minted
-  -- | To burn a beacon, 2 ADA must be withdrawn from the proper script address.
-  | BurnBeacon TokenName  -- ^ TokenName of token to be burned
+  -- | Minting requirements:
+  -- 1) Only one beacon is minted and uses the empty token name.
+  -- 2) The beacon is stored in an address protected by the dapp's spending script for that trading
+  --     pair.
+  -- 3) The beacon is stored in an address with a staking credential.
+  -- 4) The beacon must be stored with the reference scrip for dapp's spending script for that
+  --    trading pair.
+  -- 5) The datum of the output containing the beacon must be valid:
+  --      - contains the proper beacon symbol
+  = MintBeacon
+
+  -- | Since minting is heavily controlled, the only requirent for this redeemer is that it is only
+  -- used to burn. Burning is always allowed.
+  | BurnBeacon
 
 PlutusTx.unstableMakeIsData ''BeaconRedeemer
 
--------------------------------------------------
--- On-Chain Beacon
--------------------------------------------------
 -- | Used to generalize the beacon code.
--- This allows a separate beacon and beacon vault for every application.
--- To force uniqueness, it is used in the error message as the name of the vault.
+-- This allows a separate beacon for every name.
+-- To force uniqueness, it is used in an error message.
+-- This is helpfull for testing the beacon logic without using the real beacon.
 type AppName = BuiltinString
 
--- | Script responsible for holding deposits
--- The currency symbol is that of the beacon
-mkBeaconVault :: AppName -> CurrencySymbol -> BeaconRedeemer -> ScriptContext -> Bool
-mkBeaconVault appName cn r ctx@ScriptContext{scriptContextTxInfo = info} = case r of
-   -- | Disallow minting redeemer with beacon vault script
-   -- Name used here to force uniqueness.
-   MintBeacon _ -> 
-    traceError ( "Executing the " 
-              <> appName 
-              <> " beacon vault script is not necessary for minting a beacon.")
-   BurnBeacon tokName ->
-     -- | Only allow withdrawing from this script if beacon token also burned.
-     traceIfFalse "Must burn one beacon." (mintCheck tokName (-1) minted) &&
-     -- | Make sure only 2 ADA is withdrawn.
-     -- Only check amount of ADA withdrawn. If other assets are accidentally deposited,
-     -- they can be withdrawn along with the 2 ADA.
-     traceIfFalse "Must withdraw exactly 2 ADA to burn beacon." 
-       (containsOnly2ADA withdrawalValue)
-
-  where
-    scriptValidatorHash :: ValidatorHash
-    scriptValidatorHash = ownHash ctx
-
-    emptyVal :: Value
-    emptyVal = lovelaceValueOf 0
-
-    containsOnly2ADA :: Value -> Bool
-    containsOnly2ADA v = lovelaceOf 2_000_000 == fromValue v
-
-    -- | Separate script input value from rest of input value (can be from other scripts).
-    -- Throws an error if there is a ref script among script inputs.
-    withdrawalValue :: Value
-    withdrawalValue =
-      let inputs = txInfoInputs info
-          foo wVal TxInInfo{txInInfoResolved=TxOut{txOutValue=oVal
-                                                  ,txOutReferenceScript=maybeRef
-                                                  ,txOutAddress=Address{addressCredential=addrCred}
-                                                  }} =
-            case (addrCred,maybeRef) of
-              (ScriptCredential vh,Nothing) ->
-                if vh == scriptValidatorHash
-                then wVal <> oVal
-                else wVal
-              
-              (ScriptCredential vh,Just _) ->
-                if vh == scriptValidatorHash
-                then traceError "Cannot consumer reference script from beacon vault."
-                else wVal
-
-              (PubKeyCredential _,_) -> wVal
-      in foldl' foo emptyVal inputs
-
-    minted :: [(CurrencySymbol,TokenName,Integer)]
-    minted = flattenValue $ txInfoMint info
-
-    mintCheck :: TokenName -> Integer -> [(CurrencySymbol,TokenName,Integer)] -> Bool
-    mintCheck tokName target [(cn',tn,n)] = cn == cn' && tn == tokName && n == target
-    mintCheck _ _ _ = traceError 
-      ( "A beacon token must be burned to withdraw from this vault." <> 
-        "\nOnly the beacon token can be burned in this tx."
-      )
-    
-
-data BeaconVault
-instance ValidatorTypes BeaconVault where
-  type instance RedeemerType BeaconVault = BeaconRedeemer
-  type instance DatumType BeaconVault = CurrencySymbol
-
-beaconVaultTypedValidator :: AppName -> TypedValidator BeaconVault
-beaconVaultTypedValidator appName = mkTypedValidator @BeaconVault
-    ($$(PlutusTx.compile [|| mkBeaconVault ||])
-       `PlutusTx.applyCode` PlutusTx.liftCode appName)
-    $$(PlutusTx.compile [|| wrap ||])
-  where wrap = mkUntypedValidator
-
-beaconVaultValidator :: AppName -> Validator
-beaconVaultValidator = Plutonomy.optimizeUPLC . validatorScript . beaconVaultTypedValidator
-
--- | Change the string to create a different beaconPolicy/beaconVault pair
-beaconVault :: Validator
-beaconVault = beaconVaultValidator "cardano-swaps-testing"
-
-beaconVaultScript :: Script
-beaconVaultScript = unValidatorScript beaconVault
-
-beaconVaultValidatorHash :: ValidatorHash
-beaconVaultValidatorHash = Scripts.validatorHash beaconVault
-
--- | Beacon minting policy
-mkBeacon :: ValidatorHash -> BeaconRedeemer -> ScriptContext -> Bool
-mkBeacon vaultHash r ScriptContext{scriptContextTxInfo = info} = case r of
-   MintBeacon tokName ->
-     -- | Must deposit 2 ADA to beacon vault.
-     traceIfFalse "Must deposit exactly 2 ADA to the beacon vault." (containsOnly2ADA depositsToVault) &&
-     -- | Only one token minted
-     traceIfFalse "Wrong number of beacons minted. Only one at a time." (mintCheck tokName 1 minted)
-
-   -- | Delegate checking withdrawal amount to beacon vault script
-   BurnBeacon tokName ->
-     -- | Beacon vault executed
-     traceIfFalse "Must withdraw exactly 2 ADA from the beacon vault." withdrawsFromVault &&
-     -- | Only one token burned
-     traceIfFalse "Wrong number of beacons burned. Only one at a time." (mintCheck tokName (-1) minted)
-
-  where
-    thisCurrencySymbol :: CurrencySymbol
-    thisCurrencySymbol =
-      let rs = keys $ txInfoRedeemers info
-          isMint (Minting _) = True
-          isMint _ = False
-          Just (Minting cn) = find isMint rs
-      in cn
-
-    minted :: [(CurrencySymbol,TokenName,Integer)]
-    minted = flattenValue $ txInfoMint info
-
-    mintCheck :: TokenName -> Integer -> [(CurrencySymbol,TokenName,Integer)] -> Bool
-    mintCheck tokName target [(_,tn,n)] = tn == tokName && n == target
-    mintCheck _ _ _ = traceError "Only the beacon token can be minted/burned in this tx."
-
-    -- | Check if utxo belongs to beacon vault
-    checkHash :: TxOut -> Bool
-    checkHash TxOut{txOutAddress=Address{addressCredential=ScriptCredential h}} = vaultHash == h
-    checkHash _ = False
-
-    -- | Check if any tx inputs go to the beacon vault
-    withdrawsFromVault :: Bool
-    withdrawsFromVault = any (checkHash . txInInfoResolved) $ txInfoInputs info
-
-    emptyVal :: Value
-    emptyVal = lovelaceValueOf 0
-
-    containsOnly2ADA :: Value -> Bool
-    containsOnly2ADA v = lovelaceOf 2_000_000 == fromValue v
-
-    parseDatum :: OutputDatum -> CurrencySymbol
-    parseDatum d = case d of
-      (OutputDatum (Datum d')) -> case fromBuiltinData d' of
-        Nothing -> traceError "Beacon vault datum must be the beacon policy id."
-        Just p -> p
-      _ -> traceError "Deposits to beacon vault must include an inline datum."
-
-    -- | Find deposits to beacon vault.
-    -- This function also checks where the beacon is going and throws an error if not going
-    -- to a script address (not the beacon vault address).
-    depositsToVault :: Value
-    depositsToVault = 
-      let outputs = txInfoOutputs info
-          foo dVal TxOut{txOutValue=oVal
-                        ,txOutDatum=d
-                        ,txOutAddress=Address{addressCredential=addrCred}} =
-            case addrCred of
-              ScriptCredential vh ->
-                if vh == vaultHash
-                then -- | Check if output to beacon vualt script contains proper datum.
-                     if parseDatum d == thisCurrencySymbol
-                     -- | Check if the beacon is going to the vault.
-                     then case Map.lookup thisCurrencySymbol (getValue oVal) of
-                       Nothing -> dVal <> oVal
-                       Just _ -> traceError "The beacon cannot go to the vault."
-                     else traceError "The beacon vault datum is not the beacon policy id."
-                else dVal -- ^ Skip this output. It is assumed that the beacon will be in this else.
-
-              PubKeyCredential _ -> case Map.lookup thisCurrencySymbol (getValue oVal) of
-                Nothing -> dVal  -- ^ Skip this output.
-                Just _ -> traceError "The beacon must go to a script address."
-      in foldl' foo emptyVal outputs
-
-beaconPolicy :: ValidatorHash -> MintingPolicy
-beaconPolicy vh = Plutonomy.optimizeUPLC $ mkMintingPolicyScript
-  ($$(PlutusTx.compile [|| wrap ||])
-    `PlutusTx.applyCode` PlutusTx.liftCode vh)
-  where
-    wrap = mkUntypedMintingPolicy . mkBeacon
-
-beaconScript :: Script
-beaconScript = unMintingPolicyScript $ beaconPolicy beaconVaultValidatorHash
-
-beaconSymbol :: CurrencySymbol
-beaconSymbol = scriptCurrencySymbol $ beaconPolicy beaconVaultValidatorHash
+-------------------------------------------------
+-- On-Chain Helper Functions
+-------------------------------------------------
+{-# INLINABLE ratio' #-}
+-- | When denominator is zero, returns (fromInteger 0)
+ratio' :: Integer -> Integer -> Rational
+ratio' num den = if den == 0 then fromInteger 0 else unsafeRatio num den
 
 -------------------------------------------------
--- On-Chain Swap
+-- On-Chain Swap Script
 -------------------------------------------------
--- | The price is not used individually. Instead it is obtain by traversing the script context.
-mkSwap :: CurrencySymbol -> SwapConfig -> Price -> Action -> ScriptContext -> Bool
-mkSwap beaconSym SwapConfig{..} _ action ctx@ScriptContext{scriptContextTxInfo = info} = case action of
-  Info -> traceError ("Owner's payment pubkey hash:\n" <> ownerAsString)
-  Close ->
-    -- | Must be signed by owner.
-    traceIfFalse "owner didn't sign" (txSignedBy info $ unPaymentPubKeyHash swapOwner) &&
-    -- | If reference script consumed, must burn beacon.
-    traceIfFalse "If reference script is consumed, the beacon must be burned." 
-      ( if not noInputsWithRefScripts
-        then beaconBurned
-        else outputCheck Nothing
-      )
-  UpdatePrices newPrice ->
-    -- | Must be signed by owner.
-    traceIfFalse "owner didn't sign" (txSignedBy info $ unPaymentPubKeyHash swapOwner) &&
-    -- | Must not consume reference script (to save on fees).
-    traceIfFalse "updating reference script utxo's datum is not necessary" noInputsWithRefScripts &&
-    -- | Datum must be valid price. Any number great than zero.
-    traceIfFalse "invalid new asking price" (newPrice > fromInteger 0) &&
-    -- | All outputs must contain same datum as specified in redeemer
-    -- Cannot remove beacon from swap address.
-    traceIfFalse "New price datums do not match price supplied in redeemer." (outputCheck $ Just newPrice)
-  Swap ->
-    -- | Should not consume reference script from swap script address.
-    -- Utxo output to the script must have the proper datum and datum must not differ from input.
-    -- Only offered asset should leave the swap script address.
-    -- User must supply the ADA for each utxo with native tokens.
-    -- Max offered asset taken <= given asset * price.
-    swapCheck
+mkSwapScript :: SwapConfig  -- ^ Extra parameter
+             -> SwapDatum -> Action -> ScriptContext -> Bool
+mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxInfo=info} =
+  case action of
+    Close ->
+      -- | All beacons in inputs must be burned.
+      beaconsBurned &&
+      -- | Staking credential must sign or be executed.
+      stakingCredApproves &&
+      -- | All outputs to address must contain proper datum.
+      (swapOutputInfo Nothing `seq` True)
+    Update ->
+      -- | No beacons in inputs.
+      noBeaconInput &&
+      -- | Staking credential must sign or be executed.
+      stakingCredApproves &&
+      -- | All outputs to address must contain proper datum.
+      (swapOutputInfo Nothing `seq` True)
+    Swap ->
+      -- | No beacons in inputs.
+      noBeaconInput &&
+      -- | swapCheck checks:
+      -- 1) All input prices used in swap are > 0.
+      -- 2) All outputs to address contain proper datum.
+      -- 3) offered asset taken * price <= given asset
+      -- 4) Only offered asset leaves address.
+      swapCheck
 
   where
-    ownerAsString :: BuiltinString
-    ownerAsString = decodeUtf8 $ getPubKeyHash $ unPaymentPubKeyHash swapOwner
+    -- | Returns the Value with only the supplied CurrencySymbol
+    filterForCurrencySymbol :: CurrencySymbol -> Value -> Value
+    filterForCurrencySymbol currSym val = case Map.lookup currSym $ getValue val of
+      Nothing -> mempty
+      Just bs -> Value $ Map.insert currSym bs Map.empty  -- ^ a Value with only that CurrencySymbol
 
-    beaconBurned :: Bool
-    beaconBurned = 
-      let burned = flattenValue $ txInfoMint info
-          mintCheck (cn,_,n) = cn == beaconSym && n == (-1)
-      in any mintCheck burned
+    -- | The mint/burn value of supplied CurrencySymbol.
+    currencyMinted :: CurrencySymbol -> Value
+    currencyMinted currSym = filterForCurrencySymbol currSym $ txInfoMint info
 
-    -- | ValidatorHash of this script
-    scriptValidatorHash :: ValidatorHash
-    scriptValidatorHash = ownHash ctx
+    -- | The value of supplied CurrencySymbol in the inputs.
+    currencyInputs :: CurrencySymbol -> Value
+    currencyInputs currSym = filterForCurrencySymbol currSym $ valueSpent info
 
-    parseDatum :: BuiltinString -> OutputDatum -> Price
+    -- | If the datum contains Nothing for swapBeacon then this input does not contain a beacon.
+    beaconsBurned :: Bool
+    beaconsBurned = case swapBeacon swapDatum of
+      Nothing -> True
+      Just beaconSym -> 
+        -- | Must check all other inputs to account for double satisfaction problem.
+        traceIfFalse "Beacons not burned." 
+          (Num.negate (currencyInputs beaconSym) == currencyMinted beaconSym)
+
+    -- | If the datum contains Nothing for swapBeacon then this input does not contain a beacon.
+    noBeaconInput :: Bool
+    noBeaconInput = case swapBeacon swapDatum of
+      Nothing -> True
+      Just beaconSym ->
+        traceIfFalse "Cannot consume beacon utxo" (isZero $ currencyInputs beaconSym)
+
+    -- | Get the credential for this input.
+    -- Used to check asset flux for address and ensure staking credential approves when necessary.
+    inputCredentials :: Address
+    inputCredentials = 
+      let Just TxInInfo{txInInfoResolved=TxOut{txOutAddress=addr}} = findOwnInput ctx
+      in addr
+      
+    stakingCredApproves :: Bool
+    stakingCredApproves = case addressStakingCredential inputCredentials of
+      -- | This is to prevent permanent locking of funds.
+      -- The DEX is not meant to be used without a staking credential.
+      Nothing -> True
+
+      -- | Check if staking credential signals approval.
+      Just stakeCred@(StakingHash cred) -> case cred of
+        PubKeyCredential pkh -> traceIfFalse "Owner didn't sign" (txSignedBy info pkh)
+        ScriptCredential _ -> 
+          traceIfFalse "Staking script for address wasn't executed"
+            (isJust $ Map.lookup stakeCred $ txInfoWdrl info)
+      
+      Just _ -> traceError "Wrong kind of staking credential."
+
+    parseDatum :: BuiltinString -> OutputDatum -> SwapDatum
     parseDatum err d = case d of
       (OutputDatum (Datum d')) -> case fromBuiltinData d' of
         Nothing -> traceError err
         Just p -> p
-      _ -> traceError "All datums must be inline datums."
+      _ -> traceError "All swap datums must be inline datums."
 
-    noInputsWithRefScripts :: Bool
-    noInputsWithRefScripts = not $ any (isJust . txOutReferenceScript)
-                         $ map txInInfoResolved
-                         $ txInfoInputs info
+    validDatum :: Maybe Price -> SwapDatum -> Bool
+    validDatum maybePrice datum
+      | swapPrice datum <= fromInteger 0 = traceError "Datum price not > 0"
+      | swapBeacon datum /= Nothing = traceError "Datum beacon not Nothing"
+      | otherwise = case maybePrice of
+          Nothing -> True
+          Just price ->
+            if swapPrice datum /= price
+            then traceError "Datum price /= weighted avg"
+            else True
 
-    -- | Checks outputs for both Close and Update redeemers
-    outputCheck :: Maybe Price -> Bool
-    outputCheck newPrice' =
+    -- | Used to check the outputs to the address.
+    -- Close and Update will pass in Nothing for Maybe Price.
+    -- Swap will pass in the weighted avg for all of the inputs.
+    swapOutputInfo :: Maybe Price -> Value
+    swapOutputInfo maybePrice =
       let outputs = txInfoOutputs info
-          foo TxOut{txOutDatum=d,txOutValue=oVal,txOutAddress=Address{addressCredential=addrCred}} =
-            case addrCred of
-              ScriptCredential vh ->
-                -- | Check if script is this script.
-                if vh == scriptValidatorHash
-                then case newPrice' of
-                  -- | Make sure proper datum present to prevent accidental locking
-                  Nothing -> parseDatum "Invalid datum in swap output" d > fromInteger 0
-                  Just newPrice -> 
-                     -- | Check if datum has proper price.
-                     -- This will throw an error if datum is not an inline datum for price.
-                     parseDatum "Invalid datum in swap output." d == newPrice
-                else case Map.lookup beaconSym (getValue oVal) of
-                  Nothing -> True  -- ^ Fine since owner signed.
-                  Just _ -> traceError "Cannot withdraw beacon from swap address."
+          foo val TxOut{txOutDatum=d
+                       ,txOutValue=oVal
+                       ,txOutAddress=addr
+                       } =
+            let datum = parseDatum "Invalid datum in output" d
+            in if addr == inputCredentials && validDatum maybePrice datum
+               then val <> oVal
+               else val  -- ^ It is for a different address. Ignore it.
+      in foldl' foo mempty outputs
 
-              PubKeyCredential _ -> 
-                -- | Allow as long as beacon not withdrawn from swap address. 
-                case Map.lookup beaconSym (getValue oVal) of
-                  Nothing -> True  -- ^ Fine since owner signed.
-                  Just _ -> traceError "Cannot withdraw beacon from swap address."
-      in all foo outputs
-
-    emptyVal :: Value
-    emptyVal = lovelaceValueOf 0
-
-    -- | Separate script input value from rest of input value (can be from other scripts).
-    -- Throws an error if there is a ref script among script inputs.
-    -- Get the weighted average price for all the utxo inputs from this script. This will
-    -- throw an error if the datum is not an inline datum or if it is not a price.
-    --
-    -- returns (Total Value from Script,Weighted Price)
+    -- | The total input value from this address. The price returned is the weighted avg.
     swapInputInfo :: (Value,Price)
     swapInputInfo =
       let inputs = txInfoInputs info
-          foo x@(sValue,(taken,wp)) TxInInfo{txInInfoResolved=TxOut{txOutValue=iVal
-                                                                   ,txOutDatum=d
-                                                                   ,txOutReferenceScript=maybeRef
-                                                                   ,txOutAddress=Address{addressCredential=addrCred}
-                                                                   }} =
-            case (addrCred,maybeRef) of
-              (ScriptCredential vh,Nothing) ->
-                if vh == scriptValidatorHash
-                then 
-                  let iTaken = uncurry (valueOf iVal) swapOffer
-                      price' = parseDatum "Invalid datum in swap input." d
-                      !newTaken = taken + iTaken
-                      !newWeightedPrice =
-                        ratio' taken newTaken * wp +
-                        ratio' iTaken newTaken * price'
-                      !newSwapValue = sValue <> iVal
-                  in -- | Fail if the price is not > 0.
-                     if price' <= fromInteger 0
-                     then traceError "All prices must be greater than 0."
-                     else ( newSwapValue
-                          , (newTaken,newWeightedPrice)
-                          )
-                else x  -- ^ Skip this input
-                         
-              (ScriptCredential vh,Just _) ->
-                if vh == scriptValidatorHash
-                then traceError "Cannot consume reference script from swap address."
-                else x  -- ^ Skip this input
-
-              (PubKeyCredential _,_) -> x  -- ^ skip this input
-      in fmap snd $ foldl' foo (emptyVal,(0,fromInteger 0)) inputs
-
-    -- | Separate output value to script from rest of output value (can be to other scripts).
-    -- Throw error if output to script doesn't contain proper inline datum.
-    -- The supplied price is the weighted average of all script input prices.
-    scriptOutputValue :: Price -> Value
-    scriptOutputValue weightedPrice =
-      let outputs = txInfoOutputs info
-          foo sValue TxOut{txOutDatum=d
-                          ,txOutValue=oVal
-                          ,txOutAddress=Address{addressCredential=addrCred}} =
-            case addrCred of
-              ScriptCredential vh -> 
-                -- | Check if it belongs to the swap script.
-                if vh == scriptValidatorHash
-                then -- | Check if output to swap script contains proper datum.
-                     if parseDatum "Invalid datum in swap output." d == weightedPrice
-                     then sValue <> oVal
-                     else traceError "Output datum is not the weighted price of all utxo inputs."
-                else sValue  -- ^ Skip this output.
-
-              PubKeyCredential _ -> sValue  -- ^ Skip this output.
-      in foldl' foo emptyVal outputs
+          foo x@(val,(taken,wp)) TxInInfo{txInInfoResolved=TxOut{txOutAddress=addr
+                                                                ,txOutDatum=d
+                                                                ,txOutValue=iVal
+                                                                }} =
+            let datum = parseDatum "Invalid datum in input" d
+                iTaken = uncurry (valueOf iVal) tradeOffer
+                price = swapPrice datum
+                !newTaken = taken + iTaken
+                !newWeightedPrice =
+                  ratio' taken newTaken * wp +
+                  ratio' iTaken newTaken * price
+                !newSwapValue = val <> iVal
+            in if addr == inputCredentials
+               then if price > fromInteger 0
+                    then ( newSwapValue
+                         , (newTaken,newWeightedPrice)
+                         )
+                    else traceError "All input prices must be > 0"
+               else x -- ^ Not for this address. Skip.
+      in fmap snd $ foldl' foo (mempty,(0,fromInteger 0)) inputs
 
     swapCheck :: Bool
     swapCheck =
       let -- | Input info
+          -- Throws error if price in datum is < 0.
           (scriptInputValue,weightedPrice) = swapInputInfo
+
+          -- | Output info
+          -- Throws error if output datum does not contain the weighted avg price.
+          -- Throws error if output datum does not have Nothing for swapBeacon.
+          scriptOutputValue = swapOutputInfo (Just weightedPrice)
 
           -- | Convert price if necessary
           correctedPrice
             -- | If ADA is offered, divide the weighted price by 1,000,000
-            | swapOffer == (adaSymbol,adaToken) = weightedPrice * ratio' 1 1_000_000
+            | tradeOffer == (adaSymbol,adaToken) = weightedPrice * ratio' 1 1_000_000
             -- | If ADA is asked, multiply the weighted price by 1,000,000
-            | swapAsk == (adaSymbol,adaToken) = weightedPrice * ratio' 1_000_000 1
+            | tradeAsk == (adaSymbol,adaToken) = weightedPrice * ratio' 1_000_000 1
             | otherwise = weightedPrice
           
-          -- | Value differences
-          scriptValueDiff 
-            =  scriptOutputValue weightedPrice -- ^ checks if outputs contain weighted price
-            <> Num.negate scriptInputValue
+          -- | Value flux
+          scriptValueDiff = scriptOutputValue <> Num.negate scriptInputValue
 
           -- | Amounts
-          askedGiven = fromInteger $ uncurry (valueOf scriptValueDiff) swapAsk
-          offeredTaken = fromInteger $ Num.negate $ uncurry (valueOf scriptValueDiff) swapOffer
+          askedGiven = fromInteger $ uncurry (valueOf scriptValueDiff) tradeAsk
+          offeredTaken = fromInteger $ Num.negate $ uncurry (valueOf scriptValueDiff) tradeOffer
 
           -- | Assets leaving script address
-          leavingAssets = flattenValue $ fst $ split scriptValueDiff -- zero diff amounts removed
-          isOnlyOfferedAsset [(cn,tn,_)] = (cn,tn) == swapOffer
-          isOnlyOfferedAsset [] = True -- ^ allows consolidating utxos at swap script address
+          leavingAssets = flattenValue $ fst $ split scriptValueDiff -- ^ zero diff amounts removed
+          isOnlyOfferedAsset [(cn,tn,_)] = (cn,tn) == tradeOffer
+          isOnlyOfferedAsset [] = True -- ^ Useful for testing
           isOnlyOfferedAsset _ = False
-      in
-        -- | Only the offered asset is allowed to leave the script address.
-        -- When ADA is not being offered, the user is required to supply the ADA for native token utxos.
-        -- This means that, when ADA is not offered, the script's ADA value can only increase.
-        traceIfFalse "Only the offered asset is allowed to leave." (isOnlyOfferedAsset leavingAssets) &&
+      in -- | Only the offered asset is allowed to leave the script address.
+         -- When ADA is not being offered, the user is required to supply the ADA for native token utxos.
+         -- This means that, when ADA is not offered, the script's ADA value can only increase.
+         traceIfFalse "Only the offered asset is allowed to leave." (isOnlyOfferedAsset leavingAssets) &&
 
-        -- | Ratio sets the maximum amount of the offered asset that can be taken.
-        -- To withdraw more of the offered asset, more of the asked asset must be deposited to the script.
-        -- Uses the corrected price to account for converting ADA to lovelace 
-        traceIfFalse "Not enough of the asked asset given: offeredTaken * price <= askedGiven" (offeredTaken * correctedPrice <= askedGiven)
+         -- | Ratio sets the maximum amount of the offered asset that can be taken.
+         -- To withdraw more of the offered asset, more of the asked asset must be deposited to the script.
+         -- Uses the corrected price to account for converting ADA to lovelace 
+         traceIfFalse "Not enough of the asked asset given: offeredTaken * price <= askedGiven" 
+           (offeredTaken * correctedPrice <= askedGiven)
 
 data Swap
 instance ValidatorTypes Swap where
   type instance RedeemerType Swap = Action
-  type instance DatumType Swap = Price
+  type instance DatumType Swap = SwapDatum
 
-swapTypedValidator :: CurrencySymbol -> SwapConfig -> TypedValidator Swap
-swapTypedValidator beaconSym swapConfig = mkTypedValidator
-    ($$(PlutusTx.compile [|| mkSwap ||])
-      `PlutusTx.applyCode` PlutusTx.liftCode beaconSym
+swapValidator :: SwapConfig -> Validator
+swapValidator swapConfig = validatorScript $ mkTypedValidator @Swap
+    ($$(PlutusTx.compile [|| mkSwapScript ||])
       `PlutusTx.applyCode` PlutusTx.liftCode swapConfig)
     $$(PlutusTx.compile [|| wrap ||])
-  where wrap = mkUntypedValidator
+  where
+    wrap = mkUntypedValidator
 
-swapValidator :: CurrencySymbol -> SwapConfig -> Validator
-swapValidator beaconSym swapConfig = Plutonomy.optimizeUPLC 
-                                   $ validatorScript 
-                                   $ swapTypedValidator beaconSym swapConfig
+swapValidatorScript :: SwapConfig -> Script
+swapValidatorScript = unValidatorScript . swapValidator
 
-swapScript :: SwapConfig -> Script
-swapScript = unValidatorScript . swapValidator beaconSymbol
+swapValidatorHash :: SwapConfig -> ValidatorHash
+swapValidatorHash = Scripts.validatorHash . swapValidator
+
+-------------------------------------------------
+-- On-Chain Beacon Policy
+-------------------------------------------------
+-- | Every validator hash will get its own beacon.
+-- The AppName is useful for testing so that you don't use the primary beacon.
+-- When mistakes are made during testing, the beacon usage can be cluttered (like when you forget
+-- a datum and permanently lock a beacon on-chain).
+mkBeaconPolicy :: AppName -> ValidatorHash  -- ^ Extra parameters
+               -> BeaconRedeemer -> ScriptContext -> Bool
+mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} = case r of
+    MintBeacon -> 
+      -- | Only one beacon minted and uses the empty token name.
+      mintCheck MintBeacon &&
+      -- | Beacon goes to a valid destination. 
+      -- 1) The beacon is stored in an address protected by the dapp's spending script.
+      -- 2) The beacon is stored in an address with a staking credential.
+      -- 3) The beacon is stored in a utxo containing the reference script for the dapp's
+      --    spending script.
+      -- 4) The datum of the output containing the beacon must contain the proper beacon symbol.
+      destinationCheck
+
+    BurnBeacon ->
+      -- | Only used to burn.
+      mintCheck BurnBeacon
+
+  where
+    beaconSym :: CurrencySymbol
+    beaconSym = ownCurrencySymbol ctx
+
+    -- | Returns only the beacons minted/burned
+    beaconMint :: [(CurrencySymbol,TokenName,Integer)]
+    beaconMint = case Map.lookup beaconSym $ getValue $ txInfoMint info of
+      Nothing -> traceError "MintError"
+      Just bs -> flattenValue $ Value $ Map.insert beaconSym bs Map.empty -- ^ a Value with only beacons
+
+    mintCheck :: BeaconRedeemer -> Bool
+    mintCheck r' = case (r',beaconMint) of
+      (MintBeacon, [(_,tn,n)]) -> 
+        traceIfFalse "Only the beacon with an empty token name can be minted" (tn == adaToken) &&
+        traceIfFalse "Only one beacon can be minted" (n == 1)
+      (MintBeacon, _) -> traceError "Only the beacon with an empty token name can be minted"
+      (BurnBeacon, xs) ->
+        traceIfFalse "Beacons can only be burned with this redeemer" (all (\(_,_,n) -> n < 0) xs) 
+
+    parseDatum :: BuiltinString -> OutputDatum -> SwapDatum
+    parseDatum err d = case d of
+      (OutputDatum (Datum d')) -> case fromBuiltinData d' of
+        Nothing -> traceError err
+        Just p -> p
+      _ -> traceError "All swap datums must be inline datums."
+    
+    validDatum :: SwapDatum -> Bool
+    validDatum datum
+      | swapBeacon datum /= (Just beaconSym) = traceError "Datum beacon not Just beaconPolicyId"
+      -- | Price can be ignored since this utxo cannot be used in a swap.
+      | otherwise = True
+
+    -- | A helper function for destinationCheck to make the code easier to reason about.
+    -- This uses the appName in the error message.
+    validDestination :: ValidatorHash -> PlutusApi.ScriptHash -> Bool
+    validDestination spendVh@(ValidatorHash vs) refScript
+      | spendVh /= dappHash = traceError ("Beacon not minted to the proper " <> appName <> " address")
+      | vs /= getScriptHash refScript = 
+          traceError "Beacon not stored with spending reference script for address"
+      | otherwise = True
+
+    -- | Check if the beacon is going ot a valid address with a valid datum and is stored with
+    -- the proper reference script.
+    destinationCheck :: Bool
+    destinationCheck =
+      let outputs = txInfoOutputs info
+          foo acc TxOut{txOutDatum=d
+                       ,txOutValue=oVal
+                       ,txOutReferenceScript=maybeRef
+                       ,txOutAddress=Address{addressCredential=addrCred
+                                            ,addressStakingCredential=maybeStakeCred
+                                            }
+                       } =
+            let datum = parseDatum "Invalid datum in output" d
+            in if valueOf oVal beaconSym adaToken == 1
+               then case (addrCred,maybeStakeCred,maybeRef) of
+                (ScriptCredential vh, Just (StakingHash _),Just ss) ->
+                  -- | validDestination and validDatum will both fail with traceError unless True.
+                  acc && validDestination vh ss && validDatum datum
+                (ScriptCredential _, _, Just _) -> 
+                  traceError "Beacon not stored to a script address with a proper staking credential"
+                (ScriptCredential _, _ , Nothing) ->
+                  traceError "Beacon not stored with a reference script"
+                (PubKeyCredential _, _, _) ->
+                  traceError ("Beacon not minted to a " <> appName <> " script address")
+               else acc
+      in foldl' foo True outputs
+                
+beaconPolicy' :: AppName -> SwapConfig -> MintingPolicy
+beaconPolicy' appName swapConfig = Plutonomy.optimizeUPLC $ mkMintingPolicyScript
+  ($$(PlutusTx.compile [|| wrap ||])
+    `PlutusTx.applyCode` PlutusTx.liftCode appName
+    `PlutusTx.applyCode` PlutusTx.liftCode spendHash)
+  where
+    wrap x y = mkUntypedMintingPolicy $ mkBeaconPolicy x y
+    spendHash = swapValidatorHash swapConfig
+
+beaconPolicy :: SwapConfig -> MintingPolicy
+beaconPolicy = beaconPolicy' "cardano-swaps-testing-abc123"
+
+beaconScript :: SwapConfig -> Script
+beaconScript = unMintingPolicyScript . beaconPolicy
+
+beaconSymbol :: SwapConfig -> CurrencySymbol
+beaconSymbol = scriptCurrencySymbol . beaconPolicy
 
 -------------------------------------------------
 -- Serialization

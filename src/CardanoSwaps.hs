@@ -75,8 +75,8 @@ import qualified PlutusTx.AssocMap as Map
 -- This helps ensure only the target assets are swapped and creates a unique beacon for
 -- each trading pair.
 data SwapConfig = SwapConfig
-  { tradeOffer :: (CurrencySymbol,TokenName)
-  , tradeAsk :: (CurrencySymbol,TokenName)
+  { swapOffer :: (CurrencySymbol,TokenName)
+  , swapAsk :: (CurrencySymbol,TokenName)
   }
 
 PlutusTx.makeLift ''SwapConfig
@@ -287,7 +287,7 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
                                                                 ,txOutValue=iVal
                                                                 }} =
             let datum = parseDatum "Invalid datum in input" d
-                iTaken = uncurry (valueOf iVal) tradeOffer
+                iTaken = uncurry (valueOf iVal) swapOffer
                 price = swapPrice datum
                 !newTaken = taken + iTaken
                 !newWeightedPrice =
@@ -317,21 +317,21 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
           -- | Convert price if necessary
           correctedPrice
             -- | If ADA is offered, divide the weighted price by 1,000,000
-            | tradeOffer == (adaSymbol,adaToken) = weightedPrice * ratio' 1 1_000_000
+            | swapOffer == (adaSymbol,adaToken) = weightedPrice * ratio' 1 1_000_000
             -- | If ADA is asked, multiply the weighted price by 1,000,000
-            | tradeAsk == (adaSymbol,adaToken) = weightedPrice * ratio' 1_000_000 1
+            | swapAsk == (adaSymbol,adaToken) = weightedPrice * ratio' 1_000_000 1
             | otherwise = weightedPrice
           
           -- | Value flux
           scriptValueDiff = scriptOutputValue <> Num.negate scriptInputValue
 
           -- | Amounts
-          askedGiven = fromInteger $ uncurry (valueOf scriptValueDiff) tradeAsk
-          offeredTaken = fromInteger $ Num.negate $ uncurry (valueOf scriptValueDiff) tradeOffer
+          askedGiven = fromInteger $ uncurry (valueOf scriptValueDiff) swapAsk
+          offeredTaken = fromInteger $ Num.negate $ uncurry (valueOf scriptValueDiff) swapOffer
 
           -- | Assets leaving script address
           leavingAssets = flattenValue $ fst $ split scriptValueDiff -- ^ zero diff amounts removed
-          isOnlyOfferedAsset [(cn,tn,_)] = (cn,tn) == tradeOffer
+          isOnlyOfferedAsset [(cn,tn,_)] = (cn,tn) == swapOffer
           isOnlyOfferedAsset [] = True -- ^ Useful for testing
           isOnlyOfferedAsset _ = False
       in -- | Only the offered asset is allowed to leave the script address.
@@ -351,7 +351,7 @@ instance ValidatorTypes Swap where
   type instance DatumType Swap = SwapDatum
 
 swapValidator :: SwapConfig -> Validator
-swapValidator swapConfig = validatorScript $ mkTypedValidator @Swap
+swapValidator swapConfig = Plutonomy.optimizeUPLC $ validatorScript $ mkTypedValidator @Swap
     ($$(PlutusTx.compile [|| mkSwapScript ||])
       `PlutusTx.applyCode` PlutusTx.liftCode swapConfig)
     $$(PlutusTx.compile [|| wrap ||])
@@ -403,7 +403,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
     mintCheck r' = case (r',beaconMint) of
       (MintBeacon, [(_,tn,n)]) -> 
         traceIfFalse "Only the beacon with an empty token name can be minted" (tn == adaToken) &&
-        traceIfFalse "Only one beacon can be minted" (n == 1)
+        traceIfFalse "One, and only one, beacon must be minted with this redeemer." (n == 1)
       (MintBeacon, _) -> traceError "Only the beacon with an empty token name can be minted"
       (BurnBeacon, xs) ->
         traceIfFalse "Beacons can only be burned with this redeemer" (all (\(_,_,n) -> n < 0) xs) 
@@ -449,7 +449,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
                   -- | validDestination and validDatum will both fail with traceError unless True.
                   acc && validDestination vh ss && validDatum datum
                 (ScriptCredential _, _, Just _) -> 
-                  traceError "Beacon not stored to a script address with a proper staking credential"
+                  traceError "Beacon not minted to a script address with a proper staking credential"
                 (ScriptCredential _, _ , Nothing) ->
                   traceError "Beacon not stored with a reference script"
                 (PubKeyCredential _, _, _) ->

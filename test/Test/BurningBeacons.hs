@@ -1,0 +1,94 @@
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE NamedFieldPuns      #-}
+{-# LANGUAGE NoImplicitPrelude   #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell     #-}
+{-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE NumericUnderscores  #-}
+{-# LANGUAGE DeriveAnyClass      #-}
+{-# LANGUAGE DeriveGeneric       #-}
+
+module Test.BurningBeacons
+(
+  tests,
+  testTrace
+) where
+
+import Prelude (IO)
+import Control.Lens hiding (from)
+import PlutusTx.Prelude
+import Plutus.Trace
+import Wallet.Emulator.Wallet
+import Plutus.Contract.Test as Test
+import Test.Tasty
+import Ledger.Ada (lovelaceValueOf)
+import Data.Default
+import Plutus.V2.Ledger.Api
+import Ledger.Address
+import Plutus.Script.Utils.V2.Generators (alwaysSucceedValidatorHash,alwaysSucceedPolicy)
+import Test.Tasty.HUnit
+import Plutus.Script.Utils.V2.Scripts (mintingPolicyHash)
+
+import Test.Common
+
+import CardanoSwaps (beaconSymbol,swapValidatorHash)
+
+-------------------------------------------------
+-- Beacon Burning Scenarios
+-------------------------------------------------
+burnSingleBeacon :: EmulatorTrace ()
+burnSingleBeacon = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"burn-beacons" h1 $
+    BurnBeaconParams
+      {
+        beaconsBurned = [(adaToken,-1)]
+      , useBurnRedeemer = True
+      }
+
+burnMulitpleBeacons :: EmulatorTrace ()
+burnMulitpleBeacons = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  callEndpoint @"burn-beacons" h1 $
+    BurnBeaconParams
+      {
+        beaconsBurned = [(adaToken,-5)]
+      , useBurnRedeemer = True
+      }
+
+burnWithMintRedeemer :: EmulatorTrace ()
+burnWithMintRedeemer = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let beaconSwapConfig = swapConfig1
+  callEndpoint @"burn-beacons" h1 $
+    BurnBeaconParams
+      {
+        beaconsBurned = [(adaToken,-1)]
+      , useBurnRedeemer = False
+      }
+
+-------------------------------------------------
+-- Test Function
+-------------------------------------------------
+tests :: TestTree
+tests = do
+  let opts = defaultCheckOptions & emulatorConfig .~ emConfig
+  testGroup "Burning Beacons"
+    [ checkPredicateOptions opts "Allows burning a single beacon"
+        assertNoFailedTransactions burnSingleBeacon
+    , checkPredicateOptions opts "Allows burning multiple beacons"
+        assertNoFailedTransactions burnMulitpleBeacons
+    , checkPredicateOptions opts "Fail if mint redeemer used to burn"
+        (Test.not assertNoFailedTransactions) burnWithMintRedeemer
+    ]
+
+testTrace :: IO ()
+testTrace = runEmulatorTraceIO' def emConfig burnWithMintRedeemer

@@ -16,6 +16,7 @@
 module Test.Common where
 
 import qualified Data.Map as Map
+import Control.Lens
 import Data.Default
 import Data.Void (Void)
 import Control.Monad (void)
@@ -62,20 +63,12 @@ convert2SwapConfig :: SwapConfig' -> SwapConfig
 convert2SwapConfig (SwapConfig' offer ask) = SwapConfig offer ask
 
 data SwapDatum' = SwapDatum'
-  { swapPrice :: Price
-  , swapBeacon :: Maybe CurrencySymbol
+  { swapPrice' :: Price
+  , swapBeacon' :: Maybe CurrencySymbol
   } deriving (Generic,ToJSON,FromJSON,ToSchema)
 
 convert2SwapDatum :: SwapDatum' -> SwapDatum
 convert2SwapDatum (SwapDatum' price beaconSym) = SwapDatum price beaconSym
-
-data Action' = Close' | Update' | Swap'
-  deriving (Generic,ToJSON,FromJSON,ToSchema)
-
-convert2Action :: Action' -> Action
-convert2Action Close' = Close
-convert2Action Update' = Update
-convert2Action Swap' = Swap
 
 -- | Data type to specify which reference script to use.
 data RefScript = None | AlwaysSucceed | Proper
@@ -97,14 +90,42 @@ data CreateLiveSwapAddressParams = CreateLiveSwapAddressParams
   } deriving (Generic,ToJSON,FromJSON,ToSchema)
 
 data BurnBeaconParams = BurnBeaconParams
-  {
-    beaconsBurned :: [(TokenName,Integer)]
+  { beaconsBurned :: [(TokenName,Integer)]
   , useBurnRedeemer :: Bool
+  } deriving (Generic,ToJSON,FromJSON,ToSchema)
+
+data CloseAddressParams = CloseAddressParams
+  { closeBeaconsBurned :: [(TokenName,Integer)]
+  , closeBeaconSwapConfig :: SwapConfig'
+  , closeAddressSwapConfig :: SwapConfig'
+  , closeAddress :: Address
+  , closeAll :: Bool  -- ^ This will overshadow closeSpecificUtxos.
+  , closeSpecificUtxos :: [(SwapDatum',Value)]
+  } deriving (Generic,ToJSON,FromJSON,ToSchema)
+
+data UpdateSwapsParams = UpdateSwapsParams
+  { updateAddressSwapConfig :: SwapConfig'
+  , updateAddress :: Address
+  , updateAll :: Bool
+  , updateSpecificUtxos :: [(SwapDatum',Value)]
+  , updatedOutputs :: [(Maybe SwapDatum',Value)]
+  , updateDatumsAsInline :: Bool
+  } deriving (Generic,ToJSON,FromJSON,ToSchema)
+
+data SwapAssetsParams = SwapAssetsParams
+  { swapAddressSwapConfig :: SwapConfig'
+  , swappableAddress :: Address
+  , swapUtxos :: [(SwapDatum',Value)]
+  , swapChange :: [(Maybe SwapDatum',Value)]
+  , swapChangeDatumAsInline :: Bool
   } deriving (Generic,ToJSON,FromJSON,ToSchema)
 
 type TraceSchema =
       Endpoint "create-live-swap-address" CreateLiveSwapAddressParams
   .\/ Endpoint "burn-beacons" BurnBeaconParams
+  .\/ Endpoint "close-live-address" CloseAddressParams
+  .\/ Endpoint "update-swaps" UpdateSwapsParams
+  .\/ Endpoint "swap-assets" SwapAssetsParams
 
 -------------------------------------------------
 -- Configs
@@ -134,6 +155,7 @@ emConfig = EmulatorConfig (Left $ Map.fromList wallets) def
     user1 = lovelaceValueOf 1_000_000_000
          <> (uncurry singleton testToken1) 100
          <> singleton (beaconSymbol $ convert2SwapConfig swapConfig1) adaToken 5
+         <> (uncurry singleton testToken2) 100
 
     user2 :: Value
     user2 = lovelaceValueOf 1_000_000_000
@@ -232,6 +254,148 @@ burnBeacons BurnBeaconParams{..} = do
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
   logInfo @String "Burned beacon(s)"
 
+closeLiveAddress :: CloseAddressParams -> Contract () TraceSchema Text ()
+closeLiveAddress CloseAddressParams{..} = do
+  let beaconPolicy' = beaconPolicy $ convert2SwapConfig closeBeaconSwapConfig
+      beaconPolicyHash = mintingPolicyHash beaconPolicy'
+      beaconRedeemer = toRedeemer BurnBeacon
+
+      swapVal = swapValidator $ convert2SwapConfig closeAddressSwapConfig
+      swapValHash = swapValidatorHash $ convert2SwapConfig closeAddressSwapConfig
+
+      closeRedeemer = toRedeemer Close
+      
+  swapUtxos <- utxosAt closeAddress
+  userPubKeyHash <- ownFirstPaymentPubKeyHash
+
+  let scriptRef = (\(Just (ref,_)) -> ref)
+                $ find (isJust . view decoratedTxOutReferenceScript . snd) 
+                $ Map.toList swapUtxos
+      lookups = if closeAll
+                then Constraints.unspentOutputs swapUtxos
+                  <> plutusV2MintingPolicy beaconPolicy'
+                else Constraints.unspentOutputs swapUtxos
+                  <> plutusV2MintingPolicy beaconPolicy'
+                  <> plutusV2OtherScript swapVal
+      tx' = 
+        -- | Must burn beacon
+        (foldl' 
+          (\acc (t,i) -> acc <> mustMintCurrencyWithRedeemer beaconPolicyHash beaconRedeemer t i) 
+          mempty
+          closeBeaconsBurned
+        )
+        -- | Must spend all utxos to be closed
+        <> (if closeAll
+           then foldl' 
+                  (\a i -> a <> mustSpendScriptOutputWithReference i closeRedeemer scriptRef)
+                  mempty
+                  (Map.keys swapUtxos)
+           else foldl' 
+                  (\a (d,v) -> a 
+                            <> mustSpendScriptOutputWithMatchingDatumAndValue 
+                                 swapValHash 
+                                 (== toDatum (convert2SwapDatum d)) 
+                                 (==v) 
+                                 closeRedeemer) 
+                  mempty 
+                  closeSpecificUtxos
+           )
+        -- | Must be signed by stake pubkey (same as payment for this model)
+        <> mustBeSignedBy userPubKeyHash
+  
+  ledgerTx <- submitTxConstraintsWith @Void lookups tx'
+  void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+  logInfo @String "Closed a swap address"
+
+updateSwaps :: UpdateSwapsParams -> Contract () TraceSchema Text ()
+updateSwaps UpdateSwapsParams{..} = do
+  let swapVal = swapValidator $ convert2SwapConfig updateAddressSwapConfig
+      swapValHash = swapValidatorHash $ convert2SwapConfig updateAddressSwapConfig
+
+      updateRedeemer = toRedeemer Update
+
+      toDatum'
+        | updateDatumsAsInline = TxOutDatumInline . toDatum . convert2SwapDatum
+        | otherwise = TxOutDatumHash . toDatum . convert2SwapDatum
+      
+  swapUtxos <- utxosAt updateAddress
+  userPubKeyHash <- ownFirstPaymentPubKeyHash
+
+  let scriptRef = (\(Just (ref,_)) -> ref)
+                $ find (isJust . view decoratedTxOutReferenceScript . snd) 
+                $ Map.toList swapUtxos
+      lookups = if updateAll
+                then Constraints.unspentOutputs swapUtxos
+                else Constraints.unspentOutputs swapUtxos
+                  <> plutusV2OtherScript swapVal
+      tx' = 
+        -- | Must spend all utxos to be updated
+        (if updateAll
+         then foldl' 
+                (\a i -> a <> mustSpendScriptOutputWithReference i updateRedeemer scriptRef)
+                mempty
+                (Map.keys swapUtxos)
+         else foldl' 
+                (\a (d,v) -> a 
+                        <> mustSpendScriptOutputWithMatchingDatumAndValue 
+                              swapValHash 
+                              (== toDatum (convert2SwapDatum d)) 
+                              (==v) 
+                              updateRedeemer) 
+                mempty 
+                updateSpecificUtxos
+        )
+        -- | Must be signed by stake pubkey (same as payment for this model)
+        <> mustBeSignedBy userPubKeyHash
+        -- | Add updated outputs
+        <> (foldl'
+              (\acc (d,v) -> acc <> mustPayToAddressWith updateAddress (fmap toDatum' d) Nothing v)
+              mempty
+              updatedOutputs
+           )
+  
+  ledgerTx <- submitTxConstraintsWith @Void lookups tx'
+  void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+  logInfo @String "Updated swaps"
+
+swapAssets :: SwapAssetsParams -> Contract () TraceSchema Text ()
+swapAssets SwapAssetsParams{..} = do
+  let swapVal = swapValidator $ convert2SwapConfig swapAddressSwapConfig
+      swapValHash = swapValidatorHash $ convert2SwapConfig swapAddressSwapConfig
+
+      swapRedeemer = toRedeemer Swap
+
+      toDatum'
+        | swapChangeDatumAsInline = TxOutDatumInline . toDatum . convert2SwapDatum
+        | otherwise = TxOutDatumHash . toDatum . convert2SwapDatum
+  
+  availUtxos <- utxosAt swappableAddress
+
+  let lookups = Constraints.unspentOutputs availUtxos
+             <> plutusV2OtherScript swapVal
+      tx' =
+        -- | Must spend all utxos to swap
+        (foldl' 
+            (\a (d,v) -> a 
+              <> mustSpendScriptOutputWithMatchingDatumAndValue 
+                    swapValHash 
+                    (== toDatum (convert2SwapDatum d)) 
+                    (==v) 
+                    swapRedeemer) 
+            mempty 
+            swapUtxos
+        )
+        -- | Must output change to script address
+        <> (foldl'
+              (\acc (d,v) -> acc <> mustPayToAddressWith swappableAddress (fmap toDatum' d) Nothing v)
+              mempty
+              swapChange
+           )
+  
+  ledgerTx <- submitTxConstraintsWith @Void lookups tx'
+  void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+  logInfo @String "Created a live swap address"
+
 -------------------------------------------------
 -- Endpoints
 -------------------------------------------------
@@ -240,9 +404,13 @@ endpoints = selectList choices >> endpoints
   where
     createLiveSwapAddress' = endpoint @"create-live-swap-address" createLiveSwapAddress
     burnBeacons' = endpoint @"burn-beacons" burnBeacons
-    -- spend' = endpoint @"spend" spend
+    closeLiveAddress' = endpoint @"close-live-address" closeLiveAddress
+    updateSwaps' = endpoint @"update-swaps" updateSwaps
+    swapAssets' = endpoint @"swap-assets" swapAssets
     choices = 
       [ createLiveSwapAddress'
       , burnBeacons'
-      -- , spend'
+      , closeLiveAddress'
+      , updateSwaps'
+      , swapAssets'
       ]

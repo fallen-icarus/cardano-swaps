@@ -273,8 +273,10 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
                        ,txOutAddress=addr
                        } =
             let datum = parseDatum "Invalid datum in output" d
-            in if addr == inputCredentials && validDatum maybePrice datum
-               then val <> oVal
+            in if addr == inputCredentials 
+               then if validDatum maybePrice datum
+                    then val <> oVal
+                    else traceError "VD1"
                else val  -- ^ It is for a different address. Ignore it.
       in foldl' foo mempty outputs
 
@@ -287,19 +289,19 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
                                                                 ,txOutValue=iVal
                                                                 }} =
             let datum = parseDatum "Invalid datum in input" d
-                iTaken = uncurry (valueOf iVal) swapOffer
-                price = swapPrice datum
-                !newTaken = taken + iTaken
-                !newWeightedPrice =
-                  ratio' taken newTaken * wp +
-                  ratio' iTaken newTaken * price
-                !newSwapValue = val <> iVal
             in if addr == inputCredentials
-               then if price > fromInteger 0
-                    then ( newSwapValue
-                         , (newTaken,newWeightedPrice)
-                         )
-                    else traceError "All input prices must be > 0"
+               then let iTaken = uncurry (valueOf iVal) swapOffer
+                        price = swapPrice datum
+                        !newTaken = taken + iTaken
+                        !newWeightedPrice =
+                          ratio' taken newTaken * wp +
+                          ratio' iTaken newTaken * price
+                        !newSwapValue = val <> iVal
+                    in if price > fromInteger 0
+                       then ( newSwapValue
+                            , (newTaken,newWeightedPrice)
+                            )
+                       else traceError "All input prices must be > 0"
                else x -- ^ Not for this address. Skip.
       in fmap snd $ foldl' foo (mempty,(0,fromInteger 0)) inputs
 

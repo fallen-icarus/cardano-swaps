@@ -26,17 +26,10 @@ import Plutus.Trace
 import Wallet.Emulator.Wallet
 import Plutus.Contract.Test as Test
 import Test.Tasty
-import Ledger.Ada (lovelaceValueOf)
 import Data.Default
 import Plutus.V2.Ledger.Api
-import Ledger.Address
-import Plutus.Script.Utils.V2.Generators (alwaysSucceedValidatorHash,alwaysSucceedPolicy)
-import Test.Tasty.HUnit
-import Plutus.Script.Utils.V2.Scripts (mintingPolicyHash)
 
 import Test.Common
-
-import CardanoSwaps (beaconSymbol,swapValidatorHash)
 
 -------------------------------------------------
 -- Beacon Burning Scenarios
@@ -67,7 +60,6 @@ burnWithMintRedeemer :: EmulatorTrace ()
 burnWithMintRedeemer = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let beaconSwapConfig = swapConfig1
   callEndpoint @"burn-beacons" h1 $
     BurnBeaconParams
       {

@@ -47,7 +47,10 @@ test-suite cardano-swaps-tests
   other-modules:
     Test.Common,
     Test.CreateAddress,
-    Test.BurningBeacons
+    Test.BurningBeacons,
+    Test.CloseAddress,
+    Test.UpdateSwaps,
+    Test.SwapAssets
   build-depends:
     cardano-swaps,
     plutus-contract,

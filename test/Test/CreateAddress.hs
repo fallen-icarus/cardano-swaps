@@ -62,8 +62,8 @@ createLiveAddressWithStakePubKey = do
       beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
 
       swapDatum' = SwapDatum'
-        { swapPrice = unsafeRatio 2 1
-        , swapBeacon = Just beaconSymbol'
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Just beaconSymbol'
         }
 
       swapAddress = Address 
@@ -104,8 +104,8 @@ createLiveAddressWithStakeScript = do
       beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
 
       swapDatum' = SwapDatum'
-        { swapPrice = unsafeRatio 2 1
-        , swapBeacon = Just beaconSymbol'
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Just beaconSymbol'
         }
 
       swapAddress = Address 
@@ -145,8 +145,8 @@ createLiveAddressWithNoStakingCred = do
       beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
 
       swapDatum' = SwapDatum'
-        { swapPrice = unsafeRatio 2 1
-        , swapBeacon = Just beaconSymbol'
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Just beaconSymbol'
         }
 
       swapAddress = Address 
@@ -183,8 +183,8 @@ createLiveAddressWithDifferentRefScript = do
       beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
 
       swapDatum' = SwapDatum'
-        { swapPrice = unsafeRatio 2 1
-        , swapBeacon = Just beaconSymbol'
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Just beaconSymbol'
         }
 
       swapAddress = Address 
@@ -225,8 +225,8 @@ createLiveAddressWithWrongSwapConfig = do
       beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
 
       swapDatum' = SwapDatum'
-        { swapPrice = unsafeRatio 2 1
-        , swapBeacon = Just beaconSymbol'
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Just beaconSymbol'
         }
 
       swapAddress = Address 
@@ -267,8 +267,8 @@ createLiveAddressWithWrongBeaconSymbolInDatum = do
       beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
 
       swapDatum' = SwapDatum'
-        { swapPrice = unsafeRatio 2 1
-        , swapBeacon = Just adaSymbol
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Just adaSymbol
         }
 
       swapAddress = Address 
@@ -309,8 +309,8 @@ createLiveAddressWithNoBeaconSymbolInDatum = do
       beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
 
       swapDatum' = SwapDatum'
-        { swapPrice = unsafeRatio 2 1
-        , swapBeacon = Nothing
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Nothing
         }
 
       swapAddress = Address 
@@ -351,8 +351,8 @@ createLiveAddressWithoutRefScript = do
       beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
 
       swapDatum' = SwapDatum'
-        { swapPrice = unsafeRatio 2 1
-        , swapBeacon = Just beaconSymbol'
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Just beaconSymbol'
         }
 
       swapAddress = Address 
@@ -393,8 +393,8 @@ createLiveAddressWithDifferentSpendingScript = do
       beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
 
       swapDatum' = SwapDatum'
-        { swapPrice = unsafeRatio 2 1
-        , swapBeacon = Just beaconSymbol'
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Just beaconSymbol'
         }
 
       swapAddress = Address 
@@ -435,8 +435,8 @@ createLiveAddressWithWrongDappSpendingScript = do
       beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
 
       swapDatum' = SwapDatum'
-        { swapPrice = unsafeRatio 2 1
-        , swapBeacon = Just beaconSymbol'
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Just beaconSymbol'
         }
 
       swapAddress = Address 
@@ -477,8 +477,8 @@ createLiveAddressLockedByPubKey = do
       beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
 
       swapDatum' = SwapDatum'
-        { swapPrice = unsafeRatio 2 1
-        , swapBeacon = Just beaconSymbol'
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Just beaconSymbol'
         }
 
       swapAddress = Address 
@@ -519,8 +519,8 @@ createLiveAddressWithTooManyBeacons = do
       beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
 
       swapDatum' = SwapDatum'
-        { swapPrice = unsafeRatio 2 1
-        , swapBeacon = Just beaconSymbol'
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Just beaconSymbol'
         }
 
       swapAddress = Address 
@@ -561,8 +561,8 @@ createLiveAddressWithWrongBeaconTokenName = do
       beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
 
       swapDatum' = SwapDatum'
-        { swapPrice = unsafeRatio 2 1
-        , swapBeacon = Just beaconSymbol'
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Just beaconSymbol'
         }
 
       swapAddress = Address 
@@ -603,8 +603,8 @@ createLiveAddressWithBurnRedeemer = do
       beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
 
       swapDatum' = SwapDatum'
-        { swapPrice = unsafeRatio 2 1
-        , swapBeacon = Just beaconSymbol'
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Just beaconSymbol'
         }
 
       swapAddress = Address 
@@ -645,8 +645,8 @@ createLiveAddressWithNonInlineDatums = do
       beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
 
       swapDatum' = SwapDatum'
-        { swapPrice = unsafeRatio 2 1
-        , swapBeacon = Just beaconSymbol'
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Just beaconSymbol'
         }
 
       swapAddress = Address 
@@ -675,6 +675,48 @@ createLiveAddressWithNonInlineDatums = do
             )
           ]
       , createLiveDatumsAsInline = False
+      }
+
+createLiveAddressWithMultipleKindsOfBeacons :: EmulatorTrace ()
+createLiveAddressWithMultipleKindsOfBeacons = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let beaconSwapConfig = swapConfig1
+      addressSwapConfig = swapConfig1
+
+      beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
+
+      swapDatum' = SwapDatum'
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Just beaconSymbol'
+        }
+
+      swapAddress = Address 
+        (ScriptCredential $ swapValidatorHash $ convert2SwapConfig addressSwapConfig)
+        (Just $ StakingHash 
+              $ PubKeyCredential 
+              $ unPaymentPubKeyHash 
+              $ mockWalletPaymentPubKeyHash 
+              $ knownWallet 1)
+
+  callEndpoint @"create-live-swap-address" h1 $
+    CreateLiveSwapAddressParams
+      { beaconsMinted = [(adaToken,1),("test",1)]
+      , useMintRedeemer = True
+      , createLiveBeaconSwapConfig = beaconSwapConfig
+      , createLiveAddressSwapConfig = addressSwapConfig
+      , createLiveAddress = swapAddress
+      , createLiveRefScript = Proper
+      , createLiveRefScriptUtxo =
+          ( Just swapDatum'
+          , singleton beaconSymbol' adaToken 1 <> refScriptDeposit
+          )
+      , createLiveInitialPositions =
+          [ ( Just swapDatum'
+            , lovelaceValueOf 100_000_000
+            )
+          ]
+      , createLiveDatumsAsInline = True
       }
 
 -------------------------------------------------
@@ -715,7 +757,9 @@ tests = do
         (Test.not assertNoFailedTransactions) createLiveAddressWithBurnRedeemer
     , checkPredicateOptions opts "Fail if beacon stored with non-inline datum"
         (Test.not assertNoFailedTransactions) createLiveAddressWithNonInlineDatums
+    , checkPredicateOptions opts "Fail if multiple kinds of beacons minted"
+        (Test.not assertNoFailedTransactions) createLiveAddressWithMultipleKindsOfBeacons
     ]
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig createLiveAddressWithNonInlineDatums
+testTrace = runEmulatorTraceIO' def emConfig createLiveAddressWithMultipleKindsOfBeacons

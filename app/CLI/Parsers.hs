@@ -1,61 +1,34 @@
 module CLI.Parsers
 (
-  parseCommand,
+  parseCommand
 ) where
 
 import Options.Applicative
-import Data.ByteString (ByteString)
 
 import CardanoSwaps
 import CLI.Types
 
+-------------------------------------------------
+-- Main Parsers
+-------------------------------------------------
 parseCommand :: Parser Command
-parseCommand = hsubparser $
-  command "swap-script"
-    (info parseSwapScriptCmd $ progDesc "Commands for using a swap script.") <>
-  command "staking-script"
-    (info parseStakingScriptCmd $ progDesc "Commands for using a staking script.") <>
-  command "beacon"
-    (info parseBeaconCmd $ progDesc "Commands for using beacons.") <>
-  command "query-swaps"
-    (info parseQueryAvailableSwaps $ progDesc "Query available swaps.")
+parseCommand = hsubparser $ mconcat
+  [ command "swaps" 
+      (info parseScriptCmd $ progDesc "Commands for swapping assets.")
+  , command "beacons"
+      (info parseBeaconsCmd $ progDesc "Commands for using the beacons.")
+  , command "query"
+      (info parseQueryAvailableSwaps $ progDesc "Command for querying available swaps for a trading pair.")
+  ]
 
-parseSwapScriptCmd :: Parser Command
-parseSwapScriptCmd = fmap SwapScript . hsubparser $
-  command "create-script"
-    (info pCreateSwapScript $ progDesc "Create a personal swap script.") <>
-  command "create-datum"
-    (info pCreateSwapDatum $ progDesc "Create a datum for a swap script.") <>
-  command "create-redeemer"
-    (info pCreateSwapRedeemer $ progDesc "Create a redeemer for a swap script.")
-
-parseStakingScriptCmd :: Parser Command
-parseStakingScriptCmd = fmap StakingScript . hsubparser $
-  command "create-script"
-    (info pCreateStakingScript $ progDesc "Create a personal staking script.") <>
-  command "create-redeemer"
-    (info pCreateStakingRedeemer $ progDesc "Create a redeemer for a staking script.")
-
-parseBeaconCmd :: Parser Command
-parseBeaconCmd = fmap Beacon . hsubparser $
-  command "generate-token-name"
-    (info pGenerateBeaconTokenName $ progDesc "Generate a beacon token name.") <>
-  command "policy-id"
-    (info pExportBeaconPolicyId $ progDesc "Export the beacon policy id (Currency Symbol).") <>
-  command "create-redeemer"
-    (info pCreateBeaconRedeemer $ progDesc "Create a redeemer for minting/burning beacons.") <>
-  command "create-datum"
-    (info pCreateBeaconDatum $ progDesc "Create the datum for the beacon deposit vault.") <>
-  command "policy-script"
-    (info pBeaconPolicyScript $ progDesc "Export the beacon policy script.") <>
-  command "vault-script"
-    (info pBeaconVaultScript $ progDesc "Export the beacon deposit vault script.")
-
+-------------------------------------------------
+-- Query Parser
+-------------------------------------------------
 parseQueryAvailableSwaps :: Parser Command
-parseQueryAvailableSwaps = 
+parseQueryAvailableSwaps =
   QueryAvailableSwaps
-    <$> pOfferedRaw
-    <*> pAskedRaw
+    <$> pAsked
+    <*> pOffered
     <*> pNetwork
     <*> pOutput
 
@@ -74,133 +47,95 @@ pNetwork = pMainnet <|> pPreProdTestnet
       <> metavar "STRING"
       <> help "Query the preproduction testnet using the Blockfrost Api with the supplied api key.")
 
-pBeaconPolicyScript :: Parser BeaconCmd
-pBeaconPolicyScript = ExportBeaconPolicyScript <$> pOutputFile
+pOutput :: Parser Output
+pOutput = pStdOut <|> File <$> pOutputFile
+  where
+    pStdOut :: Parser Output
+    pStdOut = flag' Stdout
+      (  long "stdout"
+      <> help "Display to stdout."
+      )
 
-pBeaconVaultScript :: Parser BeaconCmd
-pBeaconVaultScript = ExportBeaconVaultScript <$> pOutputFile
+-------------------------------------------------
+-- Beacons Parser
+-------------------------------------------------
+parseBeaconsCmd :: Parser Command
+parseBeaconsCmd = fmap BeaconCmd $ hsubparser $ mconcat
+  [ command "export-policy"
+      (info pExportBeaconPolicy $ progDesc "Export the beacon policy for a specific trading pair.")
+  , command "create-datum"
+      (info pCreateBeaconDatum $ progDesc "Create the special datum for storing the beacon in the swap address.")
+  , command "create-redeemer"
+      (info pCreateBeaconRedeemer $ progDesc "Create the redeemer for using the beacon policy.")
+  ]
 
-pGenerateBeaconTokenName :: Parser BeaconCmd
-pGenerateBeaconTokenName =
-  GenerateBeaconTokenName
-    <$> pOfferedRaw
-    <*> pAskedRaw
-    <*> pOutput
-
-pExportBeaconPolicyId :: Parser BeaconCmd
-pExportBeaconPolicyId = ExportBeaconPolicyId <$> pOutput
+pExportBeaconPolicy :: Parser BeaconCmd
+pExportBeaconPolicy = ExportBeaconPolicy <$> pAsked <*> pOffered <*> pOutputFile
 
 pCreateBeaconDatum :: Parser BeaconCmd
-pCreateBeaconDatum = CreateBeaconDatum <$> pOutputFile
+pCreateBeaconDatum = CreateBeaconDatum <$> pAsked <*> pOffered <*> pDatumPrice <*> pOutputFile
 
 pCreateBeaconRedeemer :: Parser BeaconCmd
 pCreateBeaconRedeemer =
-   CreateBeaconRedeemer
-     <$> (pMint <|> pBurn)
-     <*> pOutputFile
+    CreateBeaconRedeemer
+      <$> (pMint <|> pBurn)
+      <*> pOutputFile
   where
     pMint :: Parser BeaconRedeemer
-    pMint = MintBeacon <$> option (eitherReader readTokenName)
+    pMint = flag' MintBeacon
       (  long "mint-beacon"
-      <> metavar "STRING"
-      <> help "Mint a beacon with the supplied token name (in hexidecimal)."
+      <> help "Mint a beacon for the DEX."
       )
 
     pBurn :: Parser BeaconRedeemer
-    pBurn = BurnBeacon <$> option (eitherReader readTokenName)
+    pBurn = flag' BurnBeacon
       (  long "burn-beacon"
-      <> metavar "STRING"
-      <> help "Burn a beacon with the supplied token name (in hexidecimal)."
+      <> help "Burn a beacon for the DEX."
       )
 
-pCreateStakingScript :: Parser StakingScriptCmd
-pCreateStakingScript =
-  CreateStakingScript
-    <$> pOwnerPubKeyHash
-    <*> optional pOffered
-    <*> optional pAsked
-    <*> pOutputFile
+-------------------------------------------------
+-- Swap-Scripts Parser
+-------------------------------------------------
+parseScriptCmd :: Parser Command
+parseScriptCmd = fmap SwapCmd $ hsubparser $ mconcat
+  [ command "export-script"
+      (info pExportSwapScript $ progDesc "Export the swap script for a specific trading pair.")
+  , command "create-datum"
+      (info pCreateSwapDatum $ progDesc "Create the datum for basic swap outputs (not applicable for storing with beacons).")
+  , command "create-redeemer"
+      (info pCreateSwapRedeemer $ progDesc "Create the redeemer for the DEX.")
+  ]
 
-pCreateStakingRedeemer :: Parser StakingScriptCmd
-pCreateStakingRedeemer = CreateStakingRedeemer <$> pOutputFile
+pExportSwapScript :: Parser SwapCmd
+pExportSwapScript = ExportSwapScript <$> pAsked <*> pOffered <*> pOutputFile
 
-pCreateSwapScript :: Parser SwapScriptCmd
-pCreateSwapScript =
-  CreateSwapScript
-    <$> pOwnerPubKeyHash
-    <*> pOffered
-    <*> pAsked
-    <*> pOutputFile
+pCreateSwapDatum :: Parser SwapCmd
+pCreateSwapDatum = CreateSwapDatum <$> pDatumPrice <*> pOutputFile
 
-pCreateSwapDatum :: Parser SwapScriptCmd
-pCreateSwapDatum = 
-    CreateSwapDatum 
-      <$> (pSwapDatum <|> pSwapUtxoInfo <|> pTemplate) 
-      <*> pOutputFile
+pCreateSwapRedeemer :: Parser SwapCmd
+pCreateSwapRedeemer = CreateSwapRedeemer <$> (pClose <|> pUpdate <|> pSwap) <*> pOutputFile
   where
-    pSwapPrice :: Parser Price
-    pSwapPrice = fromGHC . (toRational :: Double -> Rational) <$> option auto
-      (  long "swap-price"
-      <> metavar "DECIMAL"
-      <> help "The swap price (asked asset / offered asset)."
+    pUpdate :: Parser Action
+    pUpdate = flag' Update
+      (  long "update"
+      <> help "Update swap positions."
       )
 
-    pSwapDatum :: Parser SwapDatumInfo
-    pSwapDatum = SwapDatum <$> pSwapPrice
-
-    pSwapUtxoInfo :: Parser SwapDatumInfo
-    pSwapUtxoInfo = SwapDatumUtxos <$> strOption
-      (  long "calc-swap-price-from-file"
-      <> metavar "JSON FILE"
-      <> help "Calculate swap price from a JSON file of utxo amounts, price numerators, and price denominators."
-      )
-
-    pTemplate :: Parser SwapDatumInfo
-    pTemplate = flag' SwapDatumUtxosTemplate
-      (  long "swap-price-file-template"
-      <> help "Create a template JSON file for use with calc-swap-price-from-file."
-      )
-
-pCreateSwapRedeemer :: Parser SwapScriptCmd
-pCreateSwapRedeemer =
-    CreateSwapRedeemer
-      <$> (pClose <|> pSwap <|> pInfo <|> fmap UpdatePrices pUpdateSwapPrice)
-      <*> pOutputFile
-  where
     pClose :: Parser Action
     pClose = flag' Close
-      (  long "close-swap"
-      <> help "Remove all assets and reference scripts from the swap address."
+      (  long "close"
+      <> help "Burn beacon and reclaim deposit."
       )
 
     pSwap :: Parser Action
     pSwap = flag' Swap
-      (  long "swap-assets" 
+      (  long "swap" 
       <> help "Swap with assets at a swap address."
       )
 
-    pInfo :: Parser Action
-    pInfo = flag' Info
-      (  long "owner-info"
-      <> help "Get the owner info needed to verify contract integrity."
-      )
-
-    pUpdateSwapPrice :: Parser Price
-    pUpdateSwapPrice = fromGHC . (toRational :: Double -> Rational) <$> option auto
-      (  long "update-swap-price"
-      <> metavar "DECIMAL"
-      <> help "Change the swap price (asked asset / offered asset)."
-      )
-
-
-
-pOwnerPubKeyHash :: Parser PaymentPubKeyHash
-pOwnerPubKeyHash = option (eitherReader readPubKeyHash)
-  (  long "owner-payment-key-hash" 
-  <> metavar "STRING" 
-  <> help "The owner's payment key hash."
-  )
-
+-------------------------------------------------
+-- Basic Helper Parsers
+-------------------------------------------------
 pOutputFile :: Parser FilePath
 pOutputFile = strOption
   (  long "out-file"
@@ -255,57 +190,45 @@ pOffered = pOfferedAda <|> (Asset <$> pOfferedCurrencySymbol <*> pOfferedTokenNa
       <> help "The token name (in hexidecimal) of the offered asset."
       )
 
-pAskedRaw :: Parser RawAsset
-pAskedRaw = pAskedAda <|> (RawAsset <$> pAskedCurrencySymbol <*> pAskedTokenName)
+pDatumPrice :: Parser DatumPrice
+pDatumPrice = pNewDatum <|> pWeightedPrice
   where
-    pAskedAda :: Parser RawAsset
-    pAskedAda = flag' RawAda
-      (  long "asked-asset-is-ada"
-      <> help "The asset asked for is ADA"
-      )
+    pNewDatum :: Parser DatumPrice
+    pNewDatum = NewDatum <$> pPrice
+      where
+        pPrice :: Parser Price
+        pPrice = fromGHC . (toRational :: Double -> Rational) <$> option auto
+          (  long "swap-price"
+          <> metavar "DECIMAL"
+          <> help "The swap price (asked asset / offered asset)."
+          )
 
-    pAskedCurrencySymbol :: Parser ByteString
-    pAskedCurrencySymbol = strOption
-      (  long "asked-asset-policy-id" 
-      <> metavar "STRING" 
-      <> help "The policy id of the asked asset."
-      )
+    pWeightedPrice :: Parser DatumPrice
+    pWeightedPrice = WeightedPrice <$> some pUtxoPriceInfo
+      where
+        pUtxoPriceInfo :: Parser UtxoPriceInfo
+        pUtxoPriceInfo = UtxoPriceInfo
+          <$> pAmount
+          <*> pPriceNumerator
+          <*> pPriceDenominator
+        
+        pAmount :: Parser Integer
+        pAmount = option auto
+          (  long "utxo-target-asset-balance"
+          <> metavar "INT"
+          <> help "How much of the target asset is in this UTxO."
+          )
+        
+        pPriceNumerator :: Parser Integer
+        pPriceNumerator = option auto
+          (  long "utxo-price-numerator"
+          <> metavar "INT"
+          <> help "Numerator of asking price for this UTxO."
+          )
 
-    pAskedTokenName :: Parser ByteString
-    pAskedTokenName = strOption
-      (  long "asked-asset-token-name"
-      <> metavar "STRING"
-      <> help "The token name (in hexidecimal) of the asked asset."
-      )
-
-pOfferedRaw :: Parser RawAsset
-pOfferedRaw = pOfferedAda <|> (RawAsset <$> pOfferedCurrencySymbol <*> pOfferedTokenName)
-  where
-    pOfferedAda :: Parser RawAsset
-    pOfferedAda = flag' RawAda
-      (  long "offered-asset-is-ada"
-      <> help "The asset being offered is ADA"
-      )
-
-    pOfferedCurrencySymbol :: Parser ByteString
-    pOfferedCurrencySymbol = strOption
-      (  long "offered-asset-policy-id" 
-      <> metavar "STRING" 
-      <> help "The policy id of the offered asset."
-      )
-
-    pOfferedTokenName :: Parser ByteString
-    pOfferedTokenName = strOption
-      (  long "offered-asset-token-name"
-      <> metavar "STRING"
-      <> help "The token name (in hexidecimal) of the offered asset."
-      )
-
-pStdOut :: Parser Output
-pStdOut = flag' StdOut
-  (  long "stdout"
-  <> help "Display to stdout."
-  )
-
-pOutput :: Parser Output
-pOutput = pStdOut <|> File <$> pOutputFile
+        pPriceDenominator :: Parser Integer
+        pPriceDenominator = option auto
+          (  long "utxo-price-denominator"
+          <> metavar "INT"
+          <> help "Denominator of asking price for this UTxO."
+          )

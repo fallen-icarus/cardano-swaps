@@ -4,7 +4,7 @@
 
 module CLI.QuerySwaps
 (
-  runQuery,
+  runQuery
 ) where
 
 import Servant.Client
@@ -14,24 +14,25 @@ import Control.Exception
 
 import CLI.BlockfrostApi
 import CLI.Types
+import CardanoSwaps (CurrencySymbol,TokenName)
 
-runQuery :: QueryAsset -> QueryAsset -> Network -> IO [AvailableSwap]
-runQuery (QueryAsset (bSym,bTok)) (QueryAsset (tSym,tTok)) network = do
+-- | Takes the beacon symbol, the target asset, and the desired network to query the relevant
+-- off-chain api endpoint.
+runQuery :: CurrencySymbol -> (CurrencySymbol,TokenName) -> Network -> IO [AvailableSwap]
+runQuery beaconSym offeredAsset network = do
   manager' <- newManager tlsManagerSettings
-  let beaconId = BeaconId $ bSym <> bTok
-      targetId = TargetId $ tSym <> tTok
   case network of
     PreProdTestnet apiKey -> do
       let env = mkClientEnv manager' (BaseUrl Https "cardano-preprod.blockfrost.io" 443 "api/v0")
           apiKey' = BlockfrostApiKey apiKey
-      res <- runClientM (queryBlockfrost apiKey' beaconId targetId) env
+      res <- runClientM (queryBlockfrost apiKey' beaconSym offeredAsset) env
       case res of
-        Right res' -> return res'
+        Right r -> return r
         Left err -> throw err
     Mainnet apiKey -> do
-      let env = mkClientEnv manager' (BaseUrl Https "cardano-mainnet.blockfrost.io" 443 "api/v0") 
-          apiKey' = BlockfrostApiKey apiKey   
-      res <- runClientM (queryBlockfrost apiKey' beaconId targetId) env
+      let env = mkClientEnv manager' (BaseUrl Https "cardano-mainnet.blockfrost.io" 443 "api/v0")
+          apiKey' = BlockfrostApiKey apiKey
+      res <- runClientM (queryBlockfrost apiKey' beaconSym offeredAsset) env
       case res of
-        Right res' -> return res'
+        Right r -> return r
         Left err -> throw err

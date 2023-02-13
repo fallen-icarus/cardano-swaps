@@ -75,7 +75,11 @@ executable cardano-swaps
 
     -- Modules included in this executable, other than Main.
     other-modules:
-      CLI.Types
+      CLI.Types,
+      CLI.Parsers,
+      CLI.Run,
+      CLI.BlockfrostApi,
+      CLI.QuerySwaps
     build-depends:    cardano-swaps,
                       optparse-applicative,
                       servant,

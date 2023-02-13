@@ -28,6 +28,12 @@ module CardanoSwaps
   adaSymbol,
   adaToken,
 
+  UtxoPriceInfo(..),
+  fromGHC,
+  calcWeightedPrice,
+  readCurrencySymbol,
+  readTokenName,
+
   swapValidator,
   swapValidatorScript,
   swapValidatorHash,
@@ -67,6 +73,57 @@ import Ledger.Ada (lovelaceValueOf,lovelaceOf,fromValue)
 import PlutusTx.Ratio (fromGHC)
 import PlutusPrelude (foldl')
 import qualified PlutusTx.AssocMap as Map
+
+-------------------------------------------------
+-- Off-Chain Helper Functions
+-------------------------------------------------
+data UtxoPriceInfo = UtxoPriceInfo
+  { utxoAmount :: Integer
+  , priceNumerator :: Integer
+  , priceDenominator :: Integer
+  } deriving (Haskell.Show)
+
+-- | Helper function to calculate the weighted price.
+-- Will match the weighted price calculation done by script.
+-- Will throw an error if a price is negative.
+calcWeightedPrice :: [UtxoPriceInfo] -> Rational
+calcWeightedPrice xs = snd $ foldl' foo (0,fromInteger 0) xs
+  where
+    convert :: UtxoPriceInfo -> Rational 
+    convert upi@UtxoPriceInfo{priceNumerator = num,priceDenominator = den} = 
+      case ratio num den of
+        Nothing -> Haskell.error $ "Denominator was zero: " <> Haskell.show upi
+        Just r ->
+          if r <= fromInteger 0
+          then Haskell.error $ "Price was not greater than zero: " <> Haskell.show upi
+          else r
+    
+    foo :: (Integer,Rational) -> UtxoPriceInfo -> (Integer,Rational) 
+    foo (runningTot,wp) ui@UtxoPriceInfo{..} =
+      let !newAmount = runningTot + utxoAmount
+          !wp' = ratio' runningTot newAmount * wp +
+                 ratio' utxoAmount newAmount * convert ui
+      in (newAmount,wp')
+
+-- | Parse Currency from user supplied String
+readCurrencySymbol :: Haskell.String -> Either Haskell.String CurrencySymbol
+readCurrencySymbol s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> Right $ CurrencySymbol bytes'
+  Left msg                   -> Left $ "could not convert: " <> msg
+
+-- | Parse TokenName from user supplied String
+readTokenName :: Haskell.String -> Either Haskell.String TokenName
+readTokenName s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> Right $ TokenName bytes'
+  Left msg                   -> Left $ "could not convert: " <> msg
+
+-------------------------------------------------
+-- On-Chain Helper Functions
+-------------------------------------------------
+{-# INLINABLE ratio' #-}
+-- | When denominator is zero, returns (fromInteger 0)
+ratio' :: Integer -> Integer -> Rational
+ratio' num den = if den == 0 then fromInteger 0 else unsafeRatio num den
 
 -------------------------------------------------
 -- Swap Settings
@@ -151,14 +208,6 @@ PlutusTx.unstableMakeIsData ''BeaconRedeemer
 -- To force uniqueness, it is used in an error message.
 -- This is helpfull for testing the beacon logic without using the real beacon.
 type AppName = BuiltinString
-
--------------------------------------------------
--- On-Chain Helper Functions
--------------------------------------------------
-{-# INLINABLE ratio' #-}
--- | When denominator is zero, returns (fromInteger 0)
-ratio' :: Integer -> Integer -> Rational
-ratio' num den = if den == 0 then fromInteger 0 else unsafeRatio num den
 
 -------------------------------------------------
 -- On-Chain Swap Script
@@ -499,7 +548,7 @@ serialisedScript = PlutusScriptSerialised . SBS.toShort . LBS.toStrict . seriali
 
 writeScript :: FilePath -> Script -> IO (Either (FileError ()) ())
 writeScript file script = writeFileTextEnvelope @(PlutusScript PlutusScriptV2) file Nothing
-                        $ serialisedScript script
+                         $ serialisedScript script
 
 writeData :: PlutusTx.ToData a => FilePath -> a -> IO ()
 writeData = writeJSON

@@ -6,10 +6,9 @@
 
 module CLI.BlockfrostApi
 (
-  BlockfrostApiKey (..),
-  BeaconId (..),
-  TargetId (..),
-  queryBlockfrost,
+  BlockfrostApiKey(..),
+  BeaconId(..),
+  queryBlockfrost
 ) where
 
 import Servant.API
@@ -18,13 +17,14 @@ import Data.Proxy
 import Servant.Client
 import Control.Monad
 import qualified Data.Text as T
-import Data.List (nub,find)
+import Data.List (nub,find,partition)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Vector as Vector
-import Data.Maybe (isJust)
+import Data.Maybe (isJust,fromJust)
 
-import CLI.Types (AvailableSwap(..),AvailableAsset(..))
+import CLI.Types
+import CardanoSwaps (CurrencySymbol,TokenName,adaSymbol)
 
 -- | Newtype wrapper around api key for using blockfrost
 newtype BlockfrostApiKey = BlockfrostApiKey String
@@ -32,18 +32,11 @@ newtype BlockfrostApiKey = BlockfrostApiKey String
 instance ToHttpApiData BlockfrostApiKey where
   toQueryParam (BlockfrostApiKey apiKey) = T.pack apiKey
 
--- | Wrapper around CurrencySymbol <> TokenName
-newtype BeaconId = BeaconId String 
+-- | Wrapper around the beacon policy id
+newtype BeaconId = BeaconId CurrencySymbol 
 
 instance ToHttpApiData BeaconId where
-  toQueryParam (BeaconId s) = T.pack s
-
--- | Wrapper around CurrencySymbol <> TokeName
--- The asset being swapped for.
-newtype TargetId = TargetId String
-
-instance ToHttpApiData TargetId where
-  toQueryParam (TargetId s) = T.pack s
+  toQueryParam (BeaconId s) = T.pack $ show s
 
 -- | An address that contains a beacon.
 -- The response type of the assetAddressList api.
@@ -56,14 +49,44 @@ instance FromJSON SwapAddress where
 instance ToHttpApiData SwapAddress where
   toQueryParam = T.pack . unSwapAddress
 
+-- | The return type of the extendedAdressInfoApi.
+data ExtendedAddressInfo = ExtendedAddressInfo
+  { exAddress :: String
+  , exAmount :: [ExtendedAssetInfo]
+  } deriving (Show)
+
+instance FromJSON ExtendedAddressInfo where
+  parseJSON (Object o) = 
+    ExtendedAddressInfo
+      <$> o .: "address"
+      <*> o .: "amount"
+  parseJSON _ = mzero
+
+-- | Only the address is needed.
+instance ToHttpApiData ExtendedAddressInfo where
+  toQueryParam = T.pack . exAddress
+
+-- | Part of the return type for the extendedAddressInfoApi.
+data ExtendedAssetInfo = ExtendedAssetInfo
+  { exUnit :: String  -- ^ CurrencySymbol <> TokenName unless it is "lovelace"
+  , exQuantity :: String  -- ^ The total amount at the address.
+  } deriving (Show)
+
+instance FromJSON ExtendedAssetInfo where
+  parseJSON (Object o) =
+    ExtendedAssetInfo
+      <$> o .: "unit"
+      <*> o .: "quantity"
+  parseJSON _ = mzero
+
 -- | The response type of the addressInfo api
 data RawSwapInfo = RawSwapInfo
-  { address :: String
-  , txHash :: String
-  , ix :: Integer
-  , assets :: [AssetInfo]
-  , dataHash :: Maybe String
-  , referenceScriptHash :: Maybe String
+  { rawAddress :: String
+  , rawTxHash :: String
+  , rawIx :: Integer
+  , rawAssets :: [RawAssetInfo]
+  , rawDataHash :: Maybe String
+  , rawReferenceScriptHash :: Maybe String
   } deriving (Show)
 
 instance FromJSON RawSwapInfo where
@@ -78,14 +101,14 @@ instance FromJSON RawSwapInfo where
   parseJSON _ = mzero
 
 -- | Blockfrost does not separate symbol and name with '.'
-data AssetInfo = AssetInfo
-  { unit :: String  -- ^ CurrencySymbol <> TokenName
-  , quantity :: Integer
+data RawAssetInfo = RawAssetInfo
+  { rawUnit :: String  -- ^ CurrencySymbol <> TokenName
+  , rawQuantity :: Integer
   } deriving (Show)
 
-instance FromJSON AssetInfo where
+instance FromJSON RawAssetInfo where
   parseJSON (Object o) =
-    AssetInfo
+    RawAssetInfo
       <$> o .: "unit"
       <*> fmap read (o .: "quantity")
   parseJSON _ = mzero
@@ -99,8 +122,16 @@ data InlinePriceDatum = InlinePriceDatum
 instance FromJSON InlinePriceDatum where
   parseJSON (Object o) =
     InlinePriceDatum
-      <$> ((o .: "json_value") >>= (.: "fields") >>= (.: "int") . (Vector.! 0))
-      <*> ((o .: "json_value") >>= (.: "fields") >>= (.: "int") . (Vector.! 1))
+      <$> ((o .: "json_value") 
+            >>= (.: "fields") 
+            >>= (.: "fields") . (Vector.! 0) 
+            >>= (.: "int") . (Vector.! 0)
+          )
+      <*> ((o .: "json_value") 
+            >>= (.: "fields") 
+            >>= (.: "fields") . (Vector.! 0)
+            >>= (.: "int") . (Vector.! 1)
+          )
   parseJSON _ = mzero
 
 -------------------------------------------------
@@ -116,6 +147,12 @@ type BlockfrostApi
   :<|> "addresses"
     :> Header' '[Required] "project_id" BlockfrostApiKey
     :> Capture "address" SwapAddress
+    :> "extended"
+    :> Get '[JSON] ExtendedAddressInfo
+
+  :<|> "addresses"
+    :> Header' '[Required] "project_id" BlockfrostApiKey
+    :> Capture "address" ExtendedAddressInfo
     :> "utxos"
     :> Get '[JSON] [RawSwapInfo]
 
@@ -125,7 +162,7 @@ type BlockfrostApi
     :> Capture "datum_hash" String
     :> Get '[JSON] InlinePriceDatum
 
-beaconAddressListApi :<|> addressInfoApi :<|> datumInfoApi = client api
+beaconAddressListApi :<|> extendedAddressInfoApi :<|> addressUTxOsApi :<|> datumInfoApi = client api
   where
     api :: Proxy BlockfrostApi
     api = Proxy
@@ -133,58 +170,93 @@ beaconAddressListApi :<|> addressInfoApi :<|> datumInfoApi = client api
 -------------------------------------------------
 -- Query Blockfrost Function
 -------------------------------------------------
-type ReferenceMap = Map String String
-type DatumMap = Map String InlinePriceDatum
+-- | Steps for getting all necessary information:
+-- 1) Get all addresses that currently hold the beacon.
+-- 2) Get the extended address information for each address.
+--      - returns how much of each asset is present.
+-- 3) Filter out addresses that do not contain any of the offered asset.
+-- 4) Get the information for each utxo at each of the remaining addresses.
+--      - This also returns the reference script utxo.
+--      - Blockfrost returns datum hashes even if the datum is inline.
+--      - Blockfrost provides a separate query to convert datum hash to inline.
+-- 5) Get the actual inline datum from the datum hash of the previous query.
+-- 6) Parse the results into a user friendly format.
+queryBlockfrost :: BlockfrostApiKey 
+                -> CurrencySymbol 
+                -> (CurrencySymbol,TokenName) 
+                -> ClientM [AvailableSwap]
+queryBlockfrost apiKey beaconSym (offeredSym,offeredTokName) = do
+  -- | Get all the addresses that currently hold the beacon
+  addrs <- beaconAddressListApi apiKey (BeaconId beaconSym)
+  -- | Get the extended information for each address.
+  exAddrInfo <- mapM (extendedAddressInfoApi apiKey) addrs
+  -- | Filter all addresses for those that contain the target asset.
+  -- Then get all of the information for each utxo at each address
+  swapUTxOs <- mapM (addressUTxOsApi apiKey) $ filteredExAddresses exAddrInfo
+  -- | Split each group of utxos into: reference script utxo, swappable utxos, and datum map
+  groupedInfo <- mapM splitInfo swapUTxOs
 
-queryBlockfrost :: BlockfrostApiKey -> BeaconId -> TargetId -> ClientM [AvailableSwap]
-queryBlockfrost apiKey beacon target = do
-    addrs <- beaconAddressListApi apiKey beacon
-    swapUTxOs <- mapM (addressInfoApi apiKey) addrs
-    let rMap = refMap Map.empty addrs swapUTxOs
-        allUTxOs = concat swapUTxOs
-        nonRefUTxOs = filter (not . isJust . referenceScriptHash) allUTxOs
-    datumMap <- datums Map.empty (nub $ map dataHash allUTxOs)
-    return $ convert target nonRefUTxOs rMap datumMap
+  -- | Return the parsed info
+  return $ concatMap convert groupedInfo
 
   where
-    -- | Create a map from address to reference script TxIxs
-    refMap :: Map.Map String String -> [SwapAddress] -> [[RawSwapInfo]] -> ReferenceMap
-    refMap rMap [] _ = rMap
-    refMap rMap _ [] = rMap
-    refMap rMap (SwapAddress addr : as) (ss:sss) = 
-      let Just s = find (\z -> isJust $ referenceScriptHash z) ss
-          txIx = txHash s <> "#" <> show (ix s)
-      in refMap (Map.insert addr txIx rMap) as sss
+    offeredUnit :: String
+    offeredUnit
+      | offeredSym == adaSymbol = "lovelace"
+      | otherwise = show offeredSym <> drop 2 (show offeredTokName) -- ^ Drop prefix
 
-    -- | Create a map from datumHash to inline datum value
-    datums :: Map.Map String InlinePriceDatum 
-           -> [Maybe String] 
-           -> ClientM (Map.Map String InlinePriceDatum)
-    datums datumMap [] = return datumMap
-    datums datumMap (d:ds) = case d of
-      Nothing -> datums datumMap ds
-      Just d' -> do
-        i <- datumInfoApi apiKey d'
-        datums (Map.insert d' i datumMap) ds
+    -- | Filter for only the addresses that contain the offered asset.
+    filteredExAddresses :: [ExtendedAddressInfo] -> [ExtendedAddressInfo]
+    filteredExAddresses = 
+      let foo = isJust . find ((== offeredUnit) . exUnit) . exAmount
+      in filter foo
 
-convert :: TargetId -> [RawSwapInfo] -> ReferenceMap -> DatumMap -> [AvailableSwap]
-convert _ [] _ _ = []
-convert t@(TargetId target) (s:ss) rMap dMap = 
-    if target `elem` map unit (assets s)
-    then case dataHash s of
-      Just d' -> availableSwap (dMap Map.! d') : convert t ss rMap dMap
-      -- | Skip if there is an issue
-      _ -> convert t ss rMap dMap
-    else convert t ss rMap dMap
+    -- | Create a map from datumHash to inline datum value.
+    datums :: [Maybe String] -> ClientM (Map String InlinePriceDatum)
+    datums dhs =
+      let go datumMap [] = return datumMap
+          go datumMap (d:ds) = case d of
+            Nothing -> go datumMap ds -- ^ Skip if missing datum.
+            Just d' -> do
+              i <- datumInfoApi apiKey d'
+              go (Map.insert d' i datumMap) ds
+      in go Map.empty dhs
+
+    -- | Separate the reference script utxo, the rest of the utxos, and the unique datum hashes
+    -- to lookup. Then lookup the datums and return a Map from datumHash to inline datum.
+    splitInfo :: [RawSwapInfo] -> ClientM (RawSwapInfo,[RawSwapInfo],Map String InlinePriceDatum)
+    splitInfo rs =
+      let foo = isJust . (find ((== show beaconSym) . rawUnit)) . rawAssets
+          (beaconUtxos,otherUtxos) = partition foo rs
+          maybeDatumHashes = nub $ map rawDataHash otherUtxos
+      in do
+        iMap <- datums maybeDatumHashes
+        return (head beaconUtxos, otherUtxos, iMap)
+
+-- | Convert to the user facing data type.
+convert :: (RawSwapInfo,[RawSwapInfo],Map String InlinePriceDatum) 
+        -> [AvailableSwap]
+convert (refUtxoInfo,otherUtxos,datumMap) = convert' otherUtxos
   where
-    txIx :: String
-    txIx = txHash s <> "#" <> show (ix s)
+    convert' :: [RawSwapInfo] -> [AvailableSwap]
+    convert' [] = []
+    convert' (x:xs) = toAvailableSwap x : convert' xs
 
-    addr :: String 
-    addr = address s
+    toAvailableSwap :: RawSwapInfo -> AvailableSwap
+    toAvailableSwap ri = 
+      let pAddr = rawAddress ri
+          iDatum = fromJust $ Map.lookup (fromJust $ rawDataHash ri) datumMap
+      in AvailableSwap
+        { swapAddress = pAddr
+        , swapRefScriptTxIx = rawTxHash refUtxoInfo <> "#" <> show (rawIx refUtxoInfo)
+        , swapUTxOTxIx = rawTxHash ri <> "#" <> show (rawIx ri)
+        , swapUTxOAmount = map toAvailableAsset $ rawAssets ri
+        , swapUTxOPriceNum = numerator iDatum
+        , swapUTxOPriceDen = denominator iDatum
+        }
 
-    convertAssetInfoToAvailableAsset :: AssetInfo -> AvailableAsset
-    convertAssetInfoToAvailableAsset (AssetInfo u q) = 
+    toAvailableAsset :: RawAssetInfo -> AvailableAsset
+    toAvailableAsset RawAssetInfo{rawUnit=u,rawQuantity=q} =
       if u == "lovelace"
       then AvailableAsset
              { assetPolicyId = u
@@ -196,13 +268,3 @@ convert t@(TargetId target) (s:ss) rMap dMap =
              , assetTokenName = drop 56 u
              , assetQuantity = q
              }
-
-    availableSwap :: InlinePriceDatum -> AvailableSwap
-    availableSwap inlineD = AvailableSwap
-      { swapAddress = addr
-      , swapRefScriptTxIx = rMap Map.! addr
-      , swapUTxOTxIx = txIx
-      , swapUTxOAmount = map convertAssetInfoToAvailableAsset $ assets s
-      , swapUTxOPriceNum = numerator inlineD
-      , swapUTxOPriceDen = denominator inlineD
-      }

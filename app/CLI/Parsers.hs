@@ -16,7 +16,7 @@ parseCommand = hsubparser $ mconcat
   [ command "swaps" 
       (info parseScriptCmd $ progDesc "Commands for swapping assets.")
   , command "beacons"
-      (info parseBeaconsCmd $ progDesc "Commands for using the beacons.")
+      (info parseBeaconsCmd $ progDesc "Commands for mintin/burning the DEX beacons.")
   , command "query"
       (info parseQueryAvailableSwaps $ progDesc "Command for querying available swaps for a trading pair.")
   ]

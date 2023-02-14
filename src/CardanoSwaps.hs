@@ -468,7 +468,7 @@ mkBeaconPolicy appName dappHash r ctx@ScriptContext{scriptContextTxInfo = info} 
     
     validDatum :: SwapDatum -> Bool
     validDatum datum
-      | swapBeacon datum /= (Just beaconSym) = traceError "Datum beacon not Just beaconPolicyId"
+      | swapBeacon datum /= Just beaconSym = traceError "Datum beacon not Just beaconPolicyId"
       -- | Price can be ignored since this utxo cannot be used in a swap.
       | otherwise = True
 

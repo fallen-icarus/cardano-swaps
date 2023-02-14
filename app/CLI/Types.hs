@@ -24,7 +24,7 @@ data SwapCmd
 
 data BeaconCmd
   = ExportBeaconPolicy !Asset !Asset !FilePath
-  | CreateBeaconDatum !Asset !Asset !DatumPrice !FilePath
+  | CreateBeaconDatum !Asset !Asset !FilePath
   | CreateBeaconRedeemer !BeaconRedeemer !FilePath
 
 data DatumPrice = NewDatum !Price | WeightedPrice ![UtxoPriceInfo]

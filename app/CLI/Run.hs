@@ -55,8 +55,8 @@ runSwapCmd swapCmd = case swapCmd of
 runBeaconCmd :: BeaconCmd -> IO ()
 runBeaconCmd beaconCmd = case beaconCmd of
     ExportBeaconPolicy askedAsset offeredAsset file -> exportPolicy askedAsset offeredAsset file
-    CreateBeaconDatum askedAsset offeredAsset datumPrice file -> 
-      createDatum askedAsset offeredAsset datumPrice file
+    CreateBeaconDatum askedAsset offeredAsset file -> 
+      createDatum askedAsset offeredAsset file
     CreateBeaconRedeemer r file -> createRedeemer r file
   where
     createRedeemer :: BeaconRedeemer -> FilePath -> IO ()
@@ -64,11 +64,11 @@ runBeaconCmd beaconCmd = case beaconCmd of
       writeData file r
       putStrLn "Beacon redeemer created successfully."
 
-    createDatum :: Asset -> Asset -> DatumPrice -> FilePath -> IO ()
-    createDatum askedAsset offeredAsset datumPrice file = do
+    createDatum :: Asset -> Asset -> FilePath -> IO ()
+    createDatum askedAsset offeredAsset file = do
       let beaconSymbol' = beaconSymbol $ assets2SwapConfig askedAsset offeredAsset
       writeData file $ SwapDatum 
-        { swapPrice = convert2price datumPrice
+        { swapPrice = fromGHC $ fromInteger 0 -- ^ Hard-coded to zero. Never actually used in swaps.
         , swapBeacon = Just beaconSymbol'
         }
       putStrLn "Special datum for beacon created successfully."

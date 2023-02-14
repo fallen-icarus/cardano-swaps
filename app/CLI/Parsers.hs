@@ -73,7 +73,7 @@ pExportBeaconPolicy :: Parser BeaconCmd
 pExportBeaconPolicy = ExportBeaconPolicy <$> pAsked <*> pOffered <*> pOutputFile
 
 pCreateBeaconDatum :: Parser BeaconCmd
-pCreateBeaconDatum = CreateBeaconDatum <$> pAsked <*> pOffered <*> pDatumPrice <*> pOutputFile
+pCreateBeaconDatum = CreateBeaconDatum <$> pAsked <*> pOffered <*> pOutputFile
 
 pCreateBeaconRedeemer :: Parser BeaconCmd
 pCreateBeaconRedeemer =

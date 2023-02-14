@@ -1,8 +1,7 @@
 # Tests
 
-:important: `Close`,`Update`, and `Swap` datum all use the same input and output check functions. These functions were only tested once. If different functions are ever used, these tests will need to be re-written.
-
 ## Beacons
+- [x] Unique beacon for every swap trading pair.
 
 ### Minting
 - [x] Only one beacon can be minted per tx.
@@ -18,17 +17,25 @@
 - [x] The beacon must be minted to an address with a staking credential.
   - [x] Allow if stake pubkey used.
   - [x] Allow if staking script used.
+  - [x] Fail if address doesn't have a staking credential
 - [x] The beacon must be stored in a utxo containing the proper beacon symbol in the datum.
+   - [x] Fail if different symbol in datum.
+   - [x] Fail if swapBeacon == Nothing.
+   - [x] Fail if beacon not stored with inline datum.
 - [x] Fail if the burn redeemer is used to mint.
 
 ### Burning
 - [x] Always allow burning.
-- [x] Fail if mint redeemer used to burn.
+  - [x] Allows burning many beacons.
+  - [x] Allows burning a single beacon.
+- [x] Must use burn redeemer.
+  - [x] Fail if mint redeemer used to burn.
 
 ## DEX
 
 ### Close
 - [x] All beacons in inputs must be burned.
+  - [x] Allows closing non-beacon utxos.
 - [ ] Staking credential must approve.
   - [x] Stake pubkey must sign tx.
   - [ ] Staking script must be executed in tx.

@@ -101,6 +101,8 @@ data CloseAddressParams = CloseAddressParams
   , closeAddress :: Address
   , closeAll :: Bool  -- ^ This will overshadow closeSpecificUtxos.
   , closeSpecificUtxos :: [(SwapDatum',Value)]
+  , closeWithNewOutputs :: [(Maybe SwapDatum',Value)]
+  , closeWithNewDatumAsInline :: Bool
   } deriving (Generic,ToJSON,FromJSON,ToSchema)
 
 data UpdateSwapsParams = UpdateSwapsParams
@@ -115,6 +117,7 @@ data UpdateSwapsParams = UpdateSwapsParams
 data SwapAssetsParams = SwapAssetsParams
   { swapAddressSwapConfig :: SwapConfig'
   , swappableAddress :: Address
+  , swapAll :: Bool
   , swapUtxos :: [(SwapDatum',Value)]
   , swapChange :: [(Maybe SwapDatum',Value)]
   , swapChangeDatumAsInline :: Bool
@@ -264,6 +267,10 @@ closeLiveAddress CloseAddressParams{..} = do
       swapValHash = swapValidatorHash $ convert2SwapConfig closeAddressSwapConfig
 
       closeRedeemer = toRedeemer Close
+
+      toDatum'
+        | closeWithNewDatumAsInline = TxOutDatumInline . toDatum . convert2SwapDatum
+        | otherwise = TxOutDatumHash . toDatum . convert2SwapDatum
       
   swapUtxos <- utxosAt closeAddress
   userPubKeyHash <- ownFirstPaymentPubKeyHash
@@ -302,6 +309,12 @@ closeLiveAddress CloseAddressParams{..} = do
            )
         -- | Must be signed by stake pubkey (same as payment for this model)
         <> mustBeSignedBy userPubKeyHash
+        -- | Add new outputs
+        <> (foldl'
+              (\acc (d,v) -> acc <> mustPayToAddressWith closeAddress (fmap toDatum' d) Nothing v)
+              mempty
+              closeWithNewOutputs
+           )
   
   ledgerTx <- submitTxConstraintsWith @Void lookups tx'
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
@@ -371,19 +384,29 @@ swapAssets SwapAssetsParams{..} = do
   
   availUtxos <- utxosAt swappableAddress
 
-  let lookups = Constraints.unspentOutputs availUtxos
-             <> plutusV2OtherScript swapVal
+  let scriptRef = (\(Just (ref,_)) -> ref)
+                $ find (isJust . view decoratedTxOutReferenceScript . snd) 
+                $ Map.toList availUtxos
+      lookups = if swapAll
+                then Constraints.unspentOutputs availUtxos
+                else Constraints.unspentOutputs availUtxos
+                  <> plutusV2OtherScript swapVal
       tx' =
-        -- | Must spend all utxos to swap
-        (foldl' 
-            (\a (d,v) -> a 
-              <> mustSpendScriptOutputWithMatchingDatumAndValue 
-                    swapValHash 
-                    (== toDatum (convert2SwapDatum d)) 
-                    (==v) 
-                    swapRedeemer) 
-            mempty 
-            swapUtxos
+        -- | Must spend all utxos to be swapped
+        (if swapAll
+         then foldl' 
+                (\a i -> a <> mustSpendScriptOutputWithReference i swapRedeemer scriptRef)
+                mempty
+                (Map.keys availUtxos)
+         else foldl' 
+                (\a (d,v) -> a 
+                        <> mustSpendScriptOutputWithMatchingDatumAndValue 
+                              swapValHash 
+                              (== toDatum (convert2SwapDatum d)) 
+                              (==v) 
+                              swapRedeemer) 
+                mempty 
+                swapUtxos
         )
         -- | Must output change to script address
         <> (foldl'

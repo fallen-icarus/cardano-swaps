@@ -74,10 +74,13 @@ tests :: TestTree
 tests = do
   let opts = defaultCheckOptions & emulatorConfig .~ emConfig
   testGroup "Burning Beacons"
-    [ checkPredicateOptions opts "Allows burning a single beacon"
+    [ -- | Always allow burning.
+      checkPredicateOptions opts "Allows burning a single beacon"
         assertNoFailedTransactions burnSingleBeacon
     , checkPredicateOptions opts "Allows burning multiple beacons"
         assertNoFailedTransactions burnMulitpleBeacons
+
+      -- | Must use burn redeemer.
     , checkPredicateOptions opts "Fail if mint redeemer used to burn"
         (Test.not assertNoFailedTransactions) burnWithMintRedeemer
     ]

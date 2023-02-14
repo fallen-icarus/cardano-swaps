@@ -726,39 +726,52 @@ tests :: TestTree
 tests = do
   let opts = defaultCheckOptions & emulatorConfig .~ emConfig
   testGroup "Creating Live Addresses"
-    [ testCase "Unique beacons for every swap config" uniqueBeaconsForEachSwapConfig
-    , checkPredicateOptions opts "Successfully create live address using a staking pubkey"
-        assertNoFailedTransactions createLiveAddressWithStakePubKey
-    , checkPredicateOptions opts "Successfully create live address using a staking script"
-        assertNoFailedTransactions createLiveAddressWithStakeScript
-    , checkPredicateOptions opts "Fail if creating live address without a staking credential"
-        (Test.not assertNoFailedTransactions) createLiveAddressWithNoStakingCred
-    , checkPredicateOptions opts "Fail if beacon stored with different reference script than the address' spending script"
-        (Test.not assertNoFailedTransactions) createLiveAddressWithDifferentRefScript
-    , checkPredicateOptions opts "Fail if beacon stored with dapp spending reference script for different swap pair"
-        (Test.not assertNoFailedTransactions) createLiveAddressWithWrongSwapConfig
-    , checkPredicateOptions opts "Fail if beacon stored with datum using different swapBeacon than beacon's policy id"
-        (Test.not assertNoFailedTransactions) createLiveAddressWithWrongBeaconSymbolInDatum
-    , checkPredicateOptions opts "Fail if beacon stored with Nothing for datum's swapBeacon"
-        (Test.not assertNoFailedTransactions) createLiveAddressWithNoBeaconSymbolInDatum
-    , checkPredicateOptions opts "Fail if beacon not stored with a reference script"
-        (Test.not assertNoFailedTransactions) createLiveAddressWithoutRefScript
+    [ -- | Unique beacon for every swap trading pair.
+      testCase "Unique beacons for every swap config" uniqueBeaconsForEachSwapConfig
+
+      -- | The beacon must be stored in an address locked by the Dapp's spending script for that swap pair.
     , checkPredicateOptions opts "Fail if beacon minted to an address locked by a non-dapp spending script"
         (Test.not assertNoFailedTransactions) createLiveAddressWithDifferentSpendingScript
     , checkPredicateOptions opts "Fail if beacon minted to an address locked by a dapp spending script for a different swap pair"
         (Test.not assertNoFailedTransactions) createLiveAddressWithWrongDappSpendingScript
     , checkPredicateOptions opts "Fail if beacon minted to an address protected by a pubkey"
         (Test.not assertNoFailedTransactions) createLiveAddressLockedByPubKey
+
+      -- | The beacon must be stored with the reference script for the Dapp's spending script for that swap pair.
+    , checkPredicateOptions opts "Fail if beacon stored with different reference script than the address' spending script"
+        (Test.not assertNoFailedTransactions) createLiveAddressWithDifferentRefScript
+    , checkPredicateOptions opts "Fail if beacon stored with dapp spending reference script for different swap pair"
+        (Test.not assertNoFailedTransactions) createLiveAddressWithWrongSwapConfig
+    , checkPredicateOptions opts "Fail if beacon not stored with a reference script"
+        (Test.not assertNoFailedTransactions) createLiveAddressWithoutRefScript
+
+      -- | Beacon must be minted to an address with a staking credential.
+    , checkPredicateOptions opts "Successfully create live address using a staking pubkey"
+        assertNoFailedTransactions createLiveAddressWithStakePubKey
+    , checkPredicateOptions opts "Successfully create live address using a staking script"
+        assertNoFailedTransactions createLiveAddressWithStakeScript
+    , checkPredicateOptions opts "Fail if creating live address without a staking credential"
+        (Test.not assertNoFailedTransactions) createLiveAddressWithNoStakingCred
+
+      -- | The beacon must be stored in a utxo containing the proper beacon symbol in the datum.
+    , checkPredicateOptions opts "Fail if beacon stored with datum using different swapBeacon than beacon's policy id"
+        (Test.not assertNoFailedTransactions) createLiveAddressWithWrongBeaconSymbolInDatum
+    , checkPredicateOptions opts "Fail if beacon stored with Nothing for datum's swapBeacon"
+        (Test.not assertNoFailedTransactions) createLiveAddressWithNoBeaconSymbolInDatum
+    , checkPredicateOptions opts "Fail if beacon stored with non-inline datum"
+        (Test.not assertNoFailedTransactions) createLiveAddressWithNonInlineDatums
+    
+      -- | Only one beacon can be minted per tx. The beacon must use the empty token name.
     , checkPredicateOptions opts "Fail if too many beacons minted"
         (Test.not assertNoFailedTransactions) createLiveAddressWithTooManyBeacons
     , checkPredicateOptions opts "Fail if beacon minted with wrong token name"
         (Test.not assertNoFailedTransactions) createLiveAddressWithWrongBeaconTokenName
-    , checkPredicateOptions opts "Fail if burn redeemer used to mint beacons"
-        (Test.not assertNoFailedTransactions) createLiveAddressWithBurnRedeemer
-    , checkPredicateOptions opts "Fail if beacon stored with non-inline datum"
-        (Test.not assertNoFailedTransactions) createLiveAddressWithNonInlineDatums
     , checkPredicateOptions opts "Fail if multiple kinds of beacons minted"
         (Test.not assertNoFailedTransactions) createLiveAddressWithMultipleKindsOfBeacons
+
+      -- | Fail if the burn redeemer is used to mint.
+    , checkPredicateOptions opts "Fail if burn redeemer used to mint beacons"
+        (Test.not assertNoFailedTransactions) createLiveAddressWithBurnRedeemer
     ]
 
 testTrace :: IO ()

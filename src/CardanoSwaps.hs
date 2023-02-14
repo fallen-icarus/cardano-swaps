@@ -269,7 +269,7 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
     noBeaconInput = case swapBeacon swapDatum of
       Nothing -> True
       Just beaconSym ->
-        traceIfFalse "Cannot consume beacon utxo" (isZero $ currencyInputs beaconSym)
+        traceIfFalse "No beacons allowed in tx inputs" (isZero $ currencyInputs beaconSym)
 
     -- | Get the credential for this input.
     -- Used to check asset flux for address and ensure staking credential approves when necessary.

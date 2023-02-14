@@ -1,100 +1,97 @@
 # Variables
-dir="../assets/plutus-files4/"
+dir="../assets/swap-files/"
 tmpDir="../assets/tmp/"
-swapScriptFile="${dir}swap01.plutus"
-swapScriptAddrFile="${dir}swap01.addr"
-stakingScriptFile="${dir}staking01.plutus"
-stakingScriptAddrFile="${dir}staking01.addr"
-swapDatumFile="${dir}price.json"
-beaconDatumFile="${dir}beaconDatum.json"
-beaconRedeemerFile="${dir}beaconRedeemer.json"
-beaconVaultScriptFile="${dir}beaconVault.plutus"
-beaconVaultScriptAddrFile="${dir}beaconVault.addr"
-beaconPolicyFile="${dir}beaconPolicy.plutus"
 
-# Create the personal swap script file
-cardano-swaps swap-script create-script \
-  --owner-payment-key-hash $(cat ../assets/wallets/01.pkh) \
+spendingScriptFile="${dir}spend.plutus"
+beaconPolicyFile="${dir}beacon.plutus"
+
+swapAddrFile="${dir}swap.addr"
+
+swapBeaconDatumFile="${dir}beaconDatum.json"
+swapPositionDatumFile="${dir}positionDatum.json"
+
+beaconRedeemerFile="${dir}mint.json"
+
+# Export the spending script for that trading pair.
+cardano-swaps swaps export-script \
   --offered-asset-is-ada \
   --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --asked-asset-token-name 4f74686572546f6b656e0a \
-  --out-file $swapScriptFile
+  --out-file $spendingScriptFile
 
-# Create the staking script file
-cardano-swaps staking-script create-script \
-  --owner-payment-key-hash $(cat ../assets/wallets/01.pkh) \
-  --out-file $stakingScriptFile
+# Export the beacon policy for that trading pair.
+cardano-swaps beacons export-policy \
+  --offered-asset-is-ada \
+  --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --asked-asset-token-name 4f74686572546f6b656e0a \
+  --out-file $beaconPolicyFile
 
-# Create the swap address with staking capabilities
+# Create the swap address.
 cardano-cli address build \
-  --payment-script-file $swapScriptFile \
-  --stake-script-file $stakingScriptFile \
+  --payment-script-file $spendingScriptFile \
+  --stake-verification-key-file "../assets/wallets/01Stake.vkey" \
   --testnet-magic 1 \
-  --out-file $swapScriptAddrFile
+  --out-file $swapAddrFile
 
-# Create the stake address
-cardano-cli stake-address build \
-  --stake-script-file $stakingScriptFile \
-  --testnet-magic 1 \
-  --out-file $stakingScriptAddrFile
-
-# Create the desired Price datum
-cardano-swaps swap-script create-datum \
-  --swap-price 1.5 \
-  --out-file $swapDatumFile
-
-# Get the beacon policy id
-beaconPolicyId=$(cardano-swaps beacon policy-id --stdout)
-
-# Generate the beacon token name
-beaconTokenName=$(cardano-swaps beacon generate-token-name \
-  --offered-asset-is-ada \
-  --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asked-asset-token-name 4f74686572546f6b656e0a \
-  --stdout)
+# Get the beacon policy id.
+beaconPolicyId=$(cardano-cli transaction policyid \
+  --script-file $beaconPolicyFile)
 
 # Helper beacon variable
-beacon="${beaconPolicyId}.${beaconTokenName}"
+beacon="${beaconPolicyId}."
 
-# Get the beacon vault address
-cardano-swaps beacon vault-script --out-file $beaconVaultScriptFile
+# Create the datum for storing with the beacon
+cardano-swaps beacons create-datum \
+  --offered-asset-is-ada \
+  --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --asked-asset-token-name 4f74686572546f6b656e0a \
+  --out-file $swapBeaconDatumFile
 
-cardano-cli address build \
-  --payment-script-file $beaconVaultScriptFile \
-  --testnet-magic 1 \
-  --out-file $beaconVaultScriptAddrFile
+# Create the datum for the first swap positions
+cardano-swaps swaps create-datum \
+  --swap-price 2 \
+  --out-file $swapPositionDatumFile
 
-# Create the datum for the beacon vault deposit
-cardano-swaps beacon create-datum --out-file $beaconDatumFile
-
-# Create beacon redeemer
-cardano-swaps beacon create-redeemer \
-  --mint-beacon $beaconTokenName \
+# Create the beacon redeemer for minting the beacon.
+cardano-swaps beacons create-redeemer \
+  --mint-beacon \
   --out-file $beaconRedeemerFile
 
-# Get the beacon policy script
-cardano-swaps beacon policy-script --out-file $beaconPolicyFile
-
-# Deposit offered asset into swap address
-# Save reference script at swap address in same utxo as beacon
+# Create the transaction.
 cardano-cli query protocol-parameters \
   --testnet-magic 1 \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in aab3e03a7e1b3f9b462f1887d511e58c2dfafd65eb4b4a79834b967c0af98ce5#1 \
-  --tx-out "$(cat ${swapScriptAddrFile}) + 22000000 lovelace + 1 ${beacon}" \
-  --tx-out-inline-datum-file $swapDatumFile \
-  --tx-out-reference-script-file $swapScriptFile \
-  --tx-out "$(cat ${swapScriptAddrFile}) + 150000000 lovelace" \
-  --tx-out-inline-datum-file $swapDatumFile \
-  --tx-out "$(cat ${beaconVaultScriptAddrFile}) + 2000000 lovelace" \
-  --tx-out-inline-datum-file $beaconDatumFile \
+  --tx-in 29701aaa3c70cdd300d3c4a80d388990f19a1010a774f59eaec10a55b4a39a02#0 \
+  --tx-out "$(cat ${swapAddrFile}) + 23000000 lovelace + 1 ${beacon}" \
+  --tx-out-inline-datum-file $swapBeaconDatumFile \
+  --tx-out-reference-script-file $spendingScriptFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
   --mint "1 ${beacon}" \
   --mint-script-file $beaconPolicyFile \
   --mint-redeemer-file $beaconRedeemerFile \
   --change-address $(cat ../assets/wallets/01.addr) \
-  --tx-in-collateral a4ccc449681f7e99869def7a88807d6f5064ae1f8e5e4178003b40b6cb9852fc#0 \
+  --tx-in-collateral bc54229f0755611ba14a2679774a7c7d394b0a476e59c609035e06244e1572bb#0 \
   --testnet-magic 1 \
   --protocol-params-file "${tmpDir}protocol.json" \
   --out-file "${tmpDir}tx.body"

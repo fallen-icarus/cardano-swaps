@@ -4,9 +4,7 @@
 
 Template bash scripts that follow these steps are available [here](scripts/).
 
-All examples use the PreProduction Testnet.
-
-When testing, it is highly recommended that you change the string passed to the beacon vault pair [here](src/CardanoSwaps.hs#L331). When developers make mistakes (myself included), it can create bad/locked utxos that will appear when you query the beacons. This can complicate your own testing. To avoid this, change the string to something unique to you. **Do this before building the executable in the installations section.** You should remember to change it back when ready to deploy.
+When integration testing, it is highly recommended that you change the string passed to the mkBeaconPolicy function [here](src/CardanoSwaps.hs#L521). When developers make mistakes (myself included), it can create bad/locked utxos that will appear when you query the beacons. This can complicate your own testing. To avoid this, change the string to something unique to you. **Do this before building the executable in the installations section.** You should remember to change it to the desired string for mainnet.
 
 ---
 ## Table of Contents
@@ -18,8 +16,8 @@ When testing, it is highly recommended that you change the string passed to the 
 - [Update swap prices](#update-the-swap-prices)
 - [Add to swap position](#add-to-swap-position)
 - [Delegate the swap address](#delegate-the-swap-address)
-- [Get swap owner](#get-swap-owner)
 - [Query available swaps](#query-available-swaps)
+- [Staking PubKey Hash](#staking-pubkey-hash)
 
 ---
 ## Installing
@@ -62,113 +60,74 @@ An always succeeding minting policy as well as the required redeemer are include
 
 ---
 ## Creating a Swap
-### 1. Get the owner's payment pubkey hash
 
+### Export the spending script for that trading pair
 ``` Bash
-cardano-cli address key-hash \
-  --payment-verification-key-file owner.vkey \
-  --out-file owner.pkh
-```
-
-### 2. Create a personal swap script
-``` Bash
-cardano-swaps swap-script create-script \
-  --owner-payment-key-hash $(cat owner.pkh) \
+cardano-swaps swaps export-script \
   --offered-asset-is-ada \
-  --asked-asset-policy-id <asset_policy_name> \
-  --asked-asset-token-name <asset_token_name> \
-  --out-file swapScript.plutus
+  --asked-asset-policy-id <asked_policy_id> \
+  --asked-asset-token-name <asked_token_name> \
+  --out-file swap.plutus
 ``` 
 To see all possible options, execute `cardano-swaps swap-script create-script --help`. The `offered-asset-is-ada` and `asked-asset-is-ada` options are there to make swapping ADA easier.
 
-### 3. Create the staking script file (Optional)
-``` Bash
-cardano-swaps staking-script create-script \
-  --owner-payment-key-hash $(cat owner.pkh) \
-  --out-file stakingScript.plutus
-```
-
-To see all possible options, execute `cardano-swaps staking-script create-script --help`.
-
-### 4. Create the swap address with staking capabilities
+### Create the swap address with staking capabilities (using a staking pubkey)
 ``` Bash
 cardano-cli address build \
-  --payment-script-file swapScript.plutus \
-  --stake-script-file stakingScript.plutus \
+  --payment-script-file swap.plutus \
+  --stake-verification-key-file ownerStaking.vkey \
   --testnet-magic 1 \
   --out-file swap.addr
 ```
 
-If you would like to use your personal staking key instead, use `--stake-verification-key-file` with your staking key instead of `--stake-script-file` with the staking script.
+If you would like to use a staking script instead, use `--stake-script-file` with your staking script instead of `--stake-verification-key-file` with the staking pubkey.
 
-### 5. Create the stake address (if using a staking script)
+### Export the beacon policy for that trading pair.
 ``` Bash
-cardano-cli stake-address build \
-  --stake-script-file stakingScript.plutus \
-  --testnet-magic 1 \
-  --out-file staking.addr
-```
-
-### 6. Create the price datum
-``` Bash
-cardano-swaps swap-script create-datum \
-  --swap-price 1.75 \
-  --out-file price.json
-```
-
-### 7. Get the beacon policy id
-``` Bash
-cardano-swaps beacon policy-id --stdout
-```
-
-The beacon policy id can be saved to a file if `--out-file` is used instead of `--stdout`. The stdout option makes it easy to use in bash scripts.
-
-### 8. Generate the beacon token name
-``` Bash
-cardano-swaps beacon generate-token-name \
+cardano-swaps beacons export-policy \
   --offered-asset-is-ada \
-  --asked-asset-policy-id <asset_policy_name> \
-  --asked-asset-token-name <asset_token_name> \
-  --stdout
+  --asked-asset-policy-id <asked_policy_id> \
+  --asked-asset-token-name <asked_token_name> \
+  --out-file beacon.plutus
 ```
 
-The beacon token name can be saved to a file if `--out-file` is used instead of `--stdout`.
-
-### 9. Create the full beacon name
-``` Haskell
-beacon = policyId ++ "." ++ tokenName
-```
-
-### 10. Get the beacon vault address
+### Get the beacon policy id.
 ``` Bash
-cardano-swaps beacon vault-script --out-file beaconVault.plutus
-
-cardano-cli address build \
-  --payment-script-file beaconVault.plutus \
-  --testnet-magic 1 \
-  --out-file beaconVault.addr
+beaconPolicyId=$(cardano-cli transaction policyid \
+  --script-file beacon.plutus)
 ```
 
-The beacon vault address will be the same for everyone. However, since it is different for each network id it is not hardcoded into `cardano-swaps` so it will need to be re-derived each time.
-
-### 11. Create the datum for the beacon vault
+### Helper beacon variable
 ``` Bash
-cardano-swaps beacon create-datum --out-file beaconVaultDatum.json
+beacon="${beaconPolicyId}."
 ```
 
-### 12. Create the beacon redeemer
+### Create the datum for storing with the beacon
 ``` Bash
-cardano-swaps beacon create-redeemer \
-  --mint-beacon <beacon_token_name_NOT_THE_FULL_BEACON_NAME> \
-  --out-file beaconRedeemer.json
+cardano-swaps beacons create-datum \
+  --offered-asset-is-ada \
+  --asked-asset-policy-id <asked_policy_id> \
+  --asked-asset-token-name <asked_token_name> \
+  --out-file beaconDatum.json
 ```
 
-### 13. Get the beacon policy script
+Even thought the beacon is being stored in the swap address too, it needs a special datum.
+
+### Create the datum for the first swap positions
 ``` Bash
-cardano-swaps beacon policy-script --out-file beacon.plutus
+cardano-swaps swaps create-datum \
+  --swap-price 2 \
+  --out-file swapDatum.json
 ```
 
-### 14. Build the transaction, sign it, and submit it
+### Create the beacon redeemer for minting the beacon.
+``` Bash
+cardano-swaps beacons create-redeemer \
+  --mint-beacon \
+  --out-file mint.json
+```
+
+### Build the transaction, sign it, and submit it
 ``` Bash
 cardano-cli query protocol-parameters \
   --testnet-magic 1 \
@@ -176,16 +135,14 @@ cardano-cli query protocol-parameters \
 
 cardano-cli transaction build \
   --tx-in <owner_needs_to_pay_tx_fee> \
-  --tx-out "$(cat swap.addr) + 24000000 lovelace + 1 <beacon_full_name>" \
-  --tx-out-inline-datum-file price.json \
+  --tx-out "$(cat swap.addr) + 23000000 lovelace + 1 <beacon_full_name>" \
+  --tx-out-inline-datum-file beaconDatum.json \
   --tx-out-reference-script-file swap.plutus \
-  --tx-out "$(cat beaconVault.addr) + 2000000 lovelace" \
-  --tx-out-inline-datum-file beaconVaultDatum.json \
   --tx-out "$(cat swap.addr) + 150000000 lovelace" \
-  --tx-out-inline-datum-file price.json \
+  --tx-out-inline-datum-file swapDatum.json \
   --mint "1 <beacon_full_name>" \
   --mint-script-file beacon.plutus \
-  --mint-redeemer-file beaconRedeemer.json \
+  --mint-redeemer-file mint.json \
   --change-address $(cat owner.addr) \
   --tx-in-collateral <owner_needs_to_put_up_collateral> \
   --testnet-magic 1 \
@@ -203,56 +160,45 @@ cardano-cli transaction submit \
   --tx-file tx.signed
 ```
 
-The first two tx-outs will be the same for every swap. 24 ADA is required to store the reference script on-chain. This can be recovered upon closing the swap as long as the utxo is given a price datum.
-
-If this transaction successfully builds, then the transaction is guaranteed to succeed on-chain as long as the tx-in utxos still exist.
+If this transaction successfully builds, then the transaction should succeed on-chain as long as the tx-in utxos still exist.
 
 ---
-## Close a swap
-### 1. Create the close redeemer
+## Close a swap using a reference script
+### Export the beacon policy for that trading pair.
 ``` Bash
-cardano-swaps swap-script create-redeemer \
-  --close-swap \
+cardano-swaps beacons export-policy \
+  --offered-asset-is-ada \
+  --asked-asset-policy-id <asked_policy_id> \
+  --asked-asset-token-name <asked_token_name> \
+  --out-file beacon.plutus
+```
+
+### Get the beacon policy id.
+``` Bash
+beaconPolicyId=$(cardano-cli transaction policyid \
+  --script-file beacon.plutus)
+```
+
+### Helper beacon variable
+``` Bash
+beacon="${beaconPolicyId}."
+```
+
+### Create the close redeemer
+``` Bash
+cardano-swaps swaps create-redeemer \
+  --close \
   --out-file close.json
 ```
 
-### 2. Get the beacon policy id
+### Create beacon redeemer
 ``` Bash
-cardano-swaps beacon policy-id --stdout
+cardano-swaps beacons create-redeemer \
+  --burn-beacon \
+  --out-file burn.json
 ```
 
-### 3. Generate the beacon token name
-``` Bash
-cardano-swaps beacon generate-token-name \
-  --offered-asset-is-ada \
-  --asked-asset-policy-id <asset_policy_name> \
-  --asked-asset-token-name <asset_token_name> \
-  --stdout
-```
-
-### 4. Create the full beacon name
-``` Haskell
-beacon = policyId ++ "." ++ tokenName
-```
-
-### 5. Get the beacon policy script
-``` Bash
-cardano-swaps beacon policy-script --out-file beacon.plutus
-```
-
-### 6. Get the beacon vault script
-``` Bash
-cardano-swaps beacon vault-script --out-file beaconVault.plutus
-```
-
-### 7. Create beacon redeemer
-``` Bash
-cardano-swaps beacon create-redeemer \
-  --burn-beacon <beacon_token_name_NOT_THE_FULL_BEACON_NAME> \
-  --out-file beaconRedeemer.json
-```
-
-### 8. Create the transaction, sign it, and submit
+### Create the transaction, sign it, and submit
 ``` Bash
 cardano-cli query protocol-parameters \
   --testnet-magic 1 \
@@ -270,15 +216,11 @@ cardano-cli transaction build \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file close.json \
-  --tx-in <deposit_utxo_at_beacon_vault> \
-  --tx-in-script-file beaconVault.plutus \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file beaconRedeemer.json \
   --mint "-1 <beacon_full_name>" \
   --mint-script-file beacon.plutus \
-  --mint-redeemer-file beaconRedeemer.json \
+  --mint-redeemer-file burn.json \
   --change-address $(cat owner.addr) \
-  --required-signer-hash $(cat owner.pkh) \
+  --required-signer-hash $(cat ownerStaking.pkh) \
   --tx-in-collateral <owner_needs_to_put_up_collateral> \
   --testnet-magic 1 \
   --protocol-params-file protocol.json \
@@ -287,6 +229,7 @@ cardano-cli transaction build \
 cardano-cli transaction sign \
   --tx-body-file tx.body \
   --signing-key-file owner.skey \
+  --signing-key-file ownerStaking.skey \
   --testnet-magic 1 \
   --out-file tx.signed
 
@@ -303,70 +246,45 @@ This part should be repeated for every utxo a swap address:
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file close.json \
 ```
-Make sure to correctly match up all of the swap utxos with the proper reference scripts.
 
-The `--required-signer-hash` option is required to tell the smart contract what key to look for. **This cannot make it so that a non-owner can close a swap**; it just needs to be present to properly build the transaction.
+The `--required-signer-hash` option is required to tell the smart contract what key to look for. **This cannot make it so that a non-owner can close a swap**; it just needs to be present to properly build the transaction. The `ownerStaking.skey` must sign in addition to the usual payment key.
 
-If the transaction is successfully built, then it is guaranteed to work on-chain as long as all tx-in utxos still exist when a stake pool operator goes to add your transaction.
+If the transaction is successfully built, then it is should to work on-chain as long as all tx-in utxos still exist when a stake pool operator goes to add your transaction and the transaction does not exceed the execution limits (if it does, no collateral will be lost).
 
 ---
 ## Perform a swap
-### 1. Create the Swap redeemer
+### Create the Swap redeemer
 ``` Bash
-cardano-swaps swap-script create-redeemer \
-  --swap-assets \
+cardano-swaps swaps create-redeemer \
+  --swap \
   --out-file swap.json
 ```
 
-### 2. Create the swap datum for any change being returned to the swap address
-This part will depend on how many utxos you are looking to use from the swap address. If there is only one utxo being consumed, the following can suffice:
+### Create the swap datum for any change being returned to the swap address
+Sometimes, specifying a decimal is not accurate enough for the DEX. Imagine a fraction like 54322819 / 1128891. A calculator may be forced to round the decimal version which will mean the price datum will defer from the one actually on-chain. For this reason, you can also create datums by directly saying what each utxo has.
 
 ``` Bash
-cardano-swaps swap-script create-datum \
-  --swap-price <decimal_equivalent_of_price_fraction> \
+cardano-swaps create-datum \
+  --utxo-target-asset-balance 10 \
+  --utxo-price-numerator 3 \
+  --utxo-price-denominator 1 \
+  --utxo-target-asset-balance 20 \
+  --utxo-price-numerator 3 \
+  --utxo-price-denominator 2 \
   --out-file price.json
 ```
 
-However, this method may not work for all cases. Imagine a fraction like 54322819 / 1128891. A calculator may be forced to round the decimal version which will mean the price datum will defer from the one actually on-chain.
-
-The other method you can use in this case, and in the case where there are multiple utxos being consumed from the same swap address, is to create a JSON file with the necessary information. `cardano-swaps` can properly create the price datum from this file. First, export the JSON template:
+This part should be repeated for each utxo being swapped:
 
 ``` Bash
-cardano-swaps swap-script create-datum \
-  --swap-price-file-template \
-  --out-file template.json
+  --utxo-target-asset-balance 20 \
+  --utxo-price-numerator 3 \
+  --utxo-price-denominator 2 \
 ```
 
-The JSON file will look like this:
+`cardano-swaps` can properly create the price datum from this. The `utxo-target-asset-balance` is the amount of the offered asset in that utxo. Any other assets included in the utxo can be ignored. This is just for calculating the weighted average price. The price calculated will be identical to the weighted price calculated by the script.
 
-``` JSON
-[
-    {
-        "priceDenominator": 1,
-        "priceNumerator": 1,
-        "utxoAmount": 100
-    },
-    {
-        "priceDenominator": 1,
-        "priceNumerator": 2,
-        "utxoAmount": 200
-    }
-]
-```
-
-The `utxoAmount` is the amount of the offered asset in the swap. Any other assets included in the utxo can be ignored. This is just for calculating the weighted average price. 
-
-Properly edit the template for the necessary number of utxos. You can then create the correct datum using this file:
-
-``` Bash
-cardano-swaps swap-script create-datum \
-  --calc-swap-price-from-file template.json \
-  --out-file price.json
-```
-
-The price calculated will be identical to the weighted price calculated by the script.
-
-### 3. Create the swap transaction, sign it, and submit
+### Create the swap transaction, sign it, and submit
 ``` Bash
 cardano-cli query protocol-parameters \
   --testnet-magic 1 \
@@ -384,8 +302,7 @@ cardano-cli transaction build \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file swap.json \
-  --tx-out "<user_address> 2000000 lovelace + 300 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e0a + 0 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
-  --tx-out "<swap_address> + 4000000 lovelace + 0 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e0a + 250 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-out <change_to_swap_address> \
   --tx-out-inline-datum-file price.json \
   --tx-in-collateral <user_must_provide_collateral> \
   --change-address $(cat user.addr) \
@@ -408,22 +325,22 @@ You are responsible for properly giving the change back to each swap address. Ma
 
 It is possible to create a swap transaction where nothing is actually removed from the swap address. This feature was added for being useful for gradually building up composed swaps when testing.
 
-If the transaction successfully builds, then the swap is guaranteed to work on-chain as long as the tx-in utxos still exist when it gets added to a block. In the event that the utxos no longer exist, the transaction will fail without executing the scripts. This means the user's collateral is safe.
+If the transaction successfully builds, then the swap is should to work on-chain as long as the tx-in utxos still exist when it gets added to a block and the execution limits are not exceeded (if they are, no collateral will be lost). In the event that the utxos no longer exist, the transaction will fail without executing the scripts. This means the user's collateral is safe.
 
-All of the information necessary for generating this transaction can be easily aquired with the `cardano-swaps query-swaps` subcommand (shown later).
+All of the information necessary for generating this transaction can be easily aquired with the `cardano-swaps query` subcommand (shown later).
 
 ---
 ## Update the swap prices
-### 1. Create the Update redeemer
+### Create the Update redeemer
 ``` Bash
-cardano-swaps swap-script create-redeemer \
-  --update-swap-price <desired_price_as_decimal> \
+cardano-swaps swaps create-redeemer \
+  --update \
   --out-file update.json
 ```
 
-### 2. Create the datums for the newly created utxos
+### Create the datums for the newly created utxos
 ``` Bash
-cardano-swaps swap-script create-datum \
+cardano-swaps swaps create-datum \
   --swap-price <desired_price_as_decimal> \
   --out-file price.json
 ```
@@ -437,15 +354,15 @@ cardano-cli query protocol-parameters \
 cardano-cli transaction build \
   --tx-in <owner_must_pay_tx_fee> \
   --tx-in <non_reference_script_utxo_to_be_updated> \
-  --spending-tx-in-reference 294071a64a9ddb540de29880747f148f2b857a7908049f68864162b39c42aaf2#0 \
+  --spending-tx-in-reference <reference_for_swap_utxo> \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file update.json \
-  --tx-out "<swap_address> + 2000000 lovelace + 1000 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e0a" \
+  --tx-out <new_output_value_at_swap_address> \
   --tx-out-inline-datum-file price.json \
   --tx-in-collateral <owner_must_provide_collateral> \
   --change-address $(cat owner.addr) \
-  --required-signer-hash $(cat owner.pkh) \
+  --required-signer-hash $(cat ownerStaking.pkh) \
   --protocol-params-file protocol.json \
   --testnet-magic 1 \
   --out-file tx.body
@@ -453,6 +370,7 @@ cardano-cli transaction build \
 cardano-cli transaction sign \
   --tx-body-file tx.body \
   --signing-key-file owner.skey \
+  --signing-key-file ownerStaking.skey \
   --testnet-magic 1 \
   --out-file tx.signed
 
@@ -463,13 +381,11 @@ cardano-cli transaction submit \
 
 The `--required-signer-hash` is needed to successfully build the transaction. **This does not make non-owners capable of updating the asking price.** It is just necessary to successfully build the transaction.
 
-The reason the `Update` redeemer takes a price argument is to improve script execution efficiency. It is used to make sure the datums are of the proper price.
-
 *You do not need to update all utxos.* You can selectively update utxos as desired. You can also consolidate utxos if desired.
 
-The utxo with the reference script cannot be updated. This is to minimize transaction fees. The reference script can never be consumed in a swap so the datum attached to the reference script is never used. This makes it safe to ignore when updating prices.
+The utxo with the beacon cannot be updated. This is to minimize transaction fees. The beacon utxo can never be consumed in a swap so the datum attached to the beacon is never used. This makes it safe to ignore when updating prices.
 
-If the transaction is successfully built, it is guaranteed to work on-chain as long as the tx-in utxos still exist.
+If the transaction is successfully built, it should to work on-chain as long as the tx-in utxos still exist and execution limits are not exceeded.
 
 ---
 ## Add to swap position
@@ -479,50 +395,36 @@ New positions can always be added to swap addresses. Just output the desired utx
 ## Delegate the swap address
 If the swap address is tied to a user's stake key, then all stake address related actions are identical to how normal user wallets are delegated.
 
-If the swap address is tied to the swap script instead, then delegating is slightly different.
-
-### 1. Create the staking redeemer
-``` Bash
-cardano-swaps staking-script create-redeemer --out-file stake.json
-```
-
-### 2. Create the registration certificate
+### Create the registration certificate
 ``` Bash
 cardano-cli stake-address registration-certificate \
-  --stake-script-file staking.plutus \
+  --stake-verification-key-file ownerStaking.vkey \
   --out-file registration.cert
 ```
 
-### 3. Create the delegation certificate
+### Create the delegation certificate
 ``` Bash
 cardano-cli stake-address delegation-certificate \
-  --stake-script-file staking.plutus \
+  --stake-verification-key-file ownerStaking.vkey \
   --stake-pool-id <desired_pool_id> \
   --out-file delegation.cert
 ```
 
-### 4. Create the transaction, sign it, and submit
+### Create the transaction, sign it, and submit
 ``` Bash
-cardano-cli query protocol-parameters \
-  --testnet-magic 1 \
-  --out-file protocol.json
-
 cardano-cli transaction build \
   --tx-in <owner_must_pay_fee> \
   --tx-in-collateral <owner_must_provide_collateral> \
   --change-address owner.addr \
   --certificate-file registration.cert \
   --certificate-file delegation.cert \
-  --certificate-script-file staking.plutus \
-  --certificate-redeemer-file stake.json \
-  --required-signer-hash $(cat owner.pkh) \
-  --protocol-params-file protocol.json \
   --testnet-magic 1 \
   --out-file tx.body
 
 cardano-cli transaction sign \
   --tx-body-file tx.body \
   --signing-key-file owner.skey \
+  --signing-key-file ownerStaking.skey \
   --testnet-magic 1 \
   --out-file tx.signed
 
@@ -530,67 +432,16 @@ cardano-cli transaction submit \
   --testnet-magic 1 \
   --tx-file tx.signed
 ```
-Redelegating and deregistering are done similarly.
-
-**When the staking script is used, staking actions require the owner's payment skey signature, not the owner's staking skey signature.**
-
-If the transaction successfully builds, then the transaction is guaranteed to work on-chain. 
-
----
-## Get swap owner
-### 1. Create the Info redeemer
-``` Bash
-cardano-swaps swap-script create-redeemer \
-  --owner-info \
-  --out-file info.json
-```
-
-### 2. Build the transaction; there is no need to sign and submit it
-``` Bash
-cardano-cli query protocol-parameters \
-  --testnet-magic 1 \
-  --out-file protocol.json
-
-cardano-cli transaction build \
-  --tx-in <any_utxo_from_swap_address> \
-  --spending-tx-in-reference <swap_reference_script_tx_ix> \
-  --spending-plutus-script-v2 \
-  --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file info.json \
-  --tx-in-collateral <user_must_provide_collateral> \
-  --change-address $(cat user.addr) \
-  --protocol-params-file protocol.json \
-  --testnet-magic 1 \
-  --out-file tx.body
-```
-
-Building this transaction is guaranteed to fail. In order to see the owner information, it must look legitimate which is why the user must still provide the collateral. The collateral is safe since this transaction will not actually be submitted.
-
-Here is what the output looks like:
-
-``` Txt
-Command failed: transaction build  Error: The following scripts have execution failures:
-the script for transaction input 0 (in the order of the TxIds) failed with: 
-The Plutus script evaluation failed: An error has occurred:  User error:
-The machine terminated because of an error, either from a built-in function or from an explicit use of 'error'.
-Caused by: [
-  (builtin decodeUtf8)
-  (con bytestring #fe90abc294e5f876d44f9b39583f2e6d905322c4735e3bda2928342f)
-]
-Script debugging logs: 
-```
-
-`fe90abc294e5f876d44f9b39583f2e6d905322c4735e3bda2928342f` is the owner's payment pubkey hash. This is not the proper use of `decodeUtf8` but it works.
 
 ---
 ## Query available swaps
 For now, `cardano-swaps` only supports the Blockfrost api. This is due to Koios not having a PreProduction Testnet api. You will need a Blockfrost ApiKey for this step. You can go [here](https://blockfrost.io/#pricing) to get one for free; all that is required is an email address.
 
-To see how to use the command, execute `cardano-swaps query-swaps --help`. The results can either be saved to a file or displayed to stdout.
+To see how to use the command, execute `cardano-swaps query --help`. The results can either be saved to a file or displayed to stdout.
 
 An example usage is below:
 ``` Bash
-cardano-swaps query-swaps \
+cardano-swaps query \
   --offered-asset-is-ada \
   --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --asked-asset-token-name 4f74686572546f6b656e0a \
@@ -620,10 +471,20 @@ When the above result is piped to `jq`, here is how it looks:
 
 Only one utxo was found and that utxo only has lovelace in it. This output contains everything you need to remotely swap with it.
 
-As of right now, the `cardano-swaps query-swap` command will return the error of `"The requested component has not been found."` when there are no swap addresses with that beacon. This is due to the beacon name being part of the Blockfrost api url like:
+As of right now, the `cardano-swaps query` command will return the error of `"The requested component has not been found."` when that beacon has never been minted before. This is due to the beacon name being part of the Blockfrost api url like:
 
 ``` Url
 https://cardano-preprod.blockfrost.io/api/v0/assets/{beacon_name}/addresses
 ```
 
 A future version can address this.
+
+---
+## Staking PubKey Hash
+To get the staking pubkey hash from a staking verification key, you can use this command:
+
+``` Bash
+cardano-cli stake-address key-hash \
+  --stake-verification-key-file staking.vkey \
+  --out-file staking.pkh
+```

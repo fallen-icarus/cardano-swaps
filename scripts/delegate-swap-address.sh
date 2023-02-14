@@ -28,6 +28,7 @@ cardano-cli transaction build \
 cardano-cli transaction sign \
   --tx-body-file "${tmpDir}tx.body" \
   --signing-key-file "../assets/wallets/01.skey" \
+  --signing-key-file "../assets/wallets/01Stake.skey" \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.signed"
 

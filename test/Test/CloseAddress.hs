@@ -567,7 +567,7 @@ benchmarkCloseWithBurningAndNoNewOutputs = do
           ( Just swapDatum'
           , singleton beaconSymbol' adaToken 1 <> refScriptDeposit
           )
-      , createLiveInitialPositions = take 7 $ repeat $
+      , createLiveInitialPositions = take 1 $ repeat $
           ( Just swapDatum'{swapBeacon'=Nothing}
           , lovelaceValueOf 10_000_000
           )
@@ -589,4 +589,4 @@ benchmarkCloseWithBurningAndNoNewOutputs = do
       }
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig benchmarkCloseWithBurningAndNoNewOutputs
+testTrace = runEmulatorTraceIO' def benchConfig benchmarkCloseWithBurningAndNoNewOutputs

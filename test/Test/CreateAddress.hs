@@ -819,4 +819,4 @@ benchmarkScenario = do
       }
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig benchmarkScenario
+testTrace = runEmulatorTraceIO' def benchConfig benchmarkScenario

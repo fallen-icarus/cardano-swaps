@@ -38,6 +38,7 @@ import Wallet.Emulator.Wallet
 import Data.List (foldl')
 import Prelude as Haskell (Semigroup (..), String)
 import Plutus.Script.Utils.V2.Generators
+import Cardano.Api.Shelley (ExecutionUnits (..),ProtocolParameters (..))
 
 import CardanoSwaps
 
@@ -180,6 +181,18 @@ emConfig = EmulatorConfig (Left $ Map.fromList wallets) def
       , (knownWallet 3, user3)
       , (knownWallet 4, user4)
       ]
+
+benchConfig :: EmulatorConfig
+benchConfig = emConfig & params .~ params'
+  where 
+    params' :: Params
+    params' = def{emulatorPParams = pParams'}
+
+    pParams' :: PParams
+    pParams' = pParamsFromProtocolParams protoParams
+
+    protoParams :: ProtocolParameters
+    protoParams = def{protocolParamMaxTxExUnits = Just (ExecutionUnits {executionSteps = 10000000000, executionMemory = 3000000})}
 
 refScriptDeposit :: Value
 refScriptDeposit = lovelaceValueOf 23_000_000

@@ -19,7 +19,7 @@ module Test.CreateAddress
   testTrace
 ) where
 
-import Prelude (IO)
+import Prelude (IO,repeat)
 import Control.Lens hiding (from)
 import PlutusTx.Prelude
 import Plutus.Trace
@@ -774,5 +774,49 @@ tests = do
         (Test.not assertNoFailedTransactions) createLiveAddressWithBurnRedeemer
     ]
 
+-------------------------------------------------
+-- Benchmark Test
+-------------------------------------------------
+benchmarkScenario :: EmulatorTrace ()
+benchmarkScenario = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let beaconSwapConfig = swapConfig1
+      addressSwapConfig = swapConfig1
+
+      beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
+
+      swapDatum' = SwapDatum'
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Just beaconSymbol'
+        }
+
+      swapAddress = Address 
+        (ScriptCredential $ swapValidatorHash $ convert2SwapConfig addressSwapConfig)
+        (Just $ StakingHash 
+              $ PubKeyCredential 
+              $ unPaymentPubKeyHash 
+              $ mockWalletPaymentPubKeyHash 
+              $ knownWallet 1)
+
+  callEndpoint @"create-live-swap-address" h1 $
+    CreateLiveSwapAddressParams
+      { beaconsMinted = [(adaToken,1)]
+      , useMintRedeemer = True
+      , createLiveBeaconSwapConfig = beaconSwapConfig
+      , createLiveAddressSwapConfig = addressSwapConfig
+      , createLiveAddress = swapAddress
+      , createLiveRefScript = Proper
+      , createLiveRefScriptUtxo =
+          ( Just swapDatum'
+          , singleton beaconSymbol' adaToken 1 <> refScriptDeposit
+          )
+      , createLiveInitialPositions = take 84 $ repeat $
+          ( Just swapDatum'{swapBeacon' = Nothing}
+          , lovelaceValueOf 10_000_000
+          )
+      , createLiveDatumsAsInline = True
+      }
+
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig createLiveAddressWithMultipleKindsOfBeacons
+testTrace = runEmulatorTraceIO' def emConfig benchmarkScenario

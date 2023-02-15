@@ -19,7 +19,7 @@ module Test.CloseAddress
   testTrace
 ) where
 
-import Prelude (IO)
+import Prelude (IO,repeat)
 import Control.Monad (void)
 import Control.Lens hiding (from)
 import PlutusTx.Prelude
@@ -530,5 +530,63 @@ tests = do
         (Test.not assertNoFailedTransactions) closeAddressWithNewOutputsButNonInlineDatum
     ]
 
+-------------------------------------------------
+-- Benchmark Tests
+-------------------------------------------------
+benchmarkCloseWithBurningAndNoNewOutputs :: EmulatorTrace ()
+benchmarkCloseWithBurningAndNoNewOutputs = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let beaconSwapConfig = swapConfig1
+      addressSwapConfig = swapConfig1
+
+      beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
+
+      swapDatum' = SwapDatum'
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Just beaconSymbol'
+        }
+
+      swapAddress = Address 
+        (ScriptCredential $ swapValidatorHash $ convert2SwapConfig addressSwapConfig)
+        (Just $ StakingHash 
+              $ PubKeyCredential 
+              $ unPaymentPubKeyHash 
+              $ mockWalletPaymentPubKeyHash 
+              $ knownWallet 1)
+
+  callEndpoint @"create-live-swap-address" h1 $
+    CreateLiveSwapAddressParams
+      { beaconsMinted = [(adaToken,1)]
+      , useMintRedeemer = True
+      , createLiveBeaconSwapConfig = beaconSwapConfig
+      , createLiveAddressSwapConfig = addressSwapConfig
+      , createLiveAddress = swapAddress
+      , createLiveRefScript = Proper
+      , createLiveRefScriptUtxo =
+          ( Just swapDatum'
+          , singleton beaconSymbol' adaToken 1 <> refScriptDeposit
+          )
+      , createLiveInitialPositions = take 7 $ repeat $
+          ( Just swapDatum'{swapBeacon'=Nothing}
+          , lovelaceValueOf 10_000_000
+          )
+      , createLiveDatumsAsInline = True
+      }
+
+  void $ waitUntilSlot 2
+
+  callEndpoint @"close-live-address" h1 $
+    CloseAddressParams
+      { closeBeaconsBurned = [(adaToken,-1)]
+      , closeBeaconSwapConfig = beaconSwapConfig
+      , closeAddressSwapConfig = addressSwapConfig
+      , closeAddress = swapAddress
+      , closeAll = True
+      , closeSpecificUtxos = []
+      , closeWithNewOutputs = []
+      , closeWithNewDatumAsInline = True
+      }
+
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig closeAddressWithNewOutputsButNonInlineDatum
+testTrace = runEmulatorTraceIO' def emConfig benchmarkCloseWithBurningAndNoNewOutputs

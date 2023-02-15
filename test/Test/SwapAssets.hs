@@ -648,7 +648,9 @@ swapAllUtxos = do
           [(swapDatum', lovelaceValueOf 100_000_000)]
       , swapChange =
          [ ( Just SwapDatum'{swapPrice' = unsafeRatio 2 1, swapBeacon' = Nothing}
-           , lovelaceValueOf 90_000_000 <> (uncurry singleton testToken1) 20
+           , lovelaceValueOf 113_000_000 <> 
+             (uncurry singleton testToken1) 20 <>
+             singleton beaconSymbol' adaToken 1
            )
          ]
       , swapChangeDatumAsInline = True
@@ -707,7 +709,9 @@ swapWithOtherBeacons = do
           [(swapDatum', lovelaceValueOf 100_000_000)]
       , swapChange =
          [ ( Just SwapDatum'{swapPrice' = unsafeRatio 2 1, swapBeacon' = Nothing}
-           , lovelaceValueOf 90_000_000 <> singleton beaconSymbol' adaToken 3
+           , lovelaceValueOf 90_000_000 <> 
+             (uncurry singleton testToken1) 20 <>
+             singleton beaconSymbol' adaToken 3
            )
          ]
       , swapChangeDatumAsInline = True
@@ -755,5 +759,90 @@ tests = do
         assertNoFailedTransactions swapMultipleUtxos
     ]
 
+-------------------------------------------------
+-- Benchmark Tests
+-------------------------------------------------
+benchmarkMultipleSwap :: EmulatorTrace ()
+benchmarkMultipleSwap = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+
+  let beaconSwapConfig = swapConfig1
+      addressSwapConfig = swapConfig1
+
+      beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
+
+      swapDatum' = SwapDatum'
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Just beaconSymbol'
+        }
+
+      swapAddress = Address 
+        (ScriptCredential $ swapValidatorHash $ convert2SwapConfig addressSwapConfig)
+        (Just $ StakingHash 
+              $ PubKeyCredential 
+              $ unPaymentPubKeyHash 
+              $ mockWalletPaymentPubKeyHash 
+              $ knownWallet 1)
+
+  callEndpoint @"create-live-swap-address" h1 $
+    CreateLiveSwapAddressParams
+      { beaconsMinted = [(adaToken,1)]
+      , useMintRedeemer = True
+      , createLiveBeaconSwapConfig = beaconSwapConfig
+      , createLiveAddressSwapConfig = addressSwapConfig
+      , createLiveAddress = swapAddress
+      , createLiveRefScript = Proper
+      , createLiveRefScriptUtxo =
+          ( Just swapDatum'
+          , singleton beaconSymbol' adaToken 1 <> refScriptDeposit
+          )
+      , createLiveInitialPositions =
+          [ ( Just swapDatum'
+            , lovelaceValueOf 10_000_001
+            )
+          , ( Just swapDatum'
+            , lovelaceValueOf 10_000_002
+            )
+          , ( Just swapDatum'
+            , lovelaceValueOf 10_000_003
+            )
+          , ( Just swapDatum'
+            , lovelaceValueOf 10_000_004
+            )
+          , ( Just swapDatum'
+            , lovelaceValueOf 10_000_005
+            )
+          , ( Just swapDatum'
+            , lovelaceValueOf 10_000_006
+            )
+          , ( Just swapDatum'
+            , lovelaceValueOf 10_000_007
+            )
+          ]
+      , createLiveDatumsAsInline = True
+      }
+
+  void $ waitUntilSlot 2
+
+  callEndpoint @"swap-assets" h2 $
+    SwapAssetsParams
+      { swapAddressSwapConfig = addressSwapConfig
+      , swappableAddress = swapAddress
+      , swapAll = False
+      , swapUtxos =
+          [ (swapDatum', lovelaceValueOf 10_000_001)
+          , (swapDatum', lovelaceValueOf 10_000_002)
+          , (swapDatum', lovelaceValueOf 10_000_003)
+          , (swapDatum', lovelaceValueOf 10_000_004)
+          ]
+      , swapChange =
+         [ ( Just swapDatum'{swapBeacon' = Nothing}
+           , lovelaceValueOf 40_000_010
+           )
+         ]
+      , swapChangeDatumAsInline = True
+      }
+
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig swapMultipleUtxos
+testTrace = runEmulatorTraceIO' def emConfig benchmarkMultipleSwap

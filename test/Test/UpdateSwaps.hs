@@ -477,5 +477,89 @@ tests = do
         (Test.not assertNoFailedTransactions) updateAsNonOwner
     ]
 
+-------------------------------------------------
+-- Benchmark Tests
+-------------------------------------------------
+benchmarkNonBeaconUpdates :: EmulatorTrace ()
+benchmarkNonBeaconUpdates = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let beaconSwapConfig = swapConfig1
+      addressSwapConfig = swapConfig1
+
+      beaconSymbol' = beaconSymbol $ convert2SwapConfig beaconSwapConfig
+
+      swapDatum' = SwapDatum'
+        { swapPrice' = unsafeRatio 2 1
+        , swapBeacon' = Just beaconSymbol'
+        }
+
+      swapAddress = Address 
+        (ScriptCredential $ swapValidatorHash $ convert2SwapConfig addressSwapConfig)
+        (Just $ StakingHash 
+              $ PubKeyCredential 
+              $ unPaymentPubKeyHash 
+              $ mockWalletPaymentPubKeyHash 
+              $ knownWallet 1)
+
+  callEndpoint @"create-live-swap-address" h1 $
+    CreateLiveSwapAddressParams
+      { beaconsMinted = [(adaToken,1)]
+      , useMintRedeemer = True
+      , createLiveBeaconSwapConfig = beaconSwapConfig
+      , createLiveAddressSwapConfig = addressSwapConfig
+      , createLiveAddress = swapAddress
+      , createLiveRefScript = Proper
+      , createLiveRefScriptUtxo =
+          ( Just swapDatum'
+          , singleton beaconSymbol' adaToken 1 <> refScriptDeposit
+          )
+      , createLiveInitialPositions =
+          [ ( Just swapDatum'
+            , lovelaceValueOf 10_000_001
+            )
+          , ( Just swapDatum'
+            , lovelaceValueOf 10_000_002
+            )
+          , ( Just swapDatum'
+            , lovelaceValueOf 10_000_003
+            )
+          , ( Just swapDatum'
+            , lovelaceValueOf 10_000_004
+            )
+          , ( Just swapDatum'
+            , lovelaceValueOf 10_000_005
+            )
+          , ( Just swapDatum'
+            , lovelaceValueOf 10_000_006
+            )
+          , ( Just swapDatum'
+            , lovelaceValueOf 10_000_007
+            )
+          ]
+      , createLiveDatumsAsInline = True
+      }
+
+  void $ waitUntilSlot 2
+
+  callEndpoint @"update-swaps" h1 $
+    UpdateSwapsParams
+      { updateAddressSwapConfig = addressSwapConfig
+      , updateAddress = swapAddress
+      , updateAll = False
+      , updateSpecificUtxos = 
+          [ (swapDatum', lovelaceValueOf 10_000_001)
+          , (swapDatum', lovelaceValueOf 10_000_002)
+          , (swapDatum', lovelaceValueOf 10_000_003)
+          , (swapDatum', lovelaceValueOf 10_000_004)
+          , (swapDatum', lovelaceValueOf 10_000_005)
+          , (swapDatum', lovelaceValueOf 10_000_006)
+          , (swapDatum', lovelaceValueOf 10_000_007)
+          ]
+      , updatedOutputs =
+          []
+      , updateDatumsAsInline = True
+      }
+
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig updateWithOtherBeaconInputs
+testTrace = runEmulatorTraceIO' def emConfig benchmarkNonBeaconUpdates

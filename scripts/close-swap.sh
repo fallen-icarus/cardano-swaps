@@ -47,9 +47,8 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in f8d9d0039b21e21c3df4b3a91fff297a758c1c42890d5e6dd8c9711067b4ee53#0 \
-  --tx-in c8f8749f5b677b042e879f2f254503720d2b9007162bfe75beaecf9a18bb13d4#0 \
-  --spending-tx-in-reference c8f8749f5b677b042e879f2f254503720d2b9007162bfe75beaecf9a18bb13d4#0 \
+  --tx-in 192cfb283919692edc155d5f9e6468d0ad0abc32f23c1a1c821f37c2b38feb3f#0 \
+  --spending-tx-in-reference 192cfb283919692edc155d5f9e6468d0ad0abc32f23c1a1c821f37c2b38feb3f#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
@@ -73,4 +72,3 @@ cardano-cli transaction sign \
 cardano-cli transaction submit \
   --testnet-magic 1 \
   --tx-file "${tmpDir}tx.signed"
-

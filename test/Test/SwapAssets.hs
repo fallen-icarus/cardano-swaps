@@ -721,7 +721,7 @@ tests = do
   let opts = defaultCheckOptions & emulatorConfig .~ emConfig
   testGroup "Swapping assets"
     [ -- | No beacons allowed in input
-      checkPredicateOptions opts "Fail if address beacon utxo being swapped"
+      checkPredicateOptions opts "Fail if address' beacon utxo being swapped"
         (Test.not assertNoFailedTransactions) swapAllUtxos
     , checkPredicateOptions opts "Fail if any beacons among tx inputs"
         (Test.not assertNoFailedTransactions) swapWithOtherBeacons
@@ -756,4 +756,4 @@ tests = do
     ]
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig swapWithOtherBeacons
+testTrace = runEmulatorTraceIO' def emConfig swapMultipleUtxos

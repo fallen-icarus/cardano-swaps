@@ -50,11 +50,9 @@ import Data.Aeson hiding (Value)
 import Codec.Serialise (serialise)
 import qualified Data.ByteString.Lazy  as LBS
 import qualified Data.ByteString.Short as SBS
-import qualified Data.ByteString as BS
 import Prelude (IO,FilePath,seq) 
 import qualified Prelude as Haskell
 import Data.String (fromString)
-import Control.Monad (mzero)
 
 import Cardano.Api hiding (Address,Script,Value,TxOut)
 import Cardano.Api.Shelley (PlutusScript (..))
@@ -69,7 +67,6 @@ import Ledger.Bytes (fromHex)
 import qualified Plutonomy
 import Ledger.Value (valueOf,split,flattenValue,isZero)
 import PlutusTx.Numeric as Num
-import Ledger.Ada (lovelaceValueOf,lovelaceOf,fromValue)
 import PlutusTx.Ratio (fromGHC)
 import PlutusPrelude (foldl')
 import qualified PlutusTx.AssocMap as Map
@@ -217,22 +214,24 @@ mkSwapScript :: SwapConfig  -- ^ Extra parameter
 mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxInfo=info} =
   case action of
     Close ->
+      -- | All outputs to address must contain proper datum.
+      swapOutputInfo Nothing `seq`
       -- | All beacons in inputs must be burned.
       beaconsBurned &&
       -- | Staking credential must sign or be executed.
-      stakingCredApproves &&
-      -- | All outputs to address must contain proper datum.
-      (swapOutputInfo Nothing `seq` True)
+      traceIfFalse "Staking credential did not approve: pubkey must sign or script must be executed" 
+        stakingCredApproves
     Update ->
-      -- | No beacons in inputs.
-      noBeaconInput &&
-      -- | Staking credential must sign or be executed.
-      stakingCredApproves &&
       -- | All outputs to address must contain proper datum.
-      (swapOutputInfo Nothing `seq` True)
+      swapOutputInfo Nothing `seq`
+      -- | No beacons in inputs.
+      traceIfFalse "No beacons allowed in tx inputs" noBeaconInput &&
+      -- | Staking credential must sign or be executed.
+      traceIfFalse "Staking credential did not approve: pubkey must sign or script must be executed"
+        stakingCredApproves
     Swap ->
       -- | No beacons in inputs.
-      noBeaconInput &&
+      traceIfFalse "No beacons allowed in tx inputs" noBeaconInput &&
       -- | swapCheck checks:
       -- 1) All input prices used in swap are > 0.
       -- 2) All outputs to address contain proper datum.
@@ -266,10 +265,9 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
 
     -- | If the datum contains Nothing for swapBeacon then this input does not contain a beacon.
     noBeaconInput :: Bool
-    noBeaconInput = case swapBeacon swapDatum of
+    !noBeaconInput = case swapBeacon swapDatum of
       Nothing -> True
-      Just beaconSym ->
-        traceIfFalse "No beacons allowed in tx inputs" (isZero $ currencyInputs beaconSym)
+      Just beaconSym -> isZero $ currencyInputs beaconSym
 
     -- | Get the credential for this input.
     -- Used to check asset flux for address and ensure staking credential approves when necessary.
@@ -279,17 +277,15 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
       in addr
       
     stakingCredApproves :: Bool
-    stakingCredApproves = case addressStakingCredential inputCredentials of
+    !stakingCredApproves = case addressStakingCredential inputCredentials of
       -- | This is to prevent permanent locking of funds.
       -- The DEX is not meant to be used without a staking credential.
       Nothing -> True
 
       -- | Check if staking credential signals approval.
       Just stakeCred@(StakingHash cred) -> case cred of
-        PubKeyCredential pkh -> traceIfFalse "Owner didn't sign" (txSignedBy info pkh)
-        ScriptCredential _ -> 
-          traceIfFalse "Staking script for address wasn't executed"
-            (isJust $ Map.lookup stakeCred $ txInfoWdrl info)
+        PubKeyCredential pkh -> txSignedBy info pkh
+        ScriptCredential _ -> isJust $ Map.lookup stakeCred $ txInfoWdrl info
       
       Just _ -> traceError "Wrong kind of staking credential."
 
@@ -321,12 +317,9 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
                        ,txOutValue=oVal
                        ,txOutAddress=addr
                        } =
-            let datum = parseDatum "Invalid datum in output" d
-            in if addr == inputCredentials 
-               then if validDatum maybePrice datum
-                    then val <> oVal
-                    else traceError "VD1"
-               else val  -- ^ It is for a different address. Ignore it.
+            if addr == inputCredentials 
+            then validDatum maybePrice (parseDatum "Invalid datum in output" d) `seq` val <> oVal
+            else val  -- ^ It is for a different address. Ignore it.
       in foldl' foo mempty outputs
 
     -- | The total input value from this address. The price returned is the weighted avg.
@@ -341,11 +334,11 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
             in if addr == inputCredentials
                then let iTaken = uncurry (valueOf iVal) swapOffer
                         price = swapPrice datum
-                        !newTaken = taken + iTaken
-                        !newWeightedPrice =
+                        newTaken = taken + iTaken
+                        newWeightedPrice =
                           ratio' taken newTaken * wp +
                           ratio' iTaken newTaken * price
-                        !newSwapValue = val <> iVal
+                        newSwapValue = val <> iVal
                     in if price > fromInteger 0
                        then ( newSwapValue
                             , (newTaken,newWeightedPrice)

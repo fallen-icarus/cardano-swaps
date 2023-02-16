@@ -36,9 +36,9 @@
 ### Close
 - [x] All beacons in inputs must be burned.
   - [x] Allows closing non-beacon utxos.
-- [ ] Staking credential must approve.
+- [x] Staking credential must approve.
   - [x] Stake pubkey must sign tx.
-  - [ ] Staking script must be executed in tx.
+  - [x] Staking script must be executed in tx.
 - [x] All outputs to address must contain proper datum.
   - [x] Fail if output datum is not inline.
   - [x] Fail if swapPrice <= 0.
@@ -46,9 +46,9 @@
 
 ### Update
 - [x] No beacons allowed in input.
-- [ ] Staking credential must approve.
+- [x] Staking credential must approve.
   - [x] Stake pubkey must sign tx.
-  - [ ] Staking script must be executed in tx.
+  - [x] Staking script must be executed in tx.
 - [x] All outputs to address must contain proper datum.
   - [x] Fail if output datum is not inline.
   - [x] Fail if swapPrice <= 0.

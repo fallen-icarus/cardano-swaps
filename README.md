@@ -28,7 +28,7 @@ The Getting Started instructions can be found [here](GettingStarted.md).
   - [The Realistic Example](#the-realistic-example)
   - [Liquidity Naturally Flows To The Less Liquid Pairs](#liquidity-naturally-flows-to-the-less-liquid-pairs)
   - [What If Two Arbitragers Compete For The Same Swap?](#what-if-two-arbitragers-compete-for-the-same-swap)
-- [Transaction Fee Estimations](#transaction-fee-estimations)
+- [Benchmarks and Fee Estimations](#benchmarks-and-fee-estimations-ymmv)
 - [Upgradability](#upgradability)
 - [Frontend Agnostic](#frontend-agnostic)
 - [Conclusion](#conclusion)
@@ -327,8 +327,51 @@ Recall the contrived example above. What would happen if Charlie and Mike try to
 Since Mike's transaction will fail without needing to run the swap script, Mike's collateral is safe. Further, the more available swaps their are, the less likely these "collisions" are.
 
 ---
-## Transaction Fee Estimations
-Scenarios have been benchmarked and you can find them [here](FeeEstimation.md).
+## Benchmarks and Fee Estimations (YMMV)
+Basic benchmarking tests were done to determine the maximum amount of inputs or outputs that the spending script could handle in one transaction.
+
+Cardano currently suffers from an issue where a spending script is executed once for every script input. So if there are 5 inputs from one of the script's addresses, the spending script will be executed 5 times. The latter 4 are completely redundant in this situation. These redundant exectutions impact the maximum number of inputs and outputs that can fit within one transaction. There is a Cardano Problem Statement that is looking to address this ([here](https://github.com/cardano-foundation/CIPs/pull/418)).
+
+### Creating a Live Address
+For opening a new address, I was successfully able to mint the beacon, store the reference script, and create 80+ new swap positions in one transaction.
+
+| Number of New Swaps | Tx Fee |
+|--|--|
+| 5 | 0.647711 ADA |
+| 10 | 0.697339 ADA |
+| 15 | 0.747768 ADA |
+| 20 | 0.797797 ADA |
+| 25 | 0.847869 ADA |
+
+### Closing a Live Address
+For closing a new address, I was successfully able to burn the beacon, remove the reference script, and close 5 open positions in one transaction.
+
+| Number of Closed Swaps | Tx Fee |
+|--|--|
+| 1 | 0.577408 ADA |
+| 2 | 0.747233 ADA |
+| 3 | 0.967701 ADA |
+| 4 | 1.238813 ADA |
+| 5 | 1.560569 ADA |
+
+### Updating Open Swaps
+For updating open swaps, I was successfully able to update 4 positions and recreate them in one transaction. If you consolidate your open positions into one output, you can update more in one transaction.
+
+| Number of Swaps Updated | Tx Fee |
+|--|--|
+| 1 | 0.271886 ADA |
+| 2 | 0.449765 ADA |
+| 3 | 0.715111 ADA |
+| 4 | 1.067924 ADA |
+
+### Swapping Assets
+For swapping assets, I was successfully able to chain together 3 swap utxos.
+
+| Number of Swaps Chained | Tx Fee |
+|--|--|
+| 1 | 0.325983 ADA |
+| 2 | 0.568143 ADA |
+| 3 | 0.902922 ADA |
 
 ---
 ## Upgradability

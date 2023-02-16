@@ -11,7 +11,7 @@ When integration testing, it is highly recommended that you change the string pa
 - [Installing](#installing)
 - [Minting test tokens](#minting-test-tokens)
 - [Create a swap](#creating-a-swap)
-- [Close a swap](#close-a-swap)
+- [Close a swap](#close-a-swap-using-a-reference-script)
 - [Perform a swap](#perform-a-swap)
 - [Update swap prices](#update-the-swap-prices)
 - [Add to swap position](#add-to-swap-position)
@@ -48,7 +48,7 @@ cabal clean
 cabal update
 cabal build all
 ```
-The `cardano-swaps` CLI program should now be at `dist-newstyle/build/x86_64-linux/ghc-8.10.7/cardano-swaps-0.1.0.0/x/cardano-swaps/build/cardano-swaps/cardano-swaps`. Move the program to somewhere in your $PATH.
+The `cardano-swaps` CLI program should now be at `dist-newstyle/build/x86_64-linux/ghc-8.10.7/cardano-swaps-0.2.0.0/x/cardano-swaps/build/cardano-swaps/cardano-swaps`. Move the program to somewhere in your $PATH.
 
 You can now exit the nix-shell with `exit`.
 

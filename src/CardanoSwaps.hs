@@ -225,13 +225,13 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
       -- | All outputs to address must contain proper datum.
       swapOutputInfo Nothing `seq`
       -- | No beacons in inputs.
-      traceIfFalse "No beacons allowed in tx inputs" noBeaconInput &&
+      traceIfFalse "No beacons allowed in tx inputs" noBeaconInputs &&
       -- | Staking credential must sign or be executed.
       traceIfFalse "Staking credential did not approve: pubkey must sign or script must be executed"
         stakingCredApproves
     Swap ->
       -- | No beacons in inputs.
-      traceIfFalse "No beacons allowed in tx inputs" noBeaconInput &&
+      traceIfFalse "No beacons allowed in tx inputs" noBeaconInputs &&
       -- | swapCheck checks:
       -- 1) All input prices used in swap are > 0.
       -- 2) All outputs to address contain proper datum.
@@ -240,34 +240,23 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
       swapCheck
 
   where
-    -- | Returns the Value with only the supplied CurrencySymbol
-    filterForCurrencySymbol :: CurrencySymbol -> Value -> Value
-    filterForCurrencySymbol currSym val = case Map.lookup currSym $ getValue val of
+    filterForBeaconValue :: Value -> Value
+    filterForBeaconValue val = case swapBeacon swapDatum of
       Nothing -> mempty
-      Just bs -> Value $ Map.insert currSym bs Map.empty  -- ^ a Value with only that CurrencySymbol
+      Just beaconSym -> case Map.lookup beaconSym $ getValue val of
+        Nothing -> mempty
+        Just bs -> Value $ Map.insert beaconSym bs Map.empty -- ^ a Value with only the beacon
+    
+    inputValue :: Value
+    !inputValue = valueSpent info
 
-    -- | The mint/burn value of supplied CurrencySymbol.
-    currencyMinted :: CurrencySymbol -> Value
-    currencyMinted currSym = filterForCurrencySymbol currSym $ txInfoMint info
-
-    -- | The value of supplied CurrencySymbol in the inputs.
-    currencyInputs :: CurrencySymbol -> Value
-    currencyInputs currSym = filterForCurrencySymbol currSym $ valueSpent info
-
-    -- | If the datum contains Nothing for swapBeacon then this input does not contain a beacon.
     beaconsBurned :: Bool
-    beaconsBurned = case swapBeacon swapDatum of
-      Nothing -> True
-      Just beaconSym -> 
-        -- | Must check all other inputs to account for double satisfaction problem.
-        traceIfFalse "Beacons not burned." 
-          (Num.negate (currencyInputs beaconSym) == currencyMinted beaconSym)
+    beaconsBurned =
+      traceIfFalse "Beacons not burned." $
+        Num.negate (filterForBeaconValue inputValue) == filterForBeaconValue (txInfoMint info)
 
-    -- | If the datum contains Nothing for swapBeacon then this input does not contain a beacon.
-    noBeaconInput :: Bool
-    !noBeaconInput = case swapBeacon swapDatum of
-      Nothing -> True
-      Just beaconSym -> isZero $ currencyInputs beaconSym
+    noBeaconInputs :: Bool
+    noBeaconInputs = isZero $ filterForBeaconValue inputValue
 
     -- | Get the credential for this input.
     -- Used to check asset flux for address and ensure staking credential approves when necessary.

@@ -217,7 +217,7 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
       -- | All outputs to address must contain proper datum.
       swapOutputInfo Nothing `seq`
       -- | All beacons in inputs must be burned.
-      beaconsBurned &&
+      traceIfFalse "Beacons not burned" beaconsBurned &&
       -- | Staking credential must sign or be executed.
       traceIfFalse "Staking credential did not approve: pubkey must sign or script must be executed" 
         stakingCredApproves
@@ -240,21 +240,23 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
       swapCheck
 
   where
-    inputValue :: Value
-    !inputValue = valueSpent info
+    beaconInput :: Integer
+    beaconInput = case swapBeacon swapDatum of
+      Nothing -> 0
+      Just beaconSym ->
+        let inputs = txInfoInputs info
+            foo acc TxInInfo{txInInfoResolved=TxOut{txOutValue=iVal}} =
+              acc + valueOf iVal beaconSym adaToken
+        in foldl' foo 0 inputs
 
     beaconsBurned :: Bool
     beaconsBurned = case swapBeacon swapDatum of
       Nothing -> True
-      Just beaconSym -> 
-        let beacons = valueOf inputValue beaconSym adaToken
-            burned = valueOf (txInfoMint info) beaconSym adaToken
-        in Num.negate beacons == burned
+      Just beaconSym ->
+        Num.negate beaconInput == valueOf (txInfoMint info) beaconSym adaToken
 
     noBeaconInputs :: Bool
-    noBeaconInputs = case swapBeacon swapDatum of
-      Nothing -> True
-      Just beaconSym -> valueOf inputValue beaconSym adaToken == 0
+    noBeaconInputs = beaconInput == 0
 
     -- | Get the credential for this input.
     -- Used to check asset flux for address and ensure staking credential approves when necessary.

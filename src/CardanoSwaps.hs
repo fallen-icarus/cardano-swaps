@@ -329,7 +329,7 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
       in foldl' foo mempty outputs
 
     -- | The total input value from this address.
-    -- The Integer will be ignored.
+    -- The Integer will be ignored; it is needed to calculate the weighted avg price.
     -- The price returned is the weighted avg.
     swapInputInfo :: (Value,(Integer,Price))
     swapInputInfo =

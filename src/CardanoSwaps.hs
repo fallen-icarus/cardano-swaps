@@ -134,6 +134,12 @@ getScriptInput ((TxInInfo iRef ot) : tl) ref
   | iRef == ref = ot
   | otherwise = getScriptInput tl ref
 
+signed :: [PubKeyHash] -> PubKeyHash -> Bool
+signed [] _ = False
+signed (k:ks) k'
+  | k == k' = True
+  | otherwise = signed ks k'
+
 -------------------------------------------------
 -- Swap Settings
 -------------------------------------------------
@@ -284,7 +290,7 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
 
       -- | Check if staking credential signals approval.
       Just stakeCred@(StakingHash cred) -> case cred of
-        PubKeyCredential pkh -> txSignedBy info pkh
+        PubKeyCredential pkh -> signed (txInfoSignatories info) pkh
         ScriptCredential _ -> isJust $ Map.lookup stakeCred $ txInfoWdrl info
       
       Just _ -> traceError "Wrong kind of staking credential."

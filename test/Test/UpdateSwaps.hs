@@ -562,4 +562,4 @@ benchmarkNonBeaconUpdates = do
       }
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def benchConfig benchmarkNonBeaconUpdates
+testTrace = runEmulatorTraceIO' def updateBenchConfig benchmarkNonBeaconUpdates

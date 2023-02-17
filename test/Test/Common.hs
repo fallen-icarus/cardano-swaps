@@ -182,8 +182,8 @@ emConfig = EmulatorConfig (Left $ Map.fromList wallets) def
       , (knownWallet 4, user4)
       ]
 
-benchConfig :: EmulatorConfig
-benchConfig = emConfig & params .~ params'
+swapBenchConfig :: EmulatorConfig
+swapBenchConfig = emConfig & params .~ params'
   where 
     params' :: Params
     params' = def{emulatorPParams = pParams'}
@@ -192,7 +192,34 @@ benchConfig = emConfig & params .~ params'
     pParams' = pParamsFromProtocolParams protoParams
 
     protoParams :: ProtocolParameters
-    protoParams = def{protocolParamMaxTxExUnits = Just (ExecutionUnits {executionSteps = 10000000000, executionMemory = 3000000})}
+    protoParams = def{protocolParamMaxTxExUnits = Just (ExecutionUnits {executionSteps = 10000000000
+                                                                       ,executionMemory = 10000000})}
+
+updateBenchConfig :: EmulatorConfig
+updateBenchConfig = emConfig & params .~ params'
+  where 
+    params' :: Params
+    params' = def{emulatorPParams = pParams'}
+
+    pParams' :: PParams
+    pParams' = pParamsFromProtocolParams protoParams
+
+    protoParams :: ProtocolParameters
+    protoParams = def{protocolParamMaxTxExUnits = Just (ExecutionUnits {executionSteps = 10000000000
+                                                                       ,executionMemory = 5000000})}
+
+closeBenchConfig :: EmulatorConfig
+closeBenchConfig = emConfig & params .~ params'
+  where 
+    params' :: Params
+    params' = def{emulatorPParams = pParams'}
+
+    pParams' :: PParams
+    pParams' = pParamsFromProtocolParams protoParams
+
+    protoParams :: ProtocolParameters
+    protoParams = def{protocolParamMaxTxExUnits = Just (ExecutionUnits {executionSteps = 10000000000
+                                                                       ,executionMemory = 1000000})}
 
 refScriptDeposit :: Value
 refScriptDeposit = lovelaceValueOf 23_000_000

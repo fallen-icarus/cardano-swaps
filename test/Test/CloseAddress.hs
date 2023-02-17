@@ -589,4 +589,4 @@ benchmarkCloseWithBurningAndNoNewOutputs = do
       }
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def benchConfig benchmarkCloseWithBurningAndNoNewOutputs
+testTrace = runEmulatorTraceIO' def closeBenchConfig benchmarkCloseWithBurningAndNoNewOutputs

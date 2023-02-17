@@ -782,4 +782,4 @@ benchmarkMultipleSwap = do
       }
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def benchConfig benchmarkMultipleSwap
+testTrace = runEmulatorTraceIO' def swapBenchConfig benchmarkMultipleSwap

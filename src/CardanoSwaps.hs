@@ -295,11 +295,9 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
       
       Just _ -> traceError "Wrong kind of staking credential."
 
-    parseDatum :: BuiltinString -> OutputDatum -> SwapDatum
-    parseDatum err d = case d of
-      (OutputDatum (Datum d')) -> case fromBuiltinData d' of
-        Nothing -> traceError err
-        Just p -> p
+    parseDatum :: OutputDatum -> SwapDatum
+    parseDatum d = case d of
+      (OutputDatum (Datum d')) -> unsafeFromBuiltinData d'
       _ -> traceError "All swap datums must be inline datums."
 
     validDatum :: Maybe Price -> SwapDatum -> Bool
@@ -324,7 +322,7 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
                        ,txOutAddress=addr
                        } =
             if addr == inputCredentials 
-            then validDatum maybePrice (parseDatum "Invalid datum in output" d) `seq` val <> oVal
+            then validDatum maybePrice (parseDatum d) `seq` val <> oVal
             else val  -- ^ It is for a different address. Ignore it.
       in foldl' foo mempty outputs
 
@@ -343,7 +341,7 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
               Nothing ->
                 if addr == inputCredentials
                 then let  iTaken = uncurry (valueOf iVal) swapOffer
-                          price = swapPrice $ parseDatum "Invalid datum in input" d
+                          price = swapPrice $ parseDatum d
                           newTaken = taken + iTaken
                           newWeightedPrice =
                             ratio' taken newTaken * wp +

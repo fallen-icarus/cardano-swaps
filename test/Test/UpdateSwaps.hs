@@ -457,7 +457,7 @@ tests = do
   let opts = defaultCheckOptions & emulatorConfig .~ emConfig
   testGroup "Updating swaps"
     [ -- | No beacons allowed in inputs.
-      checkPredicateOptions opts "Fail if address beacon utxo among inputs"
+      checkPredicateOptions opts "Fail if swap's beacon utxo among inputs"
         (Test.not assertNoFailedTransactions) updateAllUtxos
     , checkPredicateOptions opts "Fail if any beacons among inputs"
         (Test.not assertNoFailedTransactions) updateWithOtherBeaconInputs
@@ -562,4 +562,4 @@ benchmarkNonBeaconUpdates = do
       }
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig benchmarkNonBeaconUpdates
+testTrace = runEmulatorTraceIO' def benchConfig benchmarkNonBeaconUpdates

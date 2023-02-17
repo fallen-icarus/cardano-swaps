@@ -55,7 +55,7 @@
   - [x] Fail if swapBeacon /= Nothing.
 
 ### Swap
-- [x] No beacons allowed in input.
+- [x] No swap utxos with reference scripts allowed in swap tx.
 - [x] All swap input prices must be > 0.
 - [x] All outputs to address must contain proper datum.
   - [x] Fail if output datum is not inline.

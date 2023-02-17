@@ -166,7 +166,7 @@ data Action
   
   -- | Swap
   -- Requirements:
-  -- 1) No beacons in inputs - this also protects the main reference script from being consumed.
+  -- 1) No reference scripts among swap inputs - this also protects the beacon.
   -- 2) All input prices used in swap are > 0
   -- 3) All outputs to address contain proper datum.
   --    - price == weighted avg (guaranteed to be positive if all inputs have positive prices)
@@ -230,13 +230,12 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
       traceIfFalse "Staking credential did not approve: pubkey must sign or script must be executed"
         stakingCredApproves
     Swap ->
-      -- | No beacons in inputs.
-      traceIfFalse "No beacons allowed in tx inputs" noBeaconInputs &&
       -- | swapCheck checks:
       -- 1) All input prices used in swap are > 0.
-      -- 2) All outputs to address contain proper datum.
-      -- 3) offered asset taken * price <= given asset
-      -- 4) Only offered asset leaves address.
+      -- 2) No reference scripts among swap inputs (protects beacon).
+      -- 3) All outputs to address contain proper datum.
+      -- 4) offered asset taken * price <= given asset
+      -- 5) Only offered asset leaves address.
       swapCheck
 
   where
@@ -318,22 +317,28 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
           foo x@(val,(taken,wp)) TxInInfo{txInInfoResolved=TxOut{txOutAddress=addr
                                                                 ,txOutDatum=d
                                                                 ,txOutValue=iVal
+                                                                ,txOutReferenceScript = maybeRef
                                                                 }} =
-            let datum = parseDatum "Invalid datum in input" d
-            in if addr == inputCredentials
-               then let iTaken = uncurry (valueOf iVal) swapOffer
-                        price = swapPrice datum
-                        newTaken = taken + iTaken
-                        newWeightedPrice =
-                          ratio' taken newTaken * wp +
-                          ratio' iTaken newTaken * price
-                        newSwapValue = val <> iVal
-                    in if price > fromInteger 0
-                       then ( newSwapValue
-                            , (newTaken,newWeightedPrice)
-                            )
-                       else traceError "All input prices must be > 0"
-               else x -- ^ Not for this address. Skip.
+            case maybeRef of
+              Nothing ->
+                if addr == inputCredentials
+                then let  iTaken = uncurry (valueOf iVal) swapOffer
+                          price = swapPrice $ parseDatum "Invalid datum in input" d
+                          newTaken = taken + iTaken
+                          newWeightedPrice =
+                            ratio' taken newTaken * wp +
+                            ratio' iTaken newTaken * price
+                          newSwapValue = val <> iVal
+                      in if price > fromInteger 0
+                        then ( newSwapValue
+                              , (newTaken,newWeightedPrice)
+                              )
+                        else traceError "All input prices must be > 0"
+                else x -- ^ Not for this address. Skip.
+              Just _ ->
+                if addr == inputCredentials
+                then traceError "Cannot consume reference script from swap address"
+                else x
       in fmap snd $ foldl' foo (mempty,(0,fromInteger 0)) inputs
 
     swapCheck :: Bool

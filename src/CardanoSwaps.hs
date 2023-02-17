@@ -65,7 +65,7 @@ import Plutus.Script.Utils.V2.Scripts as Scripts
 import Plutus.Script.Utils.V2.Typed.Scripts
 import Ledger.Bytes (fromHex)
 import qualified Plutonomy
-import Ledger.Value (valueOf,split,flattenValue,isZero)
+import Ledger.Value (valueOf,split,flattenValue)
 import PlutusTx.Numeric as Num
 import PlutusTx.Ratio (fromGHC)
 import PlutusPrelude (foldl')
@@ -240,23 +240,21 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
       swapCheck
 
   where
-    filterForBeaconValue :: Value -> Value
-    filterForBeaconValue val = case swapBeacon swapDatum of
-      Nothing -> mempty
-      Just beaconSym -> case Map.lookup beaconSym $ getValue val of
-        Nothing -> mempty
-        Just bs -> Value $ Map.insert beaconSym bs Map.empty -- ^ a Value with only the beacon
-    
     inputValue :: Value
     !inputValue = valueSpent info
 
     beaconsBurned :: Bool
-    beaconsBurned =
-      traceIfFalse "Beacons not burned." $
-        Num.negate (filterForBeaconValue inputValue) == filterForBeaconValue (txInfoMint info)
+    beaconsBurned = case swapBeacon swapDatum of
+      Nothing -> True
+      Just beaconSym -> 
+        let beacons = valueOf inputValue beaconSym adaToken
+            burned = valueOf (txInfoMint info) beaconSym adaToken
+        in Num.negate beacons == burned
 
     noBeaconInputs :: Bool
-    noBeaconInputs = isZero $ filterForBeaconValue inputValue
+    noBeaconInputs = case swapBeacon swapDatum of
+      Nothing -> True
+      Just beaconSym -> valueOf inputValue beaconSym adaToken == 0
 
     -- | Get the credential for this input.
     -- Used to check asset flux for address and ensure staking credential approves when necessary.

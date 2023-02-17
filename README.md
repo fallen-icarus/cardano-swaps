@@ -367,7 +367,7 @@ For updating open swaps, I was successfully able to update 5 positions and recre
 | 5 | 1.147533 ADA |
 
 ### Swapping Assets
-For swapping assets, I was successfully able to chain together 4 swap utxos before the redundant executions causes the transaction to exceed the memory limit.
+For swapping assets, I was successfully able to chain together 4 swap utxos before the redundant executions caused the transaction to exceed the memory limit.
 
 | Number of Swaps Chained | Tx Fee |
 |--|--|

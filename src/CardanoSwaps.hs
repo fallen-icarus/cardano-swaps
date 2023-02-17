@@ -310,8 +310,10 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
             else val  -- ^ It is for a different address. Ignore it.
       in foldl' foo mempty outputs
 
-    -- | The total input value from this address. The price returned is the weighted avg.
-    swapInputInfo :: (Value,Price)
+    -- | The total input value from this address.
+    -- The Integer will be ignored.
+    -- The price returned is the weighted avg.
+    swapInputInfo :: (Value,(Integer,Price))
     swapInputInfo =
       let inputs = txInfoInputs info
           foo x@(val,(taken,wp)) TxInInfo{txInInfoResolved=TxOut{txOutAddress=addr
@@ -339,13 +341,14 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
                 if addr == inputCredentials
                 then traceError "Cannot consume reference script from swap address"
                 else x
-      in fmap snd $ foldl' foo (mempty,(0,fromInteger 0)) inputs
+      in foldl' foo (mempty,(0,fromInteger 0)) inputs
 
     swapCheck :: Bool
     swapCheck =
       let -- | Input info
           -- Throws error if price in datum is < 0.
-          (scriptInputValue,weightedPrice) = swapInputInfo
+          -- Throws error if reference script among inputs.
+          (scriptInputValue,(_,weightedPrice)) = swapInputInfo
 
           -- | Output info
           -- Throws error if output datum does not contain the weighted avg price.

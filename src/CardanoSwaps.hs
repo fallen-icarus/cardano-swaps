@@ -122,6 +122,18 @@ readTokenName s = case fromHex $ fromString s of
 ratio' :: Integer -> Integer -> Rational
 ratio' num den = if den == 0 then fromInteger 0 else unsafeRatio num den
 
+{-# INLINABLE ownInput #-}
+ownInput :: ScriptContext -> TxOut
+ownInput (ScriptContext info (Spending ref)) = getScriptInput (txInfoInputs info) ref
+ownInput _ = traceError "script input error"
+
+{-# INLINABLE getScriptInput #-}
+getScriptInput :: [TxInInfo] -> TxOutRef -> TxOut
+getScriptInput [] _ = traceError "script input error"
+getScriptInput ((TxInInfo iRef ot) : tl) ref
+  | iRef == ref = ot
+  | otherwise = getScriptInput tl ref
+
 -------------------------------------------------
 -- Swap Settings
 -------------------------------------------------
@@ -261,7 +273,7 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
     -- Used to check asset flux for address and ensure staking credential approves when necessary.
     inputCredentials :: Address
     inputCredentials = 
-      let Just TxInInfo{txInInfoResolved=TxOut{txOutAddress=addr}} = findOwnInput ctx
+      let TxOut{txOutAddress=addr} = ownInput ctx
       in addr
       
     stakingCredApproves :: Bool

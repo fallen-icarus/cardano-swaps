@@ -235,7 +235,7 @@ The first requirement also means that the datum attached to the beacon's referen
 ### `Swap` Redeemer
 The `Swap` redeemer checks all of the assets leaving the swap address and all of the assets entering the swap address. For a successful swap, all of the following must be true:
 
-1. No beacons among tx inputs.
+1. No swap input utxos have reference scripts - this also protects the beacon.
 2. All swap input prices are > 0.
 3. All outputs to the swap address contain the proper datum:
     - `swapPrice` == weighted avg price of all swap inputs
@@ -342,34 +342,39 @@ For opening a new address, I was successfully able to mint the beacon, store the
 | 25 | 0.847869 ADA |
 
 ### Closing a Live Address
-For closing a new address, I was successfully able to burn the beacon, remove the reference script, and close 5 open positions in one transaction.
+For closing a new address, I was successfully able to burn the beacon, remove the reference script, and close 8 open positions in one transaction.
 
 | Number of Closed Swaps | Tx Fee |
 |--|--|
-| 1 | 0.577408 ADA |
-| 2 | 0.747233 ADA |
-| 3 | 0.967701 ADA |
-| 4 | 1.238813 ADA |
-| 5 | 1.560569 ADA |
+| 1 | 0.490071 ADA |
+| 2 | 0.574382 ADA |
+| 3 | 0.674041 ADA |
+| 4 | 0.789050 ADA |
+| 5 | 0.919407 ADA |
+| 6 | 1.065113 ADA |
+| 7 | 1.226169 ADA |
+| 8 | 1.402573 ADA |
 
 ### Updating Open Swaps
-For updating open swaps, I was successfully able to update 4 positions and recreate them in one transaction. If you consolidate your open positions into one output, you can update more in one transaction.
+For updating open swaps, I was successfully able to update 5 positions and recreate them in one transaction. If you consolidate your open positions into one output, you may be able to update more in one transaction.
 
 | Number of Swaps Updated | Tx Fee |
 |--|--|
-| 1 | 0.271886 ADA |
-| 2 | 0.449765 ADA |
-| 3 | 0.715111 ADA |
-| 4 | 1.067924 ADA |
+| 1 | 0.250309 ADA |
+| 2 | 0.381332 ADA |
+| 3 | 0.574544 ADA |
+| 4 | 0.829945 ADA |
+| 5 | 1.147533 ADA |
 
 ### Swapping Assets
-For swapping assets, I was successfully able to chain together 3 swap utxos.
+For swapping assets, I was successfully able to chain together 4 swap utxos before the redundant executions causes the transaction to exceed the memory limit.
 
 | Number of Swaps Chained | Tx Fee |
 |--|--|
-| 1 | 0.325983 ADA |
-| 2 | 0.568143 ADA |
-| 3 | 0.902922 ADA |
+| 1 | 0.313006 ADA |
+| 2 | 0.511202 ADA |
+| 3 | 0.772815 ADA |
+| 4 | 1.114271 ADA |
 
 ---
 ## Upgradability

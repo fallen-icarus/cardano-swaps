@@ -326,6 +326,8 @@ Since Mike's transaction will fail without needing to run the swap script, Mike'
 
 ---
 ## Benchmarks and Fee Estimations (YMMV)
+(I am not a software engineer but I tried my best to optimize the DEX. There is probably room for further optimizations.)
+
 Basic benchmarking tests were done to determine the maximum amount of inputs or outputs that the spending script could handle in one transaction.
 
 Cardano currently suffers from an issue where a spending script is executed once for every script input. So if there are 5 inputs from one of the script's addresses, the spending script will be executed 5 times. The latter 4 are completely redundant in this situation. These redundant exectutions impact the maximum number of inputs and outputs that can fit within one transaction. There is a Cardano Problem Statement that is looking to address this ([here](https://github.com/cardano-foundation/CIPs/pull/418)).

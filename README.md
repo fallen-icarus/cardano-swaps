@@ -45,44 +45,44 @@ The Getting Started instructions can be found [here](GettingStarted.md).
 -----
 
 ## Motivation
-Many DEXes on Cardano are currently implemented in ways that lock users' assets into a tightly fixed, and/or centrally maintained, set of script addresses. Such design patterns are reminiscent of the EVM's accounts-based programming paradigm, and inherit many of the same downsides, namely scalability bottlenecks and asset centralization. DEXes that hope to achieve massive scale on the CSL must take aa radically different approach that takes full advantage of the concurrency and parallelism offered by the eUTxO model. `cardano-swaps` is a first attempt at such an approach. 
+Many DEXes on Cardano are currently implemented in ways that lock users' assets into a tightly fixed, and/or centrally maintained, set(s) of script addresses. Such design patterns are reminiscent of the EVM's accounts-based programming paradigm, and inherit many of the same downsides, namely scalability bottlenecks and asset centralization. DEXes that hope to achieve massive scale on the CSL must adhere to a radically different approach that takes full advantage of the concurrency and parallelism offered by the eUTxO model. `cardano-swaps` is a first attempt at such an approach. 
 
 -----
 
 ## Preliminary Discussion
-Much like Bittorrent, and the CSL-CCL stack, the best p2p protocols are ones that scale in proportion to the number of participants. DEXes are no different. With this in mind, it is important to first appreciate the downsides of current DEX implementations on Cardano:
+To appreciate the necessity of new DEX standards, it first important to understand the deficiencies of the current status-quo:
 
+### Current DEX Deficiencies  
+One consequence of centralized script addresses is the necessity for liquidity pools and LP providers as discrete entities. They are a common feature of many DEXes, and come with disadvantages and corresponding sets of workaround "solutions". However, these workarounds have issues themselves, as explored here:
 
-### 1. Liquidity Pools
-Liquidity Pools and LP providers are a common feature of many DEXes. They come with disadvantages and corresponding sets of workarounds "solutions". However, these workarounds have issues themselves, as explored here:
-
-| Disadvantage | Workaround | Issue |
+| Disadvantage | Workaround "Solution" | Issue |
 | :--: | :--: | :--: |
-| Impermanent Loss | Yield Farming | Medium - Long term unsustainability |
-| No Delegation Control | <ul><li>Asset pool fractionalization</li><li>Indirect Delegation via Governance Tokens</li></ul> | <ul><li>Unfair distribution of Governance tokens </li><li>Unavoidable trend towards stake-centralization</li></ul>
-| Scaling Challenges | Batchers, Execution/Routing Engines, and other middlemen | Batchers are effectively middle-men that can take advantage of their position between users and the protocol. |
+| Impermanent Loss | Yield Farming & Concentrated Liquidity | Medium - Long term unsustainability |
+| No Delegation Control | <ul><li>Asset pool fractionalization</li><li>Indirect Delegation via Governance Tokens</li></ul> | <ul><li>Unfair distribution of Governance tokens </li><li>Unavoidable centralization of stake (Major issue for Ouroboros)</li></ul>
+| Scaling Challenges | Batchers, Execution/Routing Engines, and/or other middlemen | Middlemen can take advantage of their position between users and the protocol. Even if MEV is mitigated, more users --> more execution demand --> centralization of middlemen |
 
+Of course, this is not an exhaustive list. Even if some workarounds *can* be effective, the underlying design *principles* are inadequate. Much like Bittorrent, and the CSL-CCL stack, **the best p2p protocols are ones that scale in proportion to the number of participants**. DEXes are no different. With this in mind, we can explore alternative design principles:
 
-Even more concerning is that, even if governance tokens are fairly distributed, this doesn't change the fact that a liquidity pool can only be delegated to one stake pool. Fractionalizing liquidity pools helps but it still results in a more centralized PoS blockchain than if each user was able to delegate their assets independently.
 
 ### Programmable Swaps
-Programmable Swaps are a more promising design than liquidity pools and were first proposed by Axo (formerly known as Maladex). However, in Axo's [whitepaper](https://www.axo.trade/whitepaper.pdf), there is no mention of giving users full delegation control of their own assets. When they were asked on Discord about it, they said it was possible but delegation control would not be included in the first version.
+Programmable Swaps are a more promising design than liquidity pools and were first proposed by Axo (formerly known as Maladex). However, in Axo's original [whitepaper](https://www.axo.trade/whitepaper.pdf), there is no mention of giving users full delegation control of their own assets. When they were asked on Discord about it, they said it was possible but delegation control would not be included in the first version.
 
-### The Cardano-Swaps DEX
-Cardano-Swaps took inspiration from Axo's programmable swaps design but added delegation control as a foundational feature. `cardano-swaps` is the name of the CLI program included to help use the DEX.
 
-Interestingly, by starting with the requirement of full delegation control, other nice properties naturally emerged:
+### The cardano-swaps DEX Protocol
+cardano-swaps took inspiration from Axo's programmable swaps design but added delegation control as a foundational feature. `cardano-swaps` is the name of the CLI program that enables use of the DEX protocol.
+
+Interestingly, by *starting* with the requirement of full delegation control, other desirable properties emerged naturally:
 
   1. Composable atomic swaps.
   2. Users maintain custody of their assets at all times.
-  3. Naturally concurrent and gets more concurrent the more users there are. No batchers are required.
-  4. Liquidity naturally spreads to all trading pairs instead of being siloed into specific trading pairs.
-  5. There is no impermanent loss.
-  6. ADA is all you need to interact with the DEX.
-  7. Upgradability can happen democratically.
-  8. Easy to integrate into any frontend.
+  3. Naturally concurrent and **scales *with* the number of users**. No batchers required.
+  4. Liquidity spreads organically to all trading pairs instead of being siloed into specific trading pairs/liquidity pools.
+  5. No impermanent loss for individual swaps (Of course, there is still inventory risk for *traders*, which is not the same as IL).
+  6. No secondary tokens - ADA is all you need to interact with the DEX.
+  7. Democratic upgradability
+  8. Relatively straightforward integration with existing frontends (i.e. wallets)
 
-In addition to these nice properties, the novel use of *Beacon Tokens* can be generalized to any application on Cardano.
+Additionally, the novel use of *Beacon Tokens* can be generalized to many applications on Cardano, not just DEXes.
 
 ---
 
@@ -261,7 +261,7 @@ Custom error messages are included to help troubleshoot why a swap failed. The w
 
 ---
 ## Composable Atomic Swaps
-Thanks to being able to securely combine atomic swaps into one transaction, any arbitrarily complex swap transaction can be created. 
+Since multiple swaps are combinable into a single transaction, any arbitrarily complex swap transaction can be created. The only limit is the size of the transaction itself.
 
 Do you want to convert 10 ADA into 5 DUST and 5 AGIX? No problem! This can be done in one transaction.
 What about converting 10 ADA, 5 DUST, and 3 WMT into 16 AGIX and 1 of your favorite NFTs? Piece of cake!
@@ -275,7 +275,7 @@ The only limits are the maximum transaction limits for Cardano.
 
 ---
 ## Liquidity
-Liquidity on Cardano-Swaps is entirely due to combining properly incentivized abritrage with being able to chain (compose) swaps together into one transaction.
+Liquidity in cardano-swaps is an *emergent* property; it arises from the (healthy) incentive for arbitragers to engage in complex swap transactions. Discrete liquidity pools are unnecessary.
 
 ### The Contrived Example
 
@@ -295,7 +295,7 @@ Charlie now has his original 10 ADA plus an additional 5 AGIX.
 This all occurs in one transaction where Charlie pays the transaction fee.
 ```
 
-In short, Charlie pays the transaction fee and in return receives 5 AGIX. As a bonus, both Alice's and Bob's swaps were fulfilled.
+On net, Charlie pays the transaction fees and receives 5 AGIX in return, while both Alice and Bob's swaps are fulfilled.
 
 ### The Realistic Example
 
@@ -321,38 +321,36 @@ Sarah now has her original 10 ADA plus an additional 5 AGIX.
 This all occurs in one transaction where Sarah pays the transaction fee.
 ```
 
-In short, Sarah pays the transaction fee and in return receives 5 AGIX. As a bonus, four swaps were fulfilled.
+On net, Sarah pays the transaction fees and receives 5 AGIX in return, while four swaps are fulfilled.
 
 ### Liquidity naturally flows to the less liquid pairs
-As you saw in the realistic example, Sarah was able to fulfill both the AGIX/DUST swap and the HOSKY/AGIX swap simply by "passing through" those pairs on her way back to ADA. As long as the entry and exit pairs (in this case ADA/HOSKY and DUST/ADA) have plenty of liquidity, arbitragers can spread that liquidity into the less liquid pairs.
+As shown in the realistic example, Sarah fulfills *both* the AGIX/DUST swap and the HOSKY/AGIX swap by "passing through" those pairs on her way back to ADA. As long as the entry and exit pairs (in this case ADA/HOSKY and DUST/ADA) have enough liquidity, arbitragers can spread that liquidity into less liquid swap pairs.
 
-Thanks to the very nature of illiquid pairs having more arbitrage opportunities, illiquid pairs are where most of the profit will be. Anyone can be an abritrager; everyone can design their own algorithms for finding the most profitable path through the available swaps.
+As a bonus, **the very nature of *illiquidity* implies great arbitrage opportunities**. The more illiquid a swap pair, the greater the potential arbitrage profits. Participating in arbitrage is permissionless, so anyone can design their own algorithms for finding the most profitable "path" through the currently available swaps.
 
 ### What if two arbitragers compete for the same swap?
 Recall the contrived example above. What would happen if Charlie and Mike try to arbitrage it at the same time?
 
-1. Charlie and Mike successfully build their transactions since the UTxOs still exist.
+1. Charlie and Mike both build their transactions since the UTxOs still exist.
 2. Charlie and Mike submit their transaction at the same time.
 3. Charlie's is added to a block first.
 4. When Mike's transaction is then picked to go into a block, the UTxOs no longer exist. The transaction fails without needing to run the swap contracts.
 
 Since Mike's transaction will fail without needing to run the swap script, Mike's collateral is safe. Further, the more available swaps there are, the less likely these "collisions" will occur.
 
-Note: future iterations of Ouroboros (namely Leios)  may allow arbitragers to further limit these collisions by segmenting transactions among sharded mempools.
+:note future iterations of Ouroboros (namely Leios) may allow arbitragers to further limit these collisions by segmenting transactions among sharded mempools.
 
 ---
 ## Benchmarks and Fee Estimations (YMMV)
-(I am not a software engineer but I tried my best to optimize the DEX. There is probably room for further optimizations.)
+Basic benchmarking tests were done to determine the maximum number of inputs or outputs that the spending script can handle in one transaction.
 
-Basic benchmarking tests were done to determine the maximum amount of inputs or outputs that the spending script could handle in one transaction.
-
-Cardano currently suffers from an issue where a spending script is executed once for every script input. So if there are 5 inputs from one of the script's addresses, the spending script will be executed 5 times. The latter 4 are completely redundant in this situation. These redundant exectutions impact the maximum number of inputs and outputs that can fit within one transaction. There is a Cardano Problem Statement that is looking to address this ([here](https://github.com/cardano-foundation/CIPs/pull/418)).
+Currently, Plutus is limited in that a spending script is always executed once for *every* script input, **even if the inputs come from the same script address.** So if there are 5 inputs from one of the script addresses, the spending script will be executed 5 times. **The latter 4 are completely redundant in this situation.** These redundant executions impact the maximum number of inputs and outputs that can fit in one transaction. There is a Cardano Problem Statement (CPS) looking to address this ([here](https://github.com/cardano-foundation/CIPs/pull/418)). Nonetheless, basic benchmarking results are shown here:
 
 ### Creating a Live Address
 For opening a new address, I was successfully able to mint the beacon, store the reference script, and create 80+ new swap positions in one transaction.
 
 | Number of New Swaps | Tx Fee |
-|--|--|
+|:--:|:--:|
 | 5 | 0.647711 ADA |
 | 10 | 0.697339 ADA |
 | 15 | 0.747768 ADA |
@@ -363,7 +361,7 @@ For opening a new address, I was successfully able to mint the beacon, store the
 For closing a new address, I was successfully able to burn the beacon, remove the reference script, and close 8 open positions in one transaction.
 
 | Number of Closed Swaps | Tx Fee |
-|--|--|
+|:--:|:--:|
 | 1 | 0.490071 ADA |
 | 2 | 0.574382 ADA |
 | 3 | 0.674041 ADA |
@@ -377,7 +375,7 @@ For closing a new address, I was successfully able to burn the beacon, remove th
 For updating open swaps, I was successfully able to update 5 positions and recreate them in one transaction. If you consolidate your open positions into one output, you may be able to update more in one transaction.
 
 | Number of Swaps Updated | Tx Fee |
-|--|--|
+|:--:|:--:|
 | 1 | 0.250309 ADA |
 | 2 | 0.381332 ADA |
 | 3 | 0.574544 ADA |
@@ -388,7 +386,7 @@ For updating open swaps, I was successfully able to update 5 positions and recre
 For swapping assets, I was successfully able to chain together 4 swap utxos before the redundant executions caused the transaction to exceed the memory limit.
 
 | Number of Swaps Chained | Tx Fee |
-|--|--|
+|:--:|:--:|
 | 1 | 0.313006 ADA |
 | 2 | 0.511202 ADA |
 | 3 | 0.772815 ADA |
@@ -396,9 +394,7 @@ For swapping assets, I was successfully able to chain together 4 swap utxos befo
 
 ---
 ## Upgradability
-
-Upgrades to `cardano-swaps` can propagate through the ecosystem of users in a similarly democratic fashion as SPOs upgrading their pools to a new version of `cardano-node`. Since users can close their swaps at any time, whenever there is a potential upgrade, users can choose to close their current swaps and recreate them with the new contracts. The main challenge here is the bifurcation of liquidity that occurs during upgrade periods. However, the more users there are and the more overall liquidity there is, the greater this issue is minimized.
-
+Upgrades to `cardano-swaps` can propagate through the ecosystem of users in a similarly democratic fashion as SPOs upgrading their pools to a new version of `cardano-node`. Since users can close their swaps at any time, whenever there is a potential upgrade, users can choose to close their current swaps and recreate them with the new contracts. The main challenge here is the bifurcation of liquidity that occurs during upgrade periods. However, the more users there are and the more overall liquidity there is, the more this issue is minimized.
 
 ---
 ## Frontend Agnosticism

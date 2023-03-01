@@ -65,7 +65,7 @@ import Plutus.Script.Utils.V2.Scripts as Scripts
 import Plutus.Script.Utils.V2.Typed.Scripts
 import Ledger.Bytes (fromHex)
 import qualified Plutonomy
-import Ledger.Value (valueOf,split,flattenValue)
+import Ledger.Value (valueOf,flattenValue)
 import PlutusTx.Numeric as Num
 import PlutusTx.Ratio (fromGHC)
 import PlutusPrelude (foldl')
@@ -97,9 +97,9 @@ calcWeightedPrice xs = snd $ foldl' foo (0,fromInteger 0) xs
     
     foo :: (Integer,Rational) -> UtxoPriceInfo -> (Integer,Rational) 
     foo (runningTot,wp) ui@UtxoPriceInfo{..} =
-      let !newAmount = runningTot + utxoAmount
-          !wp' = ratio' runningTot newAmount * wp +
-                 ratio' utxoAmount newAmount * convert ui
+      let newAmount = runningTot + utxoAmount
+          wp' = unsafeRatio runningTot newAmount * wp +
+                unsafeRatio utxoAmount newAmount * convert ui
       in (newAmount,wp')
 
 -- | Parse Currency from user supplied String
@@ -117,11 +117,6 @@ readTokenName s = case fromHex $ fromString s of
 -------------------------------------------------
 -- On-Chain Helper Functions
 -------------------------------------------------
-{-# INLINABLE ratio' #-}
--- | When denominator is zero, returns (fromInteger 0)
-ratio' :: Integer -> Integer -> Rational
-ratio' num den = if den == 0 then fromInteger 0 else unsafeRatio num den
-
 {-# INLINABLE ownInput #-}
 ownInput :: ScriptContext -> TxOut
 ownInput (ScriptContext info (Spending ref)) = getScriptInput (txInfoInputs info) ref
@@ -233,7 +228,7 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
   case action of
     Close ->
       -- | All outputs to address must contain proper datum.
-      swapOutputInfo Nothing `seq`
+      addrDiffInfo mempty Nothing `seq`
       -- | All beacons in inputs must be burned.
       traceIfFalse "Beacons not burned" beaconsBurned &&
       -- | Staking credential must sign or be executed.
@@ -241,7 +236,7 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
         stakingCredApproves
     Update ->
       -- | All outputs to address must contain proper datum.
-      swapOutputInfo Nothing `seq`
+      addrDiffInfo mempty Nothing `seq`
       -- | No beacons in inputs.
       traceIfFalse "No beacons allowed in tx inputs" noBeaconInputs &&
       -- | Staking credential must sign or be executed.
@@ -311,28 +306,28 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
             then traceError "Datum price /= weighted avg"
             else True
 
-    -- | Used to check the outputs to the address.
+    -- | Subtracts the outputs from the inputs to determine the value change at this address.
     -- Close and Update will pass in Nothing for Maybe Price.
     -- Swap will pass in the weighted avg for all of the inputs.
-    swapOutputInfo :: Maybe Price -> Value
-    swapOutputInfo maybePrice =
+    addrDiffInfo :: Value -> Maybe Price -> Value
+    addrDiffInfo iVal maybePrice =
       let outputs = txInfoOutputs info
           foo val TxOut{txOutDatum=d
                        ,txOutValue=oVal
                        ,txOutAddress=addr
                        } =
             if addr == inputCredentials 
-            then validDatum maybePrice (parseDatum d) `seq` val <> oVal
+            then validDatum maybePrice (parseDatum d) `seq` val <> Num.negate oVal
             else val  -- ^ It is for a different address. Ignore it.
-      in foldl' foo mempty outputs
+      in foldl' foo iVal outputs
 
     -- | The total input value from this address.
     -- The Integer will be ignored; it is needed to calculate the weighted avg price.
     -- The price returned is the weighted avg.
-    swapInputInfo :: (Value,(Integer,Price))
+    swapInputInfo :: (Value,Integer,Price)
     swapInputInfo =
       let inputs = txInfoInputs info
-          foo x@(val,(taken,wp)) TxInInfo{txInInfoResolved=TxOut{txOutAddress=addr
+          foo x@(val,taken,wp) TxInInfo{txInInfoResolved=TxOut{txOutAddress=addr
                                                                 ,txOutDatum=d
                                                                 ,txOutValue=iVal
                                                                 ,txOutReferenceScript = maybeRef
@@ -344,53 +339,55 @@ mkSwapScript SwapConfig{..} swapDatum action ctx@ScriptContext{scriptContextTxIn
                           price = swapPrice $ parseDatum d
                           newTaken = taken + iTaken
                           newWeightedPrice =
-                            ratio' taken newTaken * wp +
-                            ratio' iTaken newTaken * price
+                            unsafeRatio taken newTaken * wp +
+                            unsafeRatio iTaken newTaken * price
                           newSwapValue = val <> iVal
                       in if price > fromInteger 0
                         then ( newSwapValue
-                              , (newTaken,newWeightedPrice)
-                              )
+                             , newTaken
+                             , newWeightedPrice
+                             )
                         else traceError "All input prices must be > 0"
                 else x -- ^ Not for this address. Skip.
               Just _ ->
                 if addr == inputCredentials
                 then traceError "Cannot consume reference script from swap address"
                 else x
-      in foldl' foo (mempty,(0,fromInteger 0)) inputs
+      in foldl' foo (mempty,0,fromInteger 0) inputs
 
     swapCheck :: Bool
     swapCheck =
       let -- | Input info
           -- Throws error if price in datum is < 0.
           -- Throws error if reference script among inputs.
-          (scriptInputValue,(_,weightedPrice)) = swapInputInfo
+          (scriptInputValue,_,weightedPrice) = swapInputInfo
 
-          -- | Output info
+          -- | Address Asset Flux info
           -- Throws error if output datum does not contain the weighted avg price.
           -- Throws error if output datum does not have Nothing for swapBeacon.
-          scriptOutputValue = swapOutputInfo (Just weightedPrice)
+          scriptValueDiff = addrDiffInfo scriptInputValue (Just weightedPrice)
 
           -- | Convert price if necessary
           correctedPrice
             -- | If ADA is offered, divide the weighted price by 1,000,000
-            | swapOffer == (adaSymbol,adaToken) = weightedPrice * ratio' 1 1_000_000
+            | swapOffer == (adaSymbol,adaToken) = weightedPrice * unsafeRatio 1 1_000_000
             -- | If ADA is asked, multiply the weighted price by 1,000,000
-            | swapAsk == (adaSymbol,adaToken) = weightedPrice * ratio' 1_000_000 1
+            | swapAsk == (adaSymbol,adaToken) = weightedPrice * unsafeRatio 1_000_000 1
             | otherwise = weightedPrice
           
-          -- | Value flux
-          scriptValueDiff = scriptOutputValue <> Num.negate scriptInputValue
-
           -- | Amounts
-          askedGiven = fromInteger $ uncurry (valueOf scriptValueDiff) swapAsk
-          offeredTaken = fromInteger $ Num.negate $ uncurry (valueOf scriptValueDiff) swapOffer
+          askedGiven = fromInteger $ Num.negate $ uncurry (valueOf scriptValueDiff) swapAsk
+          offeredTaken = fromInteger $ uncurry (valueOf scriptValueDiff) swapOffer
 
           -- | Assets leaving script address
-          leavingAssets = flattenValue $ fst $ split scriptValueDiff -- ^ zero diff amounts removed
-          isOnlyOfferedAsset [(cn,tn,_)] = (cn,tn) == swapOffer
-          isOnlyOfferedAsset [] = True -- ^ Useful for testing
-          isOnlyOfferedAsset _ = False
+          leavingAssets = flattenValue scriptValueDiff -- ^ zero diff amounts removed
+          isOnlyOfferedAsset xs =
+            let go !acc _ [] = acc
+                go !acc so ((cn,tn,n):ys) = 
+                  if n > 0  -- ^ Leaving assets are positive here
+                  then go (acc && (cn,tn) == so) so ys 
+                  else go acc so ys
+            in go True swapOffer xs
       in -- | Only the offered asset is allowed to leave the script address.
          -- When ADA is not being offered, the user is required to supply the ADA for native token utxos.
          -- This means that, when ADA is not offered, the script's ADA value can only increase.

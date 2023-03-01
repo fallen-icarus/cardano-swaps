@@ -193,7 +193,7 @@ swapBenchConfig = emConfig & params .~ params'
 
     protoParams :: ProtocolParameters
     protoParams = def{protocolParamMaxTxExUnits = Just (ExecutionUnits {executionSteps = 10000000000
-                                                                       ,executionMemory = 10000000})}
+                                                                       ,executionMemory = 9000000})}
 
 updateBenchConfig :: EmulatorConfig
 updateBenchConfig = emConfig & params .~ params'

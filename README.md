@@ -37,12 +37,12 @@ The Getting Started instructions can be found [here](GettingStarted.md).
 
 ---
 ## Abstract
-`cardano-swaps` is a proof-of-concept implementation of massively scalable and concurrent DEX protocol for the Cardano Settlement Layer (CSL). It solves many of the pitfalls of current DEX implementations by empowering users to deploy their own (and interact with each others') script addresses. By doing so, users maintain fully custody of their assets at all times, and can elect if/when to upgrade their addresses to new contract standards.
+`cardano-swaps` is a proof-of-concept implementation of an *organically* scalable DEX protocol for the Cardano Settlement Layer (CSL). It solves many of the pitfalls of current DEX implementations by empowering users to deploy their own (and interact with each others') script addresses. By doing so, users always maintain spending *and* delegation custody of their assets, and can elect if/when to upgrade their addresses to new contract standards.
 
 -----
 
 ## Motivation
-Many DEXes on Cardano are currently implemented in ways that lock users' assets into a tightly fixed, and/or centrally maintained, set(s) of script addresses. Such design patterns are reminiscent of the EVM's accounts-based programming paradigm, and inherit many of the same downsides, namely scalability bottlenecks and asset centralization. DEXes that hope to achieve massive scale on the CSL must adhere to a radically different approach that takes full advantage of the concurrency and parallelism offered by the eUTxO model. `cardano-swaps` is a first attempt at such an approach. 
+Many DEXes on Cardano are currently implemented in ways that lock users' assets into a tightly fixed, and/or centrally maintained, set(s) of script addresses. Such design patterns are reminiscent of the EVM's accounts-based programming paradigm, and inherit many of the same downsides; scalability bottlenecks and asset/stake centralization. DEXes that hope to achieve massive scale on the CSL must adhere to a radically different approach that takes full advantage of the concurrency and parallelism offered by the eUTxO model. `cardano-swaps` is a first attempt at such an approach. 
 
 -----
 
@@ -58,18 +58,30 @@ One consequence of centralized script addresses is the necessity for liquidity p
 | Incomplete or No Delegation Control | <ul><li>Asset pool fractionalization</li><li>Indirect Delegation via Governance Tokens</li></ul> | <ul><li>Unfair distribution of Governance tokens </li><li>Unavoidable centralization of stake (Major issue for Ouroboros)</li></ul>
 | Scaling Bottlenecks | Batchers, Execution/Routing Engines, and/or other middlemen | Middlemen can take advantage of their position between users and the protocol. Even if MEV is mitigated, more users --> more execution demand --> centralization of middlemen |
 
-The key takeaway here (especially from the last point) is even 
+Of course, this is not an exhaustive list, though even if some workarounds can be somewhat effective, the underlying design *principles* are suboptimal.
 
-Of course, this is not an exhaustive list, but here is the key takeaway: **even if users control their own keys, for a DEX to achieve true scale the users must also control their own *addresses*.**
+Centralized script addresses necessitate the use of LPs, which imposes a bottleneck on the parallelism of orders. No matter how performant a system of batchers is, this limitation is unavoidable. Additionally, the more decoupled delegation control is from the owner, the more distorted Ouroboros' game theory becomes. It is difficult to predict the extent of this distortion, so minimizing it is of critical importance.
 
+All of this is to say that, much like Bittorrent and the CSL-CCL stack, the best p2p protocols are ones that scale in *proportion* to the number of participants. DEXes are no different. With this in mind, here is the key takeaway: **even if users control their own keys, for a DEX to achieve true scale its users must also control their own *addresses*.** 
 
-if some workarounds *can* be effective, the underlying design *principles* are inadequate. Much like Bittorrent, and the CSL-CCL stack, **the best p2p protocols are ones that scale in proportion to the number of participants**. DEXes are no different. With this in mind, we can explore alternative design principles:
+Cardano-Swaps gives users control over their own script addresses via a novel combination of programmable swaps and Beacon Tokens (both are expanded upon below) to achieve batcher/router-free scalability *with* delegation control.
+
 
 ### Programmable Swaps
-Programmable Swaps are a better design choice than liquidity pools. They were first proposed by Axo (formerly known as Maladex). However, in Axo's original [whitepaper](https://www.axo.trade/whitepaper.pdf), there is no mention of giving users *full* delegation control of their own assets. 
+Programmable Swaps are a more promising design choice than liquidity pools. They were first proposed by Axo in their original [whitepaper](https://www.axo.trade/whitepaper.pdf), although there is no mention of giving users *full* delegation control over their assets. In essence, programmable swaps are simply locked UTxOs guarded by a user's own script address. They may be used as inputs, if and only if the resulting TX outputs adhere to the swap logic of the script address. This design pattern scales organically, since there must be at *least* as many swap addresses as there are users. 
 
-### The cardano-swaps Protocol
-cardano-swaps took inspiration from Axo's programmable swaps design but added delegation control as a foundational feature. `cardano-swaps` is the name of the CLI program that enables use of the DEX protocol.
+The challenge now becomes one of indexing: how do users differentiate each others' swap addresses from all other addresses on Cardano, without relying on a centralized indexer/router? This is where Beacon Tokens come into play.
+
+### Beacon Tokens
+Beacon Tokens are a WIP native token standard that serve to "tag" on-chain data in a way that is efficiently queryable by off-chain APIs.  They enable cardano-swaps users to designate their script addresses as "swappable", such that they stand out in sea of other addresses. DDOS/bloat prevention is possible by carefully marrying beacon token minting policies with scripts' spending policies. This is expanded upon further below.
+
+Putting this all together, we finally have:
+
+### The Cardano-Swaps Protocol
+
+
+Cardano-Swaps took inspiration from Axo's programmable swaps design and added delegation control as a foundational feature. `cardano-swaps` is the name of the CLI program that enables use of the DEX protocol.
+
 
 Interestingly, by *starting* with the requirement of full delegation control, other desirable properties emerged naturally:
 
@@ -77,21 +89,19 @@ Interestingly, by *starting* with the requirement of full delegation control, ot
   2. Users maintain custody of their assets at all times.
   3. Naturally concurrent and **scales *with* the number of users**. No batchers required.
   4. Liquidity spreads organically to all trading pairs instead of being siloed into specific trading pairs/liquidity pools.
-  5. No impermanent loss for individual swaps (Of course, there is still inventory risk for *traders*, which is not the same as IL).
+  5. No impermanent loss for individual swaps (Of course, there is still inventory risk for *arbitrage traders*, which is not the same as IL).
   6. No secondary tokens - ADA is all you need to interact with the DEX.
   7. Democratic upgradability
   8. Relatively straightforward integration with existing frontends (i.e. wallets)
 
-Additionally, the novel use of *Beacon Tokens* can be generalized to many applications on Cardano, not just DEXes.
+:note: the novel use of *Beacon Tokens* for "tagging" on-chain data can be generalized for many dApps, not just DEXes. More on this in the Beacon Token CIP (**LINK HERE**)
 
 ---
-
-## Specification
 
 ### Personal Contracts
 In order for users to maintain full delegation control of their assets, it is required for user assets to be kept siloed. The reason for this is that, on Cardano, all ADA at an address is either delegated entirely or not at all (atomic delegation is not possible). So for a user to maintain delegation control of their assets, only that user's assets should be at the address he/she is using.
 
-A cardano address is made up of both a payment credential and a staking credential. As long as the staking credential is unique to that user, full delegation control over the address is maintained. With this in mind, every user is given the same spending script to use for the address' payment credential and are required to use their own staking credential (either a pubkey or a staking script). To force the use of a staking credential, the DEX is designed such that it is not possible to mint a valid beacon token (discussed later) to an address without a staking credential.
+A cardano address is made up of both a payment credential and a staking credential. As long as the staking credential is unique to that user, full delegation control over the address is maintained. With this in mind, every user is given the same spending script to use for the address' payment credential and are required to use their own staking credential (either a pubkey or a staking script). To force the use of a staking credential, the DEX is designed such that it is not possible to mint a beacon token (discussed later) to an address without a staking credential.
 
 #### If all users share a spending script, how are their assets protected?
 The spending script gets the staking credential from the address of the UTxO being spent at run-time. When an owner related action is being performed (closing or updating positions), the spending script requires that the staking credential "signals approval" of the action:
@@ -100,18 +110,21 @@ The spending script gets the staking credential from the address of the UTxO bei
 - If the staking credential is a script, then the script must be executed in the same transaction.
 - the staking credential effectively *becomes* the "owner" for all actions except for the actual swap execution, in which case the spending credential is used directly.
 
- It is possible to execute a staking script even if 0 ADA is withdrawn from a reward address. The only requirement to use staking scripts like this is that the associated stake address must be registered and delegated. Stake addresses can be utilized this way as soon as the registration+delegation transaction is added to the chain. There is no epoch waiting-period.
+ :note: It is possible to execute a staking script even if 0 ADA is withdrawn from a reward address. The only requirement to use staking scripts like this is that the associated stake address must be registered and delegated. Stake addresses can be utilized this way as soon as the registration+delegation transaction is added to the chain. There is no epoch waiting-period.
 
 #### Why not just give each user their own spending script?
-`cardano-swaps` relies on the usage of [beacon tokens](<#specification/##Beacon Tokens>) to "tag" addresses, which demarcates them as *distinct* for efficient off-chain querying/aggregation. However, **address distinction is nonsensical if each script address is composed of completely unique credentials.** In other words, for Beacon Tokens to work properly, there must be a clear distinction between addresses participating in a given dApp and all other addresses. `cardano-swaps` leverages the dual payment-staking credentials of Cardano addresses to maintain address-distinction (shared spending scripts) without sacrificing self-custody (unique staking keys/scripts). For further clarification, refer to the [Beacon Token](<#specification/##Beacon Tokens>) section below, or to the Beacon Token CIP (**link here**)
+`cardano-swaps` relies on the usage of [beacon tokens](<#specification/##Beacon Tokens>) to "tag" addresses, which demarcates them as *distinct* for efficient off-chain querying/aggregation. However, **address distinction is impossible if each script address is composed of completely unique credentials.** In other words, for Beacon Tokens to work properly, there must be a clear distinction between addresses participating in a given dApp and all other addresses. `cardano-swaps` leverages the dual payment-staking credentials of Cardano addresses to maintain address-distinction (shared spending scripts) without sacrificing self-custody (unique staking keys/scripts). For further clarification, refer to the [Beacon Token](<#specification/##Beacon Tokens>) section below, or to the Beacon Token CIP (**link here**)
 
-:note v1.0.0 of cardano-swaps used unique spending scripts; you can read about the limitations in the v1.0.0 commit README.
+:note: v1.0.0 of cardano-swaps used unique spending scripts; you can read about the limitations in the v1.0.0 commit README.
 
 #### Delegating
 Since each user has their own swap address, the process of delegation is identical to that of a normal address (either by staking key or staking script). Check out the [delegation section](GettingStarted.md#delegate-the-swap-address) of [GettingStarted.md](GettingStarted.md) for an example using a staking pubkey.
 
 
-### Beacon Tokens
+## Specification
+
+
+### Minting and Using Beacon Tokens
 Upon reading how all users have their own DEX addresses, it is natural to ask how potential "swappers" can find all available swaps and the information needed to remotely swap with them. The answer is to use beacon tokens.
 
 Using [Koios](https://api.koios.rest/#overview) or [Blockfrost](https://docs.blockfrost.io/) apis, it is possible to find all addresses that contain a specific native token. Once you have the address, you can then use Koios or Blockfrost again to get all utxos locked at those addresses.
@@ -185,7 +198,7 @@ While these beacons are used to broadcast all necessary information for remotely
 
 For example, the last use case allows the beacons to be used to also broadcast the metadata of all transactions they were ever part of. This feature can create a trustless "metadata history" trail. Here is the Blockfrost [api](https://docs.blockfrost.io/#tag/Cardano-Assets/paths/~1assets~1%7Basset%7D~1transactions/get) that can give you the transaction history for a beacon. Here is the Koios [api](https://api.koios.rest/#get-/asset_txs) for the same thing. Once you have the transaction history you can use this Blockfrost [api](https://docs.blockfrost.io/#tag/Cardano-Transactions/paths/~1txs~1%7Bhash%7D~1metadata/get) to get the metadata for each transaction. Here is the Koios [api](https://api.koios.rest/#post-/tx_metadata) for the same thing.
 
-All of this information is broadcasted automatically and trustlessly by the beacon tokens; no configuration of the tokens is necessary. You can simply decide which information to use. **The only requirement is that you make the beacon token unique for each kind of information.**
+All of this information is broadcasted automatically and trustlessly by the beacon tokens; no configuration of the tokens is necessary. You can simply decide which information to use. **The only requirement is that the beacon token is unique for each *kind* of datatype.**
 
 ---
 ### The DEX's Inline Datum
@@ -341,7 +354,7 @@ Recall the contrived example above. What would happen if Charlie and Mike try to
 
 Since Mike's transaction will fail without needing to run the swap script, Mike's collateral is safe. Further, the more available swaps there are, the less likely these "collisions" will occur.
 
-:note future iterations of Ouroboros (namely Leios) may allow arbitragers to further limit these collisions by segmenting transactions among sharded mempools.
+:note: future iterations of Ouroboros (namely Leios) may allow arbitragers to further limit these collisions by segmenting transactions among sharded mempools.
 
 ---
 ## Benchmarks and Fee Estimations (YMMV)
@@ -405,7 +418,7 @@ By using the beacon tokens, it is trivial for any frontend to integrate with Car
 
 ---
 ## Conclusion
-The cardano-swaps protocol has all of the desired properties of a highly scalable DEX:
+The cardano-swaps protocol has all of the desired properties of a highly scalable DEX
 
 
 Thanks to the use of beacon tokens, decentralization is no longer limited by the design of DEXs. Instead, the limiting factor is now the off-chain querying. However, innovations in this space are still in the early days. The Koios api is an example of a more decentralized off-chain platform. As the technology improves, the decentralization of this DEX will only improve.
@@ -422,4 +435,4 @@ The reason is to incentivize users to actually use the DEX as intended. If there
 
 #### If cardano-swaps reaches mass adoption, won't TVL on Cardano go down?
 
-Yes. Yes it will. TVL is a silly metric.
+Yes. Yes it will. TVL is a silly metric. It is a measure of who can be most inefficient with DeFi capital.

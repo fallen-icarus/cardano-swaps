@@ -16,8 +16,6 @@ The Getting Started instructions can be found [here](GettingStarted.md).
 - [Specification](#Specification)
   - [Personal Contracts](<#personal contracts>)
   - [The DEX's Inline Datum](#the-dexs-inline-datum)
-    - [`swapPrice`](#swapprice)
-    - [`swapBeacon`](#swapbeacon)
   - [Swap Contract Logic](#the-swap-contract-logic)
     - [Close Redeemer](#close-redeemer)
     - [Update Redeemer](#update-redeemer)
@@ -29,7 +27,7 @@ The Getting Started instructions can be found [here](GettingStarted.md).
 
 ---
 ## Abstract
-`cardano-swaps` is a proof-of-concept implementation of an *organically* scalable DEX protocol for the Cardano Settlement Layer (CSL). It solves many of the pitfalls of current DEX implementations by empowering users to deploy their own (and interact with each others') script addresses. By doing so, users always maintain spending *and* delegation custody of their assets, and can elect if/when to upgrade their addresses to new contract standards.
+`cardano-swaps` is a proof-of-concept implementation of an *organically* scalable DEX protocol for the Cardano Settlement Layer (CSL). It solves many of the pitfalls of current DEX implementations by empowering users to deploy their own (and interact with each others') script addresses. By doing so, users always maintain spending *and* delegation control of their assets, and can elect if/when to upgrade their addresses to new contract standards.
 
 
 ## Motivation
@@ -57,12 +55,12 @@ All of this is to say that, much like Bittorrent and the CSL-CCL stack, the best
 Cardano-Swaps achieves batcher/router-free scalability *with* delegation control via a novel combination of user-controlled script addresses and Beacon Tokens (both are expanded upon below).
 
 ### Programmable Swaps
-Programmable Swaps are a more promising design choice than liquidity pools. They were first proposed by Axo in their original [whitepaper](https://www.axo.trade/whitepaper.pdf), although there is no mention of giving users *full* delegation control over their assets. In essence, programmable swaps are simply locked UTxOs guarded by a user's own script address. They may be used as inputs, if and only if the resulting TX outputs adhere to the swap logic of the script address. This design pattern scales naturally, since there must be at *least* as many swap addresses as there are users. 
+First proposed by Axo in their original [whitepaper](https://www.axo.trade/whitepaper.pdf), programmable swaps are a more promising design choice than liquidity pools. Swaps are simply UTxOs that may be consumed if and only if the resulting TX outputs satisfy the input script's demand. Since each swap is atomic and explicitly defined, in aggregate they are the optimal expression of (intra)market sentiment. By fragmenting swaps across many user-controlled addresses, delegation control is maintained. This design pattern scales naturally, since there must be at *least* as many swap addresses as there are users. 
 
 The challenge now becomes one of indexing: how do users differentiate each others' swap addresses from all other addresses on Cardano, without relying on a centralized indexer/router? This is where Beacon Tokens come into play.
 
 ### Beacon Tokens
-Beacon Tokens are a (WIP) native token standard that "tag" on-chain data in a way that is efficiently queryable by off-chain APIs.  They enable cardano-swaps users to designate their script addresses as "swappable", such that they stand out in sea of other addresses. DDOS/bloat prevention is achieved by carefully marrying Beacons' minting policies with scripts' spending policies. This is expanded upon in the Specification section below.
+Beacon Tokens are a (WIP) native token standard that "tag" on-chain data in a way that is efficiently queryable by off-chain APIs.  They enable cardano-swaps users to designate their script addresses as "swappable", such that they stand out in sea of other addresses. DDOS/bloat prevention is achieved by carefully marrying Beacons' minting policies with scripts' spending policies. This is expanded upon in the [Specification section](#specification) below.
 
 :note: the novel use of *Beacon Tokens* for "tagging" on-chain data can be generalized for many dApps, not just DEXes. More on this in the Beacon Token CIP (**LINK HERE**)
 
@@ -423,4 +421,4 @@ Yes. Yes it will. TVL is a silly metric. It is a measure of who can be most inef
 
 The cardano-swaps protocol has all of the desired properties of a highly scalable DEX. Thanks to the use of beacon tokens, decentralization is no longer limited by the design of DEXs. Instead, the limiting factor is now the off-chain querying. However, innovations in this space are still in the early days. The Koios API is an example of a more decentralized off-chain platform. As the technology improves, the decentralization of this DEX will improve as well.
 
----
+

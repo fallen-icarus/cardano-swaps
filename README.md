@@ -48,7 +48,7 @@ One consequence of centralized script addresses is the necessity for liquidity p
 
 Of course, this is not an exhaustive list, and even if some workarounds can be somewhat effective, the underlying design *principles* are suboptimal.
 
-Centralized script addresses necessitate the use of LPs, which imposes a bottleneck on the parallelism of orders. No matter how performant/decentralized a system of batchers is, their resources do **not** scale in proportion to the number of users. Additionally, the more decoupled delegation control is from the owner, the more distorted Ouroboros' game theory becomes. It is difficult to predict the extent of this distortion, so minimizing it is of critical importance.
+The more decoupled delegation control is from the owner, the more distorted Ouroboros' game theory becomes. It is difficult to predict the extent of this distortion, so minimizing it is of critical importance. Additionally, current implementations of order-book style DEXes (which don't use LPs) still suffer from the scalability challenges of centralized/batched script addresses. No matter how performant/decentralized a system of batchers is, their resources do **not** scale in proportion to the number of users. 
 
 All of this is to say that, much like Bittorrent and the CSL-CCL stack, the best p2p protocols are ones that scale in *proportion* to the number of users. DEXes are no different. With this in mind, here is the key takeaway: **even if users control their own keys, for a DEX to achieve true scale its users must also control their own *addresses*.** 
 
@@ -62,7 +62,7 @@ The challenge now becomes one of indexing: how do users differentiate each other
 ### Beacon Tokens
 Beacon Tokens are a (WIP) native token standard that "tag" on-chain data in a way that is efficiently queryable by off-chain APIs.  They enable cardano-swaps users to designate their script addresses as "swappable", such that they stand out in sea of other addresses. DDOS/bloat prevention is achieved by carefully marrying Beacons' minting policies with scripts' spending policies. This is expanded upon in the [Specification section](#specification) below.
 
-:white_check_mark: the novel use of *Beacon Tokens* for "tagging" on-chain data can be generalized for many dApps, not just DEXes. More on this in the [Beacon Token CIP](https://github.com/cardano-foundation/CIPs/pull/466)
+:white_check_mark: The novel use of *Beacon Tokens* for "tagging" on-chain data can be generalized for many dApps, not just DEXes. More on this in the [Beacon Token CIP](https://github.com/cardano-foundation/CIPs/pull/466).
 
 Putting this all together, we finally have:
 
@@ -188,7 +188,7 @@ The `Rational` type is a fraction (decimal types do not work properly). Fortunat
 
 All prices in Cardano-Swaps are local (similar to limit orders in an order-book exchange). The price is always askedAsset/offeredAsset. For example, if $ADA is being offered for $DUST at a price of 1.5 (converted to 3/2), the contract requires that 3 $DUST are deposited for every 2 $ADA removed from the swap address. Ratios < 3/2 will fail, while ratios >= 3/2 will pass. 
 
-:key: When engaging in swaps, it is only necessary that the desired swap ratio is met; **not all assets at the swap address or UTxO must be swapped.** For example, if there is 100 ADA in a swap address requesting 2:1 for DUST, a user may swap 20 ADA, as long as they return 80 ADA and 10 DUST in the same TX.
+When engaging in swaps, it is only necessary that the desired swap ratio is met; **not all assets at the swap address or UTxO must be swapped.** For example, if there is 100 ADA in a swap address requesting 2:1 for DUST, a user may swap 20 ADA, as long as they return 80 ADA and 10 DUST in the same TX.
 
 Since every user explicitly defines their desired swap ratios, oracles are not required. The "global" price naturally emerges where the local bids and asks meet - just like an order-book.
 
@@ -207,7 +207,7 @@ Swap contracts have three possible actions, a.k.a. redeemers:
 2. `Update` - update the asking price for UTxOs at the swap address
 3. `Swap` - executing a swap with assets at the swap address
 
-:notebook: Only the owner (signified by the address' staking credential) is allowed to use the `Close` or `Update` redeemers. Anyone can use the `Swap` redeemer.
+Only the owner (signified by the address' staking credential) is allowed to use the `Close` or `Update` redeemers. Anyone can use the `Swap` redeemer.
 
 #### `Close` Redeemer
 The `Close` redeemer allows the owner (signified by the address' staking credential) to recover the deposit stored with the reference script, and make the address undiscoverable by burning the beacon. **In order to reclaim the deposit, the beacon must be burned.** The requirements for successfully using the `Close` redeemer are:
@@ -327,7 +327,7 @@ Thanks to the query-ability of beacon tokens, it is trivial for any frontend to 
 ## Benchmarks and Fee Estimations (YMMV)
 Basic benchmarking tests were done to determine the maximum number of inputs or outputs that the spending script can handle in one transaction.
 
-:pushpin: Currently, Plutus is limited in that a spending script is always executed once for *every* script input, **even if the inputs come from the same script address.** So if there are 5 inputs from one of the script addresses, the spending script will be executed 5 times. **The latter 4 are completely redundant in this situation.** These redundant executions impact the maximum number of inputs and outputs that can fit in one transaction. There is a Cardano Problem Statement (CPS) looking to address this ([here](https://github.com/cardano-foundation/CIPs/pull/418)). Nonetheless, basic benchmarking results are shown here:
+Currently, Plutus is limited in that a spending script is always executed once for *every* script input, **even if the inputs come from the same script address.** So if there are 5 inputs from one of the script addresses, the spending script will be executed 5 times. **The latter 4 are completely redundant in this situation.** These redundant executions impact the maximum number of inputs and outputs that can fit in one transaction. There is a Cardano Problem Statement (CPS) looking to address this ([here](https://github.com/cardano-foundation/CIPs/pull/418)). Nonetheless, basic benchmarking results are shown here:
 
 ### Creating a Live Address
 For opening a new address, I was successfully able to mint the beacon, store the reference script, and create 80+ new swap positions in one transaction.
@@ -386,12 +386,12 @@ The spending script gets the staking credential from the address of the UTxO bei
 - If the staking credential is a script, then the script must be executed in the same transaction.
 - the staking credential effectively *becomes* the "owner" for all actions except for the actual swap execution, in which case the spending credential is used directly.
 
- :notebook: It is possible to execute a staking script even if 0 ADA is withdrawn from a reward address. The only requirement to use staking scripts like this is that the associated stake address must be registered and delegated. Stake addresses can be utilized this way as soon as the registration+delegation transaction is added to the chain. There is no epoch waiting-period.
+ It is possible to execute a staking script even if 0 ADA is withdrawn from a reward address. The only requirement to use staking scripts like this is that the associated stake address must be registered and delegated. Stake addresses can be utilized this way as soon as the registration+delegation transaction is added to the chain. There is no epoch waiting-period.
 
 #### Why not just give each user their own spending script?
 `cardano-swaps` relies on the usage of [beacon tokens](<#specification/##Beacon Tokens>) to "tag" addresses, which demarcates them as *distinct* for efficient off-chain querying/aggregation. However, **address distinction is impossible if each script address is composed of completely unique credentials.** In other words, for Beacon Tokens to work properly, there must be a clear distinction between addresses participating in a given dApp and all other addresses. `cardano-swaps` leverages the dual payment-staking credentials of Cardano addresses to maintain address-distinction (shared spending scripts) without sacrificing self-custody (unique staking keys/scripts). For further clarification, refer to the [Beacon Token CIP](https://github.com/cardano-foundation/CIPs/pull/466)
 
-:notebook: v1.0.0 of cardano-swaps used unique spending scripts; you can read about the limitations in the v1.0.0 commit README.
+:pushpin: v1.0.0 of cardano-swaps used unique spending scripts; you can read about the limitations in the v1.0.0 commit README.
 
 #### If all users have direct access to the spending script for that trading pair, why are reference scripts used?
 To disincentivize beacon bloat. 
@@ -408,7 +408,7 @@ Recall the contrived example above. What would happen if Charlie and Mike try to
 
 Since Mike's transaction will fail without needing to run the swap script, Mike's collateral is safe. Further, the more available swaps there are, the less likely these "collisions" will occur.
 
-:notebook: future iterations of Ouroboros (namely Leios) may allow arbitragers to further limit these collisions by segmenting transactions among sharded mempools.
+:pushpin: future iterations of Ouroboros (namely Leios) may allow arbitragers to further limit these collisions by segmenting transactions among sharded mempools.
 
 #### If Cardano-Swaps reaches mass adoption, won't TVL on Cardano go down?
 

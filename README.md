@@ -57,7 +57,7 @@ Cardano-Swaps achieves batcher/router-free scalability *with* delegation control
 ### Programmable Swaps
 First proposed by Axo in their original [whitepaper](https://www.axo.trade/whitepaper.pdf), programmable swaps are a more promising design choice than liquidity pools. Swaps are simply UTxOs that may be consumed if and only if the resulting TX outputs satisfy the input script's logic. Swaps can be fragmented across many user-controlled addresses, so delegation control is maintained. Users then execute swaps from each other's addresses. Since each swap is atomic and explicitly defined, in aggregate they are the optimal expression of (intra)market sentiment. This design pattern scales naturally, since there must be at *least* as many swap addresses as there are users. 
 
-The challenge now becomes one of indexing: how do users differentiate each others' swap addresses from all other addresses on Cardano, without relying on a centralized indexer/router? This is where Beacon Tokens come into play.
+The challenge now becomes one of indexing: how do users differentiate each others' swap addresses from all other addresses on Cardano, *without* relying on a specialized indexer/router? This is where Beacon Tokens come into play.
 
 ### Beacon Tokens
 Beacon Tokens are a (WIP) native token standard that "tag" on-chain data in a way that is efficiently queryable by off-chain APIs.  They enable cardano-swaps users to designate their script addresses as "swappable", such that they stand out in sea of other addresses. DDOS/bloat prevention is achieved by carefully marrying Beacons' minting policies with scripts' spending policies. This is expanded upon in the [Specification section](#specification) below.
@@ -67,7 +67,7 @@ Beacon Tokens are a (WIP) native token standard that "tag" on-chain data in a wa
 Putting this all together, we finally have:
 
 ### The Cardano-Swaps Protocol
-Cardano-Swaps takes inspiration from Axo's programmable swaps design, adds delegation control as a foundational feature, and, through the use of Beacon Tokens, removes the need for specialized indexers. The only remaining bottleneck is the querying capacity of existing off-chain APIs, such as Blockfrost or Koios.
+Cardano-Swaps takes inspiration from Axo's programmable swaps design, adds delegation control as a foundational feature, and, through the use of Beacon Tokens, removes the need for specialized indexers. The only remaining bottleneck is the querying capacity of existing off-chain APIs, such as Blockfrost or Koios. (For users with powerful enough hardware, even this is not a limitation, as they can run their own API database).
 
 Here are some of the key features of Cardano-Swaps:
 

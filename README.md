@@ -8,7 +8,7 @@ The Getting Started instructions can be found [here](GettingStarted.md).
 ## Table of Contents 
 - [Abstract](#abstract)
 - [Motivation](#motivation)
-- [Preliminary Discussion](<#preliminary discussion>)
+- [Preliminary Discussion](<#Preliminary Discussion>)
   - [Current DEX Deficiencies](<#preliminary discussion/##Current DEX Deficiencies>)
   - [Programmable Swaps](<#preliminary discussion/##Programmable Swaps>)
   - [Beacon Tokens](<#preliminary discussion/##beacon tokens>)

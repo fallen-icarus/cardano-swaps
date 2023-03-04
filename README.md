@@ -62,7 +62,7 @@ The challenge now becomes one of indexing: how do users differentiate each other
 ### Beacon Tokens
 Beacon Tokens are a (WIP) native token standard that "tag" on-chain data in a way that is efficiently queryable by off-chain APIs.  They enable cardano-swaps users to designate their script addresses as "swappable", such that they stand out in sea of other addresses. DDOS/bloat prevention is achieved by carefully marrying Beacons' minting policies with scripts' spending policies. This is expanded upon in the [Specification section](#specification) below.
 
-:note: the novel use of *Beacon Tokens* for "tagging" on-chain data can be generalized for many dApps, not just DEXes. More on this in the Beacon Token CIP (**LINK HERE**)
+:notebook: the novel use of *Beacon Tokens* for "tagging" on-chain data can be generalized for many dApps, not just DEXes. More on this in the [Beacon Token CIP](https://github.com/cardano-foundation/CIPs/pull/466)
 
 Putting this all together, we finally have:
 
@@ -88,7 +88,7 @@ Some of these features are explained further in the [Discussion section](<#Discu
 ### Personal Contracts
 Cardano addresses are made up of both a payment credential and a staking credential. As long as the staking credential is unique to that user, delegation control over the address is maintained. Cardano-swaps leverages this duality by giving users addresses that are composed of the same spending scripts (per swap pair) and unique staking credentials. The spending credential is implemented in a way that gives the staking credential authority over all owner related actions, besides the actual swap execution. 
 
-:note: To force the use of a staking credential, it is not possible to mint a beacon token to an address without a staking credential.
+:notebook: To force the use of a staking credential, it is not possible to mint a beacon token to an address without a staking credential.
 
 ### Minting and Using Beacon Tokens
 Beacon Tokens are used to tag `cardano-swaps` addresses so they are readily queryable via an off-chain API, such as Koios or Blockfrost. It is relatively straightforward to find all addresses that contain a specific native token. Here are some examples:
@@ -98,7 +98,7 @@ Beacon Tokens are used to tag `cardano-swaps` addresses so they are readily quer
 | Addresses with a beacon | [api](https://api.koios.rest/#get-/asset_address_list) | [api](https://docs.blockfrost.io/#tag/Cardano-Assets/paths/~1assets~1%7Basset%7D~1addresses/get)|
 | UTxOs at the address | [api](https://api.koios.rest/#post-/address_info) | [api](https://docs.blockfrost.io/#tag/Cardano-Addresses/paths/~1addresses~1%7Baddress%7D~1utxos/get)|
 
-The UTxO query also returns which UTxOs contain reference scripts, allowing users execute their swaps.
+The UTxO query also returns which UTxOs contain reference scripts, allowing users to execute their swaps.
 
 Technically, all native tokens can be used as beacons like this but this feature is usually not the intended one. The name *Beacon Token* refers to any native token whose only purpose is to act as a tag/beacon.
 
@@ -206,7 +206,7 @@ Swap contracts have three possible actions, a.k.a. redeemers:
 2. `Update` - update the asking price for UTxOs at the swap address
 3. `Swap` - executing a swap with assets at the swap address
 
-:note: Only the owner (signified by the address' staking credential) is allowed to use the `Close` or `Update` redeemers. Anyone can use the `Swap` redeemer.
+:notebook: Only the owner (signified by the address' staking credential) is allowed to use the `Close` or `Update` redeemers. Anyone can use the `Swap` redeemer.
 
 #### `Close` Redeemer
 The `Close` redeemer allows the owner (signified by the address' staking credential) to recover the deposit stored with the reference script, and make the address undiscoverable by burning the beacon. **In order to reclaim the deposit, the beacon must be burned.** The requirements for successfully using the `Close` redeemer are:
@@ -261,8 +261,6 @@ Do you want to convert 10 ADA into 5 DUST and 5 AGIX? No problem! This can be do
 What about converting 10 ADA, 5 DUST, and 3 WMT into 16 AGIX and 1 of your favorite NFTs? Piece of cake!
 
 By composing these swaps in one transaction, many-to-many multi-asset swaps are possible. The only limits are the maximum transaction limits for Cardano.
-
-**(Maybe: references to Plutus redundant execution CPS)**
 
 ### Emergent Liquidity
 Liquidity in cardano-swaps is an *emergent* property; it arises from the (healthy) incentive for arbitragers to engage in complex swap transactions. Discrete liquidity pools are unnecessary.
@@ -387,12 +385,12 @@ The spending script gets the staking credential from the address of the UTxO bei
 - If the staking credential is a script, then the script must be executed in the same transaction.
 - the staking credential effectively *becomes* the "owner" for all actions except for the actual swap execution, in which case the spending credential is used directly.
 
- :note: It is possible to execute a staking script even if 0 ADA is withdrawn from a reward address. The only requirement to use staking scripts like this is that the associated stake address must be registered and delegated. Stake addresses can be utilized this way as soon as the registration+delegation transaction is added to the chain. There is no epoch waiting-period.
+ :notebook: It is possible to execute a staking script even if 0 ADA is withdrawn from a reward address. The only requirement to use staking scripts like this is that the associated stake address must be registered and delegated. Stake addresses can be utilized this way as soon as the registration+delegation transaction is added to the chain. There is no epoch waiting-period.
 
 #### Why not just give each user their own spending script?
-`cardano-swaps` relies on the usage of [beacon tokens](<#specification/##Beacon Tokens>) to "tag" addresses, which demarcates them as *distinct* for efficient off-chain querying/aggregation. However, **address distinction is impossible if each script address is composed of completely unique credentials.** In other words, for Beacon Tokens to work properly, there must be a clear distinction between addresses participating in a given dApp and all other addresses. `cardano-swaps` leverages the dual payment-staking credentials of Cardano addresses to maintain address-distinction (shared spending scripts) without sacrificing self-custody (unique staking keys/scripts). For further clarification, refer to the [Beacon Token](<#specification/##Beacon Tokens>) section below, or to the Beacon Token CIP (**link here**)
+`cardano-swaps` relies on the usage of [beacon tokens](<#specification/##Beacon Tokens>) to "tag" addresses, which demarcates them as *distinct* for efficient off-chain querying/aggregation. However, **address distinction is impossible if each script address is composed of completely unique credentials.** In other words, for Beacon Tokens to work properly, there must be a clear distinction between addresses participating in a given dApp and all other addresses. `cardano-swaps` leverages the dual payment-staking credentials of Cardano addresses to maintain address-distinction (shared spending scripts) without sacrificing self-custody (unique staking keys/scripts). For further clarification, refer to the [Beacon Token CIP](https://github.com/cardano-foundation/CIPs/pull/466)
 
-:note: v1.0.0 of cardano-swaps used unique spending scripts; you can read about the limitations in the v1.0.0 commit README.
+:notebook: v1.0.0 of cardano-swaps used unique spending scripts; you can read about the limitations in the v1.0.0 commit README.
 
 #### If all users have direct access to the spending script for that trading pair, why are reference scripts used?
 To disincentivize beacon bloat. 
@@ -409,7 +407,7 @@ Recall the contrived example above. What would happen if Charlie and Mike try to
 
 Since Mike's transaction will fail without needing to run the swap script, Mike's collateral is safe. Further, the more available swaps there are, the less likely these "collisions" will occur.
 
-:note: future iterations of Ouroboros (namely Leios) may allow arbitragers to further limit these collisions by segmenting transactions among sharded mempools.
+:notebook: future iterations of Ouroboros (namely Leios) may allow arbitragers to further limit these collisions by segmenting transactions among sharded mempools.
 
 #### If Cardano-Swaps reaches mass adoption, won't TVL on Cardano go down?
 

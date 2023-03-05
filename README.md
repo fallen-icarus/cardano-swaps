@@ -44,13 +44,13 @@ One consequence of centralized script addresses is the necessity for liquidity p
 | :--: | :--: | :--: |
 | Impermanent Loss | Yield Farming & Concentrated Liquidity | Medium - Long term unsustainability |
 | Incomplete or No Delegation Control | <ul><li>Asset pool fractionalization</li><li>Indirect Delegation via Governance Tokens</li></ul> | <ul><li>Unfair distribution of Governance tokens </li><li>Unavoidable centralization of stake (Major issue for Ouroboros)</li></ul>
-| Scaling Bottlenecks | Batchers, Execution/Routing Engines, and/or other middlemen | Middlemen can take advantage of their position between users and the protocol. Even if MEV is mitigated, more users --> more execution demand --> centralization of middlemen |
+| Scaling Bottlenecks | Batchers, Execution/Routing Engines, and/or other middlemen | Middlemen can take advantage of their position between users and the protocol. Even if MEV is mitigated, more users --> more execution demand --> possible centralization of middlemen if the batchers are not permissionless |
 
 Of course, this is not an exhaustive list, and even if some workarounds can be somewhat effective, the underlying design *principles* are suboptimal.
 
-The more decoupled delegation control is from the owner, the more distorted Ouroboros' game theory becomes. It is difficult to predict the extent of this distortion, so minimizing it is of critical importance. Additionally, current implementations of order-book style DEXes (which don't use LPs) still suffer from the scalability challenges of centralized/batched script addresses. No matter how performant/decentralized a system of batchers is, their resources do **not** scale in proportion to the number of users. 
+The more decoupled delegation control is from the owner, the more distorted Ouroboros' game theory becomes. It is difficult to predict the extent of this distortion, so minimizing it is of critical importance. Additionally, current implementations of order-book style DEXes (which don't use LPs) still suffer from the scalability challenges of permissioned batchers. No matter how performant a system of batchers is, their resources do **not** scale in proportion to the number of users unless new batchers can permissionlessly join when there is high demand.
 
-All of this is to say that, much like Bittorrent and the CSL-CCL stack, the best p2p protocols are ones that scale in *proportion* to the number of users. DEXes are no different. With this in mind, here is the key takeaway: **even if users control their own keys, for a DEX to achieve true scale its users must also control their own *addresses*.** 
+All of this is to say that, much like Bittorrent and the CSL-CCL stack, the best p2p protocols are ones that scale in *proportion* to the number of users. DEXes are no different.
 
 Cardano-Swaps achieves batcher/router-free scalability *with* delegation control via a novel combination of user-controlled script addresses and Beacon Tokens (both are expanded upon below).
 

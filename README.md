@@ -408,8 +408,6 @@ Recall the contrived example above. What would happen if Charlie and Mike try to
 
 Since Mike's transaction will fail without needing to run the swap script, Mike's collateral is safe. Further, the more available swaps there are, the less likely these "collisions" will occur.
 
-:pushpin: future iterations of Ouroboros (namely Leios) may allow arbitragers to further limit these collisions by segmenting transactions among sharded mempools.
-
 #### If Cardano-Swaps reaches mass adoption, won't TVL on Cardano go down?
 
 Yes. Yes it will. TVL is a silly metric. It is a measure of who can be most inefficient with DeFi capital.

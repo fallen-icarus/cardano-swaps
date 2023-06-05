@@ -14,85 +14,89 @@ common lang
   default-language: Haskell2010
   ghc-options: -Wall -Wredundant-constraints
 
+common internals
+  build-depends:
+      cardano-api
+    , plutus-ledger
+    , plutus-ledger-api
+    , plutus-tx
+    , plutus-tx-plugin
+    , plutus-script-utils
+    , plutus-core
+    , cardano-node-emulator
+    , containers
+
 library
-  import: lang
+  import:
+      lang
+    , internals
   exposed-modules: CardanoSwaps
   build-depends:
-    plutus-ledger,
-    plutus-ledger-api,
-    plutus-core,
-    plutus-tx-plugin,
-    plutus-tx,
-    plutus-script-utils,
-    cardano-api,
-    bytestring,
-    serialise,
-    aeson,
-    plutonomy,
+      bytestring
+    , serialise
+    , aeson
+    , text
   hs-source-dirs: src
-  ghc-options: 
+  ghc-options:
     -fobject-code 
     -fno-ignore-interface-pragmas 
     -fno-omit-interface-pragmas 
     -fno-specialise
 
 test-suite cardano-swaps-tests
-  import: lang
+  import: 
+    lang,
+    internals
   type: exitcode-stdio-1.0
   main-is: Test.hs
   hs-source-dirs: test
-  default-language: Haskell2010
   ghc-options:
     -threaded -rtsopts -with-rtsopts=-N
   other-modules:
-    Test.Common,
-    Test.CreateAddress,
-    Test.BurningBeacons,
-    Test.CloseAddress,
-    Test.UpdateSwaps,
-    Test.SwapAssets
+      Test.Common
   build-depends:
-    cardano-swaps,
-    cardano-api,
-    plutus-contract,
-    plutus-tx,
-    plutus-ledger-api,
-    plutus-ledger,
-    plutus-ledger-constraints,
-    plutus-tx-plugin,
-    aeson,
-    plutus-script-utils,
-    text,
-    playground-common,
-    containers,
-    data-default,
-    tasty,
-    lens,
-    tasty-hunit
+      cardano-swaps
+    , plutus-contract
+    , plutus-tx-constraints
+    , aeson
+    , text
+    , data-default
+    , tasty
+    , lens
+    , tasty-hunit
 
 executable cardano-swaps
-    import: lang
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
     other-modules:
-      CLI.Types,
-      CLI.Parsers,
-      CLI.Run,
-      CLI.BlockfrostApi,
-      CLI.QuerySwaps
-    build-depends:    cardano-swaps,
-                      optparse-applicative,
-                      servant,
-                      aeson,
-                      servant-client,
-                      http-client,
-                      http-client-tls,
-                      text,
-                      containers,
-                      vector,
-                      aeson-pretty,
-                      bytestring,
-                      utf8-string,
+        Core
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+    build-depends:    
+          base ^>=4.14.3.0
+        , cardano-api
+        , plutus-ledger
+        , plutus-ledger-api
+        , plutus-tx
+        , plutus-tx-plugin
+        , plutus-script-utils
+        , plutus-core
+        , cardano-node-emulator
+        , cardano-binary
+        , plutus-contract
+        , plutus-tx-constraints
+        , containers
+        , bytestring
+        , serialise
+        , aeson
+        , text
+        , data-default
+        , utf8-string
+        , tasty
+        , lens
+        , tasty-hunit
     hs-source-dirs:   app
     default-language: Haskell2010
+    ghc-options: -Wall -Wredundant-constraints

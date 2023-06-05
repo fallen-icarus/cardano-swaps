@@ -1,19 +1,46 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
+import qualified Data.Map as Map
+import Plutus.Script.Utils.V2.Scripts as UScripts
+import Ledger (Validator(..),MintingPolicy(..))
 import Test.Tasty
+import Test.Tasty.HUnit
 
-import Test.CreateAddress as CreateAddress
-import Test.BurningBeacons as BurningBeacons
-import Test.CloseAddress as CloseAddress
-import Test.UpdateSwaps as UpdateSwaps
-import Test.SwapAssets as SwapAssets
+import CardanoSwaps
+import Test.Common
+import Test.OpenSwapAddress as OpenSwapAddress
+
+genTestScripts :: SwapConfig -> Blueprints -> TestScripts
+genTestScripts cfg bs = TestScripts
+    { spendingValidator = spendVal
+    , spendingValidatorHash = spendValHash
+    , beaconPolicy = beacon
+    , beaconPolicyHash = beaconHash
+    , beaconCurrencySymbol = scriptCurrencySymbol beacon
+    }
+  where spendVal = Validator $ applySwapParams cfg $ bs Map.! "cardano_swaps.spend"
+        spendValHash = UScripts.validatorHash spendVal
+        beacon = MintingPolicy $ applyBeaconParams spendValHash $ bs Map.! "cardano_swaps.mint"
+        beaconHash = mintingPolicyHash beacon
+
+uniqueBeaconsTest :: Blueprints -> TestTree
+uniqueBeaconsTest bs = testGroup "Beacon Uniqueness"
+  [ testCase "Unique beacons for every SwapConfig" $ assertBool "Beacons are not unique" $
+      beaconCurrencySymbol (genTestScripts (SwapConfig ("","") testToken2) bs) /= 
+        beaconCurrencySymbol (genTestScripts (SwapConfig ("","") testToken1) bs)
+  ]
 
 main :: IO ()
-main = defaultMain $ testGroup "Cardano-Swaps"
-  [
-    CreateAddress.tests,
-    BurningBeacons.tests,
-    CloseAddress.tests,
-    UpdateSwaps.tests,
-    SwapAssets.tests
-  ]
+main = do
+  blueprints <- readBlueprints "aiken/plutus.json"
+  let cfg = SwapConfig ("","") testToken1
+      testScripts = genTestScripts cfg blueprints
+
+  -- OpenSwapAddress.testTrace testScripts
+
+  defaultMain $ testGroup "Cardano-Swaps"
+    [ uniqueBeaconsTest blueprints
+    , OpenSwapAddress.tests testScripts
+    ]

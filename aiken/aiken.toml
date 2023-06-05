@@ -1,0 +1,14 @@
+name = "fallen-icarus/cardano_swaps"
+version = "0.0.0"
+license = "Apache-2.0"
+description = "Aiken contracts for project 'fallen-icarus/cardano_swaps'"
+
+[repository]
+user = "fallen-icarus"
+project = "cardano_swaps"
+platform = "github"
+
+[[dependencies]]
+name = "aiken-lang/stdlib"
+version = "main"
+source = "github"

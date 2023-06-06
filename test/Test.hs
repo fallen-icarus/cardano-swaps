@@ -4,7 +4,7 @@ module Main where
 
 import qualified Data.Map as Map
 import Plutus.Script.Utils.V2.Scripts as UScripts
-import Ledger (Validator(..),MintingPolicy(..))
+import Ledger (Validator(..),MintingPolicy(..),scriptSize,unValidatorScript)
 import Test.Tasty
 import Test.Tasty.HUnit
 
@@ -41,12 +41,13 @@ main = do
   let cfg = SwapConfig ("","") testToken1
       testScripts = genTestScripts cfg blueprints
 
-  Swap.testTrace testScripts
+  -- print $ scriptSize $ unValidatorScript $ spendingValidator testScripts
+  -- Swap.testTrace testScripts
 
-  -- defaultMain $ testGroup "Cardano-Swaps"
-  --   [ uniqueBeaconsTest blueprints
-  --   , OpenSwapAddress.tests testScripts
-  --   , CloseSwapAddress.tests testScripts
-  --   , Update.tests testScripts
-  --   , Swap.tests testScripts
-  --   ]
+  defaultMain $ testGroup "Cardano-Swaps"
+    [ uniqueBeaconsTest blueprints
+    , OpenSwapAddress.tests testScripts
+    , CloseSwapAddress.tests testScripts
+    , Update.tests testScripts
+    , Swap.tests testScripts
+    ]

@@ -553,7 +553,7 @@ successfullyUpdateMultipleUTxOs ts@TestScripts{..} = do
 tests :: TestScripts -> TestTree
 tests ts = do
   let opts = defaultCheckOptions & emulatorConfig .~ emConfig
-  testGroup "Close Swap Address"
+  testGroup "Update Swap UTxOs"
     [ checkPredicateOptions opts "Successfully update a swap"
         assertNoFailedTransactions (successfullyUpdateSwap ts)
     , checkPredicateOptions opts "Fail if input has BeaconSymbol datum"

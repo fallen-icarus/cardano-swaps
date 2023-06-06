@@ -13,6 +13,7 @@ import Test.Common
 import Test.OpenSwapAddress as OpenSwapAddress
 import Test.CloseSwapAddress as CloseSwapAddress
 import Test.Update as Update
+import Test.Swap as Swap
 
 genTestScripts :: SwapConfig -> Blueprints -> TestScripts
 genTestScripts cfg bs = TestScripts
@@ -40,11 +41,12 @@ main = do
   let cfg = SwapConfig ("","") testToken1
       testScripts = genTestScripts cfg blueprints
 
-  -- Update.testTrace testScripts
+  Swap.testTrace testScripts
 
-  defaultMain $ testGroup "Cardano-Swaps"
-    [ uniqueBeaconsTest blueprints
-    , OpenSwapAddress.tests testScripts
-    , CloseSwapAddress.tests testScripts
-    , Update.tests testScripts
-    ]
+  -- defaultMain $ testGroup "Cardano-Swaps"
+  --   [ uniqueBeaconsTest blueprints
+  --   , OpenSwapAddress.tests testScripts
+  --   , CloseSwapAddress.tests testScripts
+  --   , Update.tests testScripts
+  --   , Swap.tests testScripts
+  --   ]

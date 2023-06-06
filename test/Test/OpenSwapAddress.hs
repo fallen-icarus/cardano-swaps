@@ -353,6 +353,38 @@ mintWithBurnRedeemer ts@TestScripts{..} = do
       , openSwapAddressScripts = ts
       }
 
+datumNotInline :: TestScripts -> EmulatorTrace ()
+datumNotInline ts@TestScripts{..} = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
+      beaconDatum = BeaconSymbol beaconCurrencySymbol
+
+      addr = Address (ScriptCredential spendingValidatorHash)
+                     (Just $ StakingHash
+                           $ PubKeyCredential
+                           $ unPaymentPubKeyHash
+                           $ mockWalletPaymentPubKeyHash
+                           $ knownWallet 1
+                     )
+
+  callEndpoint @"open-swap-address" h1 $
+    OpenSwapAddressParams
+      { openSwapAddressBeaconsMinted = [("",1)]
+      , openSwapAddressBeaconRedeemer = MintBeacon
+      , openSwapAddressAddress = addr
+      , openSwapAddressInfo =
+          [ ( Just beaconDatum
+            , lovelaceValueOf 20_000_000 <> singleton beaconCurrencySymbol "" 1
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          ]
+      , openSwapAddressAsInline = False
+      , openSwapAddressScripts = ts
+      }
+
 -------------------------------------------------
 -- Test Function
 -------------------------------------------------
@@ -380,6 +412,8 @@ tests ts = do
         (Test.not assertNoFailedTransactions) (wrongDatumType ts)
     , checkPredicateOptions opts "Fail if burn redeemer used to mint"
         (Test.not assertNoFailedTransactions) (mintWithBurnRedeemer ts)
+    , checkPredicateOptions opts "Fail if output datum not inline"
+        (Test.not assertNoFailedTransactions) (datumNotInline ts)
     ]
 
 testTrace :: TestScripts -> IO ()

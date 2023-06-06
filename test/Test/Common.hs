@@ -97,8 +97,26 @@ data OpenSwapAddressParams = OpenSwapAddressParams
   , openSwapAddressScripts :: TestScripts
   } deriving (Generic,ToJSON,FromJSON)
 
+data CloseAddressParams = CloseAddressParams
+  { closeBeaconsBurned :: [(TokenName,Integer)]
+  , closeBeaconRedeemer :: BeaconRedeemer
+  , closeSwapAddress :: Address
+  , closeSpecificUtxos :: [(SwapDatum,Value)]
+  , closeTestScripts :: TestScripts
+  } deriving (Generic,ToJSON,FromJSON)
+
+data UpdateParams = UpdateParams
+  { updateSwapAddress :: Address
+  , updateSpecificUtxos :: [(SwapDatum,Value)]
+  , updateOutputs :: [(Maybe SwapDatum,Value)]
+  , updateAsInline :: Bool
+  , updateTestScripts :: TestScripts
+  } deriving (Generic,ToJSON,FromJSON)
+
 type TraceSchema =
       Endpoint "open-swap-address" OpenSwapAddressParams
+  .\/ Endpoint "close-address" CloseAddressParams
+  .\/ Endpoint "update" UpdateParams
 
 -------------------------------------------------
 -- Configs
@@ -152,6 +170,21 @@ emConfig = EmulatorConfig (Left $ Map.fromList wallets) def
       , (knownWallet 6, user6)
       ]
 
+benchConfig :: EmulatorConfig
+benchConfig = emConfig & params .~ params'
+  where 
+    params' :: Params
+    params' = def{emulatorPParams = pParams'}
+
+    pParams' :: PParams
+    pParams' = pParamsFromProtocolParams protoParams
+
+    protoParams :: ProtocolParameters
+    protoParams = def{ protocolParamMaxTxExUnits = Just (ExecutionUnits {executionSteps = 10000000000
+                                                                        ,executionMemory = 2000000})
+                    --  , protocolParamMaxTxSize = 8300
+                     }
+
 -------------------------------------------------
 -- Trace Models
 -------------------------------------------------
@@ -183,6 +216,82 @@ openSwapAddress OpenSwapAddressParams{openSwapAddressScripts=TestScripts{..},..}
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
   logInfo @String "Swap address created"
 
+closeAddress :: CloseAddressParams -> Contract () TraceSchema Text ()
+closeAddress CloseAddressParams{closeTestScripts=TestScripts{..},..} = do
+  swapUtxos <- utxosAt $ unsafeFromRight $ toCardanoAddressInEra Mainnet closeSwapAddress
+  userPubKeyHash <- ownFirstPaymentPubKeyHash
+
+  let beaconRedeemer = toRedeemer closeBeaconRedeemer
+      closeRedeemer = toRedeemer Close
+
+      lookups = plutusV2MintingPolicy beaconPolicy
+             <> plutusV2OtherScript spendingValidator
+             <> Constraints.unspentOutputs swapUtxos
+      
+      tx' =
+        -- | Burn Beacons
+        (foldl' 
+          (\acc (t,i) -> acc <> mustMintCurrencyWithRedeemer beaconPolicyHash beaconRedeemer t i) 
+          mempty
+          closeBeaconsBurned
+        )
+        -- | Spend UTxOs to close.
+        <> ( foldl' 
+                  (\a (d,v) -> a 
+                            <> mustSpendScriptOutputWithMatchingDatumAndValue 
+                                 spendingValidatorHash 
+                                 (== toDatum d)
+                                 (==v) 
+                                 closeRedeemer) 
+                  mempty 
+                  closeSpecificUtxos
+           )
+        -- | Must be signed by stake pubkey (same as payment for this model)
+        <> mustBeSignedBy userPubKeyHash
+  
+  ledgerTx <- submitTxConstraintsWith @Void lookups tx'
+  void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+  logInfo @String "Swap address closed"
+
+update :: UpdateParams -> Contract () TraceSchema Text ()
+update UpdateParams{updateTestScripts=TestScripts{..},..} = do
+  swapUtxos <- utxosAt $ unsafeFromRight $ toCardanoAddressInEra Mainnet updateSwapAddress
+  userPubKeyHash <- ownFirstPaymentPubKeyHash
+
+  let updateRedeemer = toRedeemer Update
+
+      toDatum'
+        | updateAsInline = TxOutDatumInline . toDatum
+        | otherwise = TxOutDatumHash . toDatum
+
+      lookups = plutusV2OtherScript spendingValidator
+             <> Constraints.unspentOutputs swapUtxos
+      
+      tx' =
+        -- | Spend UTxOs to update.
+        ( foldl' 
+            (\a (d,v) -> a 
+                      <> mustSpendScriptOutputWithMatchingDatumAndValue 
+                            spendingValidatorHash 
+                            (== toDatum d)
+                            (==v) 
+                            updateRedeemer) 
+            mempty 
+            updateSpecificUtxos
+        )
+        -- | Add updated outputs
+        <> (foldl'
+              (\acc (d,v) -> acc <> mustPayToAddressWith updateSwapAddress (fmap toDatum' d) v)
+              mempty
+              updateOutputs
+           )
+        -- | Must be signed by stake pubkey (same as payment for this model)
+        <> mustBeSignedBy userPubKeyHash
+  
+  ledgerTx <- submitTxConstraintsWith @Void lookups tx'
+  void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+  logInfo @String "Swap(s) updated"
+
 -------------------------------------------------
 -- Endpoints
 -------------------------------------------------
@@ -190,6 +299,10 @@ endpoints :: Contract () TraceSchema Text ()
 endpoints = selectList choices >> endpoints
   where
     openSwapUtxo' = endpoint @"open-swap-address" openSwapAddress
+    closeAddress' = endpoint @"close-address" closeAddress
+    update' = endpoint @"update" update
     choices = 
       [ openSwapUtxo'
+      , closeAddress'
+      , update'
       ]

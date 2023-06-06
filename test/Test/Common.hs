@@ -113,10 +113,19 @@ data UpdateParams = UpdateParams
   , updateTestScripts :: TestScripts
   } deriving (Generic,ToJSON,FromJSON)
 
+data SwapParams = SwapParams
+  { swapAddress :: Address
+  , swapSpecificUtxos :: [(SwapDatum,Value)]
+  , swapChange :: [(Maybe SwapDatum,Value)]
+  , swapChangeDatumAsInline :: Bool
+  , swapTestScripts :: TestScripts
+  } deriving (Generic,ToJSON,FromJSON)
+
 type TraceSchema =
       Endpoint "open-swap-address" OpenSwapAddressParams
   .\/ Endpoint "close-address" CloseAddressParams
   .\/ Endpoint "update" UpdateParams
+  .\/ Endpoint "swap" SwapParams
 
 -------------------------------------------------
 -- Configs
@@ -181,7 +190,7 @@ benchConfig = emConfig & params .~ params'
 
     protoParams :: ProtocolParameters
     protoParams = def{ protocolParamMaxTxExUnits = Just (ExecutionUnits {executionSteps = 10000000000
-                                                                        ,executionMemory = 2000000})
+                                                                        ,executionMemory = 5000000})
                     --  , protocolParamMaxTxSize = 8300
                      }
 
@@ -292,6 +301,42 @@ update UpdateParams{updateTestScripts=TestScripts{..},..} = do
   void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
   logInfo @String "Swap(s) updated"
 
+swap :: SwapParams -> Contract () TraceSchema Text ()
+swap SwapParams{swapTestScripts=TestScripts{..},..} = do
+  swapUtxos <- utxosAt $ unsafeFromRight $ toCardanoAddressInEra Mainnet swapAddress
+
+  let swapRedeemer = toRedeemer Swap
+
+      toDatum'
+        | swapChangeDatumAsInline = TxOutDatumInline . toDatum
+        | otherwise = TxOutDatumHash . toDatum
+
+      lookups = plutusV2OtherScript spendingValidator
+             <> Constraints.unspentOutputs swapUtxos
+      
+      tx' =
+        -- | Spend UTxOs to swap.
+        ( foldl' 
+            (\a (d,v) -> a 
+                      <> mustSpendScriptOutputWithMatchingDatumAndValue 
+                            spendingValidatorHash 
+                            (== toDatum d)
+                            (==v) 
+                            swapRedeemer) 
+            mempty 
+            swapSpecificUtxos
+        )
+        -- | Add swapd outputs
+        <> (foldl'
+              (\acc (d,v) -> acc <> mustPayToAddressWith swapAddress (fmap toDatum' d) v)
+              mempty
+              swapChange
+           )
+  
+  ledgerTx <- submitTxConstraintsWith @Void lookups tx'
+  void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+  logInfo @String "Swapped UTxO(s)"
+
 -------------------------------------------------
 -- Endpoints
 -------------------------------------------------
@@ -301,8 +346,10 @@ endpoints = selectList choices >> endpoints
     openSwapUtxo' = endpoint @"open-swap-address" openSwapAddress
     closeAddress' = endpoint @"close-address" closeAddress
     update' = endpoint @"update" update
+    swap' = endpoint @"swap" swap
     choices = 
       [ openSwapUtxo'
       , closeAddress'
       , update'
+      , swap'
       ]

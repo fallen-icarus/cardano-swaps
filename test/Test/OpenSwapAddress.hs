@@ -294,7 +294,6 @@ wrongDatumType ts@TestScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
-      beaconDatum = BeaconSymbol beaconCurrencySymbol
 
       addr = Address (ScriptCredential spendingValidatorHash)
                      (Just $ StakingHash

@@ -4,7 +4,8 @@ module Main where
 
 import qualified Data.Map as Map
 import Plutus.Script.Utils.V2.Scripts as UScripts
-import Ledger (Validator(..),MintingPolicy(..),scriptSize,unValidatorScript)
+import Ledger (Validator(..),MintingPolicy(..))
+-- import Ledger (scriptSize,unValidatorScript)
 import Test.Tasty
 import Test.Tasty.HUnit
 

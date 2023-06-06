@@ -34,21 +34,15 @@ import qualified PlutusTx
 import PlutusTx.Prelude hiding (Semigroup (..), foldMap)
 import Plutus.Script.Utils.Value
 import Plutus.Script.Utils.Ada (lovelaceValueOf)
-import Plutus.Script.Utils.V2.Scripts as UScripts
 import Plutus.Trace
 import Wallet.Emulator.Wallet
-import Data.List (foldl',repeat)
-import Prelude as Haskell (Semigroup (..), String, IO)
+import Data.List (foldl')
+import Prelude as Haskell (Semigroup (..), String)
 import Cardano.Api.Shelley (ProtocolParameters (..))
-import Ledger.Tx.Internal as I
-import Plutus.Script.Utils.V2.Generators (alwaysSucceedPolicy)
 import qualified Cardano.Api as C
 import Cardano.Api hiding (TxOutDatum(..),TxOutDatumInline,TxOutDatumHash,Address,TxId,Value)
 import Cardano.Node.Emulator.Params
 import Ledger.Tx.CardanoAPI.Internal
-import Ledger.Tx.Constraints.ValidityInterval
-import Ledger.Address
-import Ledger.Credential
 
 import CardanoSwaps
 

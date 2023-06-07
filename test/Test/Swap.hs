@@ -69,6 +69,7 @@ successfullySwap ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
   void $ waitUntilSlot 2
@@ -121,6 +122,7 @@ swapBeaconUTxO ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
   void $ waitUntilSlot 2
@@ -176,6 +178,7 @@ negativeInputPrice ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
   void $ waitUntilSlot 2
@@ -228,6 +231,7 @@ zeroInputPrice ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
   void $ waitUntilSlot 2
@@ -280,6 +284,7 @@ outputHasWrongDatumType ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
   void $ waitUntilSlot 2
@@ -332,6 +337,7 @@ singleSwapWrongOutputPrice ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
   void $ waitUntilSlot 2
@@ -388,6 +394,7 @@ successfullySwapMultipleUTxOs ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
   void $ waitUntilSlot 2
@@ -447,6 +454,7 @@ outputPriceNotWeightedAvg ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
   void $ waitUntilSlot 2
@@ -506,6 +514,7 @@ requiredAmountDoesNotMatchWeightedPrice ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
   void $ waitUntilSlot 2
@@ -561,6 +570,7 @@ singleSwapRatioDoesNotMatchInputPrice ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
   void $ waitUntilSlot 2
@@ -613,6 +623,7 @@ otherAssetLeaves ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
   void $ waitUntilSlot 2
@@ -695,6 +706,7 @@ benchSwap ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
   void $ waitUntilSlot 2

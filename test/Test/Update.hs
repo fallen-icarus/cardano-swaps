@@ -68,6 +68,7 @@ successfullyUpdateSwap ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
   void $ waitUntilSlot 2
@@ -119,6 +120,7 @@ wrongInputDatumType ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
   void $ waitUntilSlot 2
@@ -173,6 +175,7 @@ wrongOutputDatumType ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
   void $ waitUntilSlot 2
@@ -224,6 +227,7 @@ outputHasInvalidPrice ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
   void $ waitUntilSlot 2
@@ -276,6 +280,7 @@ stakingCredentialDidNotApprove ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
   void $ waitUntilSlot 2
@@ -327,6 +332,7 @@ datumNotInline ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
   void $ waitUntilSlot 2
@@ -435,6 +441,7 @@ successfullyUpdateMultipleUTxOs ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
   void $ waitUntilSlot 2

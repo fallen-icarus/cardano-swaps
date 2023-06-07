@@ -68,6 +68,7 @@ successfullyOpenAddress ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
 mintMultipleBeacons :: DappScripts -> EmulatorTrace ()
@@ -100,6 +101,7 @@ mintMultipleBeacons ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
 wrongBeaconName :: DappScripts -> EmulatorTrace ()
@@ -132,6 +134,7 @@ wrongBeaconName ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
 beaconGoesToWrongScriptAddress :: DappScripts -> EmulatorTrace ()
@@ -164,6 +167,7 @@ beaconGoesToWrongScriptAddress ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
 beaconMintedToNonStakingAddress :: DappScripts -> EmulatorTrace ()
@@ -191,6 +195,7 @@ beaconMintedToNonStakingAddress ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
 beaconMintedToPubkeyAddress :: DappScripts -> EmulatorTrace ()
@@ -223,6 +228,7 @@ beaconMintedToPubkeyAddress ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
 missingMinimumDeposit :: DappScripts -> EmulatorTrace ()
@@ -255,6 +261,7 @@ missingMinimumDeposit ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
 wrongDatumSymbol :: DappScripts -> EmulatorTrace ()
@@ -287,6 +294,7 @@ wrongDatumSymbol ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
 wrongDatumType :: DappScripts -> EmulatorTrace ()
@@ -318,6 +326,7 @@ wrongDatumType ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
 mintWithBurnRedeemer :: DappScripts -> EmulatorTrace ()
@@ -350,6 +359,7 @@ mintWithBurnRedeemer ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
 datumNotInline :: DappScripts -> EmulatorTrace ()
@@ -382,6 +392,7 @@ datumNotInline ts@DappScripts{..} = do
           ]
       , openSwapAddressAsInline = False
       , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = False
       }
 
 -------------------------------------------------

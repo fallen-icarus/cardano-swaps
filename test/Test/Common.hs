@@ -55,9 +55,9 @@ toRedeemer = Redeemer . PlutusTx.dataToBuiltinData . PlutusTx.toData
 toDatum :: PlutusTx.ToData a => a -> Datum
 toDatum = Datum . PlutusTx.dataToBuiltinData . PlutusTx.toData
 
-mustPayToAddressWith :: Address -> Maybe (TxOutDatum Datum) -> Value -> TxConstraints i o
-mustPayToAddressWith addr maybeDatum val =
-  Constraints.singleton $ MustPayToAddress addr maybeDatum Nothing val
+mustPayToAddressWith :: Address -> Maybe (TxOutDatum Datum) -> Maybe (Ledger.ScriptHash) -> Value -> TxConstraints i o
+mustPayToAddressWith addr maybeDatum maybeScript val =
+  Constraints.singleton $ MustPayToAddress addr maybeDatum maybeScript val
 
 instance ToJSON SwapConfig
 instance FromJSON SwapConfig
@@ -84,6 +84,7 @@ data OpenSwapAddressParams = OpenSwapAddressParams
   , openSwapAddressInfo :: [(Maybe SwapDatum, Value)]
   , openSwapAddressAsInline :: Bool
   , openSwapAddressScripts :: DappScripts
+  , openSwapAddressWithRefScript :: Bool
   } deriving (Generic,ToJSON,FromJSON)
 
 data CloseAddressParams = CloseAddressParams
@@ -193,6 +194,10 @@ openSwapAddress OpenSwapAddressParams{openSwapAddressScripts=DappScripts{..},..}
       toDatum'
         | openSwapAddressAsInline = TxOutDatumInline . toDatum
         | otherwise = TxOutDatumHash . toDatum
+
+      refScript
+        | openSwapAddressWithRefScript = Just $ (\(ValidatorHash s) -> ScriptHash s) $ spendingValidatorHash
+        | otherwise = Nothing
       
       lookups = plutusV2MintingPolicy beaconPolicy
       
@@ -205,7 +210,7 @@ openSwapAddress OpenSwapAddressParams{openSwapAddressScripts=DappScripts{..},..}
         )
         -- | Add assets
         <> (foldl'
-                (\acc (d,v) -> acc <> mustPayToAddressWith openSwapAddressAddress (fmap toDatum' d) v)
+                (\acc (d,v) -> acc <> mustPayToAddressWith openSwapAddressAddress (fmap toDatum' d) refScript v)
                 mempty
                 openSwapAddressInfo
            )
@@ -279,7 +284,7 @@ update UpdateParams{updateDappScripts=DappScripts{..},..} = do
         )
         -- | Add updated outputs
         <> (foldl'
-              (\acc (d,v) -> acc <> mustPayToAddressWith updateSwapAddress (fmap toDatum' d) v)
+              (\acc (d,v) -> acc <> mustPayToAddressWith updateSwapAddress (fmap toDatum' d) Nothing v)
               mempty
               updateOutputs
            )
@@ -317,7 +322,7 @@ swap SwapParams{swapDappScripts=DappScripts{..},..} = do
         )
         -- | Add swapd outputs
         <> (foldl'
-              (\acc (d,v) -> acc <> mustPayToAddressWith swapAddress (fmap toDatum' d) v)
+              (\acc (d,v) -> acc <> mustPayToAddressWith swapAddress (fmap toDatum' d) Nothing v)
               mempty
               swapChange
            )

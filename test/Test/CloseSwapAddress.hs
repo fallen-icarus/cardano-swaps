@@ -69,6 +69,7 @@ successfullyCloseAddress ts@DappScripts{..} = do
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
       , openSwapAddressWithRefScript = False
+      , openSwapRefUTxO = []
       }
 
   void $ waitUntilSlot 2
@@ -120,6 +121,7 @@ beaconNotBurned ts@DappScripts{..} = do
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
       , openSwapAddressWithRefScript = False
+      , openSwapRefUTxO = []
       }
 
   void $ waitUntilSlot 2
@@ -171,6 +173,7 @@ atLeastOneBeaconWithdrawn ts@DappScripts{..} = do
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
       , openSwapAddressWithRefScript = False
+      , openSwapRefUTxO = []
       }
 
   void $ waitUntilSlot 2
@@ -191,6 +194,7 @@ atLeastOneBeaconWithdrawn ts@DappScripts{..} = do
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
       , openSwapAddressWithRefScript = False
+      , openSwapRefUTxO = []
       }
 
   void $ waitUntilSlot 4
@@ -249,6 +253,7 @@ stakingCredentialDidNotApprove ts@DappScripts{..} = do
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
       , openSwapAddressWithRefScript = False
+      , openSwapRefUTxO = []
       }
 
   void $ waitUntilSlot 2
@@ -357,6 +362,7 @@ successfullyCloseAddressWithMultipleUTxOs ts@DappScripts{..} = do
       , openSwapAddressAsInline = True
       , openSwapAddressScripts = ts
       , openSwapAddressWithRefScript = False
+      , openSwapRefUTxO = []
       }
 
   void $ waitUntilSlot 2

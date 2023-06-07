@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               cardano-swaps
-version:            0.2.0.0
+version:            0.3.0.0
 
 synopsis: A distributed Cardano DEX PoC
 license: Apache-2.0
@@ -71,37 +71,27 @@ test-suite cardano-swaps-tests
     , tasty-hunit
 
 executable cardano-swaps
-    main-is:          Main.hs
-
+    import: lang
+    main-is: Main.hs
     -- Modules included in this executable, other than Main.
     other-modules:
-        Core
-
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
     build-depends:    
-          base ^>=4.14.3.0
-        , cardano-api
-        , plutus-ledger
-        , plutus-ledger-api
-        , plutus-tx
-        , plutus-tx-plugin
-        , plutus-script-utils
-        , plutus-core
-        , cardano-node-emulator
-        , cardano-binary
-        , plutus-contract
-        , plutus-tx-constraints
-        , containers
-        , bytestring
-        , serialise
-        , aeson
-        , text
-        , data-default
-        , utf8-string
-        , tasty
-        , lens
-        , tasty-hunit
-    hs-source-dirs:   app
+      cardano-swaps,
+      optparse-applicative,
+      servant,
+      aeson,
+      servant-client,
+      http-client,
+      http-client-tls,
+      text,
+      containers,
+      vector,
+      aeson-pretty,
+      bytestring,
+      text,
+      file-embed
+    hs-source-dirs: app
     default-language: Haskell2010
     ghc-options: -Wall -Wredundant-constraints

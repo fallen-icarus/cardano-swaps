@@ -71,13 +71,8 @@ instance FromJSON SwapRedeemer
 instance ToJSON BeaconRedeemer
 instance FromJSON BeaconRedeemer
 
-data TestScripts = TestScripts
-  { spendingValidator :: Validator
-  , spendingValidatorHash :: ValidatorHash
-  , beaconPolicy :: MintingPolicy
-  , beaconPolicyHash :: MintingPolicyHash
-  , beaconCurrencySymbol :: CurrencySymbol
-  } deriving (Generic,ToJSON,FromJSON)
+instance ToJSON DappScripts
+instance FromJSON DappScripts
 
 -------------------------------------------------
 -- Params
@@ -88,7 +83,7 @@ data OpenSwapAddressParams = OpenSwapAddressParams
   , openSwapAddressAddress :: Address
   , openSwapAddressInfo :: [(Maybe SwapDatum, Value)]
   , openSwapAddressAsInline :: Bool
-  , openSwapAddressScripts :: TestScripts
+  , openSwapAddressScripts :: DappScripts
   } deriving (Generic,ToJSON,FromJSON)
 
 data CloseAddressParams = CloseAddressParams
@@ -96,7 +91,7 @@ data CloseAddressParams = CloseAddressParams
   , closeBeaconRedeemer :: BeaconRedeemer
   , closeSwapAddress :: Address
   , closeSpecificUtxos :: [(SwapDatum,Value)]
-  , closeTestScripts :: TestScripts
+  , closeDappScripts :: DappScripts
   } deriving (Generic,ToJSON,FromJSON)
 
 data UpdateParams = UpdateParams
@@ -104,7 +99,7 @@ data UpdateParams = UpdateParams
   , updateSpecificUtxos :: [(SwapDatum,Value)]
   , updateOutputs :: [(Maybe SwapDatum,Value)]
   , updateAsInline :: Bool
-  , updateTestScripts :: TestScripts
+  , updateDappScripts :: DappScripts
   } deriving (Generic,ToJSON,FromJSON)
 
 data SwapParams = SwapParams
@@ -112,7 +107,7 @@ data SwapParams = SwapParams
   , swapSpecificUtxos :: [(SwapDatum,Value)]
   , swapChange :: [(Maybe SwapDatum,Value)]
   , swapChangeDatumAsInline :: Bool
-  , swapTestScripts :: TestScripts
+  , swapDappScripts :: DappScripts
   } deriving (Generic,ToJSON,FromJSON)
 
 type TraceSchema =
@@ -192,7 +187,7 @@ benchConfig = emConfig & params .~ params'
 -- Trace Models
 -------------------------------------------------
 openSwapAddress :: OpenSwapAddressParams -> Contract () TraceSchema Text ()
-openSwapAddress OpenSwapAddressParams{openSwapAddressScripts=TestScripts{..},..} = do
+openSwapAddress OpenSwapAddressParams{openSwapAddressScripts=DappScripts{..},..} = do
   let beaconRedeemer = toRedeemer openSwapAddressBeaconRedeemer
 
       toDatum'
@@ -220,7 +215,7 @@ openSwapAddress OpenSwapAddressParams{openSwapAddressScripts=TestScripts{..},..}
   logInfo @String "Swap address created"
 
 closeAddress :: CloseAddressParams -> Contract () TraceSchema Text ()
-closeAddress CloseAddressParams{closeTestScripts=TestScripts{..},..} = do
+closeAddress CloseAddressParams{closeDappScripts=DappScripts{..},..} = do
   swapUtxos <- utxosAt $ unsafeFromRight $ toCardanoAddressInEra Mainnet closeSwapAddress
   userPubKeyHash <- ownFirstPaymentPubKeyHash
 
@@ -257,7 +252,7 @@ closeAddress CloseAddressParams{closeTestScripts=TestScripts{..},..} = do
   logInfo @String "Swap address closed"
 
 update :: UpdateParams -> Contract () TraceSchema Text ()
-update UpdateParams{updateTestScripts=TestScripts{..},..} = do
+update UpdateParams{updateDappScripts=DappScripts{..},..} = do
   swapUtxos <- utxosAt $ unsafeFromRight $ toCardanoAddressInEra Mainnet updateSwapAddress
   userPubKeyHash <- ownFirstPaymentPubKeyHash
 
@@ -296,7 +291,7 @@ update UpdateParams{updateTestScripts=TestScripts{..},..} = do
   logInfo @String "Swap(s) updated"
 
 swap :: SwapParams -> Contract () TraceSchema Text ()
-swap SwapParams{swapTestScripts=TestScripts{..},..} = do
+swap SwapParams{swapDappScripts=DappScripts{..},..} = do
   swapUtxos <- utxosAt $ unsafeFromRight $ toCardanoAddressInEra Mainnet swapAddress
 
   let swapRedeemer = toRedeemer Swap

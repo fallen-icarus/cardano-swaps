@@ -38,8 +38,8 @@ import CardanoSwaps
 -------------------------------------------------
 -- Swap Scenarios
 -------------------------------------------------
-successfullySwap :: TestScripts -> EmulatorTrace ()
-successfullySwap ts@TestScripts{..} = do
+successfullySwap :: DappScripts -> EmulatorTrace ()
+successfullySwap ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
   h2 <- activateContractWallet (knownWallet 2) endpoints
 
@@ -87,11 +87,11 @@ successfullySwap ts@TestScripts{..} = do
             )
           ]
       , swapChangeDatumAsInline = True
-      , swapTestScripts = ts
+      , swapDappScripts = ts
       }
 
-swapBeaconUTxO :: TestScripts -> EmulatorTrace ()
-swapBeaconUTxO ts@TestScripts{..} = do
+swapBeaconUTxO :: DappScripts -> EmulatorTrace ()
+swapBeaconUTxO ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
   h2 <- activateContractWallet (knownWallet 2) endpoints
 
@@ -142,11 +142,11 @@ swapBeaconUTxO ts@TestScripts{..} = do
             )
           ]
       , swapChangeDatumAsInline = True
-      , swapTestScripts = ts
+      , swapDappScripts = ts
       }
 
-negativeInputPrice :: TestScripts -> EmulatorTrace ()
-negativeInputPrice ts@TestScripts{..} = do
+negativeInputPrice :: DappScripts -> EmulatorTrace ()
+negativeInputPrice ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
   h2 <- activateContractWallet (knownWallet 2) endpoints
 
@@ -194,11 +194,11 @@ negativeInputPrice ts@TestScripts{..} = do
             )
           ]
       , swapChangeDatumAsInline = True
-      , swapTestScripts = ts
+      , swapDappScripts = ts
       }
 
-zeroInputPrice :: TestScripts -> EmulatorTrace ()
-zeroInputPrice ts@TestScripts{..} = do
+zeroInputPrice :: DappScripts -> EmulatorTrace ()
+zeroInputPrice ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
   h2 <- activateContractWallet (knownWallet 2) endpoints
 
@@ -246,11 +246,11 @@ zeroInputPrice ts@TestScripts{..} = do
             )
           ]
       , swapChangeDatumAsInline = True
-      , swapTestScripts = ts
+      , swapDappScripts = ts
       }
 
-outputHasWrongDatumType :: TestScripts -> EmulatorTrace ()
-outputHasWrongDatumType ts@TestScripts{..} = do
+outputHasWrongDatumType :: DappScripts -> EmulatorTrace ()
+outputHasWrongDatumType ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
   h2 <- activateContractWallet (knownWallet 2) endpoints
 
@@ -298,11 +298,11 @@ outputHasWrongDatumType ts@TestScripts{..} = do
             )
           ]
       , swapChangeDatumAsInline = True
-      , swapTestScripts = ts
+      , swapDappScripts = ts
       }
 
-singleSwapWrongOutputPrice :: TestScripts -> EmulatorTrace ()
-singleSwapWrongOutputPrice ts@TestScripts{..} = do
+singleSwapWrongOutputPrice :: DappScripts -> EmulatorTrace ()
+singleSwapWrongOutputPrice ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
   h2 <- activateContractWallet (knownWallet 2) endpoints
 
@@ -350,11 +350,11 @@ singleSwapWrongOutputPrice ts@TestScripts{..} = do
             )
           ]
       , swapChangeDatumAsInline = True
-      , swapTestScripts = ts
+      , swapDappScripts = ts
       }
 
-successfullySwapMultipleUTxOs :: TestScripts -> EmulatorTrace ()
-successfullySwapMultipleUTxOs ts@TestScripts{..} = do
+successfullySwapMultipleUTxOs :: DappScripts -> EmulatorTrace ()
+successfullySwapMultipleUTxOs ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
   h2 <- activateContractWallet (knownWallet 2) endpoints
 
@@ -409,11 +409,11 @@ successfullySwapMultipleUTxOs ts@TestScripts{..} = do
             )
           ]
       , swapChangeDatumAsInline = True
-      , swapTestScripts = ts
+      , swapDappScripts = ts
       }
 
-outputPriceNotWeightedAvg :: TestScripts -> EmulatorTrace ()
-outputPriceNotWeightedAvg ts@TestScripts{..} = do
+outputPriceNotWeightedAvg :: DappScripts -> EmulatorTrace ()
+outputPriceNotWeightedAvg ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
   h2 <- activateContractWallet (knownWallet 2) endpoints
 
@@ -468,11 +468,11 @@ outputPriceNotWeightedAvg ts@TestScripts{..} = do
             )
           ]
       , swapChangeDatumAsInline = True
-      , swapTestScripts = ts
+      , swapDappScripts = ts
       }
 
-requiredAmountDoesNotMatchWeightedPrice :: TestScripts -> EmulatorTrace ()
-requiredAmountDoesNotMatchWeightedPrice ts@TestScripts{..} = do
+requiredAmountDoesNotMatchWeightedPrice :: DappScripts -> EmulatorTrace ()
+requiredAmountDoesNotMatchWeightedPrice ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
   h2 <- activateContractWallet (knownWallet 2) endpoints
 
@@ -527,11 +527,11 @@ requiredAmountDoesNotMatchWeightedPrice ts@TestScripts{..} = do
             )
           ]
       , swapChangeDatumAsInline = True
-      , swapTestScripts = ts
+      , swapDappScripts = ts
       }
 
-singleSwapRatioDoesNotMatchInputPrice :: TestScripts -> EmulatorTrace ()
-singleSwapRatioDoesNotMatchInputPrice ts@TestScripts{..} = do
+singleSwapRatioDoesNotMatchInputPrice :: DappScripts -> EmulatorTrace ()
+singleSwapRatioDoesNotMatchInputPrice ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
   h2 <- activateContractWallet (knownWallet 2) endpoints
 
@@ -579,11 +579,11 @@ singleSwapRatioDoesNotMatchInputPrice ts@TestScripts{..} = do
             )
           ]
       , swapChangeDatumAsInline = True
-      , swapTestScripts = ts
+      , swapDappScripts = ts
       }
 
-otherAssetLeaves :: TestScripts -> EmulatorTrace ()
-otherAssetLeaves ts@TestScripts{..} = do
+otherAssetLeaves :: DappScripts -> EmulatorTrace ()
+otherAssetLeaves ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
   h2 <- activateContractWallet (knownWallet 2) endpoints
 
@@ -631,11 +631,11 @@ otherAssetLeaves ts@TestScripts{..} = do
             )
           ]
       , swapChangeDatumAsInline = True
-      , swapTestScripts = ts
+      , swapDappScripts = ts
       }
 
-benchSwap :: TestScripts -> EmulatorTrace ()
-benchSwap ts@TestScripts{..} = do
+benchSwap :: DappScripts -> EmulatorTrace ()
+benchSwap ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
   h2 <- activateContractWallet (knownWallet 2) endpoints
 
@@ -737,13 +737,13 @@ benchSwap ts@TestScripts{..} = do
             )
           ]
       , swapChangeDatumAsInline = True
-      , swapTestScripts = ts
+      , swapDappScripts = ts
       }
 
 -------------------------------------------------
 -- Test Function
 -------------------------------------------------
-tests :: TestScripts -> TestTree
+tests :: DappScripts -> TestTree
 tests ts = do
   let opts = defaultCheckOptions & emulatorConfig .~ emConfig
   testGroup "Swap Assets"
@@ -771,5 +771,5 @@ tests ts = do
         (Test.not assertNoFailedTransactions) (otherAssetLeaves ts)
     ]
 
-testTrace :: TestScripts -> IO ()
+testTrace :: DappScripts -> IO ()
 testTrace = runEmulatorTraceIO' def benchConfig . benchSwap

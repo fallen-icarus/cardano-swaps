@@ -38,8 +38,8 @@ import CardanoSwaps
 -------------------------------------------------
 -- Open Swap Address Scenarios
 -------------------------------------------------
-successfullyOpenAddress :: TestScripts -> EmulatorTrace ()
-successfullyOpenAddress ts@TestScripts{..} = do
+successfullyOpenAddress :: DappScripts -> EmulatorTrace ()
+successfullyOpenAddress ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -70,8 +70,8 @@ successfullyOpenAddress ts@TestScripts{..} = do
       , openSwapAddressScripts = ts
       }
 
-mintMultipleBeacons :: TestScripts -> EmulatorTrace ()
-mintMultipleBeacons ts@TestScripts{..} = do
+mintMultipleBeacons :: DappScripts -> EmulatorTrace ()
+mintMultipleBeacons ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -102,8 +102,8 @@ mintMultipleBeacons ts@TestScripts{..} = do
       , openSwapAddressScripts = ts
       }
 
-wrongBeaconName :: TestScripts -> EmulatorTrace ()
-wrongBeaconName ts@TestScripts{..} = do
+wrongBeaconName :: DappScripts -> EmulatorTrace ()
+wrongBeaconName ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -134,8 +134,8 @@ wrongBeaconName ts@TestScripts{..} = do
       , openSwapAddressScripts = ts
       }
 
-beaconGoesToWrongScriptAddress :: TestScripts -> EmulatorTrace ()
-beaconGoesToWrongScriptAddress ts@TestScripts{..} = do
+beaconGoesToWrongScriptAddress :: DappScripts -> EmulatorTrace ()
+beaconGoesToWrongScriptAddress ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -166,8 +166,8 @@ beaconGoesToWrongScriptAddress ts@TestScripts{..} = do
       , openSwapAddressScripts = ts
       }
 
-beaconMintedToNonStakingAddress :: TestScripts -> EmulatorTrace ()
-beaconMintedToNonStakingAddress ts@TestScripts{..} = do
+beaconMintedToNonStakingAddress :: DappScripts -> EmulatorTrace ()
+beaconMintedToNonStakingAddress ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -193,8 +193,8 @@ beaconMintedToNonStakingAddress ts@TestScripts{..} = do
       , openSwapAddressScripts = ts
       }
 
-beaconMintedToPubkeyAddress :: TestScripts -> EmulatorTrace ()
-beaconMintedToPubkeyAddress ts@TestScripts{..} = do
+beaconMintedToPubkeyAddress :: DappScripts -> EmulatorTrace ()
+beaconMintedToPubkeyAddress ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -225,8 +225,8 @@ beaconMintedToPubkeyAddress ts@TestScripts{..} = do
       , openSwapAddressScripts = ts
       }
 
-missingMinimumDeposit :: TestScripts -> EmulatorTrace ()
-missingMinimumDeposit ts@TestScripts{..} = do
+missingMinimumDeposit :: DappScripts -> EmulatorTrace ()
+missingMinimumDeposit ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -257,8 +257,8 @@ missingMinimumDeposit ts@TestScripts{..} = do
       , openSwapAddressScripts = ts
       }
 
-wrongDatumSymbol :: TestScripts -> EmulatorTrace ()
-wrongDatumSymbol ts@TestScripts{..} = do
+wrongDatumSymbol :: DappScripts -> EmulatorTrace ()
+wrongDatumSymbol ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -289,8 +289,8 @@ wrongDatumSymbol ts@TestScripts{..} = do
       , openSwapAddressScripts = ts
       }
 
-wrongDatumType :: TestScripts -> EmulatorTrace ()
-wrongDatumType ts@TestScripts{..} = do
+wrongDatumType :: DappScripts -> EmulatorTrace ()
+wrongDatumType ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -320,8 +320,8 @@ wrongDatumType ts@TestScripts{..} = do
       , openSwapAddressScripts = ts
       }
 
-mintWithBurnRedeemer :: TestScripts -> EmulatorTrace ()
-mintWithBurnRedeemer ts@TestScripts{..} = do
+mintWithBurnRedeemer :: DappScripts -> EmulatorTrace ()
+mintWithBurnRedeemer ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -352,8 +352,8 @@ mintWithBurnRedeemer ts@TestScripts{..} = do
       , openSwapAddressScripts = ts
       }
 
-datumNotInline :: TestScripts -> EmulatorTrace ()
-datumNotInline ts@TestScripts{..} = do
+datumNotInline :: DappScripts -> EmulatorTrace ()
+datumNotInline ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -387,7 +387,7 @@ datumNotInline ts@TestScripts{..} = do
 -------------------------------------------------
 -- Test Function
 -------------------------------------------------
-tests :: TestScripts -> TestTree
+tests :: DappScripts -> TestTree
 tests ts = do
   let opts = defaultCheckOptions & emulatorConfig .~ emConfig
   testGroup "Open Swap Address"
@@ -415,5 +415,5 @@ tests ts = do
         (Test.not assertNoFailedTransactions) (datumNotInline ts)
     ]
 
-testTrace :: TestScripts -> IO ()
+testTrace :: DappScripts -> IO ()
 testTrace = runEmulatorTraceIO' def emConfig . mintWithBurnRedeemer

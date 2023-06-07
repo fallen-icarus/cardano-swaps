@@ -13,15 +13,15 @@ swapPositionDatumFile="${dir}positionDatum.json"
 beaconRedeemerFile="${dir}mint.json"
 
 # Export the spending script for that trading pair.
-cardano-swaps swaps export-script \
-  --offered-asset-is-ada \
+cardano-swaps export-script swap-script \
+  --offered-asset-is-lovelace \
   --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --asked-asset-token-name 4f74686572546f6b656e0a \
   --out-file $spendingScriptFile
 
 # Export the beacon policy for that trading pair.
-cardano-swaps beacons export-policy \
-  --offered-asset-is-ada \
+cardano-swaps export-script beacon-policy \
+  --offered-asset-is-lovelace \
   --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --asked-asset-token-name 4f74686572546f6b656e0a \
   --out-file $beaconPolicyFile
@@ -41,20 +41,19 @@ beaconPolicyId=$(cardano-cli transaction policyid \
 beacon="${beaconPolicyId}."
 
 # Create the datum for storing with the beacon
-cardano-swaps beacons create-datum \
-  --offered-asset-is-ada \
-  --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asked-asset-token-name 4f74686572546f6b656e0a \
+cardano-swaps datum beacon-datum \
+  --beacon-policy-id $beaconPolicyId \
   --out-file $swapBeaconDatumFile
 
 # Create the datum for the first swap positions
-cardano-swaps swaps create-datum \
-  --swap-price 2 \
+cardano-swaps datum swap-datum \
+  --price-numerator 2 \
+  --price-denominator 1000000 \
   --out-file $swapPositionDatumFile
 
 # Create the beacon redeemer for minting the beacon.
-cardano-swaps beacons create-redeemer \
-  --mint-beacon \
+cardano-swaps beacon-redeemer \
+  --mint \
   --out-file $beaconRedeemerFile
 
 # Create the transaction.
@@ -63,10 +62,39 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 29701aaa3c70cdd300d3c4a80d388990f19a1010a774f59eaec10a55b4a39a02#0 \
-  --tx-out "$(cat ${swapAddrFile}) + 23000000 lovelace + 1 ${beacon}" \
+  --tx-in aab4ea05d665188f35f798422d47e8201a1f9b94f4f3183b42448e63f1707a06#26 \
+  --tx-out "$(cat ${swapAddrFile}) + 20000000 lovelace + 1 ${beacon}" \
   --tx-out-inline-datum-file $swapBeaconDatumFile \
-  --tx-out-reference-script-file $spendingScriptFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapPositionDatumFile \
   --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
   --tx-out-inline-datum-file $swapPositionDatumFile \
   --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
@@ -91,10 +119,11 @@ cardano-cli transaction build \
   --mint-script-file $beaconPolicyFile \
   --mint-redeemer-file $beaconRedeemerFile \
   --change-address $(cat ../assets/wallets/01.addr) \
-  --tx-in-collateral bc54229f0755611ba14a2679774a7c7d394b0a476e59c609035e06244e1572bb#0 \
+  --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
   --testnet-magic 1 \
   --protocol-params-file "${tmpDir}protocol.json" \
   --out-file "${tmpDir}tx.body"
+  # --calculate-plutus-script-cost "${tmpDir}cost.json"
 
 cardano-cli transaction sign \
   --tx-body-file "${tmpDir}tx.body" \

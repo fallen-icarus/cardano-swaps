@@ -7,8 +7,9 @@ swapAddrFile="${dir}swap.addr"
 swapDatumFile="${dir}datum.json"
 
 # Create the new datum for the outputs at the swap address.
-cardano-swaps swaps create-datum \
-  --swap-price 2 \
+cardano-swaps datum swap-datum \
+  --price-numerator 2 \
+  --price-denominator 1000000 \
   --out-file $swapDatumFile
 
 # Create the transaction.

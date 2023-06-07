@@ -25,6 +25,8 @@ module CardanoSwaps
   CurrencySymbol(..),
   TokenName(..),
   DappScripts(..),
+  unValidatorScript,
+  unMintingPolicyScript,
 
   adaSymbol,
   adaToken,

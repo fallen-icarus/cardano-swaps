@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module CLI.Run
 (
   runCommand
@@ -6,98 +8,35 @@ module CLI.Run
 import Data.Aeson
 import Data.Aeson.Encode.Pretty
 import qualified Data.ByteString.Lazy as BL
+import Data.ByteString (ByteString)
+import Data.FileEmbed
 
 import CardanoSwaps
 import CLI.Types
-import CLI.QuerySwaps
+
+blueprintsFile :: ByteString
+blueprintsFile = $(embedFile "aiken/plutus.json")
+
+blueprints :: Blueprints
+blueprints = parseBlueprints $ BL.fromStrict blueprintsFile
 
 runCommand :: Command -> IO ()
 runCommand cmd = case cmd of
-  SwapCmd swapCmd -> runSwapCmd swapCmd
-  BeaconCmd beaconCmd -> runBeaconCmd beaconCmd
-  QueryAvailableSwaps askedAsset offeredAsset network output ->
-    runQueryAvailableSwaps askedAsset offeredAsset network output
+  ExportScript script file -> runExportScriptCmd script file
+  CreateSwapDatum d file -> runCreateSwapDatum d file
+  CreateSwapRedeemer r file -> writeData file r
+  CreateBeaconRedeemer r file -> writeData file r
 
-runQueryAvailableSwaps :: Asset -> Asset -> Network -> Output -> IO ()
-runQueryAvailableSwaps askedAsset offeredAsset network output = do
-    avail <- runQuery beaconSym (tupledAsset offeredAsset) network
-    case output of
-      Stdout -> BL.putStr $ encode avail
-      File file -> BL.writeFile file $ encodePretty avail
-  where
-    beaconSym :: CurrencySymbol
-    beaconSym = beaconSymbol $ assets2SwapConfig askedAsset offeredAsset
+runExportScriptCmd :: Script -> FilePath -> IO ()
+runExportScriptCmd script file = do
+  let script' = case script of
+        SwapScript cfg -> unValidatorScript $ spendingValidator $ genScripts cfg blueprints
+        BeaconPolicy cfg -> unMintingPolicyScript $ beaconPolicy $ genScripts cfg blueprints
+  res <- writeScript file script'
+  case res of
+    Right _ -> return ()
+    Left err -> putStrLn $ "There was an error: " <> show err
 
-runSwapCmd :: SwapCmd -> IO ()
-runSwapCmd swapCmd = case swapCmd of
-    ExportSwapScript askedAsset offeredAsset file -> exportScript askedAsset offeredAsset file
-    CreateSwapDatum datumPrice file -> createDatum datumPrice file
-    CreateSwapRedeemer action file -> createRedeemer action file
-  where
-    createRedeemer :: Action -> FilePath -> IO ()
-    createRedeemer action file = do
-      writeData file action
-      putStrLn "Swap redeemer created successfully."
-
-    createDatum :: DatumPrice -> FilePath -> IO ()
-    createDatum datumPrice file = do
-      writeData file $ SwapDatum {swapPrice = convert2price datumPrice, swapBeacon = Nothing}
-      putStrLn "Swap datum created successfully."
-
-    exportScript :: Asset -> Asset -> FilePath -> IO ()
-    exportScript askedAsset offeredAsset file = do
-      let swapConfig = assets2SwapConfig askedAsset offeredAsset
-      res <- writeScript file $ swapValidatorScript swapConfig
-      case res of
-        Right _ -> putStrLn "Swap script exported successfully."
-        Left err -> putStrLn $ "There was an error: " <> show err
-
-runBeaconCmd :: BeaconCmd -> IO ()
-runBeaconCmd beaconCmd = case beaconCmd of
-    ExportBeaconPolicy askedAsset offeredAsset file -> exportPolicy askedAsset offeredAsset file
-    CreateBeaconDatum askedAsset offeredAsset file -> 
-      createDatum askedAsset offeredAsset file
-    CreateBeaconRedeemer r file -> createRedeemer r file
-  where
-    createRedeemer :: BeaconRedeemer -> FilePath -> IO ()
-    createRedeemer r file = do
-      writeData file r
-      putStrLn "Beacon redeemer created successfully."
-
-    createDatum :: Asset -> Asset -> FilePath -> IO ()
-    createDatum askedAsset offeredAsset file = do
-      let beaconSymbol' = beaconSymbol $ assets2SwapConfig askedAsset offeredAsset
-      writeData file $ SwapDatum 
-        { swapPrice = fromGHC $ fromInteger 0 -- ^ Hard-coded to zero. Never actually used in swaps.
-        , swapBeacon = Just beaconSymbol'
-        }
-      putStrLn "Special datum for beacon created successfully."
-
-    exportPolicy :: Asset -> Asset -> FilePath -> IO ()
-    exportPolicy askedAsset offeredAsset file = do
-      let swapConfig = assets2SwapConfig askedAsset offeredAsset
-      res <- writeScript file $ beaconScript swapConfig
-      case res of
-        Right _ -> putStrLn "Beacon policy exported successfully."
-        Left err -> putStrLn $ "There was an error: " <> show err
-
--------------------------------------------------
--- Helpers
--------------------------------------------------
-tupledAsset :: Asset -> (CurrencySymbol,TokenName)
-tupledAsset Ada = (adaSymbol,adaToken)
-tupledAsset (Asset currSym tokName) = (currSym,tokName)
-
-assets2SwapConfig :: Asset -> Asset -> SwapConfig
-assets2SwapConfig askedAsset offeredAsset = SwapConfig
-  { swapAsk = tupledAsset askedAsset
-  , swapOffer = tupledAsset offeredAsset
-  }
-
-convert2price :: DatumPrice -> Price
-convert2price datumPrice = case datumPrice of
-  NewDatum price' -> 
-    if price' <= fromGHC (fromInteger (0 :: Integer))
-    then error "Price is not > 0."
-    else price' 
-  WeightedPrice xs -> calcWeightedPrice xs
+runCreateSwapDatum :: Datum -> FilePath -> IO ()
+runCreateSwapDatum (SwapDatum d) file = writeData file d
+runCreateSwapDatum (WeightedPrice ps) file = writeData file $ SwapPrice $ calcWeightedPrice ps

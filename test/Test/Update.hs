@@ -38,8 +38,8 @@ import CardanoSwaps
 -------------------------------------------------
 -- Update Swap Scenarios
 -------------------------------------------------
-successfullyUpdateSwap :: TestScripts -> EmulatorTrace ()
-successfullyUpdateSwap ts@TestScripts{..} = do
+successfullyUpdateSwap :: DappScripts -> EmulatorTrace ()
+successfullyUpdateSwap ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -86,11 +86,11 @@ successfullyUpdateSwap ts@TestScripts{..} = do
             )
           ]
       , updateAsInline = True
-      , updateTestScripts = ts
+      , updateDappScripts = ts
       }
 
-wrongInputDatumType :: TestScripts -> EmulatorTrace ()
-wrongInputDatumType ts@TestScripts{..} = do
+wrongInputDatumType :: DappScripts -> EmulatorTrace ()
+wrongInputDatumType ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -140,11 +140,11 @@ wrongInputDatumType ts@TestScripts{..} = do
             )
           ]
       , updateAsInline = True
-      , updateTestScripts = ts
+      , updateDappScripts = ts
       }
 
-wrongOutputDatumType :: TestScripts -> EmulatorTrace ()
-wrongOutputDatumType ts@TestScripts{..} = do
+wrongOutputDatumType :: DappScripts -> EmulatorTrace ()
+wrongOutputDatumType ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -191,11 +191,11 @@ wrongOutputDatumType ts@TestScripts{..} = do
             )
           ]
       , updateAsInline = True
-      , updateTestScripts = ts
+      , updateDappScripts = ts
       }
 
-outputHasInvalidPrice :: TestScripts -> EmulatorTrace ()
-outputHasInvalidPrice ts@TestScripts{..} = do
+outputHasInvalidPrice :: DappScripts -> EmulatorTrace ()
+outputHasInvalidPrice ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -242,11 +242,11 @@ outputHasInvalidPrice ts@TestScripts{..} = do
             )
           ]
       , updateAsInline = True
-      , updateTestScripts = ts
+      , updateDappScripts = ts
       }
 
-stakingCredentialDidNotApprove :: TestScripts -> EmulatorTrace ()
-stakingCredentialDidNotApprove ts@TestScripts{..} = do
+stakingCredentialDidNotApprove :: DappScripts -> EmulatorTrace ()
+stakingCredentialDidNotApprove ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
   h2 <- activateContractWallet (knownWallet 2) endpoints
 
@@ -294,11 +294,11 @@ stakingCredentialDidNotApprove ts@TestScripts{..} = do
             )
           ]
       , updateAsInline = True
-      , updateTestScripts = ts
+      , updateDappScripts = ts
       }
 
-datumNotInline :: TestScripts -> EmulatorTrace ()
-datumNotInline ts@TestScripts{..} = do
+datumNotInline :: DappScripts -> EmulatorTrace ()
+datumNotInline ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -345,11 +345,11 @@ datumNotInline ts@TestScripts{..} = do
             )
           ]
       , updateAsInline = False
-      , updateTestScripts = ts
+      , updateDappScripts = ts
       }
 
-successfullyUpdateMultipleUTxOs :: TestScripts -> EmulatorTrace ()
-successfullyUpdateMultipleUTxOs ts@TestScripts{..} = do
+successfullyUpdateMultipleUTxOs :: DappScripts -> EmulatorTrace ()
+successfullyUpdateMultipleUTxOs ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -543,13 +543,13 @@ successfullyUpdateMultipleUTxOs ts@TestScripts{..} = do
             )
           ]
       , updateAsInline = True
-      , updateTestScripts = ts
+      , updateDappScripts = ts
       }
 
 -------------------------------------------------
 -- Test Function
 -------------------------------------------------
-tests :: TestScripts -> TestTree
+tests :: DappScripts -> TestTree
 tests ts = do
   let opts = defaultCheckOptions & emulatorConfig .~ emConfig
   testGroup "Update Swap UTxOs"
@@ -567,5 +567,5 @@ tests ts = do
         (Test.not assertNoFailedTransactions) (datumNotInline ts)
     ]
 
-testTrace :: TestScripts -> IO ()
+testTrace :: DappScripts -> IO ()
 testTrace = runEmulatorTraceIO' def emConfig . successfullyUpdateMultipleUTxOs

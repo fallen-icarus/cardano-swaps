@@ -38,8 +38,8 @@ import CardanoSwaps
 -------------------------------------------------
 -- Close Swap Address Scenarios
 -------------------------------------------------
-successfullyCloseAddress :: TestScripts -> EmulatorTrace ()
-successfullyCloseAddress ts@TestScripts{..} = do
+successfullyCloseAddress :: DappScripts -> EmulatorTrace ()
+successfullyCloseAddress ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -85,11 +85,11 @@ successfullyCloseAddress ts@TestScripts{..} = do
             , lovelaceValueOf 10_000_000
             )
           ]
-      , closeTestScripts = ts
+      , closeDappScripts = ts
       }
 
-beaconNotBurned :: TestScripts -> EmulatorTrace ()
-beaconNotBurned ts@TestScripts{..} = do
+beaconNotBurned :: DappScripts -> EmulatorTrace ()
+beaconNotBurned ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -135,11 +135,11 @@ beaconNotBurned ts@TestScripts{..} = do
             , lovelaceValueOf 10_000_000
             )
           ]
-      , closeTestScripts = ts
+      , closeDappScripts = ts
       }
 
-atLeastOneBeaconWithdrawn :: TestScripts -> EmulatorTrace ()
-atLeastOneBeaconWithdrawn ts@TestScripts{..} = do
+atLeastOneBeaconWithdrawn :: DappScripts -> EmulatorTrace ()
+atLeastOneBeaconWithdrawn ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -210,11 +210,11 @@ atLeastOneBeaconWithdrawn ts@TestScripts{..} = do
             , lovelaceValueOf 10_000_002
             )
           ]
-      , closeTestScripts = ts
+      , closeDappScripts = ts
       }
 
-stakingCredentialDidNotApprove :: TestScripts -> EmulatorTrace ()
-stakingCredentialDidNotApprove ts@TestScripts{..} = do
+stakingCredentialDidNotApprove :: DappScripts -> EmulatorTrace ()
+stakingCredentialDidNotApprove ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
   h2 <- activateContractWallet (knownWallet 2) endpoints
 
@@ -261,11 +261,11 @@ stakingCredentialDidNotApprove ts@TestScripts{..} = do
             , lovelaceValueOf 10_000_000
             )
           ]
-      , closeTestScripts = ts
+      , closeDappScripts = ts
       }
 
-successfullyCloseAddressWithMultipleUTxOs :: TestScripts -> EmulatorTrace ()
-successfullyCloseAddressWithMultipleUTxOs ts@TestScripts{..} = do
+successfullyCloseAddressWithMultipleUTxOs :: DappScripts -> EmulatorTrace ()
+successfullyCloseAddressWithMultipleUTxOs ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
@@ -425,13 +425,13 @@ successfullyCloseAddressWithMultipleUTxOs ts@TestScripts{..} = do
             , lovelaceValueOf 10_000_019
             )
           ]
-      , closeTestScripts = ts
+      , closeDappScripts = ts
       }
 
 -------------------------------------------------
 -- Test Function
 -------------------------------------------------
-tests :: TestScripts -> TestTree
+tests :: DappScripts -> TestTree
 tests ts = do
   let opts = defaultCheckOptions & emulatorConfig .~ emConfig
   testGroup "Close Swap Address"
@@ -445,5 +445,5 @@ tests ts = do
         (Test.not assertNoFailedTransactions) (stakingCredentialDidNotApprove ts)
     ]
 
-testTrace :: TestScripts -> IO ()
+testTrace :: DappScripts -> IO ()
 testTrace = runEmulatorTraceIO' def benchConfig . successfullyCloseAddressWithMultipleUTxOs

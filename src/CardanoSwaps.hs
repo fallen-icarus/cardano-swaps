@@ -24,6 +24,7 @@ module CardanoSwaps
   Blueprints,
   CurrencySymbol(..),
   TokenName(..),
+  DappScripts(..),
 
   adaSymbol,
   adaToken,
@@ -38,9 +39,13 @@ module CardanoSwaps
   toCBOR,
   dataFromCBOR,
   unsafeFromRight,
-  decodeDatum
-)
-where
+  decodeDatum,
+  PlutusRational,
+  UtxoPriceInfo(..),
+  calcWeightedPrice,
+  parseBlueprints,
+  genScripts
+) where
 
 import Data.Aeson as Aeson
 import Control.Monad
@@ -61,6 +66,8 @@ import Ledger.Bytes (fromHex,bytes,encodeByteString)
 import Data.Text (Text)
 import qualified Data.Map as Map
 import Ledger.Tx.CardanoAPI.Internal
+import Data.List (foldl')
+import Plutus.Script.Utils.V2.Scripts
 
 -------------------------------------------------
 -- On-Chain Data Types
@@ -113,11 +120,35 @@ instance FromJSON Blueprints' where
   parseJSON _ = mzero
 
 readBlueprints :: FilePath -> IO Blueprints
-readBlueprints = fmap (toBlueprints . decode) . LBS.readFile
+readBlueprints = fmap parseBlueprints . LBS.readFile
+
+parseBlueprints :: LBS.ByteString -> Blueprints
+parseBlueprints = toBlueprints . decode
 
 toBlueprints :: Maybe Blueprints' -> Blueprints
 toBlueprints (Just (Blueprints' bs)) = Map.fromList bs
 toBlueprints Nothing = error "Failed to decode blueprint file"
+
+data DappScripts = DappScripts
+  { spendingValidator :: Validator
+  , spendingValidatorHash :: ValidatorHash
+  , beaconPolicy :: MintingPolicy
+  , beaconPolicyHash :: MintingPolicyHash
+  , beaconCurrencySymbol :: CurrencySymbol
+  } deriving (Generic)
+
+genScripts :: SwapConfig -> Blueprints -> DappScripts
+genScripts cfg bs = DappScripts
+    { spendingValidator = spendVal
+    , spendingValidatorHash = spendValHash
+    , beaconPolicy = beacon
+    , beaconPolicyHash = beaconHash
+    , beaconCurrencySymbol = scriptCurrencySymbol beacon
+    }
+  where spendVal = Validator $ applySwapParams cfg $ bs Map.! "cardano_swaps.spend"
+        spendValHash = validatorHash spendVal
+        beacon = MintingPolicy $ applyBeaconParams spendValHash $ bs Map.! "cardano_swaps.mint"
+        beaconHash = mintingPolicyHash beacon
 
 fromHex' :: String -> ByteString
 fromHex' s = case fmap bytes $ fromHex $ fromString s of
@@ -191,3 +222,24 @@ writeData = writeJSON
 decodeDatum :: (FromData a) => Aeson.Value -> Maybe a
 decodeDatum = unsafeFromRight . fmap (PlutusTx.fromBuiltinData . fromCardanoScriptData)
             . scriptDataFromJson ScriptDataJsonDetailedSchema
+
+-------------------------------------------------
+-- | Other Off-Chain functions
+-------------------------------------------------
+type PlutusRational = Plutus.Rational
+data UtxoPriceInfo = UtxoPriceInfo
+  { utxoAmount :: Integer
+  , price :: PlutusRational
+  } deriving (Show)
+
+-- | Helper function to calculate the weighted price.
+-- Will match the weighted price calculation done by script.
+calcWeightedPrice :: [UtxoPriceInfo] -> PlutusRational
+calcWeightedPrice xs = snd $ foldl' foo (0,Plutus.fromInteger 0) xs
+  where 
+    foo :: (Integer,PlutusRational) -> UtxoPriceInfo -> (Integer,PlutusRational)
+    foo (runningTot,wp) UtxoPriceInfo{..} =
+      let newAmount = runningTot + utxoAmount
+          newWp = Plutus.unsafeRatio runningTot newAmount Plutus.* wp Plutus.+
+                  Plutus.unsafeRatio utxoAmount newAmount Plutus.* price
+      in (newAmount,newWp)

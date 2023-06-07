@@ -1,3 +1,5 @@
+#!/bin/sh
+
 # Variables
 dir="../assets/swap-files/"
 tmpDir="../assets/tmp/"

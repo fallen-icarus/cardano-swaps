@@ -1,3 +1,5 @@
+#!/bin/sh
+
 # Variables
 tmpDir="../assets/tmp/"
 

@@ -10,21 +10,22 @@ swapDatumFile="${dir}datum.json"
 
 swapRedeemerFile="${dir}swap.json"
 
-# Optional: Export the spending script for that trading pair.
-# cardano-swaps swaps export-script \
-#   --offered-asset-is-ada \
-#   --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-#   --asked-asset-token-name 4f74686572546f6b656e0a \
-#   --out-file $spendingScriptFile
+# Export the spending script for that trading pair.
+cardano-swaps export-script swap-script \
+  --offered-asset-is-lovelace \
+  --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --asked-asset-token-name 4f74686572546f6b656e0a \
+  --out-file $spendingScriptFile
 
 # Create the Swap redeemer file.
-cardano-swaps swaps create-redeemer \
+cardano-swaps swap-redeemer \
   --swap \
   --out-file $swapRedeemerFile
 
 # Create the new datum for the outputs at the swap address.
-cardano-swaps swaps create-datum \
-  --swap-price 2 \
+cardano-swaps datum swap-datum \
+  --price-numerator 1 \
+  --price-denominator 1000000 \
   --out-file $swapDatumFile
 
 # Create the transaction.
@@ -33,27 +34,40 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in c65b26c54408314f9f69e29df50ad70ef8cb1c6cb67c2c9847ce82bae28e7148#2 \
-  --tx-in c65b26c54408314f9f69e29df50ad70ef8cb1c6cb67c2c9847ce82bae28e7148#1 \
-  --tx-in d162ff8dd6bbf4e5673145d6c97334771b0b72f2ed77e60f618044a09124df80#0 \
-  --spending-tx-in-reference b9fefb2cbfaeaf687bf0cf2553220093b43be5877c583574f77fefd847bc3a80#0 \
-  --spending-plutus-script-v2 \
-  --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
-  --tx-in d162ff8dd6bbf4e5673145d6c97334771b0b72f2ed77e60f618044a09124df80#1 \
-  --spending-tx-in-reference b9fefb2cbfaeaf687bf0cf2553220093b43be5877c583574f77fefd847bc3a80#0 \
-  --spending-plutus-script-v2 \
-  --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
-  --tx-in d162ff8dd6bbf4e5673145d6c97334771b0b72f2ed77e60f618044a09124df80#2 \
-  --spending-tx-in-reference b9fefb2cbfaeaf687bf0cf2553220093b43be5877c583574f77fefd847bc3a80#0 \
-  --spending-plutus-script-v2 \
-  --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 30000000 lovelace + 0 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-in 9c0df175a90cc036d9a8916a3107fc2f8fa541cbbc01cbc6307d2b2b92623661#0 \
+  --tx-in f962b4671bf73c4fcaf13cdb8fd45aa13a63852305bcb5327c217f879909607e#1 \
+  --tx-in 6fc8120a9af641709643f4c51fca4f458b0faf2a201fe93c16713be3c6c6e96b#0 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 5000000 lovelace + 5 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out-inline-datum-file $swapDatumFile \
-  --tx-out "$(cat ../assets/wallets/01.addr) + 2000000 + 500 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
-  --tx-in-collateral bc54229f0755611ba14a2679774a7c7d394b0a476e59c609035e06244e1572bb#0 \
+  --tx-in 6fc8120a9af641709643f4c51fca4f458b0faf2a201fe93c16713be3c6c6e96b#1 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 5000000 lovelace + 5 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-in 6fc8120a9af641709643f4c51fca4f458b0faf2a201fe93c16713be3c6c6e96b#2 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 5000000 lovelace + 5 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-in 6fc8120a9af641709643f4c51fca4f458b0faf2a201fe93c16713be3c6c6e96b#3 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 5000000 lovelace + 5 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-in 6fc8120a9af641709643f4c51fca4f458b0faf2a201fe93c16713be3c6c6e96b#4 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 5000000 lovelace + 5 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-out "$(cat ../assets/wallets/01.addr) + 3000000 + 515 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
   --change-address $(cat ../assets/wallets/01.addr) \
   --protocol-params-file "${tmpDir}protocol.json" \
   --testnet-magic 1 \

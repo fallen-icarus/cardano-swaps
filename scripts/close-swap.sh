@@ -10,22 +10,22 @@ swapAddrFile="${dir}swap.addr"
 swapRedeemerFile="${dir}close.json"
 beaconRedeemerFile="${dir}burn.json"
 
-# Optional: Export the spending script for that trading pair.
-# cardano-swaps swaps export-script \
-#   --offered-asset-is-ada \
-#   --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-#   --asked-asset-token-name 4f74686572546f6b656e0a \
-#   --out-file $spendingScriptFile
+# Export the spending script for that trading pair.
+cardano-swaps export-script swap-script \
+  --offered-asset-is-lovelace \
+  --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --asked-asset-token-name 4f74686572546f6b656e0a \
+  --out-file $spendingScriptFile
 
 # Export the beacon policy for that trading pair.
-cardano-swaps beacons export-policy \
-  --offered-asset-is-ada \
+cardano-swaps export-script beacon-policy \
+  --offered-asset-is-lovelace \
   --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --asked-asset-token-name 4f74686572546f6b656e0a \
   --out-file $beaconPolicyFile
 
 # Create the Close redeemer file.
-cardano-swaps swaps create-redeemer \
+cardano-swaps swap-redeemer \
   --close \
   --out-file $swapRedeemerFile
 
@@ -37,8 +37,8 @@ beaconPolicyId=$(cardano-cli transaction policyid \
 beacon="${beaconPolicyId}."
 
 # Create the beacon redeemer to burn the beacon.
-cardano-swaps beacons create-redeemer \
-  --burn-beacon \
+cardano-swaps beacon-redeemer \
+  --burn \
   --out-file $beaconRedeemerFile
 
 # Create the transaction.
@@ -47,15 +47,50 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 192cfb283919692edc155d5f9e6468d0ad0abc32f23c1a1c821f37c2b38feb3f#0 \
-  --spending-tx-in-reference 192cfb283919692edc155d5f9e6468d0ad0abc32f23c1a1c821f37c2b38feb3f#0 \
-  --spending-plutus-script-v2 \
-  --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#0 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#17 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#18 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#19 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#20 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#21 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#22 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#23 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#24 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#25 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
   --mint "-1 ${beacon}" \
   --mint-script-file $beaconPolicyFile \
   --mint-redeemer-file $beaconRedeemerFile \
-  --tx-in-collateral bc54229f0755611ba14a2679774a7c7d394b0a476e59c609035e06244e1572bb#0 \
+  --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
   --change-address $(cat ../assets/wallets/01.addr) \
   --required-signer-hash $(cat ../assets/wallets/01Stake.pkh) \
   --protocol-params-file "${tmpDir}protocol.json" \

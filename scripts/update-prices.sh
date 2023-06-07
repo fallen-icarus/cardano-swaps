@@ -10,21 +10,22 @@ swapDatumFile="${dir}datum.json"
 
 swapRedeemerFile="${dir}update.json"
 
-# Optional: Export the spending script for that trading pair.
-# cardano-swaps swaps export-script \
-#   --offered-asset-is-ada \
-#   --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-#   --asked-asset-token-name 4f74686572546f6b656e0a \
-#   --out-file $spendingScriptFile
+# Export the spending script for that trading pair.
+cardano-swaps export-script swap-script \
+  --offered-asset-is-lovelace \
+  --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --asked-asset-token-name 4f74686572546f6b656e0a \
+  --out-file $spendingScriptFile
 
 # Create the Update redeemer file.
-cardano-swaps swaps create-redeemer \
+cardano-swaps swap-redeemer \
   --update \
   --out-file $swapRedeemerFile
 
 # Create the new datum for the positions.
-cardano-swaps swaps create-datum \
-  --swap-price 2 \
+cardano-swaps datum swap-datum \
+  --price-numerator 1 \
+  --price-denominator 1000000 \
   --out-file $swapDatumFile
 
 # Create the transaction.
@@ -33,36 +34,104 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in a396f088c9e42bebd3e33ed79a6008dcadddfb16cb6c6fdd59b3a7f9a9166e63#4 \
-  --tx-in a396f088c9e42bebd3e33ed79a6008dcadddfb16cb6c6fdd59b3a7f9a9166e63#0 \
-  --spending-tx-in-reference b9fefb2cbfaeaf687bf0cf2553220093b43be5877c583574f77fefd847bc3a80#0 \
-  --spending-plutus-script-v2 \
-  --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#26 \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#1 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
   --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
   --tx-out-inline-datum-file $swapDatumFile \
-  --tx-in a396f088c9e42bebd3e33ed79a6008dcadddfb16cb6c6fdd59b3a7f9a9166e63#1 \
-  --spending-tx-in-reference b9fefb2cbfaeaf687bf0cf2553220093b43be5877c583574f77fefd847bc3a80#0 \
-  --spending-plutus-script-v2 \
-  --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#2 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
   --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
   --tx-out-inline-datum-file $swapDatumFile \
-  --tx-in a396f088c9e42bebd3e33ed79a6008dcadddfb16cb6c6fdd59b3a7f9a9166e63#2 \
-  --spending-tx-in-reference b9fefb2cbfaeaf687bf0cf2553220093b43be5877c583574f77fefd847bc3a80#0 \
-  --spending-plutus-script-v2 \
-  --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#3 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
   --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
   --tx-out-inline-datum-file $swapDatumFile \
-  --tx-in a396f088c9e42bebd3e33ed79a6008dcadddfb16cb6c6fdd59b3a7f9a9166e63#3 \
-  --spending-tx-in-reference b9fefb2cbfaeaf687bf0cf2553220093b43be5877c583574f77fefd847bc3a80#0 \
-  --spending-plutus-script-v2 \
-  --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#4 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
   --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
   --tx-out-inline-datum-file $swapDatumFile \
-  --tx-in-collateral bc54229f0755611ba14a2679774a7c7d394b0a476e59c609035e06244e1572bb#0 \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#5 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#6 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#7 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#8 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#9 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#10 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#11 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#12 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#13 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#14 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#15 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#16 \
+  --tx-in-script-file $spendingScriptFile \
+  --tx-in-inline-datum-present \
+  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
   --change-address $(cat ../assets/wallets/01.addr) \
   --required-signer-hash $(cat ../assets/wallets/01Stake.pkh) \
   --protocol-params-file "${tmpDir}protocol.json" \

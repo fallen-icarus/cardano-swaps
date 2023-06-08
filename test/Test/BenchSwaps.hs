@@ -18,7 +18,7 @@ module Test.BenchSwaps
   benchTrace
 ) where
 
-import Prelude (IO)
+import Prelude (IO,drop)
 import Control.Lens hiding (from)
 import Control.Monad (void)
 import PlutusTx.Prelude
@@ -607,6 +607,7 @@ chainSwapsWithReferenceScripts ts = do
           , [inputL1]
           , [inputM1]
           , [inputN1]
+          -- , [inputO1]
           ]
       , chainSwapChange =
           [ [ ( Just priceDatum1
@@ -665,12 +666,595 @@ chainSwapsWithReferenceScripts ts = do
               , lovelaceValueOf 2_000_000 <> (uncurry singleton testToken14) 50
               )
             ]
+          -- , [ ( Just priceDatum15
+          --     , lovelaceValueOf 2_000_000 <> (uncurry singleton testToken15) 50
+          --     )
+          --   ]
           ]
       , chainScripts = ts
       , chainWithRefScripts = True
       , chainRefScripts = 
-          [refA,refB,refC,refD,refE,refF,refG,refH,refI,refJ,refK,refL,refM,refN]
+          [ refA
+          , refB
+          , refC
+          , refD
+          , refE
+          , refF
+          , refG
+          , refH
+          , refI
+          , refJ
+          , refK
+          , refL
+          , refM
+          , refN
+          -- , refO
+          ]
+      }
+
+aggregatingWithReferenceScriptsADA :: [DappScripts] -> EmulatorTrace ()
+aggregatingWithReferenceScriptsADA ts = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+
+  let syms = map beaconCurrencySymbol ts
+      priceDatum = SwapPrice $ unsafeRatio 1 1_000_000
+      beaconDatum = BeaconSymbol $ syms!!0
+
+      addrs = map (\z -> Address (ScriptCredential $ spendingValidatorHash z)
+                     (Just $ StakingHash
+                           $ PubKeyCredential
+                           $ unPaymentPubKeyHash
+                           $ mockWalletPaymentPubKeyHash
+                           $ knownWallet 1
+                     )
+                  ) ts
+      
+  callEndpoint @"open-swap-address" h1 $
+    OpenSwapAddressParams
+      { openSwapAddressBeaconsMinted = [("",1)]
+      , openSwapAddressBeaconRedeemer = MintBeacon
+      , openSwapAddressAddress = addrs!!0
+      , openSwapAddressInfo =
+          [ ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_001
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_002
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_003
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_004
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_005
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_006
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_007
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_008
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_009
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_010
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_011
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_012
+            )
+          ]
+      , openSwapAddressAsInline = True
+      , openSwapAddressScripts = ts!!0
+      , openSwapAddressWithRefScript = True
+      , openSwapRefUTxO = 
+          [ ( Just beaconDatum
+            , lovelaceValueOf 23_000_000 <> singleton (syms!!0) "" 1
+            )
+          ]
+      }
+
+  void $ waitUntilSlot 2
+
+  input1 <- txOutRefWithValue $ lovelaceValueOf 10_000_000
+  input2 <- txOutRefWithValue $ lovelaceValueOf 10_000_001
+  input3 <- txOutRefWithValue $ lovelaceValueOf 10_000_002
+  input4 <- txOutRefWithValue $ lovelaceValueOf 10_000_003
+  input5 <- txOutRefWithValue $ lovelaceValueOf 10_000_004
+  input6 <- txOutRefWithValue $ lovelaceValueOf 10_000_005
+  input7 <- txOutRefWithValue $ lovelaceValueOf 10_000_006
+  input8 <- txOutRefWithValue $ lovelaceValueOf 10_000_007
+  input9 <- txOutRefWithValue $ lovelaceValueOf 10_000_008
+  input10 <- txOutRefWithValue $ lovelaceValueOf 10_000_009
+  input11 <- txOutRefWithValue $ lovelaceValueOf 10_000_010
+  input12 <- txOutRefWithValue $ lovelaceValueOf 10_000_011
+  input13 <- txOutRefWithValue $ lovelaceValueOf 10_000_012
+
+  ref <- txOutRefWithValue $ lovelaceValueOf 23_000_000 <> singleton (syms!!0) "" 1
+
+  callEndpoint @"chain-swaps" h2 $
+    ChainSwapParams
+      { chainSwapAddresses = addrs
+      , chainSwapSpecificUTxOs = 
+          [ [ input1
+            , input2
+            , input3
+            , input4
+            , input5
+            , input6
+            ]
+          ]
+      , chainSwapChange =
+          [ [ ( Just priceDatum
+              , lovelaceValueOf 5_000_000 <> (uncurry singleton testToken1) 50
+              )
+            , ( Just priceDatum
+              , lovelaceValueOf 5_000_001 <> (uncurry singleton testToken1) 50
+              )
+            , ( Just priceDatum
+              , lovelaceValueOf 5_000_002 <> (uncurry singleton testToken1) 50
+              )
+            , ( Just priceDatum
+              , lovelaceValueOf 5_000_003 <> (uncurry singleton testToken1) 50
+              )
+            , ( Just priceDatum
+              , lovelaceValueOf 5_000_004 <> (uncurry singleton testToken1) 50
+              )
+            , ( Just priceDatum
+              , lovelaceValueOf 5_000_005 <> (uncurry singleton testToken1) 50
+              )
+            ]
+          ]
+      , chainScripts = ts
+      , chainWithRefScripts = True
+      , chainRefScripts = [ref]
+      }
+
+aggregatingWithReferenceScriptsTest1 :: [DappScripts] -> EmulatorTrace ()
+aggregatingWithReferenceScriptsTest1 ts = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+
+  let syms = map beaconCurrencySymbol ts
+      priceDatum = SwapPrice $ unsafeRatio 1 1
+      beaconDatum = BeaconSymbol $ syms!!1
+
+      addrs = map (\z -> Address (ScriptCredential $ spendingValidatorHash z)
+                     (Just $ StakingHash
+                           $ PubKeyCredential
+                           $ unPaymentPubKeyHash
+                           $ mockWalletPaymentPubKeyHash
+                           $ knownWallet 1
+                     )
+                  ) ts
+      
+  callEndpoint @"open-swap-address" h1 $
+    OpenSwapAddressParams
+      { openSwapAddressBeaconsMinted = [("",1)]
+      , openSwapAddressBeaconRedeemer = MintBeacon
+      , openSwapAddressAddress = addrs!!1
+      , openSwapAddressInfo =
+          [ ( Just priceDatum
+            , lovelaceValueOf 2_000_000 <> (uncurry singleton testToken1) 50
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 2_000_001 <> (uncurry singleton testToken1) 50
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 2_000_002 <> (uncurry singleton testToken1) 50
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 2_000_003 <> (uncurry singleton testToken1) 50
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 2_000_004 <> (uncurry singleton testToken1) 50
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 2_000_005 <> (uncurry singleton testToken1) 50
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 2_000_006 <> (uncurry singleton testToken1) 50
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 2_000_007 <> (uncurry singleton testToken1) 50
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 2_000_008 <> (uncurry singleton testToken1) 50
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 2_000_009 <> (uncurry singleton testToken1) 50
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 2_000_010 <> (uncurry singleton testToken1) 50
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 2_000_011 <> (uncurry singleton testToken1) 50
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 2_000_012 <> (uncurry singleton testToken1) 50
+            )
+          ]
+      , openSwapAddressAsInline = True
+      , openSwapAddressScripts = ts!!1
+      , openSwapAddressWithRefScript = True
+      , openSwapRefUTxO = 
+          [ ( Just beaconDatum
+            , lovelaceValueOf 23_000_000 <> singleton (syms!!1) "" 1
+            )
+          ]
+      }
+
+  void $ waitUntilSlot 2
+
+  input1 <- txOutRefWithValue $ lovelaceValueOf 2_000_000 <> (uncurry singleton testToken1) 50
+  input2 <- txOutRefWithValue $ lovelaceValueOf 2_000_001 <> (uncurry singleton testToken1) 50
+  input3 <- txOutRefWithValue $ lovelaceValueOf 2_000_002 <> (uncurry singleton testToken1) 50
+  input4 <- txOutRefWithValue $ lovelaceValueOf 2_000_003 <> (uncurry singleton testToken1) 50
+  input5 <- txOutRefWithValue $ lovelaceValueOf 2_000_004 <> (uncurry singleton testToken1) 50
+  input6 <- txOutRefWithValue $ lovelaceValueOf 2_000_005 <> (uncurry singleton testToken1) 50
+  input7 <- txOutRefWithValue $ lovelaceValueOf 2_000_006 <> (uncurry singleton testToken1) 50
+  input8 <- txOutRefWithValue $ lovelaceValueOf 2_000_007 <> (uncurry singleton testToken1) 50
+  input9 <- txOutRefWithValue $ lovelaceValueOf 2_000_008 <> (uncurry singleton testToken1) 50
+  input10 <- txOutRefWithValue $ lovelaceValueOf 2_000_009 <> (uncurry singleton testToken1) 50
+  input11 <- txOutRefWithValue $ lovelaceValueOf 2_000_010 <> (uncurry singleton testToken1) 50
+  input12 <- txOutRefWithValue $ lovelaceValueOf 2_000_011 <> (uncurry singleton testToken1) 50
+  input13 <- txOutRefWithValue $ lovelaceValueOf 2_000_012 <> (uncurry singleton testToken1) 50
+
+  ref <- txOutRefWithValue $ lovelaceValueOf 23_000_000 <> singleton (syms!!1) "" 1
+
+  callEndpoint @"chain-swaps" h2 $
+    ChainSwapParams
+      { chainSwapAddresses = drop 1 addrs
+      , chainSwapSpecificUTxOs = 
+          [ [ input1
+            , input2
+            , input3
+            , input4
+            , input5
+            , input6
+            ]
+          ]
+      , chainSwapChange =
+          [ [ ( Just priceDatum
+              , lovelaceValueOf 2_000_000 <> (uncurry singleton testToken2) 50
+              )
+            , ( Just priceDatum
+              , lovelaceValueOf 2_000_001 <> (uncurry singleton testToken2) 50
+              )
+            , ( Just priceDatum
+              , lovelaceValueOf 2_000_002 <> (uncurry singleton testToken2) 50
+              )
+            , ( Just priceDatum
+              , lovelaceValueOf 2_000_003 <> (uncurry singleton testToken2) 50
+              )
+            , ( Just priceDatum
+              , lovelaceValueOf 2_000_004 <> (uncurry singleton testToken2) 50
+              )
+            , ( Just priceDatum
+              , lovelaceValueOf 2_000_005 <> (uncurry singleton testToken2) 50
+              )
+            ]
+          ]
+      , chainScripts = ts
+      , chainWithRefScripts = True
+      , chainRefScripts = [ref]
+      }
+
+aggregateSwapsFromDifferentAddresses :: [DappScripts] -> EmulatorTrace ()
+aggregateSwapsFromDifferentAddresses ts = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h3 <- activateContractWallet (knownWallet 3) endpoints
+  h4 <- activateContractWallet (knownWallet 4) endpoints
+  h5 <- activateContractWallet (knownWallet 5) endpoints
+  h6 <- activateContractWallet (knownWallet 6) endpoints
+  h7 <- activateContractWallet (knownWallet 7) endpoints
+  h8 <- activateContractWallet (knownWallet 8) endpoints
+  h9 <- activateContractWallet (knownWallet 9) endpoints
+  h10 <- activateContractWallet (knownWallet 10) endpoints
+
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+
+  let syms = map beaconCurrencySymbol ts
+      priceDatum = SwapPrice $ unsafeRatio 1 1_000_000
+      beaconDatum = BeaconSymbol $ syms!!0
+
+      addrs = map (\n -> Address (ScriptCredential $ spendingValidatorHash $ ts!!0)
+                     (Just $ StakingHash
+                           $ PubKeyCredential
+                           $ unPaymentPubKeyHash
+                           $ mockWalletPaymentPubKeyHash
+                           $ knownWallet n
+                     )
+                  ) [1,3,4,5,6,7,8,9,10]
+
+  callEndpoint @"open-swap-address" h1 $
+    OpenSwapAddressParams
+      { openSwapAddressBeaconsMinted = [("",1)]
+      , openSwapAddressBeaconRedeemer = MintBeacon
+      , openSwapAddressAddress = addrs!!0
+      , openSwapAddressInfo =
+          [ ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          ]
+      , openSwapAddressAsInline = True
+      , openSwapAddressScripts = ts!!0
+      , openSwapAddressWithRefScript = True
+      , openSwapRefUTxO = 
+          [ ( Just beaconDatum
+            , lovelaceValueOf 23_000_000 <> singleton (syms!!0) "" 1
+            )
+          ]
+      }
+
+  void $ waitUntilSlot 2
+
+  callEndpoint @"open-swap-address" h3 $
+    OpenSwapAddressParams
+      { openSwapAddressBeaconsMinted = [("",1)]
+      , openSwapAddressBeaconRedeemer = MintBeacon
+      , openSwapAddressAddress = addrs!!1
+      , openSwapAddressInfo =
+          [ ( Just priceDatum
+            , lovelaceValueOf 10_000_001
+            )
+          ]
+      , openSwapAddressAsInline = True
+      , openSwapAddressScripts = ts!!0
+      , openSwapAddressWithRefScript = True
+      , openSwapRefUTxO = 
+          [ ( Just beaconDatum
+            , lovelaceValueOf 23_000_001 <> singleton (syms!!0) "" 1
+            )
+          ]
+      }
+
+  void $ waitUntilSlot 4
+
+  callEndpoint @"open-swap-address" h4 $
+    OpenSwapAddressParams
+      { openSwapAddressBeaconsMinted = [("",1)]
+      , openSwapAddressBeaconRedeemer = MintBeacon
+      , openSwapAddressAddress = addrs!!2
+      , openSwapAddressInfo =
+          [ ( Just priceDatum
+            , lovelaceValueOf 10_000_002
+            )
+          ]
+      , openSwapAddressAsInline = True
+      , openSwapAddressScripts = ts!!0
+      , openSwapAddressWithRefScript = True
+      , openSwapRefUTxO = 
+          [ ( Just beaconDatum
+            , lovelaceValueOf 23_000_002 <> singleton (syms!!0) "" 1
+            )
+          ]
+      }
+
+  void $ waitUntilSlot 6
+
+  callEndpoint @"open-swap-address" h5 $
+    OpenSwapAddressParams
+      { openSwapAddressBeaconsMinted = [("",1)]
+      , openSwapAddressBeaconRedeemer = MintBeacon
+      , openSwapAddressAddress = addrs!!3
+      , openSwapAddressInfo =
+          [ ( Just priceDatum
+            , lovelaceValueOf 10_000_003
+            )
+          ]
+      , openSwapAddressAsInline = True
+      , openSwapAddressScripts = ts!!0
+      , openSwapAddressWithRefScript = True
+      , openSwapRefUTxO = 
+          [ ( Just beaconDatum
+            , lovelaceValueOf 23_000_003 <> singleton (syms!!0) "" 1
+            )
+          ]
+      }
+
+  void $ waitUntilSlot 8
+
+  callEndpoint @"open-swap-address" h6 $
+    OpenSwapAddressParams
+      { openSwapAddressBeaconsMinted = [("",1)]
+      , openSwapAddressBeaconRedeemer = MintBeacon
+      , openSwapAddressAddress = addrs!!4
+      , openSwapAddressInfo =
+          [ ( Just priceDatum
+            , lovelaceValueOf 10_000_004
+            )
+          ]
+      , openSwapAddressAsInline = True
+      , openSwapAddressScripts = ts!!0
+      , openSwapAddressWithRefScript = True
+      , openSwapRefUTxO = 
+          [ ( Just beaconDatum
+            , lovelaceValueOf 23_000_004 <> singleton (syms!!0) "" 1
+            )
+          ]
+      }
+
+  void $ waitUntilSlot 10
+
+  callEndpoint @"open-swap-address" h7 $
+    OpenSwapAddressParams
+      { openSwapAddressBeaconsMinted = [("",1)]
+      , openSwapAddressBeaconRedeemer = MintBeacon
+      , openSwapAddressAddress = addrs!!5
+      , openSwapAddressInfo =
+          [ ( Just priceDatum
+            , lovelaceValueOf 10_000_005
+            )
+          ]
+      , openSwapAddressAsInline = True
+      , openSwapAddressScripts = ts!!0
+      , openSwapAddressWithRefScript = True
+      , openSwapRefUTxO = 
+          [ ( Just beaconDatum
+            , lovelaceValueOf 23_000_005 <> singleton (syms!!0) "" 1
+            )
+          ]
+      }
+
+  void $ waitUntilSlot 12
+
+  callEndpoint @"open-swap-address" h8 $
+    OpenSwapAddressParams
+      { openSwapAddressBeaconsMinted = [("",1)]
+      , openSwapAddressBeaconRedeemer = MintBeacon
+      , openSwapAddressAddress = addrs!!6
+      , openSwapAddressInfo =
+          [ ( Just priceDatum
+            , lovelaceValueOf 10_000_006
+            )
+          ]
+      , openSwapAddressAsInline = True
+      , openSwapAddressScripts = ts!!0
+      , openSwapAddressWithRefScript = True
+      , openSwapRefUTxO = 
+          [ ( Just beaconDatum
+            , lovelaceValueOf 23_000_006 <> singleton (syms!!0) "" 1
+            )
+          ]
+      }
+
+  void $ waitUntilSlot 14
+
+  callEndpoint @"open-swap-address" h9 $
+    OpenSwapAddressParams
+      { openSwapAddressBeaconsMinted = [("",1)]
+      , openSwapAddressBeaconRedeemer = MintBeacon
+      , openSwapAddressAddress = addrs!!7
+      , openSwapAddressInfo =
+          [ ( Just priceDatum
+            , lovelaceValueOf 10_000_007
+            )
+          ]
+      , openSwapAddressAsInline = True
+      , openSwapAddressScripts = ts!!0
+      , openSwapAddressWithRefScript = True
+      , openSwapRefUTxO = 
+          [ ( Just beaconDatum
+            , lovelaceValueOf 23_000_007 <> singleton (syms!!0) "" 1
+            )
+          ]
+      }
+
+  void $ waitUntilSlot 16
+
+  callEndpoint @"open-swap-address" h10 $
+    OpenSwapAddressParams
+      { openSwapAddressBeaconsMinted = [("",1)]
+      , openSwapAddressBeaconRedeemer = MintBeacon
+      , openSwapAddressAddress = addrs!!8
+      , openSwapAddressInfo =
+          [ ( Just priceDatum
+            , lovelaceValueOf 10_000_008
+            )
+          ]
+      , openSwapAddressAsInline = True
+      , openSwapAddressScripts = ts!!0
+      , openSwapAddressWithRefScript = True
+      , openSwapRefUTxO = 
+          [ ( Just beaconDatum
+            , lovelaceValueOf 23_000_008 <> singleton (syms!!0) "" 1
+            )
+          ]
+      }
+
+  void $ waitUntilSlot 18
+
+  input1 <- txOutRefWithValue $ lovelaceValueOf 10_000_000
+  input2 <- txOutRefWithValue $ lovelaceValueOf 10_000_001
+  input3 <- txOutRefWithValue $ lovelaceValueOf 10_000_002
+  input4 <- txOutRefWithValue $ lovelaceValueOf 10_000_003
+  input5 <- txOutRefWithValue $ lovelaceValueOf 10_000_004
+  input6 <- txOutRefWithValue $ lovelaceValueOf 10_000_005
+  input7 <- txOutRefWithValue $ lovelaceValueOf 10_000_006
+  input8 <- txOutRefWithValue $ lovelaceValueOf 10_000_007
+  input9 <- txOutRefWithValue $ lovelaceValueOf 10_000_008
+
+  ref <- txOutRefWithValue $ lovelaceValueOf 23_000_000 <> singleton (syms!!0) "" 1
+
+  callEndpoint @"chain-swaps" h2 $
+    ChainSwapParams
+      { chainSwapAddresses = addrs
+      , chainSwapSpecificUTxOs = 
+          [ [input1]
+          , [input2]
+          , [input3]
+          , [input4]
+          , [input5]
+          , [input6]
+          , [input7]
+          , [input8]
+          , [input9]
+          ]
+      , chainSwapChange =
+          [ [ ( Just priceDatum
+              , lovelaceValueOf 5_000_000 <> (uncurry singleton testToken1) 50
+              )
+            ]
+          , [ ( Just priceDatum
+              , lovelaceValueOf 5_000_001 <> (uncurry singleton testToken1) 50
+              )
+            ]
+          , [ ( Just priceDatum
+              , lovelaceValueOf 5_000_002 <> (uncurry singleton testToken1) 50
+              )
+            ]
+          , [ ( Just priceDatum
+              , lovelaceValueOf 5_000_003 <> (uncurry singleton testToken1) 50
+              )
+            ]
+          , [ ( Just priceDatum
+              , lovelaceValueOf 5_000_004 <> (uncurry singleton testToken1) 50
+              )
+            ]
+          , [ ( Just priceDatum
+              , lovelaceValueOf 5_000_005 <> (uncurry singleton testToken1) 50
+              )
+            ]
+          , [ ( Just priceDatum
+              , lovelaceValueOf 5_000_006 <> (uncurry singleton testToken1) 50
+              )
+            ]
+          , [ ( Just priceDatum
+              , lovelaceValueOf 5_000_007 <> (uncurry singleton testToken1) 50
+              )
+            ]
+          , [ ( Just priceDatum
+              , lovelaceValueOf 5_000_008 <> (uncurry singleton testToken1) 50
+              )
+            ]
+          ]
+      , chainScripts = ts
+      , chainWithRefScripts = True
+      , chainRefScripts = 
+          [ ref
+          , ref
+          , ref
+          , ref
+          , ref
+          , ref
+          , ref
+          , ref
+          , ref
+          ]
       }
 
 benchTrace :: [DappScripts] -> IO ()
-benchTrace = runEmulatorTraceIO' def emConfig . chainSwapsWithReferenceScripts
+benchTrace = runEmulatorTraceIO' def benchConfig . aggregateSwapsFromDifferentAddresses

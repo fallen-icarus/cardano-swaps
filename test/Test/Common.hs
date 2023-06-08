@@ -239,83 +239,35 @@ emConfig = EmulatorConfig (Left $ Map.fromList wallets) def
     user3 :: C.Value
     user3 = unsafeFromRight . toCardanoValue $ lovelaceValueOf 1_000_000_000
          <> (uncurry singleton testToken1) 1000
-         <> (uncurry singleton testToken2) 1000
-         <> (uncurry singleton testToken3) 1000
-         <> (uncurry singleton testToken4) 1000
-         <> (uncurry singleton testToken5) 1000
-         <> (uncurry singleton testToken6) 1000
-         <> (uncurry singleton testToken7) 1000
-         <> (uncurry singleton testToken8) 1000
-         <> (uncurry singleton testToken9) 1000
-         <> (uncurry singleton testToken10) 1000
-         <> (uncurry singleton testToken11) 1000
-         <> (uncurry singleton testToken12) 1000
-         <> (uncurry singleton testToken13) 1000
-         <> (uncurry singleton testToken14) 1000
-         <> (uncurry singleton testToken15) 1000
-         <> (uncurry singleton testToken16) 1000
-         <> (uncurry singleton testToken17) 1000
     
     user4 :: C.Value
     user4 = unsafeFromRight . toCardanoValue $ lovelaceValueOf 1_000_000_000
          <> (uncurry singleton testToken1) 1000
-         <> (uncurry singleton testToken2) 1000
-         <> (uncurry singleton testToken3) 1000
-         <> (uncurry singleton testToken4) 1000
-         <> (uncurry singleton testToken5) 1000
-         <> (uncurry singleton testToken6) 1000
-         <> (uncurry singleton testToken7) 1000
-         <> (uncurry singleton testToken8) 1000
-         <> (uncurry singleton testToken9) 1000
-         <> (uncurry singleton testToken10) 1000
-         <> (uncurry singleton testToken11) 1000
-         <> (uncurry singleton testToken12) 1000
-         <> (uncurry singleton testToken13) 1000
-         <> (uncurry singleton testToken14) 1000
-         <> (uncurry singleton testToken15) 1000
-         <> (uncurry singleton testToken16) 1000
-         <> (uncurry singleton testToken17) 1000
     
     user5 :: C.Value
     user5 = unsafeFromRight . toCardanoValue $ lovelaceValueOf 1_000_000_000
          <> (uncurry singleton testToken1) 1000
-         <> (uncurry singleton testToken2) 1000
-         <> (uncurry singleton testToken3) 1000
-         <> (uncurry singleton testToken4) 1000
-         <> (uncurry singleton testToken5) 1000
-         <> (uncurry singleton testToken6) 1000
-         <> (uncurry singleton testToken7) 1000
-         <> (uncurry singleton testToken8) 1000
-         <> (uncurry singleton testToken9) 1000
-         <> (uncurry singleton testToken10) 1000
-         <> (uncurry singleton testToken11) 1000
-         <> (uncurry singleton testToken12) 1000
-         <> (uncurry singleton testToken13) 1000
-         <> (uncurry singleton testToken14) 1000
-         <> (uncurry singleton testToken15) 1000
-         <> (uncurry singleton testToken16) 1000
-         <> (uncurry singleton testToken17) 1000
 
     user6 :: C.Value
     user6 = unsafeFromRight . toCardanoValue $ lovelaceValueOf 1_000_000_000
          <> (uncurry singleton testToken1) 1000
-         <> (uncurry singleton testToken2) 1000
-         <> (uncurry singleton testToken3) 1000
-         <> (uncurry singleton testToken4) 1000
-         <> (uncurry singleton testToken5) 1000
-         <> (uncurry singleton testToken6) 1000
-         <> (uncurry singleton testToken7) 1000
-         <> (uncurry singleton testToken8) 1000
-         <> (uncurry singleton testToken9) 1000
-         <> (uncurry singleton testToken10) 1000
-         <> (uncurry singleton testToken11) 1000
-         <> (uncurry singleton testToken12) 1000
-         <> (uncurry singleton testToken13) 1000
-         <> (uncurry singleton testToken14) 1000
-         <> (uncurry singleton testToken15) 1000
-         <> (uncurry singleton testToken16) 1000
-         <> (uncurry singleton testToken17) 1000
-  
+
+    user7 :: C.Value
+    user7 = unsafeFromRight . toCardanoValue $ lovelaceValueOf 1_000_000_000
+         <> (uncurry singleton testToken1) 1000
+    
+    user8 :: C.Value
+    user8 = unsafeFromRight . toCardanoValue $ lovelaceValueOf 1_000_000_000
+         <> (uncurry singleton testToken1) 1000
+    
+    user9 :: C.Value
+    user9 = unsafeFromRight . toCardanoValue $ lovelaceValueOf 1_000_000_000
+         <> (uncurry singleton testToken1) 1000
+
+    user10 :: C.Value
+    user10 = unsafeFromRight . toCardanoValue $ lovelaceValueOf 1_000_000_000
+         <> (uncurry singleton testToken1) 1000
+
     wallets :: [(Wallet,C.Value)]
     wallets = 
       [ (knownWallet 1, user1)
@@ -324,6 +276,10 @@ emConfig = EmulatorConfig (Left $ Map.fromList wallets) def
       , (knownWallet 4, user4)
       , (knownWallet 5, user5)
       , (knownWallet 6, user6)
+      , (knownWallet 7, user7)
+      , (knownWallet 8, user8)
+      , (knownWallet 9, user9)
+      , (knownWallet 10, user10)
       ]
 
 benchConfig :: EmulatorConfig

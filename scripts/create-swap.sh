@@ -49,7 +49,7 @@ cardano-swaps datum beacon-datum \
 
 # Create the datum for the first swap positions
 cardano-swaps datum swap-datum \
-  --price-numerator 2 \
+  --price-numerator 1 \
   --price-denominator 1000000 \
   --out-file $swapPositionDatumFile
 
@@ -64,55 +64,10 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in aab4ea05d665188f35f798422d47e8201a1f9b94f4f3183b42448e63f1707a06#26 \
-  --tx-out "$(cat ${swapAddrFile}) + 20000000 lovelace + 1 ${beacon}" \
+  --tx-in a4c18c0c51a466553b97f0ed60ef6c7bc3181fe2ceec1555fc72137d3357a344#0 \
+  --tx-out "$(cat ${swapAddrFile}) + 23000000 lovelace + 1 ${beacon}" \
   --tx-out-inline-datum-file $swapBeaconDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
+  --tx-out-reference-script-file $spendingScriptFile \
   --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
   --tx-out-inline-datum-file $swapPositionDatumFile \
   --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
@@ -120,12 +75,11 @@ cardano-cli transaction build \
   --mint "1 ${beacon}" \
   --mint-script-file $beaconPolicyFile \
   --mint-redeemer-file $beaconRedeemerFile \
-  --change-address $(cat ../assets/wallets/01.addr) \
+  --change-address "$(cat ../assets/wallets/01.addr)" \
   --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
   --testnet-magic 1 \
   --protocol-params-file "${tmpDir}protocol.json" \
   --out-file "${tmpDir}tx.body"
-  # --calculate-plutus-script-cost "${tmpDir}cost.json"
 
 cardano-cli transaction sign \
   --tx-body-file "${tmpDir}tx.body" \

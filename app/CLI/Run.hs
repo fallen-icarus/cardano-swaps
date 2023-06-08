@@ -13,6 +13,7 @@ import Data.FileEmbed
 
 import CardanoSwaps
 import CLI.Types
+import CLI.Query
 
 blueprintsFile :: ByteString
 blueprintsFile = $(embedFile "aiken/plutus.json")
@@ -26,6 +27,7 @@ runCommand cmd = case cmd of
   CreateSwapDatum d file -> runCreateSwapDatum d file
   CreateSwapRedeemer r file -> writeData file r
   CreateBeaconRedeemer r file -> writeData file r
+  QueryBeacons query -> runQuery query
 
 runExportScriptCmd :: Script -> FilePath -> IO ()
 runExportScriptCmd script file = do
@@ -40,3 +42,17 @@ runExportScriptCmd script file = do
 runCreateSwapDatum :: Datum -> FilePath -> IO ()
 runCreateSwapDatum (SwapDatum d) file = writeData file d
 runCreateSwapDatum (WeightedPrice ps) file = writeData file $ SwapPrice $ calcWeightedPrice ps
+
+runQuery :: Query -> IO ()
+runQuery query = case query of
+  QueryAvailableSwaps network api cfg@SwapConfig{swapOffer = target} output -> do
+    let DappScripts{beaconCurrencySymbol = sym} = genScripts cfg blueprints
+    runQueryAvailableSwaps network api sym target >>= toOutput output
+
+-------------------------------------------------
+-- Helper Functions
+-------------------------------------------------
+toOutput :: (ToJSON a) => Output -> a -> IO ()
+toOutput output xs = case output of
+  Stdout -> BL.putStr $ encode xs
+  File file -> BL.writeFile file $ encodePretty xs

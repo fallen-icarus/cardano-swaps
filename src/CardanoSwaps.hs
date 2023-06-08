@@ -77,7 +77,7 @@ import Plutus.Script.Utils.V2.Scripts
 data SwapConfig = SwapConfig
   { swapOffer :: (CurrencySymbol,TokenName)
   , swapAsk :: (CurrencySymbol,TokenName)
-  } deriving (Generic)
+  } deriving (Generic,Show)
 
 -- | Need a custom instance since Aiken treats tuples differently.
 instance ToData SwapConfig where
@@ -87,18 +87,18 @@ instance ToData SwapConfig where
 data SwapDatum
   = BeaconSymbol CurrencySymbol
   | SwapPrice Plutus.Rational
-  deriving (Generic)
+  deriving (Generic,Show)
 
 data SwapRedeemer
   = Close
   | Update
   | Swap
-  deriving (Generic)
+  deriving (Generic,Show)
 
 data BeaconRedeemer
   = MintBeacon
   | BurnBeacon
-  deriving (Generic)
+  deriving (Generic,Show)
 
 PlutusTx.unstableMakeIsData ''SwapDatum
 PlutusTx.unstableMakeIsData ''SwapRedeemer

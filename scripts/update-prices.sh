@@ -26,7 +26,7 @@ cardano-swaps swap-redeemer \
 
 # Create the new datum for the positions.
 cardano-swaps datum swap-datum \
-  --price-numerator 1 \
+  --price-numerator 2 \
   --price-denominator 1000000 \
   --out-file $swapDatumFile
 
@@ -36,106 +36,17 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#26 \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#1 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapDatumFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#2 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapDatumFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#3 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapDatumFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#4 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapDatumFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#5 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapDatumFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#6 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapDatumFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#7 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapDatumFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#8 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapDatumFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#9 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapDatumFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#10 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapDatumFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#11 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapDatumFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#12 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapDatumFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#13 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapDatumFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#14 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapDatumFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#15 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapDatumFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#16 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
+  --tx-in 7e8226b57ab578586a3b4c050c01fe0cd3edceab3664ebf00e810b422d8763b3#2 \
+  --tx-in 0a61605c9ca946ed55842f7daf35efb91480872c8e8bc11ef6a4771438db4c41#2 \
+  --spending-tx-in-reference 0a61605c9ca946ed55842f7daf35efb91480872c8e8bc11ef6a4771438db4c41#0 \
+  --spending-plutus-script-v2 \
+  --spending-reference-tx-in-inline-datum-present \
+  --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
   --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
   --tx-out-inline-datum-file $swapDatumFile \
   --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
-  --change-address $(cat ../assets/wallets/01.addr) \
-  --required-signer-hash $(cat ../assets/wallets/01Stake.pkh) \
+  --change-address "$(cat ../assets/wallets/01.addr)" \
+  --required-signer-hash "$(cat ../assets/wallets/01Stake.pkh)" \
   --protocol-params-file "${tmpDir}protocol.json" \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.body"

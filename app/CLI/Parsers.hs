@@ -23,6 +23,8 @@ parseCommand = hsubparser $ mconcat
       (info  pCreateSwapRedeemer $ progDesc "Create a redeemer for the swap validator.")
   , command "beacon-redeemer"
       (info pCreateBeaconRedeemer $ progDesc "Create a redeemer for the beacon policy.")
+  , command "query"
+      (info parseQueryBeacons $ progDesc "Query the dApp's beacon tokens.")
   ]
 
 -------------------------------------------------
@@ -100,15 +102,32 @@ pCreateBeaconRedeemer =
   where
     pMint :: Parser BeaconRedeemer
     pMint = flag' MintBeacon
-      (  long "mint-beacon"
+      (  long "mint"
       <> help "Mint a beacon for the dApp."
       )
 
     pBurn :: Parser BeaconRedeemer
     pBurn = flag' BurnBeacon
-      (  long "burn-beacon"
+      (  long "burn"
       <> help "Burn a beacon for the dApp."
       )
+
+-------------------------------------------------
+-- QueryBeacons Parser
+-------------------------------------------------
+parseQueryBeacons :: Parser Command
+parseQueryBeacons = fmap QueryBeacons . hsubparser $ mconcat
+    [ command "available-swaps"
+        (info pAvailableSwaps $ progDesc "Query available swaps for a given currency conversion.")
+    ]
+  where
+    pAvailableSwaps :: Parser Query
+    pAvailableSwaps = 
+      QueryAvailableSwaps 
+        <$> pNetwork 
+        <*> pApiEndpoint
+        <*> pSwapConfig 
+        <*> pOutput
 
 -------------------------------------------------
 -- Basic Helper Parsers
@@ -213,3 +232,36 @@ pBeaconPolicy = option (eitherReader readCurrencySymbol)
   (  long "beacon-policy-id"
   <> metavar "STRING"
   <> help "Policy id for that trading pair's beacon policy.")
+
+pNetwork :: Parser Network
+pNetwork = pPreProdTestnet
+  where
+    pPreProdTestnet :: Parser Network
+    pPreProdTestnet = flag' PreProdTestnet
+      (  long "testnet"
+      <> help "Query the preproduction testnet.")
+
+pApiEndpoint :: Parser ApiEndpoint
+pApiEndpoint = pKoios <|> pBlockfrost
+  where
+    pKoios :: Parser ApiEndpoint
+    pKoios = flag' Koios
+      (  long "koios"
+      <> help "Query using Koios."
+      )
+
+    pBlockfrost :: Parser ApiEndpoint
+    pBlockfrost = Blockfrost <$> strOption
+      (  long "blockfrost"
+      <> metavar "STRING"
+      <> help "Query using Blockfrost with the supplied api key."
+      )
+
+pOutput :: Parser Output
+pOutput = pStdOut <|> File <$> pOutputFile
+  where
+    pStdOut :: Parser Output
+    pStdOut = flag' Stdout
+      (  long "stdout"
+      <> help "Display to stdout."
+      )

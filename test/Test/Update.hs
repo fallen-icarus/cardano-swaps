@@ -364,7 +364,8 @@ successfullyUpdateMultipleUTxOs :: DappScripts -> EmulatorTrace ()
 successfullyUpdateMultipleUTxOs ts@DappScripts{..} = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
+  let priceDatum = SwapPrice $ unsafeRatio 1 1_000_000
+      newPriceDatum = SwapPrice $ unsafeRatio 2 1_000_000
       beaconDatum = BeaconSymbol beaconCurrencySymbol
 
       addr = Address (ScriptCredential spendingValidatorHash)
@@ -460,101 +461,101 @@ successfullyUpdateMultipleUTxOs ts@DappScripts{..} = do
           [ ( priceDatum
             , lovelaceValueOf 10_000_000
             )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_001
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_002
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_003
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_004
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_005
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_006
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_007
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_008
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_009
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_010
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_011
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_012
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_013
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_014
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_015
-            )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_001
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_002
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_003
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_004
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_005
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_006
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_007
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_008
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_009
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_010
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_011
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_012
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_013
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_014
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_015
+          --   )
           ]
       , updateOutputs =
-          [ ( Just priceDatum
+          [ ( Just newPriceDatum
             , lovelaceValueOf 10_000_000
             )
-          , ( Just priceDatum
-            , lovelaceValueOf 10_000_001
-            )
-          , ( Just priceDatum
-            , lovelaceValueOf 10_000_002
-            )
-          , ( Just priceDatum
-            , lovelaceValueOf 10_000_003
-            )
-          , ( Just priceDatum
-            , lovelaceValueOf 10_000_004
-            )
-          , ( Just priceDatum
-            , lovelaceValueOf 10_000_005
-            )
-          , ( Just priceDatum
-            , lovelaceValueOf 10_000_006
-            )
-          , ( Just priceDatum
-            , lovelaceValueOf 10_000_007
-            )
-          , ( Just priceDatum
-            , lovelaceValueOf 10_000_008
-            )
-          , ( Just priceDatum
-            , lovelaceValueOf 10_000_009
-            )
-          , ( Just priceDatum
-            , lovelaceValueOf 10_000_010
-            )
-          , ( Just priceDatum
-            , lovelaceValueOf 10_000_011
-            )
-          , ( Just priceDatum
-            , lovelaceValueOf 10_000_012
-            )
-          , ( Just priceDatum
-            , lovelaceValueOf 10_000_013
-            )
-          , ( Just priceDatum
-            , lovelaceValueOf 10_000_014
-            )
-          , ( Just priceDatum
-            , lovelaceValueOf 10_000_015
-            )
+          -- , ( Just newPriceDatum
+          --   , lovelaceValueOf 10_000_001
+          --   )
+          -- , ( Just newPriceDatum
+          --   , lovelaceValueOf 10_000_002
+          --   )
+          -- , ( Just newPriceDatum
+          --   , lovelaceValueOf 10_000_003
+          --   )
+          -- , ( Just newPriceDatum
+          --   , lovelaceValueOf 10_000_004
+          --   )
+          -- , ( Just newPriceDatum
+          --   , lovelaceValueOf 10_000_005
+          --   )
+          -- , ( Just newPriceDatum
+          --   , lovelaceValueOf 10_000_006
+          --   )
+          -- , ( Just newPriceDatum
+          --   , lovelaceValueOf 10_000_007
+          --   )
+          -- , ( Just newPriceDatum
+          --   , lovelaceValueOf 10_000_008
+          --   )
+          -- , ( Just newPriceDatum
+          --   , lovelaceValueOf 10_000_009
+          --   )
+          -- , ( Just newPriceDatum
+          --   , lovelaceValueOf 10_000_010
+          --   )
+          -- , ( Just newPriceDatum
+          --   , lovelaceValueOf 10_000_011
+          --   )
+          -- , ( Just newPriceDatum
+          --   , lovelaceValueOf 10_000_012
+          --   )
+          -- , ( Just newPriceDatum
+          --   , lovelaceValueOf 10_000_013
+          --   )
+          -- , ( Just newPriceDatum
+          --   , lovelaceValueOf 10_000_014
+          --   )
+          -- , ( Just newPriceDatum
+          --   , lovelaceValueOf 10_000_015
+          --   )
           ]
       , updateAsInline = True
       , updateDappScripts = ts

@@ -379,63 +379,63 @@ successfullyCloseAddressWithMultipleUTxOs ts@DappScripts{..} = do
           , ( priceDatum
             , lovelaceValueOf 10_000_000
             )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_001
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_002
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_003
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_004
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_005
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_006
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_007
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_008
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_009
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_010
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_011
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_012
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_013
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_014
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_015
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_016
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_017
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_018
-            )
-          , ( priceDatum
-            , lovelaceValueOf 10_000_019
-            )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_001
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_002
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_003
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_004
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_005
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_006
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_007
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_008
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_009
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_010
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_011
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_012
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_013
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_014
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_015
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_016
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_017
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_018
+          --   )
+          -- , ( priceDatum
+          --   , lovelaceValueOf 10_000_019
+          --   )
           ]
       , closeDappScripts = ts
       }
@@ -458,4 +458,4 @@ tests ts = do
     ]
 
 testTrace :: DappScripts -> IO ()
-testTrace = runEmulatorTraceIO' def benchConfig . successfullyCloseAddressWithMultipleUTxOs
+testTrace = runEmulatorTraceIO' def emConfig . successfullyCloseAddressWithMultipleUTxOs

@@ -406,6 +406,113 @@ datumNotInline ts@DappScripts{..} = do
       , openSwapRefUTxO = []
       }
 
+openBenchmarks :: DappScripts -> EmulatorTrace ()
+openBenchmarks ts@DappScripts{..} = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let priceDatum = SwapPrice $ unsafeRatio 10 1_000_000
+      beaconDatum = BeaconSymbol beaconCurrencySymbol
+
+      addr = Address (ScriptCredential spendingValidatorHash)
+                     (Just $ StakingHash
+                           $ PubKeyCredential
+                           $ unPaymentPubKeyHash
+                           $ mockWalletPaymentPubKeyHash
+                           $ knownWallet 1
+                     )
+
+  callEndpoint @"open-swap-address" h1 $
+    OpenSwapAddressParams
+      { openSwapAddressBeaconsMinted = [("",1)]
+      , openSwapAddressBeaconRedeemer = MintBeacon
+      , openSwapAddressAddress = addr
+      , openSwapAddressInfo =
+          [ ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          , ( Just priceDatum
+            , lovelaceValueOf 10_000_000
+            )
+          ]
+      , openSwapAddressAsInline = True
+      , openSwapAddressScripts = ts
+      , openSwapAddressWithRefScript = True
+      , openSwapRefUTxO = 
+          [ ( Just beaconDatum
+            , lovelaceValueOf 23_000_000 <> singleton beaconCurrencySymbol "" 1
+            )
+          ]
+      }
+
 -------------------------------------------------
 -- Test Function
 -------------------------------------------------
@@ -438,4 +545,4 @@ tests ts = do
     ]
 
 testTrace :: DappScripts -> IO ()
-testTrace = runEmulatorTraceIO' def emConfig . mintWithBurnRedeemer
+testTrace = runEmulatorTraceIO' def emConfig . openBenchmarks

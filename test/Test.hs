@@ -53,7 +53,7 @@ main = do
   
 
   -- print $ scriptSize $ unValidatorScript $ spendingValidator testScripts
-  -- Swap.testTrace testScripts
+  -- Update.testTrace testScripts
 
   defaultMain $ testGroup "Cardano-Swaps"
     [ uniqueBeaconsTest blueprints

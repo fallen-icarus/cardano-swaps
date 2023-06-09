@@ -3,8 +3,8 @@
 ## 0.3.0.0
 
 - Plutus scripts written using Aiken.
-- `SwapDatum` changed to an sum (enum) type.
-- Reference scripts are no longer required to be stored with beacon. Instead, a minimum UTxO value of 20 ADA is enforced. Users and arbitragers are expected to use there own or share using a program like [cardano-reference-scripts](https://github.com/fallen-icarus/cardano-reference-scripts). This is to cut down on unnecessary blockchain bloat.
+- `SwapDatum` changed to a sum (enum) type.
+- Reference scripts are no longer required to be stored with the beacons. Instead, a minimum UTxO value of 20 ADA is enforced. Users and arbitragers are expected to use there own reference scripts or share using a program like [cardano-reference-scripts](https://github.com/fallen-icarus/cardano-reference-scripts). This is to cut down on unnecessary blockchain bloat.
 - The `Close` redeemer no longer checks for outputs to the swap address since that is not what it is meant for.
 - plutus-apps bumped to v1.2.0.
 - Decoding datums from api query results now uses `decodeDatum` to minimize boilerplate.

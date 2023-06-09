@@ -80,8 +80,7 @@ executable cardano-swaps
       , CLI.Query
       , CLI.Parsers
       , CLI.BlockfrostApi
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
+      , CLI.KoiosApi
     build-depends:    
       cardano-swaps,
       optparse-applicative,

@@ -14,6 +14,7 @@ import Network.HTTP.Client.TLS
 import Control.Exception
 
 import CLI.BlockfrostApi as Blockfrost
+import CLI.KoiosApi as Koios
 import CLI.Types
 import CardanoSwaps
 
@@ -25,7 +26,12 @@ runQueryAvailableSwaps :: Network
 runQueryAvailableSwaps network api beaconSym target = do
   manager' <- newManager tlsManagerSettings
   case (network,api) of
-    (PreProdTestnet,Koios) -> undefined
+    (PreProdTestnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v0")
+      res <- runClientM (Koios.queryAvailableSwaps beaconSym target) env
+      case res of
+        Right r -> return r
+        Left err -> throw err
     (PreProdTestnet,Blockfrost apiKey) -> do
       let env = mkClientEnv manager' (BaseUrl Https "cardano-preprod.blockfrost.io" 443 "api/v0")
           apiKey' = BlockfrostApiKey apiKey
@@ -38,7 +44,12 @@ runQueryOwnUTxOs :: Network -> ApiEndpoint -> String -> IO [SwapUTxO]
 runQueryOwnUTxOs network api addr = do
   manager' <- newManager tlsManagerSettings
   case (network,api) of
-    (PreProdTestnet,Koios) -> undefined
+    (PreProdTestnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v0")
+      res <- runClientM (Koios.queryOwnUTxOs addr) env
+      case res of
+        Right r -> return r
+        Left err -> throw err
     (PreProdTestnet,Blockfrost apiKey) -> do
       let env = mkClientEnv manager' (BaseUrl Https "cardano-preprod.blockfrost.io" 443 "api/v0")
           apiKey' = BlockfrostApiKey apiKey

@@ -63,12 +63,12 @@ instance ToJSON SwapDatum where
 data Asset = Asset
   { assetPolicyId :: String
   , assetTokenName :: String
-  , assetQuantity :: Integer
+  , assetQuantity :: String
   } deriving (Show)
 
 instance ToJSON Asset where
   toJSON Asset{..} =
-    object [ "asset" .= if assetPolicyId == "lovelace" 
+    object [ "asset" .= if assetPolicyId == "lovelace" || assetPolicyId == ""
                         then "lovelace" 
                         else assetPolicyId <> "." <> assetTokenName
            , "quantity" .= assetQuantity

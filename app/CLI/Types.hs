@@ -39,7 +39,7 @@ data SwapUTxO = SwapUTxO
   { address :: String
   , txIx :: String
   , value :: [Asset]
-  , datum :: SwapDatum
+  , datum :: Maybe SwapDatum
   } deriving (Show)
 
 instance ToJSON SwapUTxO where

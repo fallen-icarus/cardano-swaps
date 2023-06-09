@@ -107,6 +107,7 @@ type BlockfrostApi
     :> Header' '[Required] "project_id" BlockfrostApiKey
     :> Capture "address" BeaconAddress
     :> "utxos"
+    :> Capture "asset" BeaconId
     :> Get '[JSON] [RawBeaconInfo]
 
   :<|> "scripts"
@@ -115,7 +116,7 @@ type BlockfrostApi
     :> Capture "datum_hash" String
     :> Get '[JSON] Value
 
-beaconAddressListApi :<|> addressUtxosApi :<|> datumApi = client api
+beaconAddressListApi :<|> swappableUTxOsApi :<|> datumApi = client api
   where
     api :: Proxy BlockfrostApi
     api = Proxy
@@ -129,12 +130,11 @@ queryAvailableSwaps :: BlockfrostApiKey
                     -> ClientM [SwapUTxO]
 queryAvailableSwaps apiKey policyId (oSym,oName) = do
   let beaconId = BeaconId (show policyId,"")
-      target = if oSym == adaSymbol then "lovelace" else (show oSym <> show oName)
+      target = BeaconId (show oSym, drop 2 $ show oName)
   -- | Get all the addresses that currently hold the beacon
   addrs <- beaconAddressListApi apiKey beaconId
-  -- | Get all the UTxOs for those addresses. Filter out UTxOs that do not have the offered asset.
-  utxos <- filterForAsset target . concat
-       <$> mapM (\z -> addressUtxosApi apiKey z) addrs
+  -- | Get all the UTxOs with the target asset for those addresses.
+  utxos <- concat <$> mapM (\z -> swappableUTxOsApi apiKey z target) addrs
   -- | Get the datums attached to the UTxOs.
   datums <- fetchDatumsLenient apiKey $ map rawBeaconDataHash utxos
   return $ convertToSwapUTxO utxos datums
@@ -144,6 +144,9 @@ queryAvailableSwaps apiKey policyId (oSym,oName) = do
 -------------------------------------------------
 filterForAsset :: String -> [RawBeaconInfo] -> [RawBeaconInfo]
 filterForAsset asset = filter (isJust . find ((==asset) . rawUnit) . rawAmount)
+
+filterOutAsset :: String -> [RawBeaconInfo] -> [RawBeaconInfo]
+filterOutAsset asset = filter (not . isJust . find ((==asset) . rawUnit) . rawAmount)
 
 -- | Skips ones that fail to decode.
 fetchDatumsLenient :: BlockfrostApiKey -> [Maybe String] -> ClientM (Map String SwapDatum)
@@ -171,13 +174,20 @@ convertToAsset RawAssetInfo{rawUnit=u,rawQuantity=q} =
         , assetQuantity = q
         }
 
+-- | This function will only return UTxOs with a SwapPrice datum and a price > 0.
 convertToSwapUTxO :: [RawBeaconInfo] -> Map String SwapDatum -> [SwapUTxO]
 convertToSwapUTxO [] _ = []
 convertToSwapUTxO ((RawBeaconInfo addr tx ix amount dHash):rs) datumMap =
-    info : convertToSwapUTxO rs datumMap
-  where info = SwapUTxO
+    case swapDatum of
+      Just (SwapPrice price') -> 
+        if price' > unsafeRatio 0 1
+        then info : convertToSwapUTxO rs datumMap
+        else convertToSwapUTxO rs datumMap
+      _ -> convertToSwapUTxO rs datumMap
+  where swapDatum = fmap (\z -> datumMap Map.! z) dHash
+        info = SwapUTxO
                 { address = addr
                 , txIx = tx <> "#" <> show ix
                 , value = map convertToAsset amount
-                , datum = fromJust $ join $ fmap (\z -> Map.lookup z datumMap) dHash
+                , datum = swapDatum
                 }

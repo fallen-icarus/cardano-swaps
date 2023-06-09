@@ -185,13 +185,13 @@ An always succeeding minting policy as well as the required redeemer are include
 
 ### Export the spending script for that trading pair
 ``` Bash
-cardano-swaps swaps export-script \
-  --offered-asset-is-ada \
+cardano-swaps export-script swap-script \
+  --offered-asset-is-lovelace \
   --asked-asset-policy-id <asked_policy_id> \
   --asked-asset-token-name <asked_token_name> \
   --out-file swap.plutus
 ``` 
-To see all possible options, execute `cardano-swaps swaps --help`. The `offered-asset-is-ada` and `asked-asset-is-ada` options are there to make swapping ADA easier.
+To see all possible options, execute `cardano-swaps export-script swap-script --help`. The `offered-asset-is-lovelace` and `asked-asset-is-lovelace` options are there to make swapping ADA easier.
 
 ### Create the swap address with staking capabilities (using a staking pubkey)
 ``` Bash
@@ -206,8 +206,8 @@ If you would like to use a staking script instead, use `--stake-script-file` wit
 
 ### Export the beacon policy for that trading pair.
 ``` Bash
-cardano-swaps beacons export-policy \
-  --offered-asset-is-ada \
+cardano-swaps export-script beacon-policy \
+  --offered-asset-is-lovelace \
   --asked-asset-policy-id <asked_policy_id> \
   --asked-asset-token-name <asked_token_name> \
   --out-file beacon.plutus
@@ -226,10 +226,8 @@ beacon="${beaconPolicyId}."
 
 ### Create the datum for storing with the beacon
 ``` Bash
-cardano-swaps beacons create-datum \
-  --offered-asset-is-ada \
-  --asked-asset-policy-id <asked_policy_id> \
-  --asked-asset-token-name <asked_token_name> \
+cardano-swaps datum beacon-datum \
+  --beacon-policy-id $beaconPolicyId \
   --out-file beaconDatum.json
 ```
 
@@ -237,15 +235,18 @@ Even though the beacon is being stored in the swap address too, it needs a speci
 
 ### Create the datum for the first swap positions
 ``` Bash
-cardano-swaps swaps create-datum \
-  --swap-price 2 \
+cardano-swaps datum swap-datum \
+  --price-numerator 1 \
+  --price-denominator 1000000 \
   --out-file swapDatum.json
 ```
 
+The price is always `ask / offer`.
+
 ### Create the beacon redeemer for minting the beacon.
 ``` Bash
-cardano-swaps beacons create-redeemer \
-  --mint-beacon \
+cardano-swaps beacon-redeemer \
+  --mint \
   --out-file mint.json
 ```
 
@@ -286,8 +287,8 @@ cardano-cli transaction submit \
 ## Close a swap using a reference script
 ### Export the beacon policy for that trading pair.
 ``` Bash
-cardano-swaps beacons export-policy \
-  --offered-asset-is-ada \
+cardano-swaps export-script beacon-policy \
+  --offered-asset-is-lovelace \
   --asked-asset-policy-id <asked_policy_id> \
   --asked-asset-token-name <asked_token_name> \
   --out-file beacon.plutus
@@ -306,15 +307,15 @@ beacon="${beaconPolicyId}."
 
 ### Create the close redeemer
 ``` Bash
-cardano-swaps swaps create-redeemer \
+cardano-swaps swap-redeemer \
   --close \
   --out-file close.json
 ```
 
 ### Create the beacon redeemer
 ``` Bash
-cardano-swaps beacons create-redeemer \
-  --burn-beacon \
+cardano-swaps beacon-redeemer \
+  --burn \
   --out-file burn.json
 ```
 
@@ -374,34 +375,34 @@ If the transaction is successfully built, then it is should to work on-chain as 
 ## Perform a swap
 ### Create the Swap redeemer
 ``` Bash
-cardano-swaps swaps create-redeemer \
+cardano-swaps swap-redeemer \
   --swap \
   --out-file swap.json
 ```
 
 ### Create the swap datum for any change being returned to the swap address
-Sometimes, specifying a decimal is not accurate enough for the DEX. Imagine a fraction like 54322819 / 1128891. A calculator may be forced to round the decimal version which will mean the price will defer from the one actually on-chain. For this reason, you can also create datums by directly saying what each utxo has.
+You can create datums for swap change by directly saying what each input price is.
 
 ``` Bash
 cardano-swaps create-datum \
-  --utxo-target-asset-balance 10 \
-  --utxo-price-numerator 3 \
-  --utxo-price-denominator 1 \
-  --utxo-target-asset-balance 20 \
-  --utxo-price-numerator 3 \
-  --utxo-price-denominator 2 \
+  --utxo-balance 10 \
+  --price-numerator 3 \
+  --price-denominator 1 \
+  --utxo-balance 20 \
+  --price-numerator 3 \
+  --price-denominator 2 \
   --out-file price.json
 ```
 
-This part should be repeated for each utxo being swapped:
+This part should be repeated for each utxo being swapped from that address:
 
 ``` Bash
-  --utxo-target-asset-balance 20 \
-  --utxo-price-numerator 3 \
-  --utxo-price-denominator 2 \
+  --utxo-balance 20 \
+  --price-numerator 3 \
+  --price-denominator 2 \
 ```
 
-`cardano-swaps` can properly create the datum from this. The `utxo-target-asset-balance` is the amount of the offered asset in that utxo. Any other assets included in the utxo can be ignored. This is just for calculating the weighted average price. The price calculated will be identical to the weighted price calculated by the script.
+`cardano-swaps` can properly create the datum from this. The `utxo-balance` is the amount of the offered asset in that utxo. Any other assets included in the utxo can be ignored. This is just for calculating the weighted average price. The price calculated will be identical to the weighted price calculated by the script.
 
 ### Create the swap transaction, sign it, and submit
 ``` Bash
@@ -442,7 +443,7 @@ cardano-cli transaction submit \
 
 The user is responsible for properly giving the change back to each swap address. Make sure to remember that only the offered asset is allowed to leave each swap address. Therefore, if the offered asset is a native token, make sure to include the ADA the native token was stored with in the change to each swap address.
 
-It is possible to create a swap transaction where nothing is actually removed from the swap address. This feature was added for being useful for gradually building up composed swaps when testing.
+It is possible to create a swap transaction where nothing is actually removed from the swap address. This feature was added due to being useful for gradually building up composed swaps when testing.
 
 If the transaction successfully builds, then the swap should to work on-chain as long as the tx-in utxos still exist when it gets added to a block and the execution limits are not exceeded (if they are, no collateral will be lost). In the event that the utxos no longer exist, the transaction will fail without executing the scripts. This means the user's collateral is safe.
 
@@ -452,15 +453,16 @@ All of the information necessary for generating this transaction can be easily a
 ## Update the swap prices
 ### Create the Update redeemer
 ``` Bash
-cardano-swaps swaps create-redeemer \
+cardano-swaps swap-redeemer \
   --update \
   --out-file update.json
 ```
 
 ### Create the datums for the newly created utxos
 ``` Bash
-cardano-swaps swaps create-datum \
-  --swap-price <desired_price_as_decimal> \
+cardano-swaps datum swap-datum \
+  --price-numerator 5 \
+  --price-denominator 10 \
   --out-file price.json
 ```
 
@@ -502,7 +504,7 @@ The `--required-signer-hash` is needed to successfully build the transaction. **
 
 *You do not need to update all utxos.* You can selectively update utxos as desired. You can also consolidate utxos if desired.
 
-The utxo with the beacon cannot be updated. This is to minimize transaction fees. The beacon utxo can never be consumed in a swap so the datum attached to the beacon is never used. This makes it safe to ignore when updating prices.
+The utxo with the beacon cannot be updated.
 
 If the transaction is successfully built, it should to work on-chain as long as the tx-in utxos still exist and execution limits are not exceeded.
 
@@ -554,18 +556,21 @@ cardano-cli transaction submit \
 
 ---
 ## Query available swaps
-For now, `cardano-swaps` only supports the Blockfrost api. This is due to Koios not having a PreProduction Testnet api. You will need a Blockfrost ApiKey for this step. You can go [here](https://blockfrost.io/#pricing) to get one for free; only an email address is required.
+`cardano-swaps` now supports both Koios and Blockfrost. If you intend to use Blockfrost, you will need a Blockfrost ApiKey for this step. You can go [here](https://blockfrost.io/#pricing) to get one for free; only an email address is required.
 
-To see how to use the command, execute `cardano-swaps query --help`. The results can either be saved to a file or displayed to stdout.
+To see the possible queries, execute `cardano-swaps query --help`. 
 
-An example usage is below:
+### All available swaps for a given currency conversion
+The results can either be saved to a file or displayed to stdout.
+
 ``` Bash
-cardano-swaps query \
-  --offered-asset-is-ada \
+cardano-swaps query available-swaps \
+  --testnet \
+  --koios \
+  --offered-asset-is-lovelace \
   --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --asked-asset-token-name 4f74686572546f6b656e0a \
   --stdout \
-  --preprod-testnet $(cat api.txt)
 ```
 
 When the above result is piped to `jq`, here is how it looks:
@@ -576,27 +581,90 @@ When the above result is piped to `jq`, here is how it looks:
     "assets": [
       {
         "asset": "lovelace",
-        "quantity": 150000000
+        "quantity": 15000000
+      },
+      {
+        "asset": "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
+        "quantity": 5
       }
     ],
-    "price_denominator": 1,
-    "price_numerator": 1,
-    "swap_address": "addr_test1xqc8dluz63hw3z5jf38nj8vc8hr6w3zffqype75rwzhfqtmgzy4wvf0pv6q4z499a70zm6sadjzwc0w6xx622s2fx30qsq8ppj",
-    "swap_ref_script_id": "325f5c8028f867c3dfdcacf750cab0fb43b2ad82d8d606c5b94142a5eb4fd58f#0",
-    "utxo_id": "325f5c8028f867c3dfdcacf750cab0fb43b2ad82d8d606c5b94142a5eb4fd58f#1"
+    "datum": {
+      "price": {
+        "denominator": 600000,
+        "numerator": 1
+      }
+    },
+    "swap_address": "addr_test1zqquvxk3d44kkry0a502f60vq6qkr8kq0f82h7vpttvrvmpualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqhzu5re",
+    "utxo_id": "14779637d6b6d8631f2af0952c2e31a7f800ae4b12d1ca95e843bdbd0ffb4d7d#0"
   }
 ]
 ```
 
-Only one utxo was found and that utxo only has lovelace in it. This output contains everything you need to remotely swap with it.
+Two available swaps were found. This output contains everything you need to swap with either of them.
 
-As of right now, the `cardano-swaps query` command will return the error of `"The requested component has not been found."` when that beacon has never been minted before. This is due to the beacon name being part of the Blockfrost api url like:
+When using Blockfrost, the `cardano-swaps query available-swaps` command will return the error of `"The requested component has not been found."` when that beacon has never been minted before. This is due to the beacon name being part of the Blockfrost api url like:
 
 ``` Url
 https://cardano-preprod.blockfrost.io/api/v0/assets/{beacon_name}/addresses
 ```
 
 A future version can address this.
+
+### Own swap UTxOs
+This query was added to make it easier for working with your own swap address. It will return all the UTxOs and datum information currently in your address.
+
+``` Bash
+cardano-swaps query address-utxos \
+  --testnet \
+  --koios \
+  --address "$(cat swap.addr) \
+  --stdout
+```
+
+Here is an example response when piped to `jq`:
+``` JSON
+[
+  {
+    "assets": [
+      {
+        "asset": "lovelace",
+        "quantity": 23000000
+      },
+      {
+        "asset": "2fa7c4701bc2d86120de939a22b0e1fa6c19b9559b1b1ca2a8da21fa.",
+        "quantity": 1
+      }
+    ],
+    "datum": {
+      "beacon_id": "2fa7c4701bc2d86120de939a22b0e1fa6c19b9559b1b1ca2a8da21fa"
+    },
+    "swap_address": "addr_test1zqquvxk3d44kkry0a502f60vq6qkr8kq0f82h7vpttvrvmpualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqhzu5re",
+    "utxo_id": "0a61605c9ca946ed55842f7daf35efb91480872c8e8bc11ef6a4771438db4c41#0"
+  },
+  {
+    "assets": [
+      {
+        "asset": "lovelace",
+        "quantity": 15000000
+      },
+      {
+        "asset": "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
+        "quantity": 5
+      }
+    ],
+    "datum": {
+      "price": {
+        "denominator": 600000,
+        "numerator": 1
+      }
+    },
+    "swap_address": "addr_test1zqquvxk3d44kkry0a502f60vq6qkr8kq0f82h7vpttvrvmpualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqhzu5re",
+    "utxo_id": "14779637d6b6d8631f2af0952c2e31a7f800ae4b12d1ca95e843bdbd0ffb4d7d#0"
+  }
+]
+```
+
+This address has one beacon UTxO and one swappable UTxO.
 
 ---
 ## Staking PubKey Hash

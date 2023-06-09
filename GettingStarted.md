@@ -4,7 +4,9 @@
 
 Template bash scripts that follow these steps are available [here](scripts/).
 
-When integration testing, it is highly recommended that you change the string passed to the mkBeaconPolicy function [here](src/CardanoSwaps.hs#L524). When developers make mistakes (myself included), it can create bad/locked utxos that will appear when you query the beacons. This can complicate your own testing. To avoid this, this extra parameter was added. Change the string to something unique to you. **Do this before building the executable in the installations section.** You should remember to change it to the desired string for mainnet.
+For now, Cardano-Swaps is only for the testnet. It seems negligent to release it on mainnet before:
+1. It has undergone a security audit.
+2. Aiken has an official mainnet release.
 
 ---
 ## Table of Contents
@@ -21,38 +23,158 @@ When integration testing, it is highly recommended that you change the string pa
 
 ---
 ## Installing
-Instructions are adapted from the [plutus-pioneers-program](https://github.com/input-output-hk/plutus-pioneer-program) week 1 exercise.
+### Using Cabal - RECOMMENDED
 
-1. Install NixOS cross-referencing the following resources.
-     - https://nixos.org/download.html
-     - https://docs.plutus-community.com
-     - A few resources to understand the what and why regarding NixOS
-       - https://nixos.org/manual/nix/stable
-       - https://serokell.io/blog/what-is-nix
-2. Set-up IOHK binary caches [How to set up the IOHK binary caches](https://github.com/input-output-hk/plutus-apps#iohk-binary-cache). "If you do not do this, you will end up building GHC, which takes several hours. If you find yourself building GHC, *stop* and fix the cache."
+#### Install the necessary packages - similar to cardano-node
+```
+sudo apt update
+sudo apt upgrade
+sudo apt-get install autoconf automake build-essential curl g++ git jq libffi-dev libgmp-dev libncursesw5 libssl-dev libsystemd-dev libtinfo-dev libtool make pkg-config wget zlib1g-dev liblzma-dev libpq-dev
+```
 
-3. After adding the cache, you will need to restart the nix service. This can be done by executing `sudo systemctl restart nix` or by restarting your machine. If the cache was configured properly, you should see a lot of `copying path ... from 'https://cache.iog.io'` when you execute `nix-shell` in the next step.
+#### Install libsodium and scep256k1
+```
+git clone https://github.com/input-output-hk/libsodium
+cd libsodium
+git checkout dbb48cc
+./autogen.sh
+./configure
+make
+sudo make install
 
-4. Execute the following:
+cd ../
+git clone https://github.com/bitcoin-core/secp256k1
+cd secp256k1
+git checkout ac83be33
+./autogen.sh
+./configure --enable-module-schnorrsig --enable-experimental
+make
+make check
+sudo make install
+sudo ldconfig
+```
+
+Add the following lines to your `$HOME/.bashrc` file:
+```
+export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
+export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
+```
+
+#### Install GHC 8.10.7 and cabal
+```
+cd
+curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
+```
+Make sure to install the required packages it mentions before hitting ENTER.
+
+Prepend or append the required PATH variable.
+
+You do not need to install the haskell-langauge-server.
+
+You do not need to install stack.
+
+Press ENTER to proceed.
+```
+source .bashrc
+ghcup install ghc 8.10.7
+ghcup set ghc 8.10.7
+```
+
+#### Build the executable
+```
+git clone https://github.com/fallen-icarus/cardano-swaps
+cd cardano-swaps
+cabal clean
+cabal update
+cabal build all
+```
+
+The `cardano-swaps` CLI program should now be at `dist-newstyle/build/x86_64-linux/ghc-8.10.7/cardano-swaps-0.3.0.0/x/cardano-swaps/build/cardano-swaps/cardano-swaps`. Move the program to somewhere in your `$PATH`.
+
+All `cardano-swaps` subcommands have an associated `--help` option. The functionality is meant to feel like `cardano-cli`.
+
+### Using Nix
+The [Nix Package Manager](https://nixos.org/) can be installed on most Linux distributions by downloading and running the installation script
+```
+curl -L https://nixos.org/nix/install > install-nix.sh
+chmod +x install-nix.sh
+./install-nix.sh
+```
+and following the directions.
+
+#### Configuring the Binary Caches
+While this step is optional, it can save several hours of time since nix will need a copy of every necessary package. Therefore, it is highly recommended that you do this.
+```
+sudo mkdir -p /etc/nix
+cat <<EOF | sudo tee -a /etc/nix/nix.conf
+experimental-features = nix-command flakes
+allow-import-from-derivation = true
+substituters = https://cache.nixos.org https://cache.iog.io https://cache.zw3rk.com
+trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= loony-tools:pr9m4BkM/5/eSTZlkQyRt57Jz7OMBxNSUiMC4FkcNfk=
+EOF
+```
+The caches used here come from the plutus-apps contributing [doc](https://github.com/input-output-hk/plutus-apps/blob/713955dea45739de6df3c388717123cfec648914/CONTRIBUTING.adoc#how-to-get-a-shell-environment-with-tools).
+
+You will need to restart the nix service in order to make sure that it uses the newly configured caches. A sure fire way to do this is restart your machine.
+
+#### Building the Executable
 ```
 git clone https://github.com/fallen-icarus/cardano-swaps
 git clone https://github.com/input-output-hk/plutus-apps
 cd plutus-apps
-git checkout v1.0.0
-nix-shell           # this may take a while the first time
-
-# Your terminal should now have a nix-shell prompt
-
+git checkout 68c3721
+nix develop # This step can take an hour even with the caches configured
+# Set accept-flake-config to true and permanently mark the value as trusted
+```
+The last command should drop you into a nix terminal once it is finished running. Execute the following within the nix terminal.
+```
 cd ../cardano-swaps
 cabal clean
 cabal update
 cabal build all
 ```
-The `cardano-swaps` CLI program should now be at `dist-newstyle/build/x86_64-linux/ghc-8.10.7/cardano-swaps-0.2.0.0/x/cardano-swaps/build/cardano-swaps/cardano-swaps`. Move the program to somewhere in your $PATH.
 
-You can now exit the nix-shell with `exit`.
+If all goes well, the `cardano-swaps` CLI program should now be at `dist-newstyle/build/x86_64-linux/ghc-8.10.7/cardano-swaps-0.3.0.0/x/cardano-swaps/build/cardano-swaps/cardano-swaps`. Move the program to somewhere in your $PATH.
+
+You can now exit the nix terminal with `exit`.
 
 All `cardano-swaps` subcommands have an associated `--help` option. The functionality is meant to feel like `cardano-cli`.
+
+#### Troubleshooting Nix
+If you encounter a libsodium error, you may need to first install libsodium separately. While not inside the nix terminal (you can leave with `exit`), execute the following:
+```
+cd # return to your home directory
+git clone https://github.com/input-output-hk/libsodium
+cd libsodium
+git checkout dbb48cc
+./autogen.sh
+./configure
+make
+sudo make install
+```
+Once installed, you can retry the build after exporting the following variables while inside the nix terminal:
+```
+cd ../plutus-apps
+nix develop # This should only take a minute this time
+export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
+export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
+cabal build all
+```
+
+### Aiken For Developers
+The aiken scripts come precompiled but if you would like to make changes or wish to confirm the compiled scripts yourself, you will also need to install `aiken`. You can install `aiken` using cargo like this:
+
+``` Bash
+cargo install aiken --version 1.0.8-alpha
+```
+
+When building the dApp's blueprints, make sure to use
+``` Bash
+aiken build --keep-traces
+```
+or else the user friendly error messages will be stripped from the scripts and the resulting beacons will be different.
+
+For integration testing, you can create your own custom beacons without changing the dApp's logic by changing the string passed [here](aiken/validators/cardano_swaps.ak#L13). Currently, it is set to "testing". You can change this to any string personal to you so that you can get custom beacons to play with for testing.
 
 --- 
 ## Minting test tokens

@@ -119,6 +119,8 @@ parseQueryBeacons :: Parser Command
 parseQueryBeacons = fmap QueryBeacons . hsubparser $ mconcat
     [ command "available-swaps"
         (info pAvailableSwaps $ progDesc "Query available swaps for a given currency conversion.")
+    , command "address-utxos"
+        (info pOwnUTxOs $ progDesc "Query all UTxOs locked at a specific swap address.")
     ]
   where
     pAvailableSwaps :: Parser Query
@@ -127,6 +129,14 @@ parseQueryBeacons = fmap QueryBeacons . hsubparser $ mconcat
         <$> pNetwork 
         <*> pApiEndpoint
         <*> pSwapConfig 
+        <*> pOutput
+
+    pOwnUTxOs :: Parser Query
+    pOwnUTxOs =
+      QueryOwnUTxOs
+        <$> pNetwork
+        <*> pApiEndpoint
+        <*> (SwapAddress <$> pBech32Address)
         <*> pOutput
 
 -------------------------------------------------
@@ -265,3 +275,10 @@ pOutput = pStdOut <|> File <$> pOutputFile
       (  long "stdout"
       <> help "Display to stdout."
       )
+
+pBech32Address :: Parser String
+pBech32Address = strOption
+  (  long "address"
+  <> metavar "STRING"
+  <> help "Address in bech32 format."
+  )

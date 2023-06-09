@@ -23,6 +23,7 @@ data Datum = SwapDatum SwapDatum | WeightedPrice [UtxoPriceInfo]
 
 data Query
   = QueryAvailableSwaps Network ApiEndpoint SwapConfig Output
+  | QueryOwnUTxOs Network ApiEndpoint SwapAddress Output
 
 data Network
   = PreProdTestnet
@@ -33,6 +34,11 @@ data ApiEndpoint
 
 -- | For when saving to file is optional
 data Output = Stdout | File FilePath
+
+newtype SwapAddress = SwapAddress String
+
+instance Show SwapAddress where
+  show (SwapAddress a) = a
 
 -- | Type that captures all info a user needs to interact with available swaps.
 data SwapUTxO = SwapUTxO
@@ -52,7 +58,7 @@ instance ToJSON SwapUTxO where
 
 instance ToJSON SwapDatum where
   toJSON (SwapPrice price) = object [ "price" .= price ]
-  toJSON (BeaconSymbol sym) = object [ "beacon" .= show sym ]
+  toJSON (BeaconSymbol sym) = object [ "beacon_id" .= show sym ]
 
 data Asset = Asset
   { assetPolicyId :: String

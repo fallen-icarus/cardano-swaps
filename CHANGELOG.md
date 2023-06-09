@@ -9,7 +9,7 @@
 - plutus-apps bumped to v1.2.0.
 - Decoding datums from api query results now uses `decodeDatum` to minimize boilerplate.
 - Koios support added.
-- Swap contracts no longer converts from ADA to lovelace. All prices for ADA are assumed to be in units of lovelace. This cuts down on execution units used per execution.
+- Swap contracts no longer convert prices from ADA to lovelace. All prices for ADA are assumed to be in units of lovelace. This cuts down on execution units used per execution.
 - The CLI commands have changed. See the [GettingStarted](GettingStarted.md).
 
 ## 0.2.0.0

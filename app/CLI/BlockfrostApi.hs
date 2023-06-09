@@ -174,12 +174,12 @@ convertToAsset RawAssetInfo{rawUnit=u,rawQuantity=q} =
   then Asset
         { assetPolicyId = u
         , assetTokenName = ""
-        , assetQuantity = q
+        , assetQuantity = show q
         }
   else Asset
         { assetPolicyId = take 56 u  -- ^ The policy id is always 56 characters
         , assetTokenName = drop 56 u
-        , assetQuantity = q
+        , assetQuantity = show q
         }
 
 -- | This function will only return UTxOs with a SwapPrice datum and a price > 0.

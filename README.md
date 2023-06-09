@@ -124,8 +124,11 @@ Minting beacons for `cardano-swaps` is a tightly controlled process. In order to
 3. The beacon is minted to an address protected by the `cardano-swaps` spending script for a particular trading pair.
 4. The beacon is minted to an address with a staking credential (either a pubkey or a script).
 5. The datum of the output containing the beacon must have the proper beacon symbol.
+6. The beacon must be stored with a minimum of 20 ADA.
 
 Once the beacon is minted to the swap address, the spending script does not allow consuming the beacon's UTxO *unless* the beacon is being burned. This is done to prevent beacons from being sent to unrelated addresses.
+
+The 20 ADA is a deposit that can be reclaimed upon closing the address.
 
 #### Burning Requirements
 Since minting and spending beacons are so heavily controlled, there is no reason to regulate burning. Burning is always allowed as long as the burn redeemer is only used to burn beacons.
@@ -332,6 +335,10 @@ The full benchmarking details can be found [here](Benchmarks.md). The key take-a
 
 
 ## FAQ
+
+#### Why is there a deposit for the Beacon UTxO?
+
+The reason is to incentivize users to actually use the DEX as intended. If there were no deposits, users can create a live address with a beacon token and then just leave it open even if they aren't actually using the address anymore (like if there are no swappable assets in it). This "zombie" address will still appear when querying the beacon tokens even though other users can't actually do anything with it. By requiring the deposits, users are incentivized to close unused addresses in order to get the deposits back.
 
 #### If all users share a spending script, how are their assets protected?
 The spending script gets the staking credential from the address of the UTxO being spent at run-time. When an owner related action is being performed (closing or updating positions), the spending script requires that the staking credential "signals approval" of the action:

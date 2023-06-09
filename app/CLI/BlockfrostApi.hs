@@ -11,6 +11,7 @@ module CLI.BlockfrostApi
   BlockfrostApiKey(..),
 
   queryAvailableSwaps,
+  queryOwnUTxOs
 ) where
 
 import Servant.API
@@ -19,10 +20,8 @@ import Data.Proxy
 import Servant.Client
 import Control.Monad
 import qualified Data.Text as T
-import Data.List (find)
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Maybe (isJust,fromJust)
 
 import CLI.Types
 import CardanoSwaps
@@ -110,13 +109,19 @@ type BlockfrostApi
     :> Capture "asset" BeaconId
     :> Get '[JSON] [RawBeaconInfo]
 
+  :<|> "addresses"
+    :> Header' '[Required] "project_id" BlockfrostApiKey
+    :> Capture "address" BeaconAddress
+    :> "utxos"
+    :> Get '[JSON] [RawBeaconInfo]
+
   :<|> "scripts"
     :> Header' '[Required] "project_id" BlockfrostApiKey
     :> "datum"
     :> Capture "datum_hash" String
     :> Get '[JSON] Value
 
-beaconAddressListApi :<|> swappableUTxOsApi :<|> datumApi = client api
+beaconAddressListApi :<|> swappableUTxOsApi :<|> addressUTxOsApi :<|> datumApi = client api
   where
     api :: Proxy BlockfrostApi
     api = Proxy
@@ -139,15 +144,18 @@ queryAvailableSwaps apiKey policyId (oSym,oName) = do
   datums <- fetchDatumsLenient apiKey $ map rawBeaconDataHash utxos
   return $ convertToSwapUTxO utxos datums
 
+queryOwnUTxOs :: BlockfrostApiKey -> String -> ClientM [SwapUTxO]
+queryOwnUTxOs apiKey addr = do
+  let targetAddr = BeaconAddress addr
+  -- | Get all the UTxOs at the address.
+  utxos <- addressUTxOsApi apiKey targetAddr
+  -- | Get the datums attached to the UTxOs.
+  datums <- fetchDatumsLenient apiKey $ map rawBeaconDataHash utxos
+  return $ convertToOwnSwapUTxO utxos datums
+
 -------------------------------------------------
 -- Helper Functions
 -------------------------------------------------
-filterForAsset :: String -> [RawBeaconInfo] -> [RawBeaconInfo]
-filterForAsset asset = filter (isJust . find ((==asset) . rawUnit) . rawAmount)
-
-filterOutAsset :: String -> [RawBeaconInfo] -> [RawBeaconInfo]
-filterOutAsset asset = filter (not . isJust . find ((==asset) . rawUnit) . rawAmount)
-
 -- | Skips ones that fail to decode.
 fetchDatumsLenient :: BlockfrostApiKey -> [Maybe String] -> ClientM (Map String SwapDatum)
 fetchDatumsLenient apiKey dhs =
@@ -190,4 +198,16 @@ convertToSwapUTxO ((RawBeaconInfo addr tx ix amount dHash):rs) datumMap =
                 , txIx = tx <> "#" <> show ix
                 , value = map convertToAsset amount
                 , datum = swapDatum
+                }
+
+-- | This function will return all UTxOs found in the address.
+convertToOwnSwapUTxO :: [RawBeaconInfo] -> Map String SwapDatum -> [SwapUTxO]
+convertToOwnSwapUTxO [] _ = []
+convertToOwnSwapUTxO ((RawBeaconInfo addr tx ix amount dHash):rs) datumMap =
+    info : convertToSwapUTxO rs datumMap
+  where info = SwapUTxO
+                { address = addr
+                , txIx = tx <> "#" <> show ix
+                , value = map convertToAsset amount
+                , datum = fmap (\z -> datumMap Map.! z) dHash
                 }

@@ -4,7 +4,8 @@
 
 module CLI.Query
 (
-  runQueryAvailableSwaps
+  runQueryAvailableSwaps,
+  runQueryOwnUTxOs
 ) where
 
 import Servant.Client
@@ -29,6 +30,19 @@ runQueryAvailableSwaps network api beaconSym target = do
       let env = mkClientEnv manager' (BaseUrl Https "cardano-preprod.blockfrost.io" 443 "api/v0")
           apiKey' = BlockfrostApiKey apiKey
       res <- runClientM (Blockfrost.queryAvailableSwaps apiKey' beaconSym target) env
+      case res of
+        Right r -> return r
+        Left err -> throw err
+
+runQueryOwnUTxOs :: Network -> ApiEndpoint -> String -> IO [SwapUTxO]
+runQueryOwnUTxOs network api addr = do
+  manager' <- newManager tlsManagerSettings
+  case (network,api) of
+    (PreProdTestnet,Koios) -> undefined
+    (PreProdTestnet,Blockfrost apiKey) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "cardano-preprod.blockfrost.io" 443 "api/v0")
+          apiKey' = BlockfrostApiKey apiKey
+      res <- runClientM (Blockfrost.queryOwnUTxOs apiKey' addr) env
       case res of
         Right r -> return r
         Left err -> throw err

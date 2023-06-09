@@ -48,6 +48,8 @@ runQuery query = case query of
   QueryAvailableSwaps network api cfg@SwapConfig{swapOffer = target} output -> do
     let DappScripts{beaconCurrencySymbol = sym} = genScripts cfg blueprints
     runQueryAvailableSwaps network api sym target >>= toOutput output
+  QueryOwnUTxOs network api addr output -> do
+    runQueryOwnUTxOs network api (show addr) >>= toOutput output
 
 -------------------------------------------------
 -- Helper Functions

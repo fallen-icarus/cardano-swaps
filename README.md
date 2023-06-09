@@ -4,6 +4,8 @@
 
 The Getting Started instructions can be found [here](GettingStarted.md).
 
+For a quick list of things that have changed from the previous verion, see the [changelog](CHANGELOG.md).
+
 ---
 ## Table of Contents 
 - [Abstract](#abstract)
@@ -60,7 +62,7 @@ First proposed by Axo in their original [whitepaper](https://www.axo.trade/white
 The challenge now becomes one of indexing: how do users differentiate each others' swap addresses from all other addresses on Cardano, *without* relying on a specialized indexer/router? This is where Beacon Tokens come into play.
 
 ### Beacon Tokens
-Beacon Tokens are a (WIP) native token standard that "tag" on-chain data in a way that is efficiently queryable by off-chain APIs.  They enable cardano-swaps users to designate their script addresses as "swappable", such that they stand out in sea of other addresses. DDOS/bloat prevention is achieved by carefully marrying Beacons' minting policies with scripts' spending policies. This is expanded upon in the [Specification section](#specification) below.
+Beacon Tokens are a (WIP) native token standard that "tag" on-chain data in a way that is efficiently queryable by off-chain APIs.  They enable cardano-swaps users to designate their script addresses as "swappable", such that they stand out in a sea of other addresses. DDOS/bloat prevention is achieved by carefully marrying Beacons' minting policies with scripts' spending policies. This is expanded upon in the [Specification section](#specification) below.
 
 :white_check_mark: The novel use of *Beacon Tokens* for "tagging" on-chain data can be generalized for many dApps, not just DEXes. More on this in the [Beacon Token CIP](https://github.com/cardano-foundation/CIPs/pull/466).
 
@@ -86,7 +88,7 @@ Some of these features are explained further in the [Discussion section](<#Discu
 ## Specification
 
 ### Personal Contracts
-Cardano addresses are made up of both a payment credential and a staking credential. As long as the staking credential is unique to the user, delegation control over the address is maintained. Cardano-swaps leverages this duality by giving users addresses that are composed of the same spending scripts (per swap pair) and unique staking credentials. The spending credential is implemented in a way that gives the staking credential authority over all owner related actions, besides the actual swap execution. 
+Cardano addresses are made up of both a payment credential and a staking credential. As long as the staking credential is unique to the user, delegation control over the address is maintained. Cardano-Swaps leverages this duality by giving users addresses that are composed of the same spending scripts (per swap pair) and unique staking credentials. The spending credential is implemented in a way that gives the staking credential authority over all owner related actions, besides the actual swap execution. 
 
 :heavy_exclamation_mark: To force the use of a staking credential, it is not possible to mint a beacon token to an address without a staking credential.
 
@@ -97,8 +99,6 @@ Beacon Tokens are used to tag `cardano-swaps` addresses so they are readily quer
 |--|--|--|
 | Addresses with a beacon | [api](https://api.koios.rest/#get-/asset_address_list) | [api](https://docs.blockfrost.io/#tag/Cardano-Assets/paths/~1assets~1%7Basset%7D~1addresses/get)|
 | UTxOs at the address | [api](https://api.koios.rest/#post-/address_info) | [api](https://docs.blockfrost.io/#tag/Cardano-Addresses/paths/~1addresses~1%7Baddress%7D~1utxos/get)|
-
-The UTxO query also returns which UTxOs contain reference scripts, allowing users to execute their swaps.
 
 Technically, all native tokens can be used as beacons like this but this feature is usually not the intended one. The name *Beacon Token* refers to any native token whose only purpose is to act as a tag/beacon.
 
@@ -123,8 +123,7 @@ Minting beacons for `cardano-swaps` is a tightly controlled process. In order to
 2. The minted beacon uses an empty token name.
 3. The beacon is minted to an address protected by the `cardano-swaps` spending script for a particular trading pair.
 4. The beacon is minted to an address with a staking credential (either a pubkey or a script).
-5. The beacon is stored in the UTxO containing the reference script of the spending script for that trading pair.
-6. The datum of the output containing the beacon must have the proper beacon symbol.
+5. The datum of the output containing the beacon must have the proper beacon symbol.
 
 Once the beacon is minted to the swap address, the spending script does not allow consuming the beacon's UTxO *unless* the beacon is being burned. This is done to prevent beacons from being sent to unrelated addresses.
 
@@ -139,19 +138,26 @@ Below is an example response from querying the beacon tokens:
     "assets": [
       {
         "asset": "lovelace",
-        "quantity": 150000000
+        "quantity": 15000000
+      },
+      {
+        "asset": "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
+        "quantity": 5
       }
     ],
-    "price_denominator": 1,
-    "price_numerator": 1,
-    "swap_address": "addr_test1xqc8dluz63hw3z5jf38nj8vc8hr6w3zffqype75rwzhfqtmgzy4wvf0pv6q4z499a70zm6sadjzwc0w6xx622s2fx30qsq8ppj",
-    "swap_ref_script_id": "325f5c8028f867c3dfdcacf750cab0fb43b2ad82d8d606c5b94142a5eb4fd58f#0",
-    "utxo_id": "325f5c8028f867c3dfdcacf750cab0fb43b2ad82d8d606c5b94142a5eb4fd58f#1"
+    "datum": {
+      "price": {
+        "denominator": 600000,
+        "numerator": 1
+      }
+    },
+    "swap_address": "addr_test1zqquvxk3d44kkry0a502f60vq6qkr8kq0f82h7vpttvrvmpualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqhzu5re",
+    "utxo_id": "14779637d6b6d8631f2af0952c2e31a7f800ae4b12d1ca95e843bdbd0ffb4d7d#0"
   }
 ]
 ```
 
-Only one UTxO was found, containing only Lovelace (ADA). Notice how this UTxO's required reference script ID was also returned. This response has everything a user needs to swap with the address.
+Only one UTxO was found, containing Lovelace (ADA) and 5 units of a native token. The asking price is one unit of the desired native token for 0.6 ADA. This response has everything a user needs to swap with the address.
 
 #### Generalizing Beacon Tokens
 While these beacons are used to "tag" all necessary information for engaging in swaps (reference script UTxOs and available swap UTxOs), they can be used for tagging ANY on-chain data w.r.t. to:
@@ -176,15 +182,13 @@ For users to see each others' asking prices, all datums for the DEX must be inli
 ``` Haskell
 -- | Swap Datum
 type Price = Rational -- ^ askedAsset/offeredAsset
-data SwapDatum = SwapDatum
-  {
-    swapPrice :: Price,
-    swapBeacon :: Maybe CurrencySymbol -- ^ Policy id for the DEX's beacon token
-  }
+data SwapDatum
+  = BeaconSymbol CurrencySymbol -- ^ Datum stored with beacons.
+  | SwapPrice Price -- ^ Datum stored with swappable UTxOs.
 ```
 
 #### swapPrice
-The `Rational` type is a fraction (decimal types do not work properly). Fortunately, there is no loss of functionality from using fractions. Users are able to supply decimals to `cardano-swaps` and it will properly convert the decimal to `Rational`.
+The `Rational` type is a fraction (decimal types do not work on-chain). Fortunately, there is no loss of functionality from using fractions.
 
 All prices in Cardano-Swaps are local (similar to limit orders in an order-book exchange). The price is always askedAsset/offeredAsset. For example, if $ADA is being offered for $DUST at a price of 1.5 (converted to 3/2), the contract requires that 3 $DUST are deposited for every 2 $ADA removed from the swap address. Ratios < 3/2 will fail, while ratios >= 3/2 will pass. 
 
@@ -194,10 +198,10 @@ Since every user explicitly defines their desired swap ratios, oracles are not r
 
 :heavy_exclamation_mark: A zero or negative price means the assets are effectively free. A malicious user may deposit a UTxO with a negative price in the datum in order to steal user funds. To prevent this, swaps will fail unless all prices are greater than 0.
 
-:heavy_exclamation_mark: For user-friendliness, when ADA is part of the trading pair, the price **MUST** be in units of ADA. The swap contract will convert to Lovelace when necessary. If Lovelace units are entered, conversion will still take place and produce undesired behavior.
+:heavy_exclamation_mark: In the previous version, users could have specified a price in units of ADA and the script would convert it to units of lovelace during execution. This feature was removed to save on execution costs. Now, all prices for ADA must be in units of lovelace.
 
 #### swapBeacon
-The `swapBeacon` field for the datum prevents misuse of beacons. The contract forces all assets with the supplied policy-id to be burned instead of being withdrawn. This ensures the beacons can never be found in an address unrelated to `cardano-swaps`. **If the wrong policy id is supplied, assets will be locked forever.** Only the UTxO containing the beacon needs to use `Just beaconSym`; all active swaps can use `Nothing` for this field. `cardano-swaps` CLI handles this part of the datum automatically, preventing accidental locking.
+The `BeaconSymbol` datum prevents misuse of beacons. The contract forces all assets with the supplied policy-id to be burned instead of being withdrawn. This ensures the beacons can never be found in an address unrelated to `cardano-swaps`. **If the wrong policy id is supplied, assets can be locked forever.** Only the UTxO containing the beacon needs to use the `BeaconSymbol` datum; all active swaps use the `SwapPrice` datum. `cardano-swaps` CLI handles this part of the datum automatically, preventing accidental misuse.
 
 ---
 ### Swap Contract Logic
@@ -216,9 +220,8 @@ The `Close` redeemer allows the owner (signified by the address' staking credent
 2. The staking credential must signal approval:
     - pubkey must sign
     - script must be executed in the same tx
-3. Any new outputs to the address must contain the proper datum:
-    - `swapPrice` > 0
-    - `swapBeacon` == Nothing
+
+:important: In the previous version, the `Close` redeemer also checked the transaction outputs to make sure any new outputs to the script were valid. This feature was not necessary and was removed. The `Close` redeemer's purpose is to close an address, not add new positions.
 
 #### `Update` Redeemer
 The `Update` redeemer allows the owner to change the asking price of their position(s) by changing the inline datum attached of associated UTxOs. This action includes checks to ensure the new datum is properly used. The requirements for a successful update are:
@@ -228,19 +231,15 @@ The `Update` redeemer allows the owner to change the asking price of their posit
     - pubkey must sign
     - script must be executed in the same tx
 3. All new outputs to the address must contain the proper datum:
-    - `swapPrice` > 0
-    - `swapBeacon` == Nothing
-
-The first requirement also means that the datum attached to the beacon's reference script *cannot* be updated. This is fine since that datum is never allowed in swaps.
+    - It must be an inline `SwapPrice` datum with a price > 0.
 
 #### `Swap` Redeemer
 The `Swap` redeemer checks all of the assets leaving the swap address and all of the assets entering the swap address. For a successful swap, all of the following must be true:
 
-1. No swap input utxos have reference scripts - this also protects the beacon.
+1. No swap input utxos have a `BeaconSymbol` datum.
 2. All swap input prices are > 0.
 3. All outputs to the swap address contain the proper datum:
-    - `swapPrice` == weighted avg price of all swap inputs
-    - `swapBeacon` == Nothing
+    - inline `SwapPrice` datum with the price == weighted avg price of all swap inputs
 4. Only the offered asset (as defined in `SwapConfig`) is leaving the swap address.
 5. QuantityOfferedAssetTaken * weighted average price <= quantityAskedAssetGiven
 
@@ -325,56 +324,11 @@ Thanks to the query-ability of beacon tokens, it is trivial for any frontend to 
 
 
 ## Benchmarks and Fee Estimations (YMMV)
-Basic benchmarking tests were done to determine the maximum number of inputs or outputs that the spending script can handle in one transaction.
+Thanks to the efficiency of using Aiken, this version is capable of composing up to 14 different swaps in a single transaction where the total transaction fee is 1.5 ADA. Yes, you read that right: **it costs less than 2 ADA to compose 14 swaps in a single transaction.**
 
-Currently, Plutus is limited in that a spending script is always executed once for *every* script input, **even if the inputs come from the same script address.** So if there are 5 inputs from one of the script addresses, the spending script will be executed 5 times. **The latter 4 are completely redundant in this situation.** These redundant executions impact the maximum number of inputs and outputs that can fit in one transaction. There is a Cardano Problem Statement (CPS) looking to address this ([here](https://github.com/cardano-foundation/CIPs/pull/418)). Nonetheless, basic benchmarking results are shown here:
+Given the performance of these Aiken contracts, even though the redundant executions are still occuring, this DEX is more than performant enough for the current state of Cardano.
 
-### Creating a Live Address
-For opening a new address, I was successfully able to mint the beacon, store the reference script, and create 80+ new swap positions in one transaction.
-
-| Number of New Swaps | Tx Fee |
-|:--:|:--:|
-| 5 | 0.647711 ADA |
-| 10 | 0.697339 ADA |
-| 15 | 0.747768 ADA |
-| 20 | 0.797797 ADA |
-| 25 | 0.847869 ADA |
-
-### Closing a Live Address
-For closing a new address, I was successfully able to burn the beacon, remove the reference script, and close 8 open positions in one transaction.
-
-| Number of Closed Swaps | Tx Fee |
-|:--:|:--:|
-| 1 | 0.490071 ADA |
-| 2 | 0.574382 ADA |
-| 3 | 0.674041 ADA |
-| 4 | 0.789050 ADA |
-| 5 | 0.919407 ADA |
-| 6 | 1.065113 ADA |
-| 7 | 1.226169 ADA |
-| 8 | 1.402573 ADA |
-
-### Updating Open Swaps
-For updating open swaps, I was successfully able to update 5 positions and recreate them in one transaction. If you consolidate your open positions into one output, you may be able to update more in one transaction.
-
-| Number of Swaps Updated | Tx Fee |
-|:--:|:--:|
-| 1 | 0.250309 ADA |
-| 2 | 0.381332 ADA |
-| 3 | 0.574544 ADA |
-| 4 | 0.829945 ADA |
-| 5 | 1.147533 ADA |
-
-### Swapping Assets
-For swapping assets, I was successfully able to chain together 4 swap utxos before the redundant executions caused the transaction to exceed the memory limit.
-
-| Number of Swaps Chained | Tx Fee |
-|:--:|:--:|
-| 1 | 0.313006 ADA |
-| 2 | 0.511202 ADA |
-| 3 | 0.772815 ADA |
-| 4 | 1.114271 ADA |
-
+The full benchmarking details can be found [here](Benchmarks.md). The key take-away from the benchmarking is that using reference scripts is necessary for this DEX to reach its full potential. The original version had every user store a copy of the reference script with each beacon token. This was unnecessary and leads to redundant blockchain bloat. Instead, this version assumes users and arbitragers will use their own reference scripts or trustlessly share scripts using Beacon Tokens as in [cardano-reference-scripts](https://github.com/fallen-icarus/cardano-reference-scripts).
 
 
 ## FAQ
@@ -392,11 +346,6 @@ The spending script gets the staking credential from the address of the UTxO bei
 `cardano-swaps` relies on the usage of [beacon tokens](<#specification/##Beacon Tokens>) to "tag" addresses, which demarcates them as *distinct* for efficient off-chain querying/aggregation. However, **address distinction is impossible if each script address is composed of completely unique credentials.** In other words, for Beacon Tokens to work properly, there must be a clear distinction between addresses participating in a given dApp and all other addresses. `cardano-swaps` leverages the dual payment-staking credentials of Cardano addresses to maintain address-distinction (shared spending scripts) without sacrificing self-custody (unique staking keys/scripts). For further clarification, refer to the [Beacon Token CIP](https://github.com/cardano-foundation/CIPs/pull/466)
 
 :pushpin: v1.0.0 of cardano-swaps used unique spending scripts; you can read about the limitations in the v1.0.0 commit README.
-
-#### If all users have direct access to the spending script for that trading pair, why are reference scripts used?
-To disincentivize beacon bloat. 
-
-The reason is to incentivize users to actually use the DEX as intended. If there were no deposits, users can create a live address with a beacon token and then just leave it open even if they aren't actually using the address anymore (like if there are no swappable assets in it). This "zombie" address will still appear when querying the beacon tokens even though other users can't actually do anything with it. By requiring the deposits, users are incentivized to close unused addresses in order to get the deposits back.
 
 #### What if two arbitragers compete for the same swap?
 Recall the contrived example above. What would happen if Charlie and Mike try to arbitrage it at the same time?

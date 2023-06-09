@@ -13,11 +13,11 @@ swapRedeemerFile="${dir}close.json"
 beaconRedeemerFile="${dir}burn.json"
 
 # Export the spending script for that trading pair.
-cardano-swaps export-script swap-script \
-  --offered-asset-is-lovelace \
-  --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asked-asset-token-name 4f74686572546f6b656e0a \
-  --out-file $spendingScriptFile
+# cardano-swaps export-script swap-script \
+#   --offered-asset-is-lovelace \
+#   --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+#   --asked-asset-token-name 4f74686572546f6b656e0a \
+#   --out-file $spendingScriptFile
 
 # Export the beacon policy for that trading pair.
 cardano-swaps export-script beacon-policy \
@@ -50,45 +50,15 @@ cardano-cli query protocol-parameters \
 
 cardano-cli transaction build \
   --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#0 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
+  --spending-tx-in-reference 0a61605c9ca946ed55842f7daf35efb91480872c8e8bc11ef6a4771438db4c41#0 \
+  --spending-plutus-script-v2 \
+  --spending-reference-tx-in-inline-datum-present \
+  --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
   --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#17 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#18 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#19 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#20 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#21 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#22 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#23 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#24 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
-  --tx-in 9f8700297c1e7ba433175dc2b85593ad93b9e12fd3cd8d55500d4e631e0eef9d#25 \
-  --tx-in-script-file $spendingScriptFile \
-  --tx-in-inline-datum-present \
-  --tx-in-redeemer-file $swapRedeemerFile \
+  --spending-tx-in-reference 0a61605c9ca946ed55842f7daf35efb91480872c8e8bc11ef6a4771438db4c41#0 \
+  --spending-plutus-script-v2 \
+  --spending-reference-tx-in-inline-datum-present \
+  --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
   --mint "-1 ${beacon}" \
   --mint-script-file $beaconPolicyFile \
   --mint-redeemer-file $beaconRedeemerFile \

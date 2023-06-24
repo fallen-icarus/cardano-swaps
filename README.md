@@ -6,6 +6,8 @@ The Getting Started instructions can be found [here](GettingStarted.md).
 
 For a quick list of things that have changed from the previous verion, see the [changelog](CHANGELOG.md).
 
+**The aiken version of Cardano-Swaps can handle 14 swaps in a single transaction where the fee is only 1.5 ADA. A single swap only costs 0.25 ADA. This makes Cardano-Swaps up to an order of magnitude cheaper than existing Cardano DEXs.** See [benchmarks](Benchmarks.md) for details.
+
 ---
 ## Table of Contents 
 - [Abstract](#abstract)
@@ -163,7 +165,7 @@ Below is an example response from querying the beacon tokens:
 Only one UTxO was found, containing Lovelace (ADA) and 5 units of a native token. The asking price is one unit of the desired native token for 0.6 ADA. This response has everything a user needs to swap with the address.
 
 #### Generalizing Beacon Tokens
-While these beacons are used to "tag" all necessary information for engaging in swaps (reference script UTxOs and available swap UTxOs), they can be used for tagging ANY on-chain data w.r.t. to:
+While these beacons are used to "tag" all necessary information for engaging in swaps, they can be used for tagging ANY on-chain data w.r.t. to:
 
 1. The address containing the Beacon
 2. The UTxO containing the Beacon 
@@ -190,7 +192,9 @@ data SwapDatum
   | SwapPrice Price -- ^ Datum stored with swappable UTxOs.
 ```
 
-#### swapPrice
+:important: This datum is different than the previous version's which used a product type.
+
+#### SwapPrice
 The `Rational` type is a fraction (decimal types do not work on-chain). Fortunately, there is no loss of functionality from using fractions.
 
 All prices in Cardano-Swaps are local (similar to limit orders in an order-book exchange). The price is always askedAsset/offeredAsset. For example, if $ADA is being offered for $DUST at a price of 1.5 (converted to 3/2), the contract requires that 3 $DUST are deposited for every 2 $ADA removed from the swap address. Ratios < 3/2 will fail, while ratios >= 3/2 will pass. 
@@ -203,7 +207,7 @@ Since every user explicitly defines their desired swap ratios, oracles are not r
 
 :heavy_exclamation_mark: In the previous version, users could have specified a price in units of ADA and the script would convert it to units of lovelace during execution. This feature was removed to save on execution costs. Now, all prices for ADA must be in units of lovelace.
 
-#### swapBeacon
+#### BeaconSymbol
 The `BeaconSymbol` datum prevents misuse of beacons. The contract forces all assets with the supplied policy-id to be burned instead of being withdrawn. This ensures the beacons can never be found in an address unrelated to `cardano-swaps`. **If the wrong policy id is supplied, assets can be locked forever.** Only the UTxO containing the beacon needs to use the `BeaconSymbol` datum; all active swaps use the `SwapPrice` datum. `cardano-swaps` CLI handles this part of the datum automatically, preventing accidental misuse.
 
 ---
@@ -261,7 +265,7 @@ Check out the [delegation section](GettingStarted.md#delegate-the-swap-address) 
 Since multiple swaps are combinable into a single transaction, any arbitrarily complex swap transaction can be created. The only limit is the size of the transaction itself.
 
 Do you want to convert 10 ADA into 5 DUST and 5 AGIX? No problem! This can be done in one transaction.
-What about converting 10 ADA, 5 DUST, and 3 WMT into 16 AGIX and 1 of your favorite NFTs? Piece of cake!
+What about converting 10 ADA, 5 DUST, and 3 WMT into 16 AGIX and 11 HOSKY? Piece of cake!
 
 By composing these swaps in one transaction, many-to-many multi-asset swaps are possible. The only limits are the maximum transaction limits for Cardano.
 
@@ -320,18 +324,18 @@ As shown in the realistic example, Sarah fulfills *both* the AGIX/DUST swap and 
 As a bonus, **the very nature of *illiquidity* implies great arbitrage opportunities**. The more illiquid a swap pair, the greater the potential arbitrage profits. Participating in arbitrage is permissionless, so anyone can design their own algorithms for finding the most profitable "path" through the currently available swaps.
 
 ### Democratic Upgradability
-Upgrades to `cardano-swaps` can propagate through the ecosystem of users in a similarly democratic fashion as SPOs upgrading their pools to a new version of `cardano-node`. Since users can close their swaps at any time, whenever there is a potential upgrade, users can choose to close their current swaps and recreate them with the new contracts. The main challenge here is the bifurcation of liquidity that occurs during upgrade periods. However, the more users there are and the more overall liquidity there is, the more this issue is minimized.
+Upgrades to `cardano-swaps` can propagate through the ecosystem of users in a similarly democratic fashion as SPOs upgrading their pools to a new version of `cardano-node`. Since users can close their swaps at any time, whenever there is a potential upgrade, users can choose to close their current swaps and recreate them with the new contracts. Bifurcation of liquidity that occurs during upgrade periods is not an issue because different versions of Cardano-Swaps can compose with each other. Therefore, there really isn't any bifurcation of liquidity during upgrade periods.
 
 ### Frontend Agnosticism
 Thanks to the query-ability of beacon tokens, it is trivial for any frontend to integrate with Cardano-Swaps. For example, any wallet can integrate `cardano-swaps` by adding support for querying the beacon tokens. They can also add their own user friendly way to create and use swaps. The only requirement is that all frontends/users agree to use the same beacon token standard. There is no need for risky extensions or dedicated frontends.
 
 
 ## Benchmarks and Fee Estimations (YMMV)
-Thanks to the efficiency of using Aiken, this version is capable of composing up to 14 different swaps in a single transaction where the total transaction fee is 1.5 ADA. Yes, you read that right: **it costs less than 2 ADA to compose 14 swaps in a single transaction.**
+Thanks to the efficiency of using Aiken, this version is capable of composing up to 14 different swaps in a single transaction where the total transaction fee is 1.5 ADA. **It costs less than 2 ADA to compose 14 swaps in a single transaction. A single swap only costs 0.25 ADA which makes this the cheapest DEX on Cardano by an order of magnitude.**
 
-Given the performance of these Aiken contracts, even though the redundant executions are still occuring, this DEX is more than performant enough for the current state of Cardano.
+Given the performance of these Aiken contracts, even though the redundant executions are still occuring, this DEX is more than performant enough for the current state of Cardano. **No CIPs or hard-forks are needed. This protocol works on the Cardano blockchain, as is.**
 
-The full benchmarking details can be found [here](Benchmarks.md). The key take-away from the benchmarking is that using reference scripts is necessary for this DEX to reach its full potential. The original version had every user store a copy of the reference script with each beacon token. This was unnecessary and leads to redundant blockchain bloat. Instead, this version assumes users and arbitragers will use their own reference scripts or trustlessly share scripts using Beacon Tokens as in [cardano-reference-scripts](https://github.com/fallen-icarus/cardano-reference-scripts).
+The full benchmarking details can be found [here](Benchmarks.md). The key take-away from the benchmarking is that using reference scripts is necessary for this DEX to reach its full potential. The original version had every user store a copy of the reference script with each beacon token. This was unnecessary and leads to redundant blockchain bloat due to the same script being stored on chain multiple times. Instead, this version assumes users and arbitragers will use their own reference scripts or trustlessly share scripts using Beacon Tokens as in [cardano-reference-scripts](https://github.com/fallen-icarus/cardano-reference-scripts).
 
 
 ## FAQ

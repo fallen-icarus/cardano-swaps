@@ -374,6 +374,18 @@ Since Mike's transaction will fail without needing to run the swap script, Mike'
 
 Yes. Yes it will. TVL is a silly metric. It is a measure of who can be most inefficient with DeFi capital.
 
+#### I have an idea for how to improve the protocol. Where should I go?
+
+Feel free to use either the Issue section or the Discussion section on the Cardano-Swaps repo. Any feedback that can improve the protocol is welcome!
+
+#### When Mainnet?
+
+Currently, aiken is still in the alpha phase and therefore, this protocol should also be considered in the alpha phase. Mainnet release ideally should happen after:
+
+1. aiken stabilizes
+2. Cardano-Swaps undergoes a security audit
+
+That being said, this protocol is fully peer-to-peer. If some community members are willing to accept the risks, nobody can stop them from using this protocol right now. 
 
 ## Conclusion
 The cardano-swaps protocol has all of the desired properties of a highly scalable DEX. Thanks to the use of beacon tokens, decentralization is no longer limited by the design of DEXs. Instead, the limiting factor is now the off-chain querying. However, innovations in this space are still in the early days. The Koios API is an example of a more decentralized off-chain platform. As the technology improves, the decentralization of this protocol will improve as well.

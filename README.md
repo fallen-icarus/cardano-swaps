@@ -338,6 +338,17 @@ Given the performance of these Aiken contracts, even though the redundant execut
 The full benchmarking details can be found [here](Benchmarks.md). The key take-away from the benchmarking is that using reference scripts is necessary for this DEX to reach its full potential. The original version had every user store a copy of the reference script with each beacon token. This was unnecessary and leads to redundant blockchain bloat due to the same script being stored on chain multiple times. Instead, this version assumes users and arbitragers will use their own reference scripts or trustlessly share scripts using Beacon Tokens as in [cardano-reference-scripts](https://github.com/fallen-icarus/cardano-reference-scripts).
 
 
+## Future Features Discussion
+
+### Add beacons to improve indexing for arbitragers.
+
+Currently, to lookup a swap, the only query possible is to lookup up a specific trading pair. But for arbitragers, it may be better to lookup all swaps where the offered asset is ADA. This would include AGIX/ADA, WMT/ADA, etc. Alternatively, it may be better to lookup all swaps where the asked asset is ADA. These queries can be achieved by introducing two additional beacons to the protocol:
+
+1. An offer beacon dedicated to a specific asset.
+2. An ask beacon dedicated to a specific asset.
+
+As an example, if Alice is looking to swap AGIX/ADA (ADA is the offered asset), then she would create a beacon UTxO with the trading pair beacon for AGIX/ADA and the ADA offer beacon. Then, arbitragers can find Alice's swaps by querying either of these beacons. The introduction of these beacons should have minimal perfomance impacts while making it much easier for arbitragers to find profitable swap chains.
+
 ## FAQ
 
 #### Why is there a deposit for the Beacon UTxO?

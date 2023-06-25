@@ -8,10 +8,6 @@ This version of Cardano-Swaps is written in Aiken. **The Aiken version can handl
 
 For a quick list of everything that has changed from the previous verion, see the [changelog](CHANGELOG.md).
 
-This version of Cardano-Swaps is written in Aiken. **The Aiken version can handle 14 swaps in a single transaction with a fee of only 1.5 ADA. A transaction with a single swap only costs 0.25 ADA. This makes Cardano-Swaps up to an order of magnitude cheaper than existing Cardano DEXs.** See [benchmarks](Benchmarks.md) for details. This protocol works on Cardano as is - no hardforks or CIPs are necessary.
-
-For a quick list of everything that has changed from the previous verion, see the [changelog](CHANGELOG.md).
-
 ---
 ## Table of Contents 
 - [Abstract](#abstract)

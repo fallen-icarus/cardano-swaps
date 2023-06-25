@@ -4,7 +4,7 @@
 
 The Getting Started instructions can be found [here](GettingStarted.md).
 
-This version of Cardano-Swaps is written in Aiken. **The Aiken version can handle 14 swaps in a single transaction where the fee is only 1.5 ADA. A single swap only costs 0.25 ADA. This makes Cardano-Swaps up to an order of magnitude cheaper than existing Cardano DEXs.** See [benchmarks](Benchmarks.md) for details. This protocol works on Cardano as is - no hardforks or CIPs are necessary.
+This version of Cardano-Swaps is written in Aiken. **The Aiken version can handle 14 swaps in a single transaction with a fee of only 1.5 ADA. A transaction with a single swap only costs 0.25 ADA. This makes Cardano-Swaps up to an order of magnitude cheaper than existing Cardano DEXs.** See [benchmarks](Benchmarks.md) for details. This protocol works on Cardano as is - no hardforks or CIPs are necessary.
 
 For a quick list of everything that has changed from the previous verion, see the [changelog](CHANGELOG.md).
 
@@ -331,7 +331,7 @@ Thanks to the query-ability of beacon tokens, it is trivial for any frontend to 
 
 
 ## Benchmarks and Fee Estimations (YMMV)
-Thanks to the efficiency of using Aiken, this version is capable of composing up to 14 different swaps in a single transaction where the total transaction fee is 1.5 ADA. A single swap only costs 0.25 ADA which likely makes this the cheapest DEX on Cardano by an order of magnitude.
+Thanks to the efficiency of using Aiken, this version is capable of composing up to 14 different swaps in a single transaction with a total transaction fee is 1.5 ADA. A transaction with a single swap only costs 0.25 ADA. These results likely make this the cheapest DEX on Cardano by an order of magnitude.
 
 Given the performance of these Aiken contracts, even though the redundant executions are still occuring, this DEX is more than performant enough for the current state of Cardano. **No CIPs or hard-forks are needed. This protocol works on the Cardano blockchain, as is.**
 
@@ -384,7 +384,7 @@ Feel free to use either the Issue section or the Discussion section on the Carda
 
 #### When Mainnet?
 
-Currently, Aiken is still in the alpha phase and therefore, this protocol should also be considered in the alpha phase. Furthermore, there are some features that should be tried to determine their trade-offs.Mainnet release ideally should happen after:
+Currently, Aiken is still in the alpha phase and therefore, this protocol should also be considered in the alpha phase. Furthermore, there are some features that should be tried to determine their trade-offs. Mainnet release ideally should happen after:
 
 1. Aiken stabilizes
 2. Cardano-Swaps features stabilize

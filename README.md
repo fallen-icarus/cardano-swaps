@@ -4,9 +4,9 @@
 
 The Getting Started instructions can be found [here](GettingStarted.md).
 
-For a quick list of things that have changed from the previous verion, see the [changelog](CHANGELOG.md).
+This version of Cardano-Swaps is written in Aiken. **The Aiken version can handle 14 swaps in a single transaction where the fee is only 1.5 ADA. A single swap only costs 0.25 ADA. This makes Cardano-Swaps up to an order of magnitude cheaper than existing Cardano DEXs.** See [benchmarks](Benchmarks.md) for details. This protocol works on Cardano as is - no hardforks or CIPs are necessary.
 
-**The aiken version of Cardano-Swaps can handle 14 swaps in a single transaction where the fee is only 1.5 ADA. A single swap only costs 0.25 ADA. This makes Cardano-Swaps up to an order of magnitude cheaper than existing Cardano DEXs.** See [benchmarks](Benchmarks.md) for details.
+For a quick list of everything that has changed from the previous verion, see the [changelog](CHANGELOG.md).
 
 ---
 ## Table of Contents 
@@ -331,7 +331,7 @@ Thanks to the query-ability of beacon tokens, it is trivial for any frontend to 
 
 
 ## Benchmarks and Fee Estimations (YMMV)
-Thanks to the efficiency of using Aiken, this version is capable of composing up to 14 different swaps in a single transaction where the total transaction fee is 1.5 ADA. **It costs less than 2 ADA to compose 14 swaps in a single transaction. A single swap only costs 0.25 ADA which makes this the cheapest DEX on Cardano by an order of magnitude.**
+Thanks to the efficiency of using Aiken, this version is capable of composing up to 14 different swaps in a single transaction where the total transaction fee is 1.5 ADA. A single swap only costs 0.25 ADA which likely makes this the cheapest DEX on Cardano by an order of magnitude.
 
 Given the performance of these Aiken contracts, even though the redundant executions are still occuring, this DEX is more than performant enough for the current state of Cardano. **No CIPs or hard-forks are needed. This protocol works on the Cardano blockchain, as is.**
 
@@ -342,12 +342,7 @@ The full benchmarking details can be found [here](Benchmarks.md). The key take-a
 
 ### Add beacons to improve indexing for arbitragers.
 
-Currently, to lookup a swap, the only query possible is to lookup up a specific trading pair. But for arbitragers, it may be better to lookup all swaps where the offered asset is ADA. This would include AGIX/ADA, WMT/ADA, etc. Alternatively, it may be better to lookup all swaps where the asked asset is ADA. These queries can be achieved by introducing two additional beacons to the protocol:
-
-1. An offer beacon dedicated to a specific asset.
-2. An ask beacon dedicated to a specific asset.
-
-As an example, if Alice is looking to swap AGIX/ADA (ADA is the offered asset), then she would create a beacon UTxO with the trading pair beacon for AGIX/ADA and the ADA offer beacon. Then, arbitragers can find Alice's swaps by querying either of these beacons. The introduction of these beacons should have minimal perfomance impacts while making it much easier for arbitragers to find profitable swap chains.
+Currently, to lookup a swap, the only query possible is to lookup up a specific trading pair. But for arbitragers, it may be better to lookup all swaps where the offered asset is ADA. This would include AGIX/ADA, WMT/ADA, etc. This query can be achieved by introducing an additional beacon to the protocol.
 
 ## FAQ
 
@@ -389,12 +384,13 @@ Feel free to use either the Issue section or the Discussion section on the Carda
 
 #### When Mainnet?
 
-Currently, aiken is still in the alpha phase and therefore, this protocol should also be considered in the alpha phase. Mainnet release ideally should happen after:
+Currently, Aiken is still in the alpha phase and therefore, this protocol should also be considered in the alpha phase. Furthermore, there are some features that should be tried to determine their trade-offs.Mainnet release ideally should happen after:
 
-1. aiken stabilizes
-2. Cardano-Swaps undergoes a security audit
+1. Aiken stabilizes
+2. Cardano-Swaps features stabilize
+3. Cardano-Swaps undergoes a security audit
 
-That being said, this protocol is fully peer-to-peer. If some community members are willing to accept the risks, nobody can stop them from using this protocol right now. 
+That being said, this protocol is fully peer-to-peer. If some community members are willing to accept the risks and are comfortable with the current features, nobody can stop them from using this protocol right now. 
 
 ## Conclusion
 The cardano-swaps protocol has all of the desired properties of a highly scalable DEX. Thanks to the use of beacon tokens, decentralization is no longer limited by the design of DEXs. Instead, the limiting factor is now the off-chain querying. However, innovations in this space are still in the early days. The Koios API is an example of a more decentralized off-chain platform. As the technology improves, the decentralization of this protocol will improve as well.

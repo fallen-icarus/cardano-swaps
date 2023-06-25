@@ -168,6 +168,8 @@ The aiken scripts come precompiled but if you would like to make changes or wish
 cargo install aiken --version 1.0.8-alpha
 ```
 
+Make sure you instal verison 1.0.8-alpha. Newer versions changed some of the underlying functions and so the source code will likely not compile. As aiken stabilizes, the code will be updated to the latest version.
+
 When building the dApp's blueprints, make sure to use
 ``` Bash
 aiken build --keep-traces

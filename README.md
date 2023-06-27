@@ -46,9 +46,9 @@ Cardano-Swaps takes inspiration from Axo's programmable swaps design, adds deleg
 
 The Cardano-Swaps Protocol is broadly comprised of two steps:
 
-1. **Prepare Swap Address** - Alice prepares a swap address for swapping Token "ABC" for Token "XYZ" by minting an ABC:XYZ Beacon Token in a "Beacon UTxO" that designates her address specifically as an ABC-to-XYZ swap address. She then (in the same or separate transaction) outputs one or more "Swap UTxO(s)" with "ABC" Tokens, with an attached `Price` Datum that designates her desired price (in "XYZ") for that particular UTxO.
+1. **Prepare Swap Address** - Alice prepares a swap address for swapping Token "ABC" for Token "XYZ" by minting an ABC:XYZ Beacon Token in a "Beacon UTxO" that designates her address specifically as an ABC-for-XYZ swap address. She then (in the same or separate transaction) outputs one or more "Swap UTxO(s)" with "ABC" Tokens, with an attached `Price` Datum that designates her desired price (in "XYZ") for that particular UTxO.
    
-2. **Execute Swap(s)** - Bob queries a list of ABC-to-XYZ swap addresses (via the ABC:XYZ Beacon Token), and finds some attractively priced UTxOs in Alice's swap address. He submits a transaction that consumes one (or multiple) of Alice's "Swap UTxO(s)", and one or more of his own UTxO(s) containing Alice's requested "XYZ" Token. Bob can then output Alice's "ABC" Tokens to himself in proportion to the amount of "XYZ" tokens he outputs back to Alice. Bob does not have to buy all of the contents of one of Alice's UTxOs - he buy however much he wants, and output the remaining "ABC" back to Alice in the same UTxO as her "XYZ" payment. This UTxO (containing Alice's "XYZ" tokens) remains swappable as long as some "ABC" tokens remain in it; nobody except Alice can claim the "XYZ" tokens.
+2. **Execute Swap(s)** - Bob queries a list of ABC-for-XYZ swap addresses (via the ABC:XYZ Beacon Token), and finds some attractively priced UTxOs in Alice's swap address. He submits a transaction that consumes one (or multiple) of Alice's "Swap UTxO(s)", and one or more of his own UTxO(s) containing Alice's requested "XYZ" Token. Bob can then output Alice's "ABC" Tokens to himself in proportion to the amount of "XYZ" tokens he outputs back to Alice. Bob does not have to buy all of the contents of one of Alice's UTxOs - he buy however much he wants, and output the remaining "ABC" back to Alice in the same UTxO as her "XYZ" payment. This UTxO (containing Alice's "XYZ" tokens) remains swappable as long as some "ABC" tokens remain in it; nobody except Alice can claim the "XYZ" tokens.
 
 These features are further explained in the [Discussion section](<#Discussion & FAQ>) below
 
@@ -257,7 +257,7 @@ Currently, plutus validator scripts must be executed once for *every* UTxO being
 
 > **Note**
 > 
-> [Present and future discussions with the IOG team](https://github.com/cardano-foundation/CIPs/pull/418) will help determine if this feature is indeed warranted.
+> [Present and future discussions with the community](https://github.com/cardano-foundation/CIPs/pull/418) will help determine if this feature is indeed warranted.
 
 ### Swap Collisions
 Recall the composition example above. What would happen if another user simultaneously submits a transaction using *one* of the same "Swap" UTxOs as an input? Whichever transaction is processed by (most) nodes first will succeed, and the other will fail entirely. Arbitragers/market-makers will be in constant competition with one another to query and execute the most profitable swaps at any point in time, and must strike a balance between simple swaps and complex composed swaps. There is a lot of stochasticity here; the higher the ratio of open swaps to arbitragers is, the lower the overall chances of a collision, but the more attractive a particular swap is, the higher the chances of *that* particular collision. And "attractiveness" depends not only on the price of one swap, but how that price relates to all possible compositions involving that swap.

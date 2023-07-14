@@ -1,5 +1,4 @@
 use aiken/hash.{Hash,Blake2b_224}
-use aiken/math/rational as ratio
 use aiken/transaction.{ScriptContext,Transaction,Input,Output} as tx
 use aiken/transaction/credential.{Script}
 use aiken/transaction/value
@@ -60,19 +59,20 @@ validator() {
       // value flux. This allows the same address to be used for different swaps within the same tx.
       Swap -> {
         // Requirements:
-        // 1) The price denominator must be > 0.
-        // 2) The price must be > 0.
-        // 3) All beacons must be re-output to this address with the proper inline SwapDatum.
+        // 1) The input must contain the beacon for that trading pair.
+        // 2) All beacons must be re-output to this address with the proper inline SwapDatum.
         //      all fields same as input datum except the price
         //      price must be weighted avg of all relevant input prices
-        // 4) Offered asset taken * weighted avg price <= asked asset given
-        // 5) Only the offered asset leaves.
-        // 6) The input must have the proper beacon.
+        // 3) Offered asset taken * weighted avg price <= asked asset given
+        // 4) Only the offered asset leaves.
         //
-        // Requirement 3 guarantees that beacons from other trading pairs cannot be combined into
+        // Requirement 1 guarantees that all invalid UTxOs belong to the address owner and that
+        // swap inputs have a valid price:
+        //      denominator > 0
+        //      price > 0
+        //
+        // Requirement 2 guarantees that beacons from other trading pairs cannot be combined into
         // one output UTxO; all trading pairs must get their own swap UTxOs.
-        //
-        // Requirement 6 ensures that invalid UTxOs belong to the address owner.
 
         // Extract out the information from this datum.
         let SwapDatum(
@@ -82,16 +82,16 @@ validator() {
           offer_name,
           ask_id,
           ask_name,
-          price
+          _ // Not needed since presence of beacons means price is valid.
         ) = datum
 
-        // The price denominator must be > 0.
-        trace_if_false( @"Input price denominator not > 0", ratio.denominator(price) > 0 ) &&
+        // The input must have the swap beacon for this trading pair.
+        trace_if_false( 
+          @"Swap input missing swap beacon",
+          value.quantity_of(val,beacon_id,beacon_name) > 0
+        ) &&
 
-        // The price must be > 0.
-        trace_if_false( @"Input price not > 0", ratio.compare(price,ratio.zero()) == Greater ) &&
-
-        // The following checks requirements 3,4,5. It has its own error messages.
+        // The following checks requirements 2,3,4. It has its own error messages.
         utils.valid_swap(
           beacon_id,
           beacon_name,
@@ -102,12 +102,6 @@ validator() {
           outputs,
           inputs,
           addr
-        ) &&
-
-        // The input must have the swap beacon for this trading pair.
-        trace_if_false( 
-          @"Swap input missing swap beacon",
-          value.quantity_of(val,beacon_id,beacon_name) > 0
         )
       }
     }

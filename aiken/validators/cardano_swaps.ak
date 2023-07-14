@@ -2,6 +2,7 @@ use aiken/hash.{Hash,Blake2b_224}
 use aiken/math/rational as ratio
 use aiken/transaction.{ScriptContext,Transaction,Input,Output} as tx
 use aiken/transaction/credential.{Script}
+use aiken/transaction/value
 
 use cardano_swaps/types.{ 
   AssetConfig,
@@ -22,7 +23,7 @@ validator() {
       Transaction(inputs,_,outputs,_,_,_,wtdr,_,sigs,..), 
       tx.Spend(out_ref)
     ) = ctx
-    expect Some(Input(_, Output(addr,..))) = tx.find_input(inputs,out_ref)
+    expect Some(Input(_, Output(addr,val,..))) = tx.find_input(inputs,out_ref)
 
     when redeemer is {
       // Close or update open swap positions.
@@ -66,11 +67,14 @@ validator() {
         //      price must be weighted avg of all relevant input prices
         // 4) Offered asset taken * weighted avg price <= asked asset given
         // 5) Only the offered asset leaves.
+        // 6) The input must have the proper beacon.
         //
         // Requirement 3 guarantees that beacons from other trading pairs cannot be combined into
         // one output UTxO; all trading pairs must get their own swap UTxOs.
+        //
+        // Requirement 6 ensures that invalid UTxOs belong to the address owner.
 
-        // Extra out the information from this datum.
+        // Extract out the information from this datum.
         let SwapDatum(
           beacon_id, 
           beacon_name,
@@ -98,6 +102,12 @@ validator() {
           outputs,
           inputs,
           addr
+        ) &&
+
+        // The input must have the swap beacon for this trading pair.
+        trace_if_false( 
+          @"Swap input missing swap beacon",
+          value.quantity_of(val,beacon_id,beacon_name) > 0
         )
       }
     }

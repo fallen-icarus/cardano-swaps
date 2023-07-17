@@ -17,10 +17,11 @@ use aiken/transaction/credential.{
   }
 use aiken/transaction/value.{PolicyId,AssetName,MintedValue,Value}
 
-use cardano_swaps/types.{ 
+use cardano_swaps/types.{
+  AssetConfig,
   BeaconRedeemer,
   BurnBeacons,
-  MintBeacon,
+  MintBeacons,
   SwapDatum,
 }
 
@@ -57,7 +58,8 @@ fn parse_datum(raw_datum: Datum) -> SwapDatum {
 
 // Create the asset name for the beacon by hashing the combination of the policy id and asset name.
 // It uses the sha2_256 hash algorithm.
-pub fn generate_beacon_name(policy_id: PolicyId, asset_name: AssetName) -> AssetName {
+pub fn generate_beacon_name(asset: AssetConfig) -> AssetName {
+  let AssetConfig(policy_id,asset_name) = asset
   hash.sha2_256(
     bytearray.concat( policy_id, asset_name )
   )
@@ -139,7 +141,7 @@ fn valid_swap_datum_creation(
 // Check whether the proper beacons are minted/burned based on the redeemer. It returns True or False.
 pub fn mint_check(
   beacon_id: PolicyId,
-  beacon_name: AssetName,
+  beacon_names: List<AssetName>,
   redeemer: BeaconRedeemer, 
   mint: MintedValue
 ) -> Bool {
@@ -149,23 +151,25 @@ pub fn mint_check(
     |> value.tokens(_,beacon_id)
 
   when redeemer is {
-    MintBeacon(_) -> {
+    MintBeacons(_) -> {
       // Checks:
       // 1) Only the beacon for the target asset can/must be mint.
       // 2) The token name must be: sha2_256( ask_id ++ ask_name ).
       
-      // Convert the dictionary to a list for pattern matching.
-      when dict.to_list(beacons_minted) is {
-        [( mint_name, mint_number )] -> {
-          // The asset name must be: sha2_256( ask_id ++ ask_name).
-          trace_if_false( @"Beacon has wrong asset name", mint_name == beacon_name ) &&
+      // Convert the dictionary to a list and unzip it.
+      let (names,nums) = dict.to_list(beacons_minted) |> list.unzip()
 
-          // The beacons can only be minted.
-          trace_if_false( @"Beacons can only be minted with this redeemer", mint_number > 0 )
-        }
+      // Only the target beacons can be minted.
+      trace_if_false (
+        @"Only the target beacons can be minted",
+        list.sort(names,bytearray.compare) == list.sort(beacon_names,bytearray.compare)
+      ) &&
 
-        _ -> error @"Only the beacon for the target trading pair can be minted."
-      }
+      // All beacons can only be minted with this redeemer.
+      trace_if_false ( 
+        @"This redeemer can only be used to mint",
+        list.all(nums, fn(x) {x > 0}) 
+      )
     }
 
     BurnBeacons -> {
@@ -184,11 +188,10 @@ pub fn mint_check(
 pub fn beacon_destination_check(
   dapp_hash: Hash<Blake2b_224, Script>,
   beacon_id: PolicyId,
-  beacon_name: AssetName,
   offer_id: PolicyId,
   offer_name: AssetName,
-  ask_id: PolicyId,
-  ask_name: AssetName,
+  beacon_names: List<AssetName>,
+  ask_assets: List<AssetConfig>,
   outputs: List<Output>
 ) -> Bool {
   // Checks:
@@ -206,55 +209,72 @@ pub fn beacon_destination_check(
   //      price > 0
   // 5) The beacons must be stored with some of the offered asset.
 
+  // Create a map from beacon names to AssetConfig.
+  let xs = list.zip(beacon_names,ask_assets) |> dict.from_list(_,bytearray.compare)
+
   // A function to map over the list of outputs.
   let foo = fn (out: Output, acc: Bool) {
     // Extract out the output's information.
     let Output(Address(pay,stake),val,d,_) = out
 
-    // Get the number of beacons in this UTxO.
-    let beacon_num = value.quantity_of( val, beacon_id, beacon_name )
+    // Get the beacons in this UTxO and save it as a list for pattern matching.
+    let beacon_list = value.tokens(val,beacon_id) |> dict.to_list()
 
-    // If the UTxO contains a beacon, it must be checked:
-    if beacon_num > 0 {
-      // The beacon must be stored at a dapp address with staking. Uses app_name in the error message.
-      trace_if_false( 
-        concat(@"Beacon must go to a ", app_name) |> concat(_,@" dApp address with staking"),
-        pay == ScriptCredential(dapp_hash) && is_some(stake)
-      ) &&
+    when beacon_list is {
+      // The UTxO has one type of beacon.
+      [(beacon_name,beacon_num)] -> {
+        // Check if the beacon is for one of the assets in the redeemer. A separate expect is used
+        // for a user friendly error message when an un-matched beacon name is found.
+        let asset_info = dict.get(xs,beacon_name)
+        expect True = error_if_false(
+          @"Beacon name does not have matching asset info",
+          is_some(asset_info)
+        )
+        
+        // Extract out the information from the target AssetConfig.
+        expect Some(AssetConfig(ask_id,ask_name)) = dict.get(xs,beacon_name)
 
-      // The beacons must be stored individually.
-      trace_if_false(
-        @"Beacons must be stored individually",
-        beacon_num == 1
-      ) &&
+        // The beacon must be stored at a dapp address with staking. Uses app_name in the error message.
+        trace_if_false( 
+          concat(@"Beacon must go to a ", app_name) |> concat(_,@" dApp address with staking"),
+          pay == ScriptCredential(dapp_hash) && is_some(stake)
+        ) &&
 
-      // The beacons must be stored with some of the offered asset.
-      trace_if_false(
-        @"Beacons must be stored with some of the offered asset",
-        value.quantity_of( val, offer_id, offer_name ) > 0
-      ) &&
+        // The beacons must be stored individually.
+        trace_if_false(
+          @"Beacons must be stored individually",
+          beacon_num == 1
+        ) &&
 
-      // The beacons must be stored with the proper inline SwapDatum. This function has its own
-      // error messages.
-      valid_swap_datum_creation(
-        beacon_id,
-        beacon_name,
-        offer_id,
-        offer_name,
-        ask_id,
-        ask_name,
-        d
-      ) &&
+        // The beacons must be stored with some of the offered asset.
+        trace_if_false(
+          @"Beacons must be stored with some of the offered asset",
+          value.quantity_of( val, offer_id, offer_name ) > 0
+        ) &&
 
-      // All previously checked outputs must be valid.
-      acc
+        // The beacons must be stored with the proper inline SwapDatum. This function has its own
+        // error messages.
+        valid_swap_datum_creation(
+          beacon_id,
+          beacon_name,
+          offer_id,
+          offer_name,
+          ask_id,
+          ask_name,
+          d
+        ) &&
+
+        // All previously checked outputs must be valid.
+        acc
+      }
+
+      // If beacons are not present, this output can be ignored.
+      [] -> acc
+
+      // This path can only be taken if the above two matches failed which means the UTxO
+      // has multiple types of beacons in it.
+      _ -> error @"Beacons for different trading pairs must get separate UTxOs"
     }
-
-    // If beacons are not present, this output can be ignored.
-    else {
-      acc
-    }
-
   }
 
   // Map over the list. This will only return True if all the outputs are valid.

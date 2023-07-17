@@ -25,6 +25,6 @@ pub type SwapRedeemer {
 }
 
 pub type BeaconRedeemer {
-  MintBeacon { ask_asset: AssetConfig } // Mint a beacon for the target trading pair.
+  MintBeacons { ask_assets: List<AssetConfig> } // Mint a beacon for the target trading pairs.
   BurnBeacons
 }

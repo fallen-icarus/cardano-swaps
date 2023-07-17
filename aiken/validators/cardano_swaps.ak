@@ -1,4 +1,5 @@
 use aiken/hash.{Hash,Blake2b_224}
+use aiken/list
 use aiken/transaction.{ScriptContext,Transaction,Input,Output} as tx
 use aiken/transaction/credential.{Script}
 use aiken/transaction/value
@@ -8,7 +9,7 @@ use cardano_swaps/types.{
   BeaconRedeemer,
   BurnBeacons,
   CloseOrUpdate,
-  MintBeacon,
+  MintBeacons,
   Swap,
   SwapDatum,
   SwapRedeemer
@@ -114,11 +115,12 @@ validator(offer_config: AssetConfig, dapp_hash: Hash<Blake2b_224, Script>) {
     let ScriptContext( Transaction(_,_,outputs,_,mint,..), tx.Mint(policy_id) ) = ctx
 
     when redeemer is {
-      // Mint a beacon for that trading pair.
-      MintBeacon(ask_asset) -> {
+      // Mint a beacon for those trading pairs.
+      MintBeacons(ask_assets) -> {
         // Requirements:
-        // 1) Only the beacon for the target asset can/must be minted.
-        // 2) The token name for the beacon must be:
+        // 1) Only the beacons for the target assets can/must be minted (they must appear in the
+        //      redeemer).
+        // 2) The token name for the beacons must be:
         //      sha2_256( ask_asset policy id ++ ask_asset asset name )
         // 3) The beacons must go to an addres protected by the dApp validator script.
         // 4) The beacons must go to an address using a valid staking credential.
@@ -134,22 +136,20 @@ validator(offer_config: AssetConfig, dapp_hash: Hash<Blake2b_224, Script>) {
         //      price > 0
         // 7) The beacons must be stored with some of the offered asset.
 
-        let AssetConfig( ask_id, ask_name ) = ask_asset
+        let beacon_names = list.map(ask_assets,utils.generate_beacon_name)
         let AssetConfig( offer_id, offer_name ) = offer_config
-        let beacon_name = utils.generate_beacon_name( ask_id, ask_name )
 
         // This function checks requirements 1 & 2.
-        utils.mint_check( policy_id, beacon_name, redeemer, mint ) &&
+        utils.mint_check( policy_id, beacon_names, redeemer, mint ) &&
         
         // This function checks the rest of the requirements.
         utils.beacon_destination_check(
           dapp_hash,
           policy_id,
-          beacon_name,
           offer_id,
           offer_name,
-          ask_id,
-          ask_name,
+          beacon_names,
+          ask_assets,
           outputs
         )
       }
@@ -157,7 +157,7 @@ validator(offer_config: AssetConfig, dapp_hash: Hash<Blake2b_224, Script>) {
       // Burn beacons.
       BurnBeacons -> {
         // Always allowed as long as this redeemer is only used to burn.
-        utils.mint_check( policy_id, "", redeemer, mint )
+        utils.mint_check( policy_id, [], redeemer, mint )
       }
     }
   }

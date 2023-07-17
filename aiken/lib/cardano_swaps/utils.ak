@@ -209,7 +209,7 @@ pub fn beacon_destination_check(
   //      price > 0
   // 5) The beacons must be stored with some of the offered asset.
 
-  // Create a map from beacon names to AssetConfig.
+  // Create a map from beacon names to AssetConfig (information from redeemer).
   let xs = list.zip(beacon_names,ask_assets) |> dict.from_list(_,bytearray.compare)
 
   // A function to map over the list of outputs.
@@ -232,7 +232,7 @@ pub fn beacon_destination_check(
         )
         
         // Extract out the information from the target AssetConfig.
-        expect Some(AssetConfig(ask_id,ask_name)) = dict.get(xs,beacon_name)
+        expect Some(AssetConfig(ask_id,ask_name)) = asset_info
 
         // The beacon must be stored at a dapp address with staking. Uses app_name in the error message.
         trace_if_false( 

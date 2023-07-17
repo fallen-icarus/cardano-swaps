@@ -156,20 +156,20 @@ pub fn mint_check(
       // 1) Only the beacon for the target asset can/must be mint.
       // 2) The token name must be: sha2_256( ask_id ++ ask_name ).
       
-      // Convert the dictionary to a list and unzip it.
-      let (names,nums) = dict.to_list(beacons_minted) |> list.unzip()
+      // Convert the dictionary to a list and extract the first element in each tuple.
+      let names = 
+        dict.to_list(beacons_minted) 
+        |> list.map(_, fn(x) { let (f,_) = x f })
 
       // Only the target beacons can be minted.
       trace_if_false (
-        @"Only the target beacons can be minted",
+        @"Only the beacons in the redeemer can be minted/burned",
         list.sort(names,bytearray.compare) == list.sort(beacon_names,bytearray.compare)
-      ) &&
-
-      // All beacons can only be minted with this redeemer.
-      trace_if_false ( 
-        @"This redeemer can only be used to mint",
-        list.all(nums, fn(x) {x > 0}) 
       )
+
+      // Beacons can be minted or burned with this redeemer. This is useful for moving assets
+      // from one swap into another. The destination for all minted beacons will still be
+      // checked. Any burned beacons must still be present in the redeemer.
     }
 
     BurnBeacons -> {
@@ -223,49 +223,55 @@ pub fn beacon_destination_check(
     when beacon_list is {
       // The UTxO has one type of beacon.
       [(beacon_name,beacon_num)] -> {
-        // Check if the beacon is for one of the assets in the redeemer. A separate expect is used
-        // for a user friendly error message when an un-matched beacon name is found.
-        let asset_info = dict.get(xs,beacon_name)
-        expect True = error_if_false(
-          @"Beacon name does not have matching asset info",
-          is_some(asset_info)
-        )
-        
-        // Extract out the information from the target AssetConfig.
-        expect Some(AssetConfig(ask_id,ask_name)) = asset_info
+        // Check if the beacon in this output is one of the newly minted ones. If it is, it would
+        // be found in the redeemer (this redeemer only allows minting beacons found in the
+        // redeemer). If it isn't found in the redeemer, then this beacon must have come from an
+        // input. That is only possible if this redeemer is composed with either the CloseOrUpdate
+        // spending redeemer or the Swap spending redeemer. Both of the spending redeemers
+        // check that the beacons are stored properly so there is no need for the minting policy
+        // to check the destination of beacons from inputs. Therefore, the minting policy
+        // only needs to check the destination of newly minted beacons.
 
-        // The beacon must be stored at a dapp address with staking. Uses app_name in the error message.
-        trace_if_false( 
-          concat(@"Beacon must go to a ", app_name) |> concat(_,@" dApp address with staking"),
-          pay == ScriptCredential(dapp_hash) && is_some(stake)
-        ) &&
+        when dict.get(xs,beacon_name) is {
+          None -> acc // The destination of this beacon is checked by the spending redeemer.
 
-        // The beacons must be stored individually.
-        trace_if_false(
-          @"Beacons must be stored individually",
-          beacon_num == 1
-        ) &&
+          // This is a newly minted beacon and the destination needs to be checked.
+          Some(AssetConfig(ask_id,ask_name)) -> {
+            // The beacon must be stored at a dapp address with staking. Uses app_name in 
+            // the error message.
+            trace_if_false( 
+              concat(@"Beacon must go to a ", app_name) |> concat(_,@" dApp address with staking"),
+              pay == ScriptCredential(dapp_hash) && is_some(stake)
+            ) &&
 
-        // The beacons must be stored with some of the offered asset.
-        trace_if_false(
-          @"Beacons must be stored with some of the offered asset",
-          value.quantity_of( val, offer_id, offer_name ) > 0
-        ) &&
+            // The beacons must be stored individually.
+            trace_if_false(
+              @"Beacons must be stored individually",
+              beacon_num == 1
+            ) &&
 
-        // The beacons must be stored with the proper inline SwapDatum. This function has its own
-        // error messages.
-        valid_swap_datum_creation(
-          beacon_id,
-          beacon_name,
-          offer_id,
-          offer_name,
-          ask_id,
-          ask_name,
-          d
-        ) &&
+            // The beacons must be stored with some of the offered asset.
+            trace_if_false(
+              @"Beacons must be stored with some of the offered asset",
+              value.quantity_of( val, offer_id, offer_name ) > 0
+            ) &&
 
-        // All previously checked outputs must be valid.
-        acc
+            // The beacons must be stored with the proper inline SwapDatum. This function has its own
+            // error messages.
+            valid_swap_datum_creation(
+              beacon_id,
+              beacon_name,
+              offer_id,
+              offer_name,
+              ask_id,
+              ask_name,
+              d
+            ) &&
+
+            // All previously checked outputs must be valid.
+            acc
+          }
+        }
       }
 
       // If beacons are not present, this output can be ignored.

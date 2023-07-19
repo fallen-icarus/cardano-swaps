@@ -17,7 +17,7 @@
 
 module CardanoSwaps 
 (
-  SwapConfig(..),
+  AssetConfig(..),
   SwapDatum(..),
   SwapRedeemer(..),
   BeaconRedeemer(..),
@@ -32,7 +32,6 @@ module CardanoSwaps
   adaToken,
   Plutus.unsafeRatio,
   readBlueprints,
-  applySwapParams,
   applyBeaconParams,
   readCurrencySymbol,
   readTokenName,
@@ -46,7 +45,8 @@ module CardanoSwaps
   UtxoPriceInfo(..),
   calcWeightedPrice,
   parseBlueprints,
-  genScripts
+  genScripts,
+  genBeaconName
 ) where
 
 import Data.Aeson as Aeson
@@ -74,32 +74,35 @@ import Plutus.Script.Utils.V2.Scripts
 -------------------------------------------------
 -- On-Chain Data Types
 -------------------------------------------------
-data SwapConfig = SwapConfig
-  { swapOffer :: (CurrencySymbol,TokenName)
-  , swapAsk :: (CurrencySymbol,TokenName)
+type PlutusRational = Plutus.Rational
+
+data AssetConfig = AssetConfig
+  { assetId :: CurrencySymbol
+  , assetName :: TokenName
   } deriving (Generic,Show)
 
--- | Need a custom instance since Aiken treats tuples differently.
-instance ToData SwapConfig where
-  toBuiltinData (SwapConfig (x1,x2) (y1,y2)) = dataToBuiltinData $
-    Constr 0 [List [toData x1, toData x2],List [toData y1, toData y2]]
-
-data SwapDatum
-  = BeaconSymbol CurrencySymbol
-  | SwapPrice Plutus.Rational
+data SwapDatum = SwapDatum
+  { beaconId :: CurrencySymbol
+  , beaconName :: TokenName
+  , offerId :: CurrencySymbol
+  , offerName :: TokenName
+  , askId :: CurrencySymbol
+  , askName :: TokenName
+  , swapPrice :: PlutusRational
+  }
   deriving (Generic,Show)
 
 data SwapRedeemer
-  = Close
-  | Update
+  = CloseOrUpdate
   | Swap
   deriving (Generic,Show)
 
 data BeaconRedeemer
-  = MintBeacon
-  | BurnBeacon
+  = MintBeacons [AssetConfig] -- ^ The assets being asked for.
+  | BurnBeacons
   deriving (Generic,Show)
 
+PlutusTx.unstableMakeIsData ''AssetConfig
 PlutusTx.unstableMakeIsData ''SwapDatum
 PlutusTx.unstableMakeIsData ''SwapRedeemer
 PlutusTx.unstableMakeIsData ''BeaconRedeemer
@@ -139,7 +142,7 @@ data DappScripts = DappScripts
   , beaconCurrencySymbol :: CurrencySymbol
   } deriving (Generic)
 
-genScripts :: SwapConfig -> Blueprints -> DappScripts
+genScripts :: AssetConfig -> Blueprints -> DappScripts
 genScripts cfg bs = DappScripts
     { spendingValidator = spendVal
     , spendingValidatorHash = spendValHash
@@ -147,9 +150,9 @@ genScripts cfg bs = DappScripts
     , beaconPolicyHash = beaconHash
     , beaconCurrencySymbol = scriptCurrencySymbol beacon
     }
-  where spendVal = Validator $ applySwapParams cfg $ bs Map.! "cardano_swaps.spend"
+  where spendVal = Validator $ parseScriptFromCBOR $ bs Map.! "cardano_swaps.spend"
         spendValHash = validatorHash spendVal
-        beacon = MintingPolicy $ applyBeaconParams spendValHash $ bs Map.! "cardano_swaps.mint"
+        beacon = MintingPolicy $ applyBeaconParams cfg spendValHash $ bs Map.! "cardano_swaps.mint"
         beaconHash = mintingPolicyHash beacon
 
 fromHex' :: String -> ByteString
@@ -166,12 +169,8 @@ dataFromCBOR = deserialise . fromStrict . fromHex'
 toCBOR :: Serialise a => a -> Text
 toCBOR = encodeByteString . toStrict . serialise
 
-applySwapParams :: SwapConfig -> String -> Ledger.Script
-applySwapParams cfg cbor = applyArguments paramScript [toData cfg]
-  where paramScript = parseScriptFromCBOR cbor
-
-applyBeaconParams :: ValidatorHash -> String -> Ledger.Script
-applyBeaconParams valHash cbor = applyArguments paramScript [toData valHash]
+applyBeaconParams :: AssetConfig -> ValidatorHash -> String -> Ledger.Script
+applyBeaconParams cfg valHash cbor = applyArguments paramScript [toData cfg, toData valHash]
   where paramScript = parseScriptFromCBOR cbor
 
 unsafeFromRight :: Either a b -> b
@@ -228,7 +227,6 @@ decodeDatum = unsafeFromRight . fmap (PlutusTx.fromBuiltinData . fromCardanoScri
 -------------------------------------------------
 -- | Other Off-Chain functions
 -------------------------------------------------
-type PlutusRational = Plutus.Rational
 data UtxoPriceInfo = UtxoPriceInfo
   { utxoAmount :: Integer
   , price :: PlutusRational
@@ -245,3 +243,7 @@ calcWeightedPrice xs = snd $ foldl' foo (0,Plutus.fromInteger 0) xs
           newWp = Plutus.unsafeRatio runningTot newAmount Plutus.* wp Plutus.+
                   Plutus.unsafeRatio utxoAmount newAmount Plutus.* price
       in (newAmount,newWp)
+
+genBeaconName :: AssetConfig -> TokenName
+genBeaconName (AssetConfig (CurrencySymbol sym) (TokenName name)) =
+  TokenName $ Plutus.sha2_256 $ sym <> name

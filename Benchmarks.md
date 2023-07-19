@@ -1,165 +1,154 @@
 # Benchmarks (YMMV)
 
-## Opening Swap Addresses
+The node emulator from [plutus-apps](https://github.com/input-output-hk/plutus-apps) was used to do all benchmarking tests. All scripts were used as reference scripts to get the best performance possible.
 
-### Setup
-1. A beacon was minted for `TestToken1 -> Lovelace` and stored at the proper address with the reference script.
-2. All positions created have the price of `1 / 1000000` and have the value of 10 ADA.
-3. The node emulator was used with the same configurations as the mainnet.
-4. Minting the beacon was done using a local minting script. Performance would be better if a reference script was used.
+The universal swap spending script requires about 26 ADA to store on-chain.
+Each minting policy requires about 18 ADA to be stored on-chain.
 
-### Results
-| Number of positions created | Tx Fee | Collateral Required |
+## Creating Swaps
+
+Each swap requires a mininum UTxO value of about 2 ADA. This is due to the current protocol parameters, however, this is desired since it helps prevent denial-of-service attacks for the beacon queries.
+
+### All swaps are for the same trading pair.
+| Number of Swaps Created | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
-| 1 | 0.518897 ADA | 0.778346 ADA |
-| 5 | 0.542464 ADA | 0.813696 ADA |
-| 10 | 0.577994 ADA | 0.866991 ADA |
-| 15 | 0.607453 ADA | 0.911180 ADA |
-| 20 | 0.642983 ADA | 0.964475 ADA |
-| 25 | 0.672486 ADA | 1.008729 ADA |
+| 1 | 0.218781 ADA | 0.328172 ADA |
+| 10 | 0.444279 ADA | 0.666419 ADA |
+| 20 | 0.700861 ADA | 1.051292 ADA |
+| 30 | 0.951504 ADA | 1.427256 ADA |
+| 40 | 1.208086 ADA | 1.812129 ADA |
+| 50 | 1.464668 ADA | 2.197002 ADA |
 
-Tests were stopped after opening 25 positions since that is already over-kill for how the DEX is intended to be used. The transaction still has most of its execution units available for more positions.
+59 swaps was the upper limit for this test.
 
-## Closing Swap Addresses
-
-### Setup
-1. A mock address was created without a reference script stored in the beacon UTxO.
-2. The swap script and beacon were for `TestToken1 -> Lovelace`.
-3. Each position to be closed had a price of `1 / 1000000` and a value of 10 ADA.
-4. Local scripts were used to burn the beacon and close the positions.
-5. Closing entails burning the beacon and the specified number of open positions. No UTxOs were locked at the swap address by the transaction.
-
-### Results
-| Number of Positions Closed | Tx Fee | Collateral Required |
+### All swaps are for the same offer asset but different ask assets.
+| Number of Swaps Created | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
-| 1 | 0.528589 ADA | 0.792884 ADA |
-| 5 | 0.600765 ADA | 0.901148 ADA |
-| 10 | 0.705872 ADA | 1.058808 ADA |
-| 15 | 0.827519 ADA | 1.241279 ADA |
-| 20 | 0.965706 ADA | 1.448559 ADA |
+| 1 | 0.218781 ADA | 0.328172 ADA |
+| 10 | 0.567442 ADA | 0.851163 ADA |
+| 20 | 1.074735 ADA | 1.612104 ADA |
+| 30 | 1.743686 ADA | 2.615529 ADA |
 
-Closing 21 open positions in addition to burning the beacon exceeded the transaction limits. You can get better performance by using reference scripts.
+The max number of swaps that could be created in a single transaction was 31.
 
-## Updating Positions
-
-### Setup
-1. A mock address was created without a reference script stored in the beacon UTxO.
-2. The swap script and beacon were for `TestToken1 -> Lovelace`.
-3. Each position to be updated had a price of `1 / 1000000` and a value of 10 ADA.
-4. Each position was updated to have a price of `2 / 1000000` and a value of 10 ADA.
-5. A local script was used to update the positions.
-6. Every swap input to be updated had one corresponding swap output.
-
-### Results
-| Number of Positions Updated | Tx Fee | Collateral Required |
+### All swaps are for different offer assets and different ask assets.
+| Number of Swaps Created | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
-| 1 | 0.413065 ADA | 0.619598 ADA |
-| 5 | 0.629606 ADA | 0.944409 ADA |
-| 10 | 1.041516 ADA | 1.562274 ADA |
-| 15 | 1.648797 ADA | 2.473196 ADA |
+| 1 | 0.218781 ADA | 0.328172 ADA |
+| 5 | 0.511252 ADA | 0.766878 ADA |
+| 10 | 0.965999 ADA | 1.448999 ADA |
+| 15 | 1.569976 ADA | 2.354964 ADA |
 
-Updating 16 positions caused the transaction to exceed its limits. The above should be considered worst case scenario. Better performance can be achieved by consolidating positions and/or using reference scripts.
+Maximum number of swaps that could be created in a single transaction was 16.
 
-## Composing Swaps
-These benchmarks show how many currency conversions can be composed in a single transaction. Currency conversions are direction specific: ADA -> DJED is a different currency conversion than DJED -> ADA.
+## Swap Assets
 
-### Setup
-1. All conversions had one input and one corresponding output. So a transaction with 2 conversions had two swap inputs and two swap outputs. 
-2. Reference scripts were used for all swap scripts.
-3. The node emulator was used with the same configurations as the mainnet.
+### Composing swaps of different trading pairs.
 
-| Individual Conversions | Price (Ask/Offer) |
-|:--:|:--:|
-| TestToken1 -> Lovelace | 1 / 1000000 |
-| TestToken2 -> TestToken1 | 1 / 1 |
-| TestToken3 -> TestToken2 | 1 / 1 |
-| TestToken4 -> TestToken3 | 1 / 1 |
-| TestToken5 -> TestToken4 | 1 / 1 |
-| TestToken6 -> TestToken5 | 1 / 1 |
-| TestToken7 -> TestToken6 | 1 / 1 |
-| TestToken8 -> TestToken7 | 1 / 1 |
-| TestToken9 -> TestToken8 | 1 / 1 |
-| TestToken10 -> TestToken9 | 1 / 1 |
-| TestToken11 -> TestToken10 | 1 / 1 |
-| TestToken12 -> TestToken11 | 1 / 1 |
-| TestToken13 -> TestToken12 | 1 / 1 |
-| TestToken14 -> TestToken13 | 1 / 1 |
+The first test was just a single swap in isolation. The swap change was combined into a single output.
 
-The prices should be read as "Alice deposits 1 TestToken1 to the swap address and receives 1000000 lovelace."
-
-### Results
-| Number of Conversions | Tx Fee | Collateral Required | Conversion |
-|:--:|:--:|:--:|:--:|
-| 1 | 0.248934 ADA | 0.373401 ADA | TestToken1 -> Lovelace |
-| 2 | 0.313976 ADA | 0.470964 ADA | TestToken2 -> Lovelace |
-| 3 | 0.383768 ADA | 0.575652 ADA | TestToken3 -> Lovelace |
-| 4 | 0.458311 ADA | 0.687467 ADA | TestToken4 -> Lovelace |
-| 5 | 0.537604 ADA | 0.806406 ADA | TestToken5 -> Lovelace |
-| 6 | 0.621646 ADA | 0.932469 ADA | TestToken6 -> Lovelace |
-| 7 | 0.709116 ADA | 1.063674 ADA | TestToken7 -> Lovelace |
-| 8 | 0.802660 ADA | 1.203990 ADA | TestToken8 -> Lovelace |
-| 9 | 0.900954 ADA | 1.351431 ADA | TestToken9 -> Lovelace |
-| 10 | 1.004577 ADA | 1.506866 ADA | TestToken10 -> Lovelace |
-| 11 | 1.112415 ADA | 1.668623 ADA | TestToken11 -> Lovelace |
-| 12 | 1.225004 ADA | 1.837506 ADA | TestToken12 -> Lovelace |
-| 13 | 1.342342 ADA | 2.013513 ADA | TestToken13 -> Lovelace |
-| 14 | 1.464431 ADA | 2.196647 ADA | TestToken14 -> Lovelace |
-
-The execution limits were exceeded with 15 conversions in a single transaction.
-
-## Aggregating Swaps
-If Alice has 10,000 ADA to convert to DJED but each available swap is only for 1,000 DJED, Alice will need to swap with multiple UTxOs for the same currency conversion. This will be referred to as aggregating swaps.
-
-### Setup
-1. All swaps had one input and one corresponding output. So a transaction with 2 conversions had two swap inputs and two swap outputs. 
-2. Reference scripts were used for all swap scripts.
-3. The node emulator was used with the same configurations as the mainnet.
-4. All swap UTxOs were for `TestToken1 -> Lovelace` at a price of `1 / 1000000` and located at the same address. The value for each UTxO position was 10 ADA.
-
-### Results
-| Number of Swaps Aggregated | Tx Fee | Collateral Required |
+| Number of Swaps | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
-| 1 | 0.248934 ADA | 0.373401 ADA |
-| 2 | 0.375300 ADA | 0.562950 ADA |
-| 3 | 0.577799 ADA | 0.866699 ADA |
-| 4 | 0.856654 ADA | 1.284981 ADA |
-| 5 | 1.208510 ADA | 1.812765 ADA |
+| 1 | 0.273922 ADA | 0.410883 ADA |
+| 2 | 0.371632 ADA | 0.557448 ADA |
+| 3 | 0.497771 ADA | 0.719657 ADA |
+| 4 | 0.600349 ADA | 0.900524 ADA |
+| 5 | 0.735377 ADA | 1.103066 ADA |
+| 6 | 0.880833 ADA | 1.321250 ADA |
+| 7 | 1.038729 ADA | 1.558094 ADA |
+| 8 | 1.209064 ADA | 1.813596 ADA |
+| 9 | 1.391838 ADA | 2.087757 ADA |
 
-Aggregating 6 swaps exceeded the transactions execution limits.
+10 swaps composed together exceeded the transaction limits.
 
-### Comments
-When there are multiple input UTxOs from a given swap address, the script must calculate the weighted avg price for the inputs. This calculation is fairly intensive and is why the transaction exceeds its limits faster in the above benchmark tests.
+### Aggregating swaps for the same trading pair from the same address.
 
-The prices themselves are largely irrelevant for this calculation. Instead, the biggest cost savings is to take UTxOs for the same currency conversion **but from different addresses**. The reason for this is that the script can avoid doing the weighted avg price calculation if there is only one input from a given address. To demonstrate this, the `Aggregating Swaps` benchmarks were redone.
-
-The first test is exactly the same as the above except for setup number 4. Instead, all swap UTxOs were for `TestToken2 -> TestToken1` at a price of `1 / 1` and still located at the same address. This test is meant to show that the prices do not impact the performance of the DEX.
-
-The second test is exactly the same as the original except the swap UTxOs for `TestToken1 -> Lovelaces` were distributed among different user addresses. The prices and UTxO values were the same as the original test.
-
-#### Results for simplified price
-| Number of Swaps Aggregated | Tx Fee | Collateral Required |
+| Number of Swaps | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
-| 1 | 0.252325 ADA | 0.378488 ADA |
-| 2 | 0.394946 ADA | 0.592419 ADA |
-| 3 | 0.622916 ADA | 0.934374 ADA |
-| 4 | 0.935757 ADA | 1.403636 ADA |
-| 5 | 1.333469 ADA | 2.000204 ADA |
+| 1 | 0.241081 ADA | 0.361622 ADA |
+| 2 | 0.343378 ADA | 0.515067 ADA |
+| 3 | 0.493786 ADA | 0.740679 ADA |
+| 4 | 0.692288 ADA | 1.038432 ADA |
+| 5 | 0.938884 ADA | 1.408326 ADA |
+| 6 | 1.233574 ADA | 1.850361 ADA |
 
-Tx limits exceeded for 6 swaps aggregated.
+Aggregating 7 swaps exceeded the transaction limits.
 
-#### Results for UTxOs from different addresses
-| Number of Swaps Aggregated | Tx Fee | Collateral Required |
+## Closing Swaps
+
+### Closing swaps for the same trading pair.
+
+| Number of Swaps Closed | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
-| 1 | 0.248934 ADA | 0.373401 ADA |
-| 2 | 0.309001 ADA | 0.463502 ADA |
-| 3 | 0.373818 ADA | 0.560727 ADA |
-| 4 | 0.443385 ADA | 0.665078 ADA |
-| 5 | 0.519025 ADA | 0.778538 ADA |
-| 6 | 0.598093 ADA | 0.897140 ADA |
-| 7 | 0.681911 ADA | 1.022867 ADA |
-| 8 | 0.771197 ADA | 1.156796 ADA |
-| 9 | 0.863797 ADA | 1.295696 ADA |
+| 1 | 0.198758 ADA | 0.298137 ADA |
+| 10 | 0.347376 ADA | 0.521064 ADA |
+| 20 | 0.575358 ADA | 0.863037 ADA |
+| 30 | 0.870160 ADA | 1.305240 ADA |
+| 40 | 1.231342 ADA | 1.847013 ADA |
 
-The benchmarks stop after 9 addresses because the emulator ran out of usable addresses. However, the tx's memory usage was only at 50% capacity. Based on the observation that these fees are very similar to the composable swap fees, a fair estimate would be that about 14 UTxOs is the max.
+The upper limit was 47 swaps closed in a single transaction.
 
-To summarize these results, this DEX favors satisfying many users, each with only a single position, over satisfying one user with many open positions.
+### Closing swaps for the same offer asset but different ask assets.
+
+| Number of Swaps Closed | Tx Fee | Collateral Required |
+|:--:|:--:|:--:|
+| 1 | 0.198758 ADA | 0.298137 ADA |
+| 10 | 0.366300 ADA | 0.549450 ADA |
+| 20 | 0.615211 ADA | 0.922817 ADA |
+| 30 | 0.930942 ADA | 1.396413 ADA |
+| 40 | 1.312612 ADA | 1.968918 ADA |
+
+The upper limit was 47 swaps closed in a single transaction.
+
+### Closing swaps for different offer assets.
+
+| Number of Swaps Closed | Tx Fee | Collateral Required |
+|:--:|:--:|:--:|
+| 1 | 0.198758 ADA | 0.298137 ADA |
+| 10 | 0.473230 ADA | 0.709845 ADA |
+| 20 | 0.883480 ADA | 1.325220 ADA |
+| 30 | 1.406943 ADA | 2.110415 ADA |
+
+The upper limit was about 35 swaps closed in a single transaction.
+
+## Updating Swaps
+
+For all tests, the number of swap outputs equalled the number of swap inputs.
+
+### Updating swaps for the same trading pair.
+
+| Number of Swaps Updated | Tx Fee | Collateral Required |
+|:--:|:--:|:--:|
+| 1 | 0.218081 ADA | 0.327122 ADA |
+| 2 | 0.280067 ADA | 0.420101 ADA |
+| 3 | 0.367078 ADA | 0.550617 ADA |
+| 4 | 0.479117 ADA | 0.718676 ADA |
+| 5 | 0.616181 ADA | 0.924272 ADA |
+| 6 | 0.778272 ADA | 1.167408 ADA |
+| 7 | 0.965389 ADA | 1.448084 ADA |
+| 8 | 1.177532 ADA | 1.766298 ADA |
+| 9 | 1.414701 ADA | 2.122052 ADA |
+
+The maximum number of swaps that could be updated in a single transaction was 9.
+
+### Updating swaps for the same offer asset but different ask assets.
+
+| Number of Swaps Updated | Tx Fee | Collateral Required |
+|:--:|:--:|:--:|
+| 1 | 0.218743 ADA | 0.328115 ADA |
+| 5 | 0.434707 ADA | 0.652061 ADA |
+| 10 | 0.853623 ADA | 1.280435 ADA |
+| 15 | 1.438176 ADA | 2.157264 ADA |
+
+The maximum number of swaps that could be updated in a single transaction was 16.
+
+### Updating swaps for different offer assets.
+
+| Number of Swaps Updated | Tx Fee | Collateral Required |
+|:--:|:--:|:--:|
+| 1 | 0.218081 ADA | 0.327122 ADA |
+| 5 | 0.443259 ADA | 0.664889 ADA |
+| 10 | 0.863708 ADA | 1.295562 ADA |
+| 15 | 1.439145 ADA | 2.158718 ADA |
+
+The maximum number of swaps that could be updated in a single transaction was 16.

@@ -32,7 +32,6 @@ import Data.Default
 import Plutus.V2.Ledger.Api
 import Ledger.Address
 import Plutus.Script.Utils.V2.Generators (alwaysSucceedValidatorHash)
-import Data.List (replicate)
 
 import Test.Common
 import CardanoSwaps

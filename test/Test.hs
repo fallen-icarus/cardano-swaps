@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+{-# OPTIONS_GHC -Wno-unused-imports #-}
+
 module Main where
 
 import Ledger (scriptSize,unValidatorScript)

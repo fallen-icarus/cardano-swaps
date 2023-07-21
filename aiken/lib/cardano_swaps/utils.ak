@@ -559,8 +559,16 @@ fn swap_value_diff(
   list.foldl( outputs, total_input_val, foo )
 }
 
-// Check that only the offered asset leaves during the swap.
-fn only_offered_leaves(flux: Value, offer_id: PolicyId, offer_name: AssetName) -> Bool {
+// Check that only the offered asset leaves during the swap. It also checks that a swap only
+// gained the ask asset. This helps optimize the beacon querying by contraining UTxO
+// assets to just the relevant assets.
+fn only_proper_assets_swapped(
+  flux: Value, 
+  offer_id: PolicyId, 
+  offer_name: AssetName, 
+  ask_id: PolicyId, 
+  ask_name: AssetName
+) -> Bool {
   // Function to map over the value and check that only the offered asset is positive.
   // Positive values mean the asset was taken.
   let foo = fn (asset_flux: (PolicyId,AssetName,Int), acc: Bool) {
@@ -576,9 +584,12 @@ fn only_offered_leaves(flux: Value, offer_id: PolicyId, offer_name: AssetName) -
       )
     } 
     
-    // If n <= 0, then this asset can be ignored.
+    // If n <= 0, then the asset must be the asked asset.
     else {
-      acc
+      acc && trace_if_false(
+        @"Only the asked asset can be deposited into the swap",
+        cn == ask_id && tn == ask_name
+      )
     }
   }
 
@@ -648,6 +659,7 @@ pub fn valid_swap(
     swap_ratio == Less || swap_ratio == Equal 
   ) &&
 
-  // Only the offer asset can leave. This has its own error message.
-  only_offered_leaves( swap_flux, offer_id, offer_name )
+  // Only the offer asset can leave and only the ask asset can be deposited. 
+  // This has its own error message.
+  only_proper_assets_swapped( swap_flux, offer_id, offer_name, ask_id, ask_name )
 }

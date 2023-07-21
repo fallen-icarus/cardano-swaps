@@ -63,7 +63,7 @@ validator() {
         //      all fields same as input datum except the price
         //      price must be weighted avg of all relevant input prices
         // 3) Offered asset taken * weighted avg price <= asked asset given
-        // 4) Only the offered asset leaves.
+        // 4) Only the offered asset leaves and only the ask asset is deposited.
         //
         // Requirement 1 guarantees that all invalid UTxOs belong to the address owner and that
         // swap inputs have a valid price:
@@ -72,6 +72,9 @@ validator() {
         //
         // Requirement 2 guarantees that beacons from other trading pairs cannot be combined into
         // one output UTxO; all trading pairs must get their own swap UTxOs.
+        //
+        // Requirement 4 helps optimize beacon queries by keeping UTxO asset lists to the smallest
+        // possible size.
 
         // Extract out the information from this datum.
         let SwapDatum(

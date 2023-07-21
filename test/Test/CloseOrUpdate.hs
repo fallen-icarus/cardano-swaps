@@ -1538,6 +1538,81 @@ burnedBeaconNotPresentInRedeemer ds = do
       , closeOrUpdateRefAddress = refAddr
       }
 
+storeExtraneousAssetInSwap :: [DappScripts] -> EmulatorTrace ()
+storeExtraneousAssetInSwap ds = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+
+  initializeRefScripts ds refAddr
+
+  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
+                         (Just $ StakingHash
+                               $ PubKeyCredential
+                               $ unPaymentPubKeyHash
+                               $ mockWalletPaymentPubKeyHash
+                               $ knownWallet 1
+                         )
+  
+  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
+
+  let askTok1 = uncurry AssetConfig testToken1
+      askTok1Name = genBeaconName askTok1
+
+      adaTok1Datum = 
+        SwapDatum 
+          (beaconCurrencySymbol $ ds !! 0) 
+          askTok1Name
+          ""
+          ""
+          (fst testToken1)
+          (snd testToken1)
+          (unsafeRatio 10 1_000_000)
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapBeaconsMinted = [[(askTok1Name,1)]]
+      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
+      , createSwapAddress = swapAddr
+      , createSwapUTxOs =
+          [ ( Just adaTok1Datum
+            , lovelaceValueOf 20_000_000 
+           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
+            )
+          ]
+      , createSwapAsInline = True
+      , createSwapScripts = ds
+      , createSwapWithRefScripts = True
+      , createSwapRefScripts = [adaMintRef]
+      , createSwapRefAddress = refAddr
+      }
+
+  void $ waitNSlots 2
+
+  spendRefScript <- txOutRefWithValue $ lovelaceValueOf minUTxOSpendRef
+  inputA1 <- txOutRefWithValue $ lovelaceValueOf 20_000_000 
+                              <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
+
+  callEndpoint @"close-or-update" h1 $
+    CloseOrUpdateParams
+      { closeOrUpdateBeaconsBurned = []
+      , closeOrUpdateBeaconRedeemer = BurnBeacons
+      , closeOrUpdateAddress = swapAddr
+      , closeOrUpdateSpecificUTxOs = [inputA1]
+      , closeOrUpdateNewSwaps = 
+          [ ( Just adaTok1Datum{swapPrice = unsafeRatio 1 1_000_000}
+            , lovelaceValueOf 20_000_000 
+           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
+           <> uncurry singleton testToken1 10
+            )
+          ]
+      , closeOrUpdateAsInline = True
+      , closeOrUpdateScripts = ds
+      , closeOrUpdateWithRefScripts = True
+      , closeOrUpdateSpendRefScript = spendRefScript
+      , closeOrUpdateMintRefScripts = [adaMintRef]
+      , closeOrUpdateRefAddress = refAddr
+      }
+
 maxCloseForSameTradingPair :: [DappScripts] -> EmulatorTrace ()
 maxCloseForSameTradingPair ds = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -6735,6 +6810,8 @@ tests ds = do
         assertNoFailedTransactions (successfullyComposeMintAndCloseOrUpdateWithDependentUTxOs ds)
     , checkPredicateOptions opts "Fail if burned beacon not present in MintBeacons redeemer during composition"
         (Test.not assertNoFailedTransactions) (burnedBeaconNotPresentInRedeemer ds)
+    , checkPredicateOptions opts "Fail if extraneous asset stored in swap"
+        (Test.not assertNoFailedTransactions) (storeExtraneousAssetInSwap ds)
     ]
 
 testTrace :: [DappScripts] -> IO ()

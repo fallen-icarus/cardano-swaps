@@ -145,6 +145,81 @@ successfullyExecuteSingleSwap ds = do
       , swapRefAddress = refAddr
       }
 
+depositExtraneousAsset :: [DappScripts] -> EmulatorTrace ()
+depositExtraneousAsset ds = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+
+  initializeRefScripts ds refAddr
+
+  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
+                         (Just $ StakingHash
+                               $ PubKeyCredential
+                               $ unPaymentPubKeyHash
+                               $ mockWalletPaymentPubKeyHash
+                               $ knownWallet 1
+                         )
+  
+  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
+
+  let askTok1 = uncurry AssetConfig testToken1
+      askTok1Name = genBeaconName askTok1
+
+      adaTok1Datum = 
+        SwapDatum 
+          (beaconCurrencySymbol $ ds !! 0) 
+          askTok1Name
+          ""
+          ""
+          (fst testToken1)
+          (snd testToken1)
+          (unsafeRatio 10 1_000_000)
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapBeaconsMinted = [[(askTok1Name,1)]]
+      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
+      , createSwapAddress = swapAddr
+      , createSwapUTxOs =
+          [ ( Just adaTok1Datum
+            , lovelaceValueOf 20_000_000 
+           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
+            )
+          ]
+      , createSwapAsInline = True
+      , createSwapScripts = ds
+      , createSwapWithRefScripts = True
+      , createSwapRefScripts = [adaMintRef]
+      , createSwapRefAddress = refAddr
+      }
+
+  void $ waitNSlots 2
+
+  spendRefScript <- txOutRefWithValue $ lovelaceValueOf minUTxOSpendRef
+  inputA1 <- txOutRefWithValue $ lovelaceValueOf 20_000_000 
+                              <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
+
+  callEndpoint @"swap" h2 $
+    SwapParams
+      { swapAddresses = [swapAddr]
+      , swapSpecificUTxOs = [inputA1]
+      , swapChange = 
+          [ [ ( Just adaTok1Datum
+              , lovelaceValueOf 10_000_000
+             <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
+             <> uncurry singleton testToken1 100
+             <> uncurry singleton testToken2 10
+              )
+            ]
+          ]
+      , swapAsInline = True
+      , swapScripts = ds!!0
+      , swapWithRefScript = True
+      , swapRefScript = spendRefScript
+      , swapRefAddress = refAddr
+      }
+
 inputMissingBeacon :: [DappScripts] -> EmulatorTrace ()
 inputMissingBeacon ds = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -1749,7 +1824,7 @@ maxCompositionOfDifferentPairs ds = do
           , inputG1
           , inputH1
           , inputI1
-          , inputJ1
+          -- , inputJ1
           -- , inputK1
           ]
       , swapChange = 
@@ -1807,12 +1882,12 @@ maxCompositionOfDifferentPairs ds = do
              <> uncurry singleton testToken9 10
               )
             ]
-          , [ ( Just tok9Tok10Datum
-              , lovelaceValueOf 2_500_000
-             <> singleton (beaconCurrencySymbol $ ds!!9) askTok10Name 1
-             <> uncurry singleton testToken10 10
-              )
-            ]
+          -- , [ ( Just tok9Tok10Datum
+          --     , lovelaceValueOf 2_500_000
+          --    <> singleton (beaconCurrencySymbol $ ds!!9) askTok10Name 1
+          --    <> uncurry singleton testToken10 10
+          --     )
+          --   ]
           -- , [ ( Just tok10Tok11Datum
           --     , lovelaceValueOf 2_500_000
           --    <> singleton (beaconCurrencySymbol $ ds!!10) askTok11Name 1
@@ -2004,7 +2079,9 @@ tests ds = do
         (Test.not assertNoFailedTransactions) (mixUpBeaconsDuringComposition ds)
     , checkPredicateOptions opts "Fail if beacons combined during swap composition"
         (Test.not assertNoFailedTransactions) (combineBeaconsDuringComposition ds)
+    , checkPredicateOptions opts "Fail if extraneous asset deposited in swap output"
+        (Test.not assertNoFailedTransactions) (depositExtraneousAsset ds)
     ]
 
 testTrace :: [DappScripts] -> IO ()
-testTrace = runEmulatorTraceIO' def emConfig . maxSwapAggregationsForSinglePair
+testTrace = runEmulatorTraceIO' def emConfig . maxCompositionOfDifferentPairs

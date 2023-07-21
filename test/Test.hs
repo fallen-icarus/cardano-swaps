@@ -59,7 +59,7 @@ main = do
       scripts = map (\z -> genScripts z blueprints) cfgs
 
   -- print $ scriptSize $ unValidatorScript $ spendingValidator testScripts
-  -- CloseOrUpdate.testTrace scripts
+  -- Swap.testTrace scripts
 
   defaultMain $ testGroup "Cardano-Swaps"
     [ uniqueBeaconsTest blueprints

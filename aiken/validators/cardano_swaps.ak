@@ -35,12 +35,13 @@ validator() {
         //      price denominator > 0
         //      price > 0
         // 3) The beacons must be stored with some of the offered asset.
-        // 4) The beacons must be stored individually.
+        // 4) No extraneous assets can be stored in the swap UTxO.
+        // 5) The beacons must be stored individually.
         //
         // Requirement 2 guarantees that beacons from other trading pairs cannot be combined into
         // one output UTxO; all trading pairs must get their own swap UTxOs.
         //
-        // Requirement 4 forces the user to burn extra beacons. Extra beacons can arise when
+        // Requirement 5 forces the user to burn extra beacons. Extra beacons can arise when
         // swap inputs are consolidated during an asset swap.
         
         // The address' staking credential must signal approval (Requirement 1).
@@ -49,11 +50,8 @@ validator() {
           utils.staking_credential_approves( addr, wtdr, sigs)
         ) &&
 
-        // The outputs must be valid. This checks requirements 2,3,4.
-        trace_if_false(
-          @"Invalid new swap datum",
-          utils.valid_update_outputs( datum, outputs, addr )
-        )
+        // The outputs must be valid. This checks requirements 2,3,4. It has its own error messages.
+        utils.valid_update_outputs( datum, outputs, addr )
       }
 
       // Swap assets. This uses all inputs with the same beacon and from the same address to get the
@@ -135,6 +133,7 @@ validator(offer_config: AssetConfig, dapp_hash: Hash<Blake2b_224, Script>) {
         //      price denominator > 0.
         //      price > 0
         // 7) The beacons must be stored with some of the offered asset.
+        // 8) No extraneous assets can be stored in the swap UTxO.
 
         let beacon_names = list.map(ask_assets,utils.generate_beacon_name)
         let AssetConfig( offer_id, offer_name ) = offer_config

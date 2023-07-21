@@ -237,6 +237,10 @@ pub fn beacon_destination_check(
 
           // This is a newly minted beacon and the destination needs to be checked.
           Some(AssetConfig(ask_id,ask_name)) -> {
+            // Get a list of all assets in this UTxO. This will be used to check that no
+            // extraneous assets are present.
+            let assets_present = value.flatten(val)
+            
             // The beacon must be stored at a dapp address with staking. Uses app_name in 
             // the error message.
             trace_if_false( 
@@ -254,6 +258,25 @@ pub fn beacon_destination_check(
             trace_if_false(
               @"Beacons must be stored with some of the offered asset",
               value.quantity_of( val, offer_id, offer_name ) > 0
+            ) &&
+
+            // No extraneous assets can be stored in the UTxO.
+            trace_if_false(
+              @"No extraneous assets can be stored in the swap UTxO",
+              list.foldl(
+                assets_present,
+                True,
+                fn(x: (PolicyId,AssetName,Int), acc: Bool) {
+                  let (cn,tn,_) = x
+                  // There is no need to check the beacon name since this UTxO was already checked
+                  // for duplicate beacons.
+                  acc && 
+                    ( cn == beacon_id  // It is a beacon.
+                   || (cn == offer_id && tn == offer_name) // It is the offer asset.
+                   || cn == value.ada_policy_id // It is ADA.
+                    )
+                }
+                )
             ) &&
 
             // The beacons must be stored with the proper inline SwapDatum. This function has its own
@@ -322,6 +345,10 @@ pub fn valid_update_outputs(
 
     // If the UTxO contains a beacon, it must be checked:
     if beacon_num > 0 {
+      // Get a list of all assets in this UTxO. This will be used to check that no
+      // extraneous assets are present.
+      let assets_present = value.flatten(val)
+
       // The beacon must be stored at this address.
       trace_if_false( 
         @"Beacons not stored at this swap address",
@@ -338,6 +365,25 @@ pub fn valid_update_outputs(
       trace_if_false(
         @"Beacons must be stored with some of the offered asset",
         value.quantity_of( val, offer_id, offer_name ) > 0
+      ) &&
+
+      // No extraneous assets can be stored in the UTxO.
+      trace_if_false(
+        @"No extraneous assets can be stored in the swap UTxO",
+        list.foldl(
+          assets_present,
+          True,
+          fn(x: (PolicyId,AssetName,Int), acc: Bool) {
+            let (cn,tn,_) = x
+            // There is no need to check the beacon name since every beacon will be forced to have
+            // the proper datum.
+            acc && 
+              ( cn == beacon_id  // It is a beacon.
+              || (cn == offer_id && tn == offer_name) // It is the offer asset.
+              || cn == value.ada_policy_id // It is ADA.
+              )
+          }
+          )
       ) &&
 
       // The beacons must be stored with the proper inline SwapDatum. This function has its own

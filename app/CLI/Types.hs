@@ -12,18 +12,20 @@ import CardanoSwaps
 
 data Command
   = ExportScript Script FilePath
-  | CreateSwapDatum Datum FilePath
+  | CreateDatum SwapDatumInfo FilePath
   | CreateSwapRedeemer SwapRedeemer FilePath
   | CreateBeaconRedeemer BeaconRedeemer FilePath
+  | GenerateBeaconFullName AssetConfig AssetConfig Output
   | QueryBeacons Query
 
-data Script = BeaconPolicy SwapConfig | SwapScript SwapConfig
+data Script = BeaconPolicy AssetConfig | SwapScript
 
-data Datum = SwapDatum SwapDatum | WeightedPrice [UtxoPriceInfo]
-
-data Query
-  = QueryAvailableSwaps Network ApiEndpoint SwapConfig Output
-  | QueryOwnUTxOs Network ApiEndpoint SwapAddress Output
+-- | This has all the info necessary to create the actual SwapDatum.
+data SwapDatumInfo = 
+  SwapDatumInfo 
+    AssetConfig -- ^ Offer asset
+    AssetConfig -- ^ Ask asset
+    PlutusRational -- ^ Swap price
 
 data Network
   = PreProdTestnet
@@ -35,10 +37,14 @@ data ApiEndpoint
 -- | For when saving to file is optional
 data Output = Stdout | File FilePath
 
-newtype SwapAddress = SwapAddress String
+data Query
+  = QueryAllSwapsByTradingPair Network ApiEndpoint AssetConfig AssetConfig Output
+  | QueryAllSwapsByOffer AssetConfig Output
+  | QueryOwnSwaps Network ApiEndpoint SwapAddress Output
+  | QueryOwnSwapsByOffer SwapAddress AssetConfig Output
+  | QueryOwnSwapsByTradingPair Network ApiEndpoint SwapAddress AssetConfig AssetConfig Output
 
-instance Show SwapAddress where
-  show (SwapAddress a) = a
+newtype SwapAddress = SwapAddress String
 
 -- | Type that captures all info a user needs to interact with available swaps.
 data SwapUTxO = SwapUTxO
@@ -57,8 +63,15 @@ instance ToJSON SwapUTxO where
            ]
 
 instance ToJSON SwapDatum where
-  toJSON (SwapPrice price) = object [ "price" .= price ]
-  toJSON (BeaconSymbol sym) = object [ "beacon_id" .= show sym ]
+  toJSON SwapDatum{..} = 
+    object [ "beacon_id" .= show beaconId
+           , "beacon_name" .= drop 2 (show beaconName)
+           , "offer_id" .= show offerId
+           , "offer_name" .= drop 2 (show offerName)
+           , "ask_id" .= show askId
+           , "ask_name" .= drop 2 (show askName)
+           , "price" .= swapPrice 
+           ]
 
 data Asset = Asset
   { assetPolicyId :: String

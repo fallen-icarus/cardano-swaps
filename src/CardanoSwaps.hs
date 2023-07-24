@@ -46,7 +46,10 @@ module CardanoSwaps
   calcWeightedPrice,
   parseBlueprints,
   genScripts,
-  genBeaconName
+  genBeaconName,
+  genSwapScript,
+  genBeaconPolicy,
+  genBeaconCurrencySymbol
 ) where
 
 import Data.Aeson as Aeson
@@ -154,6 +157,17 @@ genScripts cfg bs = DappScripts
         spendValHash = validatorHash spendVal
         beacon = MintingPolicy $ applyBeaconParams cfg spendValHash $ bs Map.! "cardano_swaps.mint"
         beaconHash = mintingPolicyHash beacon
+
+genSwapScript :: Blueprints -> Script
+genSwapScript bs = parseScriptFromCBOR $ bs Map.! "cardano_swaps.spend"
+
+genBeaconPolicy :: AssetConfig -> Blueprints -> Script
+genBeaconPolicy cfg bs = applyBeaconParams cfg spendValHash $ bs Map.! "cardano_swaps.mint"
+  where 
+    spendValHash = validatorHash $ Validator $ genSwapScript bs
+
+genBeaconCurrencySymbol :: AssetConfig -> Blueprints -> CurrencySymbol
+genBeaconCurrencySymbol cfg bs = scriptCurrencySymbol $ MintingPolicy $ genBeaconPolicy cfg bs
 
 fromHex' :: String -> ByteString
 fromHex' s = case fmap bytes $ fromHex $ fromString s of

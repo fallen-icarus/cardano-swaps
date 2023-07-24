@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE RecordWildCards #-}
 
 {-# OPTIONS_GHC -Wno-orphans -Wno-missing-signatures #-}
 
@@ -10,8 +11,9 @@ module CLI.BlockfrostApi
 (
   BlockfrostApiKey(..),
 
-  queryAvailableSwaps,
-  queryOwnUTxOs
+  queryAllSwapsByTradingPair,
+  queryOwnSwaps,
+  queryOwnSwapsByTradingPair
 ) where
 
 import Servant.API
@@ -22,6 +24,8 @@ import Control.Monad
 import qualified Data.Text as T
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.List (find)
+import Data.Maybe (isJust)
 
 import CLI.Types
 import CardanoSwaps
@@ -129,23 +133,24 @@ beaconAddressListApi :<|> swappableUTxOsApi :<|> addressUTxOsApi :<|> datumApi =
 -------------------------------------------------
 -- Blockfrost Query Functions
 -------------------------------------------------
-queryAvailableSwaps :: BlockfrostApiKey 
-                    -> CurrencySymbol 
-                    -> (CurrencySymbol,TokenName) 
-                    -> ClientM [SwapUTxO]
-queryAvailableSwaps apiKey policyId (oSym,oName) = do
-  let beaconId = BeaconId (show policyId,"")
-      target = BeaconId (show oSym, drop 2 $ show oName)
+queryAllSwapsByTradingPair :: BlockfrostApiKey 
+                           -> CurrencySymbol
+                           -> TokenName
+                           -> AssetConfig
+                           -> ClientM [SwapUTxO]
+queryAllSwapsByTradingPair apiKey beaconSym beaconTokName AssetConfig{..} = do
+  let beacon = BeaconId (show beaconSym, drop 2 $ show beaconTokName)
+      offer = (show assetId, drop 2 $ show assetName)
   -- | Get all the addresses that currently hold the beacon
-  addrs <- beaconAddressListApi apiKey beaconId
-  -- | Get all the UTxOs with the target asset for those addresses.
-  utxos <- concat <$> mapM (\z -> swappableUTxOsApi apiKey z target) addrs
+  addrs <- beaconAddressListApi apiKey beacon
+  -- | Get all the UTxOs with the beacon for those addresses.
+  utxos <- concat <$> mapM (\z -> swappableUTxOsApi apiKey z beacon) addrs
   -- | Get the datums attached to the UTxOs.
   datums <- fetchDatumsLenient apiKey $ map rawBeaconDataHash utxos
-  return $ convertToSwapUTxO utxos datums
+  return $ convertToSwapUTxO utxos datums offer
 
-queryOwnUTxOs :: BlockfrostApiKey -> String -> ClientM [SwapUTxO]
-queryOwnUTxOs apiKey addr = do
+queryOwnSwaps :: BlockfrostApiKey -> SwapAddress -> ClientM [SwapUTxO]
+queryOwnSwaps apiKey (SwapAddress addr) = do
   let targetAddr = BeaconAddress addr
   -- | Get all the UTxOs at the address.
   utxos <- addressUTxOsApi apiKey targetAddr
@@ -153,9 +158,25 @@ queryOwnUTxOs apiKey addr = do
   datums <- fetchDatumsLenient apiKey $ map rawBeaconDataHash utxos
   return $ convertToOwnSwapUTxO utxos datums
 
+queryOwnSwapsByTradingPair :: BlockfrostApiKey 
+                           -> CurrencySymbol
+                           -> TokenName
+                           -> SwapAddress
+                           -> ClientM [SwapUTxO]
+queryOwnSwapsByTradingPair apiKey beaconSym beaconTokName (SwapAddress addr) = do
+  let beacon = BeaconId (show beaconSym, drop 2 $ show beaconTokName)
+  -- | Get all the UTxOs with the beacon for those addresses.
+  utxos <- swappableUTxOsApi apiKey (BeaconAddress addr) beacon
+  -- | Get the datums attached to the UTxOs.
+  datums <- fetchDatumsLenient apiKey $ map rawBeaconDataHash utxos
+  return $ convertToOwnSwapUTxO utxos datums
+
 -------------------------------------------------
 -- Helper Functions
 -------------------------------------------------
+hasAsset :: (String,String) -> [Asset] -> Bool
+hasAsset (oSym,oName) = isJust . find (\(Asset sym name _) -> sym == oSym && name == oName)
+
 -- | Skips ones that fail to decode.
 fetchDatumsLenient :: BlockfrostApiKey -> [Maybe String] -> ClientM (Map String SwapDatum)
 fetchDatumsLenient apiKey dhs =
@@ -182,21 +203,19 @@ convertToAsset RawAssetInfo{rawUnit=u,rawQuantity=q} =
         , assetQuantity = show q
         }
 
--- | This function will only return UTxOs with a SwapPrice datum and a price > 0.
-convertToSwapUTxO :: [RawBeaconInfo] -> Map String SwapDatum -> [SwapUTxO]
-convertToSwapUTxO [] _ = []
-convertToSwapUTxO ((RawBeaconInfo addr tx ix amount dHash):rs) datumMap =
-    case swapDatum of
-      Just (SwapPrice price') -> 
-        if price' > unsafeRatio 0 1
-        then info : convertToSwapUTxO rs datumMap
-        else convertToSwapUTxO rs datumMap
-      _ -> convertToSwapUTxO rs datumMap
+-- | This function will only return UTxOs with some of the offer asset.
+convertToSwapUTxO :: [RawBeaconInfo] -> Map String SwapDatum -> (String,String) -> [SwapUTxO]
+convertToSwapUTxO [] _ _ = []
+convertToSwapUTxO ((RawBeaconInfo addr tx ix amount dHash):rs) datumMap offer@(oSym,_)
+  | oSym == "" = info : convertToSwapUTxO rs datumMap offer
+  | hasAsset offer assets = info : convertToSwapUTxO rs datumMap offer
+  | otherwise = convertToSwapUTxO rs datumMap offer
   where swapDatum = fmap (\z -> datumMap Map.! z) dHash
+        assets = map convertToAsset amount
         info = SwapUTxO
                 { address = addr
                 , txIx = tx <> "#" <> show ix
-                , value = map convertToAsset amount
+                , value = assets
                 , datum = swapDatum
                 }
 
@@ -204,7 +223,7 @@ convertToSwapUTxO ((RawBeaconInfo addr tx ix amount dHash):rs) datumMap =
 convertToOwnSwapUTxO :: [RawBeaconInfo] -> Map String SwapDatum -> [SwapUTxO]
 convertToOwnSwapUTxO [] _ = []
 convertToOwnSwapUTxO ((RawBeaconInfo addr tx ix amount dHash):rs) datumMap =
-    info : convertToSwapUTxO rs datumMap
+    info : convertToOwnSwapUTxO rs datumMap
   where info = SwapUTxO
                 { address = addr
                 , txIx = tx <> "#" <> show ix

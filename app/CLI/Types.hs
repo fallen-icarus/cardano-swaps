@@ -67,11 +67,11 @@ instance ToJSON SwapUTxO where
 instance ToJSON SwapDatum where
   toJSON SwapDatum{..} = 
     object [ "beacon_id" .= show beaconId
-           , "beacon_name" .= drop 2 (show beaconName)
+           , "beacon_name" .= showTokenName beaconName
            , "offer_id" .= show offerId
-           , "offer_name" .= drop 2 (show offerName)
+           , "offer_name" .= showTokenName offerName
            , "ask_id" .= show askId
-           , "ask_name" .= drop 2 (show askName)
+           , "ask_name" .= showTokenName askName
            , "price" .= swapPrice 
            ]
 

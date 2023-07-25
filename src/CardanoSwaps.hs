@@ -49,7 +49,8 @@ module CardanoSwaps
   genBeaconName,
   genSwapScript,
   genBeaconPolicy,
-  genBeaconCurrencySymbol
+  genBeaconCurrencySymbol,
+  showTokenName
 ) where
 
 import Data.Aeson as Aeson
@@ -261,3 +262,7 @@ calcWeightedPrice xs = snd $ foldl' foo (0,Plutus.fromInteger 0) xs
 genBeaconName :: AssetConfig -> TokenName
 genBeaconName (AssetConfig (CurrencySymbol sym) (TokenName name)) =
   TokenName $ Plutus.sha2_256 $ sym <> name
+
+-- | Show the token name in hexidecimal.
+showTokenName :: TokenName -> String
+showTokenName (TokenName name) = show $ PubKeyHash name

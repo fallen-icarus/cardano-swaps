@@ -15,7 +15,7 @@ data Command
   | CreateDatum SwapDatumInfo FilePath
   | CreateSwapRedeemer SwapRedeemer FilePath
   | CreateBeaconRedeemer BeaconRedeemer FilePath
-  | GenerateBeaconFullName AssetConfig AssetConfig Output
+  | BeaconInfo BeaconInfo Output
   | QueryBeacons Query
 
 data Script = BeaconPolicy AssetConfig | SwapScript
@@ -36,6 +36,8 @@ data ApiEndpoint
 
 -- | For when saving to file is optional
 data Output = Stdout | File FilePath
+
+data BeaconInfo = PolicyId AssetConfig | AssetName AssetConfig
 
 data Query
   = QueryAllSwapsByTradingPair Network ApiEndpoint AssetConfig AssetConfig Output

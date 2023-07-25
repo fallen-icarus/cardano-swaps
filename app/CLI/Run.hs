@@ -27,8 +27,7 @@ runCommand cmd = case cmd of
   CreateDatum d file -> runCreateDatum d file
   CreateSwapRedeemer r file -> writeData file r
   CreateBeaconRedeemer r file -> writeData file r
-  GenerateBeaconFullName offerCfg askCfg output -> 
-    runGenerateBeaconFullName offerCfg askCfg output
+  BeaconInfo info output -> runBeaconInfo info output
   QueryBeacons query -> runQuery query
 
 runExportScriptCmd :: Script -> FilePath -> IO ()
@@ -55,14 +54,14 @@ runCreateDatum (SwapDatumInfo offerConfig askConfig swapPrice') file = do
       , swapPrice = swapPrice'
       }
 
-runGenerateBeaconFullName :: AssetConfig -> AssetConfig -> Output -> IO ()
-runGenerateBeaconFullName offerCfg askCfg output = do
-  let beacon = show (genBeaconCurrencySymbol offerCfg blueprints) 
-            <> "." 
-            <> drop 2 (show $ genBeaconName askCfg)
+runBeaconInfo :: BeaconInfo -> Output -> IO ()
+runBeaconInfo info output = do
+  let i = case info of
+            PolicyId offerCfg -> show $ genBeaconCurrencySymbol offerCfg blueprints
+            AssetName askCfg -> drop 2 $ show $ genBeaconName askCfg
   case output of
-    Stdout -> putStr beacon
-    File file -> writeFile file beacon
+    Stdout -> putStr i
+    File file -> writeFile file i
 
 runQuery :: Query -> IO ()
 runQuery query = case query of

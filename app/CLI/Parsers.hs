@@ -23,8 +23,8 @@ parseCommand = hsubparser $ mconcat
       (info  pCreateSwapRedeemer $ progDesc "Create a redeemer for the universal swap script.")
   , command "beacon-redeemer"
       (info parseCreateBeaconRedeemer $ progDesc "Create a redeemer for the beacon policy.")
-  , command "generate-beacon-name"
-      (info pGenerateBeaconFullName $ progDesc "Generate the beacon name for a specific trading pair.")
+  , command "beacon-info"
+      (info parseBeaconInfo $ progDesc "Generate beacon policy id or asset name.")
   , command "query"
       (info parseQueryBeacons $ progDesc "Query the dApp's beacon tokens.")
   ]
@@ -101,14 +101,27 @@ parseCreateBeaconRedeemer = hsubparser $ mconcat
     pBurn = CreateBeaconRedeemer <$> pure BurnBeacons <*> pOutputFile
 
 -------------------------------------------------
--- Generate Beacon Full Name Parser
+-- Beacon Info Parser
 -------------------------------------------------
-pGenerateBeaconFullName :: Parser Command
-pGenerateBeaconFullName =
-  GenerateBeaconFullName
-    <$> pOfferConfig
-    <*> pAskConfig
-    <*> pOutput
+parseBeaconInfo :: Parser Command
+parseBeaconInfo = hsubparser $ mconcat
+    [ command "policy-id"
+        (info pGenPolicyId $ progDesc "Generate the beacon policy id for a specific offer asset.")
+    , command "asset-name"
+        (info pGenAssetName $ progDesc "Generate the beacon asset name for a specific ask asset.")
+    ]
+  where
+    pGenPolicyId :: Parser Command
+    pGenPolicyId = 
+      BeaconInfo 
+        <$> (PolicyId <$> pOfferConfig)
+        <*> pOutput
+
+    pGenAssetName :: Parser Command
+    pGenAssetName =
+      BeaconInfo
+        <$> (AssetName <$> pAskConfig)
+        <*> pOutput
 
 -------------------------------------------------
 -- QueryBeacons Parser

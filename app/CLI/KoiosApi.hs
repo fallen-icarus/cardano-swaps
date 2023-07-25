@@ -101,7 +101,12 @@ instance FromJSON Asset where
 type KoiosApi
   =    "asset_addresses"
      :> QueryParam' '[Required] "_asset_policy" CurrencySymbol
-     :> QueryParam "_asset_name" TokenName
+     :> QueryParam' '[Required] "_asset_name" TokenName
+     :> QueryParam' '[Required] "select" Text
+     :> Get '[JSON] [BeaconAddress]
+
+  :<|> "policy_asset_addresses"
+     :> QueryParam' '[Required] "_asset_policy" CurrencySymbol
      :> QueryParam' '[Required] "select" Text
      :> Get '[JSON] [BeaconAddress]
 
@@ -110,7 +115,7 @@ type KoiosApi
      :> ReqBody '[JSON] AddressList
      :> Post '[JSON] [RawBeaconInfo]
 
-beaconAddressListApi :<|> addressUTxOsApi = client api
+pairBeaconAddressListApi :<|> offerBeaconAddressListApi :<|> addressUTxOsApi = client api
   where
     api :: Proxy KoiosApi
     api = Proxy
@@ -122,13 +127,13 @@ queryAllSwapsByTradingPair :: CurrencySymbol -> TokenName -> AssetConfig -> Clie
 queryAllSwapsByTradingPair beaconSym beaconTokName AssetConfig{..} = do
   let beacon = (show beaconSym, drop 2 $ show beaconTokName)
       offer = (show assetId, drop 2 $ show assetName)
-  addrs <- beaconAddressListApi beaconSym (Just beaconTokName) "payment_address"
+  addrs <- pairBeaconAddressListApi beaconSym beaconTokName "payment_address"
   utxos <- addressUTxOsApi "address,utxo_set" (AddressList addrs)  
   return $ concatMap (convertTradingPairToSwapUTxO beacon offer) utxos
 
 queryAllSwapsByOffer :: CurrencySymbol -> ClientM [SwapUTxO]
 queryAllSwapsByOffer beaconSym = do
-  addrs <- beaconAddressListApi beaconSym Nothing "payment_address"
+  addrs <- offerBeaconAddressListApi beaconSym "payment_address"
   utxos <- addressUTxOsApi "address,utxo_set" (AddressList addrs)  
   return $ concatMap (convertOfferToSwapUTxO (show beaconSym)) utxos
 

@@ -152,7 +152,8 @@ parseQueryBeacons = fmap QueryBeacons . hsubparser $ mconcat
     pQueryAllSwapsByOffer :: Parser Query
     pQueryAllSwapsByOffer =
       QueryAllSwapsByOffer
-        <$> pOfferConfig
+        <$> pNetwork
+        <*> pOfferConfig
         <*> pOutput
 
     pQueryOwnSwaps :: Parser Query
@@ -166,7 +167,8 @@ parseQueryBeacons = fmap QueryBeacons . hsubparser $ mconcat
     pQueryOwnSwapsByOffer :: Parser Query
     pQueryOwnSwapsByOffer =
       QueryOwnSwapsByOffer
-        <$> pSwapAddress
+        <$> pNetwork
+        <*> pSwapAddress
         <*> pOfferConfig
         <*> pOutput
 

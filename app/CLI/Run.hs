@@ -75,13 +75,13 @@ runQuery query = case query of
         beaconTokName = genBeaconName askCfg
     runQueryOwnSwapsByTradingPair network api addr beaconSym beaconTokName >>= toOutput output
 
-  QueryAllSwapsByOffer offerCfg output -> do
+  QueryAllSwapsByOffer network offerCfg output -> do
     let beaconSym = genBeaconCurrencySymbol offerCfg blueprints
-    runQueryAllSwapsByOffer beaconSym >>= toOutput output
+    runQueryAllSwapsByOffer network beaconSym >>= toOutput output
 
-  QueryOwnSwapsByOffer addr offerCfg output -> do
+  QueryOwnSwapsByOffer network addr offerCfg output -> do
     let beaconSym = genBeaconCurrencySymbol offerCfg blueprints
-    runQueryOwnSwapsByOffer addr beaconSym >>= toOutput output
+    runQueryOwnSwapsByOffer network addr beaconSym >>= toOutput output
 
   QueryOwnSwaps network api addr output -> do
     runQueryOwnSwaps network api addr >>= toOutput output

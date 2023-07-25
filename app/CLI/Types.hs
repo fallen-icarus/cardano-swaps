@@ -41,9 +41,9 @@ data BeaconInfo = PolicyId AssetConfig | AssetName AssetConfig
 
 data Query
   = QueryAllSwapsByTradingPair Network ApiEndpoint AssetConfig AssetConfig Output
-  | QueryAllSwapsByOffer AssetConfig Output
+  | QueryAllSwapsByOffer Network AssetConfig Output
   | QueryOwnSwaps Network ApiEndpoint SwapAddress Output
-  | QueryOwnSwapsByOffer SwapAddress AssetConfig Output
+  | QueryOwnSwapsByOffer Network SwapAddress AssetConfig Output
   | QueryOwnSwapsByTradingPair Network ApiEndpoint SwapAddress AssetConfig AssetConfig Output
 
 newtype SwapAddress = SwapAddress String

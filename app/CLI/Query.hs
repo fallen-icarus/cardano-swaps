@@ -82,8 +82,8 @@ runQueryOwnSwaps network api addr = do
     Left err -> throw err
 
 -- | Only Koios supported.
-runQueryAllSwapsByOffer :: CurrencySymbol -> IO [SwapUTxO]
-runQueryAllSwapsByOffer beaconSym = do
+runQueryAllSwapsByOffer :: Network -> CurrencySymbol -> IO [SwapUTxO]
+runQueryAllSwapsByOffer PreProdTestnet beaconSym = do
   manager' <- newManager tlsManagerSettings
   let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v0")
   res <- runClientM (Koios.queryAllSwapsByOffer beaconSym) env
@@ -92,8 +92,8 @@ runQueryAllSwapsByOffer beaconSym = do
     Left err -> throw err
 
 -- | Only Koios supported.
-runQueryOwnSwapsByOffer :: SwapAddress -> CurrencySymbol -> IO [SwapUTxO]
-runQueryOwnSwapsByOffer addr beaconSym = do
+runQueryOwnSwapsByOffer :: Network -> SwapAddress -> CurrencySymbol -> IO [SwapUTxO]
+runQueryOwnSwapsByOffer PreProdTestnet addr beaconSym = do
   manager' <- newManager tlsManagerSettings
   let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v0")
   res <- runClientM (Koios.queryOwnSwapsByOffer addr beaconSym) env

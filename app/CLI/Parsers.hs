@@ -128,15 +128,15 @@ parseBeaconInfo = hsubparser $ mconcat
 -------------------------------------------------
 parseQueryBeacons :: Parser Command
 parseQueryBeacons = fmap QueryBeacons . hsubparser $ mconcat
-    [ command "all-swaps-by-pair"
+    [ command "available-swaps-by-pair"
         (info pQueryAllBeaconsByTradingPair $ progDesc "Query available swaps for a specific trading pair.")
-    , command "all-swaps-by-offer"
+    , command "available-swaps-by-offer"
         (info pQueryAllSwapsByOffer $ progDesc "Query all swaps with a specific offer asset.")
-    , command "all-own-swaps"
+    , command "own-swaps"
         (info pQueryOwnSwaps $ progDesc "Query all own swaps")
-    , command "all-own-swaps-by-offer"
+    , command "own-swaps-by-offer"
         (info pQueryOwnSwapsByOffer $ progDesc "Query all own swaps with a specific offer asset.")
-    , command "all-own-swaps-by-pair"
+    , command "own-swaps-by-pair"
         (info pQueryOwnSwapsByTradingPair $ progDesc "Query all own swaps for a specific trading pair.")
     ]
   where

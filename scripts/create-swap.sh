@@ -4,59 +4,74 @@
 dir="../assets/swap-files/"
 tmpDir="../assets/tmp/"
 
-spendingScriptFile="${dir}spend.plutus"
-beaconPolicyFile="${dir}beacon.plutus"
+swapScriptFile="${dir}spend.plutus" # This is used to create the swap address.
+
+ownerPubKeyFile="../assets/wallets/01Stake.vkey"
 
 swapAddrFile="${dir}swap.addr"
 
-swapBeaconDatumFile="${dir}beaconDatum.json"
-swapPositionDatumFile="${dir}positionDatum.json"
+swapDatumFile1="${dir}swapDatum1.json"
+swapDatumFile2="${dir}swapDatum2.json"
 
-beaconRedeemerFile="${dir}mint.json"
+beaconRedeemerFile="${dir}mintBeacons.json"
 
-# Export the spending script for that trading pair.
+# Export the swap validator script.
+echo "Exporting the swap validator script..."
 cardano-swaps export-script swap-script \
-  --offered-asset-is-lovelace \
-  --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asked-asset-token-name 4f74686572546f6b656e0a \
-  --out-file $spendingScriptFile
-
-# Export the beacon policy for that trading pair.
-cardano-swaps export-script beacon-policy \
-  --offered-asset-is-lovelace \
-  --asked-asset-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asked-asset-token-name 4f74686572546f6b656e0a \
-  --out-file $beaconPolicyFile
+  --out-file $swapScriptFile
 
 # Create the swap address.
+echo "Creating the swap address..."
 cardano-cli address build \
-  --payment-script-file $spendingScriptFile \
-  --stake-verification-key-file "../assets/wallets/01Stake.vkey" \
+  --payment-script-file $swapScriptFile \
+  --stake-verification-key-file $ownerPubKeyFile \
   --testnet-magic 1 \
   --out-file $swapAddrFile
 
-# Get the beacon policy id.
-beaconPolicyId=$(cardano-cli transaction policyid \
-  --script-file $beaconPolicyFile)
+# Helper beacon variables.
+beaconPolicyId1=$(cardano-swaps beacon-info policy-id \
+  --offer-lovelace \
+  --stdout)
 
-# Helper beacon variable
-beacon="${beaconPolicyId}."
+beaconName1=$(cardano-swaps beacon-info asset-name \
+  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --ask-token-name 4f74686572546f6b656e0a \
+  --stdout)
 
-# Create the datum for storing with the beacon
-cardano-swaps datum beacon-datum \
-  --beacon-policy-id $beaconPolicyId \
-  --out-file $swapBeaconDatumFile
+beaconName2=$(cardano-swaps beacon-info asset-name \
+  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --ask-token-name 54657374546f6b656e34 \
+  --stdout)
 
-# Create the datum for the first swap positions
-cardano-swaps datum swap-datum \
+beacon1="${beaconPolicyId1}.${beaconName1}"
+beacon2="${beaconPolicyId1}.${beaconName2}"
+
+# Get the mint beacon redeemer.
+echo "Creating the minting redeemer..."
+cardano-swaps beacon-redeemer mint \
+  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --ask-token-name 4f74686572546f6b656e0a \
+  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --ask-token-name 54657374546f6b656e34 \
+  --out-file $beaconRedeemerFile
+
+# Create the swap datum.
+echo "Creating the swap datum..."
+cardano-swaps swap-datum \
+  --offer-lovelace \
+  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --ask-token-name 4f74686572546f6b656e0a \
+  --price-numerator 10 \
+  --price-denominator 1000000 \
+  --out-file $swapDatumFile1
+
+cardano-swaps swap-datum \
+  --offer-lovelace \
+  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --ask-token-name 54657374546f6b656e34 \
   --price-numerator 1 \
   --price-denominator 1000000 \
-  --out-file $swapPositionDatumFile
-
-# Create the beacon redeemer for minting the beacon.
-cardano-swaps beacon-redeemer \
-  --mint \
-  --out-file $beaconRedeemerFile
+  --out-file $swapDatumFile2
 
 # Create the transaction.
 cardano-cli query protocol-parameters \
@@ -64,17 +79,16 @@ cardano-cli query protocol-parameters \
   --out-file "${tmpDir}protocol.json"
 
 cardano-cli transaction build \
-  --tx-in a4c18c0c51a466553b97f0ed60ef6c7bc3181fe2ceec1555fc72137d3357a344#0 \
-  --tx-out "$(cat ${swapAddrFile}) + 23000000 lovelace + 1 ${beacon}" \
-  --tx-out-inline-datum-file $swapBeaconDatumFile \
-  --tx-out-reference-script-file $spendingScriptFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace" \
-  --tx-out-inline-datum-file $swapPositionDatumFile \
-  --mint "1 ${beacon}" \
-  --mint-script-file $beaconPolicyFile \
-  --mint-redeemer-file $beaconRedeemerFile \
+  --tx-in 89b67297cff33ce4dfb5bbd1d2414b313cf8ee26ce0e7e970aa9c4a2682f38f5#1 \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace + 1 ${beacon1}" \
+  --tx-out-inline-datum-file $swapDatumFile1 \
+  --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace + 1 ${beacon2}" \
+  --tx-out-inline-datum-file $swapDatumFile2 \
+  --mint "1 ${beacon1} + 1 ${beacon2}" \
+  --mint-tx-in-reference c774e01a1f0e4cd06d62780dcd52f6d00290b8217ac0e538747bf79d1a49dbfb#1 \
+  --mint-plutus-script-v2 \
+  --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
+  --policy-id "$beaconPolicyId1" \
   --change-address "$(cat ../assets/wallets/01.addr)" \
   --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
   --testnet-magic 1 \

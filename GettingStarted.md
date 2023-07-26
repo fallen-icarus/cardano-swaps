@@ -165,7 +165,7 @@ The aiken smart contracts come precompiled but if you would like to make changes
 cargo install aiken --version 1.0.13-alpha
 ```
 
-Make sure you instal verison 1.0.13-alpha. Newer versions may change some of the underlying functions and so the source code will likely not compile. As aiken stabilizes, the code will be updated to the latest version.
+Make sure you instal verison 1.0.13-alpha. Newer versions may change some things and so the source code may not compile. As aiken stabilizes, the code will be updated to the latest version.
 
 When building the dApp's blueprints, make sure to use
 ``` Bash

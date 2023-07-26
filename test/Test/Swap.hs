@@ -220,6 +220,80 @@ depositExtraneousAsset ds = do
       , swapRefAddress = refAddr
       }
 
+depositExtraneousADA :: [DappScripts] -> EmulatorTrace ()
+depositExtraneousADA ds = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+
+  initializeRefScripts ds refAddr
+
+  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
+                         (Just $ StakingHash
+                               $ PubKeyCredential
+                               $ unPaymentPubKeyHash
+                               $ mockWalletPaymentPubKeyHash
+                               $ knownWallet 1
+                         )
+  
+  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
+
+  let askTok1 = uncurry AssetConfig testToken1
+      askTok1Name = genBeaconName askTok1
+
+      adaTok1Datum = 
+        SwapDatum 
+          (beaconCurrencySymbol $ ds !! 0) 
+          askTok1Name
+          ""
+          ""
+          (fst testToken1)
+          (snd testToken1)
+          (unsafeRatio 10 1_000_000)
+
+  callEndpoint @"create-swap" h1 $
+    CreateSwapParams
+      { createSwapBeaconsMinted = [[(askTok1Name,1)]]
+      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
+      , createSwapAddress = swapAddr
+      , createSwapUTxOs =
+          [ ( Just adaTok1Datum
+            , lovelaceValueOf 20_000_000 
+           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
+            )
+          ]
+      , createSwapAsInline = True
+      , createSwapScripts = ds
+      , createSwapWithRefScripts = True
+      , createSwapRefScripts = [adaMintRef]
+      , createSwapRefAddress = refAddr
+      }
+
+  void $ waitNSlots 2
+
+  spendRefScript <- txOutRefWithValue $ lovelaceValueOf minUTxOSpendRef
+  inputA1 <- txOutRefWithValue $ lovelaceValueOf 20_000_000 
+                              <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
+
+  callEndpoint @"swap" h2 $
+    SwapParams
+      { swapAddresses = [swapAddr]
+      , swapSpecificUTxOs = [inputA1]
+      , swapChange = 
+          [ [ ( Just adaTok1Datum
+              , lovelaceValueOf 22_000_000
+             <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
+             <> uncurry singleton testToken1 100
+              )
+            ]
+          ]
+      , swapAsInline = True
+      , swapScripts = ds!!0
+      , swapWithRefScript = True
+      , swapRefScript = spendRefScript
+      , swapRefAddress = refAddr
+      }
+
 inputMissingBeacon :: [DappScripts] -> EmulatorTrace ()
 inputMissingBeacon ds = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -2081,6 +2155,8 @@ tests ds = do
         (Test.not assertNoFailedTransactions) (combineBeaconsDuringComposition ds)
     , checkPredicateOptions opts "Fail if extraneous asset deposited in swap output"
         (Test.not assertNoFailedTransactions) (depositExtraneousAsset ds)
+    , checkPredicateOptions opts "Successfully deposit extra ADA"
+        assertNoFailedTransactions (depositExtraneousADA ds)
     ]
 
 testTrace :: [DappScripts] -> IO ()

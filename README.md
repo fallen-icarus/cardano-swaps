@@ -221,7 +221,7 @@ For a swap execution to be successfull, all of the following must be true:
     - all fields the same as the input datum except the price.
     - the price must be the weighted avg of all relevant input prices.
 3. Offered asset taken * weighted avg price <= asked asset given.
-4. Only the offered asset can leave and only the ask asset can be deposited.
+4. Only the offered asset can leave and only the ask asset can be deposited. ADA can always be deposited in case the minUTxOValue increased.
 
 Requirement 1 guarantees that all invalid UTxOs (those missing beacons) belong to the address owner and that swap inputs have a valid price: denominator > 0 and price > 0.
 

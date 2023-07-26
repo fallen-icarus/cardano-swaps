@@ -584,11 +584,11 @@ fn only_proper_assets_swapped(
       )
     } 
     
-    // If n <= 0, then the asset must be the asked asset.
+    // If n <= 0, then the asset must be the asked asset or ADA (if the minUTxO value increased).
     else {
       acc && trace_if_false(
-        @"Only the asked asset can be deposited into the swap",
-        cn == ask_id && tn == ask_name
+        @"Only the asked asset or ADA can be deposited into the swap",
+        (cn == ask_id && tn == ask_name) || cn == value.ada_policy_id
       )
     }
   }

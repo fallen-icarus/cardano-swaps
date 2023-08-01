@@ -14,7 +14,7 @@ The Getting Started instructions can be found [here](./GettingStarted.md).
 - [Specification](#specification)
 - [Features Discussion](#features-discussion)
 - [Future Directions](#future-directions)
-- [FAQ](#faq)
+- [UTxO Concurrency Discussion](#utxo-concurrency-discussion)
 - [Conclusion](#conclusion)
 
 ## Abstract
@@ -281,6 +281,18 @@ Currently, Aiken is still in the alpha phase and, by extension, so is this proto
 
 That being said, this protocol is fully peer-to-peer. If some community members are willing to accept the risks and are comfortable with the current features, nobody can stop them from using this protocol right now. 
 
+## UTxO Concurrency Discussion
+There is a belief that liquidity pools are required for DEXs due to the concurrency bottlenecks created by having users compete for swap UTxOs. There are a few issues with this belief but before getting to that, what do people mean by "concurrency bottleneck"? Doesn't cardano-swaps scale with the number of users? The answer is yes but only on the sell side. There are only as many swap UTxOs as there are sellers. In bull markets, where the number of buyers outnumber the number of sellers, the buyers will be racing to get the swaps first.
+
+Is this a problem that cardano-swaps should try to fix? Are liquidity pools actually better since buyers can be bundled together through batchers? The answer is more nuanced than what these questions suggest. Consider a TradFi exchange - they are all order books. And yet, order books are just an aggregate of limit orders that are first come, first serve. Therefore, this is the exact same condition that occurs with cardano-swaps. Despite this, TradFi is able to handle this concurrency issue without liquidity pools.
+
+How do they do this? The answer is to have other businesses take on that risk. These businesses are paid to absorb the risk from the end user. Consider a market maker, they fill the gaps in the order book to provide immediate liquity with the expectation that they will be able to reverse the trade for a profit later. You can think of it as *you buy from us now and we will settle against the order book later*. These market makers are essentially batchers that try to turn a profit through taking on the end-user's risk.
+
+Whenever there is risk, there will always be a demand for a business to minimize the risk (e.g. hedges, insurance, etc.). These businesses are not baked into the market, they are add-ons. Liquidity pools try to combine the functionality of the DEX with the risk management of the add-on businesses. In the process, it winds up being bad at both. The cardano-swaps DEX takes the approach *just do one thing and do it well, and allow businesses to easily be built on top of it*. Businesses can undoubtedly be created to act as an intermediary between end users and the cardano-swaps order book so that users don't need to worry about concurrency issues.
+
+"Hold on... I thought blockchain is supposed to *dis-intermediate*." This is a common belief but it is not accurate. The more correct belief is: *blockchain is supposed to eliminate the **requirement** to use intermediaries*. Consider banking, is it possible to live in the developed world without a bank account? How would you order things online? How would you get a loan? The world is currently set up so that prospering in the developed world **requires** a bank account. The banks know this and therefore don't need to treat users as true *customers*. What if you didn't need to use a bank? You could if you wanted to but you don't have to. Banks would behave very differently since they know users don't actually need them. The world would shift from *banking out of necessity* to *banking only if it adds value*. Liquid democracy is another example, you can delegate your vote if you want to but you can always vote directly. The very existence of the *do it yourself* option acts as a check on the behavior of intermidiaries.
+
+This protocol is designed with this very philosophy in mind - Alice can choose to interact with it through an intermediary (and therefore minimize her concurrency risk) or she can choose to interact with it herself. So is it an issue that the sell side demand may not always be able to keep up with the buy side? Probably not. 
 
 ## Conclusion
 The Cardano-Swaps protocol has all of the desired properties of a highly composable p2p-DEX. Thanks to the use of Beacon Tokens, decentralization is no longer limited by the design of DEXs. Instead, the limiting factor is now the off-chain querying. However, innovations in this space are still in the early days. The Koios API is an example of a more decentralized off-chain platform. As the technology improves, so too will the decentralization of the protocol.

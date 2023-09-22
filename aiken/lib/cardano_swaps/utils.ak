@@ -21,7 +21,7 @@ use cardano_swaps/types.{
   AssetConfig,
   BeaconRedeemer,
   BurnBeacons,
-  MintBeacons,
+  CreateSwap,
   SwapDatum,
 }
 
@@ -151,7 +151,7 @@ pub fn mint_check(
     |> value.tokens(_,beacon_id)
 
   when redeemer is {
-    MintBeacons(_) -> {
+    CreateSwap(_) -> {
       // Checks:
       // 1) Only the beacon for the target asset can/must be mint.
       // 2) The token name must be: sha2_256( ask_id ++ ask_name ).

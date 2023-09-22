@@ -9,7 +9,7 @@ use cardano_swaps/types.{
   BeaconRedeemer,
   BurnBeacons,
   CloseOrUpdate,
-  MintBeacons,
+  CreateSwap,
   Swap,
   SwapDatum,
   SwapRedeemer
@@ -117,7 +117,7 @@ validator(dapp_hash: Hash<Blake2b_224, Script>, offer_config: AssetConfig) {
 
     when redeemer is {
       // Mint a beacon for those trading pairs.
-      MintBeacons(ask_assets) -> {
+      CreateSwap(ask_assets) -> {
         // Requirements:
         // 1) Only the beacons for the target assets can/must be minted (they must appear in the
         //      redeemer).

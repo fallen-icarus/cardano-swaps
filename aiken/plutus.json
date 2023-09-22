@@ -89,7 +89,7 @@
       "title": "BeaconRedeemer",
       "anyOf": [
         {
-          "title": "MintBeacons",
+          "title": "CreateSwap",
           "dataType": "constructor",
           "index": 0,
           "fields": [

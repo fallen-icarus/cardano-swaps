@@ -19,7 +19,7 @@ use cardano_swaps/utils.{trace_if_false}
 validator() {
   fn spend(datum: SwapDatum, redeemer: SwapRedeemer, ctx: ScriptContext) -> Bool {
     // Get required information for script context.
-    let ScriptContext( 
+    expect ScriptContext( 
       Transaction(inputs,_,outputs,_,_,_,wtdr,_,sigs,..), 
       tx.Spend(out_ref)
     ) = ctx
@@ -110,10 +110,10 @@ validator() {
   }
 }
 
-validator(offer_config: AssetConfig, dapp_hash: Hash<Blake2b_224, Script>) {
+validator(dapp_hash: Hash<Blake2b_224, Script>, offer_config: AssetConfig) {
   fn mint(redeemer: BeaconRedeemer, ctx: ScriptContext) -> Bool {
     // Get required information from the script context.
-    let ScriptContext( Transaction(_,_,outputs,_,mint,..), tx.Mint(policy_id) ) = ctx
+    expect ScriptContext( Transaction(_,_,outputs,_,mint,..), tx.Mint(policy_id) ) = ctx
 
     when redeemer is {
       // Mint a beacon for those trading pairs.

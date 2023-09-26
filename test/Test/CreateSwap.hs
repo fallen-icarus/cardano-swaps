@@ -1,2601 +1,3104 @@
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE NamedFieldPuns      #-}
-{-# LANGUAGE NoImplicitPrelude   #-}
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE RecordWildCards     #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell     #-}
-{-# LANGUAGE TypeApplications    #-}
-{-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE TypeOperators       #-}
-{-# LANGUAGE NumericUnderscores  #-}
-{-# LANGUAGE DeriveAnyClass      #-}
-{-# LANGUAGE DeriveGeneric       #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Test.CreateSwap
-(
-  tests,
-  testTrace
-) where
+  (
+    -- * Scenarios Tested
+    -- ** Scenarios that should succeed
+    regressionTest1
+  , regressionTest2
+  , regressionTest3
+  , regressionTest4
+  , regressionTest5
+  , regressionTest6
+  , regressionTest7
 
-import Prelude (IO)
-import Control.Lens hiding (from)
-import Control.Monad (void,zipWithM_)
-import PlutusTx.Prelude
+    -- ** Scenarios that should fail
+  , failureTest1
+  , failureTest2
+  , failureTest3
+  , failureTest4
+  , failureTest5
+  , failureTest6
+  , failureTest7
+  , failureTest8
+  , failureTest9
+  , failureTest10
+  , failureTest11
+  , failureTest12
+  , failureTest13
+  , failureTest14
+  , failureTest15
+  , failureTest16
+  , failureTest17
+  , failureTest18
+  , failureTest19
+  , failureTest20
+  , failureTest21
+  , failureTest22
+  , failureTest23
+  , failureTest24
+  , failureTest25
+  , failureTest26
+
+    -- ** Benchmark Tests
+  , benchTest1
+  , benchTest2
+  , benchTest3
+  , benchTest4
+  , benchTest5
+  , benchTest6
+  , benchTest7
+
+    -- * Full test function
+  , tests
+  ) where
+
+import PlutusTx.Prelude (unsafeRatio)
 import Plutus.Trace
 import Wallet.Emulator.Wallet
 import Plutus.Contract.Test as Test
 import Test.Tasty
-import Plutus.Script.Utils.Ada (lovelaceValueOf)
-import Data.Default
-import Plutus.V2.Ledger.Api
-import Ledger.Address
-import Plutus.Script.Utils.V2.Generators (alwaysSucceedValidatorHash)
-import Data.List (replicate)
+import Data.String (fromString)
+import Data.List (zip4)
 
-import Test.Common
+import Test.Internal
+import Test.Config
 import CardanoSwaps
 
 -------------------------------------------------
--- Initializations
-------------------------------------------------
-initializeRefScripts :: [DappScripts] -> Address -> EmulatorTrace ()
-initializeRefScripts ds refAddr = do
+-- Initialize reference script.
+-------------------------------------------------
+initializeBeaconPolicies :: [(CurrencySymbol,TokenName)] -> EmulatorTrace [TxOutRef]
+initializeBeaconPolicies assets = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  -- | Create the spending reference script.
-  callEndpoint @"create-reference-script" h1 $
-    CreateReferenceScriptParams
-      { createReferenceScriptScript = unValidatorScript $ spendingValidator (ds!!0)
-      , createReferenceScriptAddress = refAddr
-      , createReferenceScriptUTxO = lovelaceValueOf minUTxOSpendRef
-      }
-
-  void $ waitNSlots 2
+  let idxs = [ fromIntegral n + minUTxOMintRef | n <- [0..length assets] ]
 
   zipWithM_ 
-    (\d n -> 
-      (callEndpoint @"create-reference-script" h1 $
+    (\asset deposit -> do
+      callEndpoint @"create-reference-script" h1 $
         CreateReferenceScriptParams
-          { createReferenceScriptScript = unMintingPolicyScript $ beaconPolicy d
-          , createReferenceScriptAddress = refAddr
-          , createReferenceScriptUTxO = lovelaceValueOf (minUTxOMintRef + n)
+          { createReferenceScriptScript = beaconScript asset
+          , createReferenceScriptAddress = refScriptAddress
+          , createReferenceScriptUTxO = 
+              ( lovelaceValueOf deposit
+              , TxOutDatumInline $ toDatum ()
+              )
           }
-      )
-      >> waitNSlots 2
+
+      void $ waitNSlots 2
     )
-    ds
-    [0..]
+    assets
+    idxs
+
+  mapM (txOutRefWithValue . lovelaceValueOf) idxs
 
 -------------------------------------------------
--- Create Swap Scenarios
+-- Regression Tests
 -------------------------------------------------
-successfullyCreateSingleSwap :: [DappScripts] -> EmulatorTrace ()
-successfullyCreateSingleSwap ds = do
+-- | Create a single valid Swap UTxO. Mints an unrelated token to an unrelated output in the same
+-- transaction to also check if the beacon policy can correctly ignore unrelated tokens and UTxOs.
+-- The offered asset is a native token and the asked asset is ADA.
+regressionTest1 :: EmulatorTrace ()
+regressionTest1 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,1)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-successfullyCreateMultipleSwapsOfSamePair :: [DappScripts] -> EmulatorTrace ()
-successfullyCreateMultipleSwapsOfSamePair ds = do
+-- | Create a single valid Swap UTxO. Mints an unrelated token to an unrelated output in the same
+-- transaction to also check if the beacon policy can correctly ignore unrelated tokens and UTxOs.
+-- The offered asset is ADA and the asked asset is a native token.
+regressionTest2 :: EmulatorTrace ()
+regressionTest2 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      askAsset = testToken1
+      offerAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,2)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
-          , ( Just adaTok1Datum{ swapPrice = unsafeRatio 1 1_000_000 }
-            , lovelaceValueOf 15_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10_000_000
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-successfullyCreateMultipleSwapsOfDifferentPairs :: [DappScripts] -> EmulatorTrace ()
-successfullyCreateMultipleSwapsOfDifferentPairs ds = do
+-- | Create a multiple valid Swap UTxOs. All swaps are for the same trading pair. The offered asset 
+-- is a native token and the asked asset is ADA.
+regressionTest3 :: EmulatorTrace ()
+regressionTest3 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-  tok1MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 1
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      askTok2 = uncurry AssetConfig testToken2
-      askTok2Name = genBeaconName askTok2
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-
-      adaTok2Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok2Name
-          ""
-          ""
-          (fst testToken2)
-          (snd testToken2)
-          (unsafeRatio 1 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,1),(askTok2Name,1)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1,askTok2]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
-          , ( Just adaTok2Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok2Name 1
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,2)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-differentAssetConfigInRedeemer :: [DappScripts] -> EmulatorTrace ()
-differentAssetConfigInRedeemer ds = do
+-- | Create a multiple valid Swap UTxOs. All swaps are for the same trading pair. The offered asset 
+-- is ADA and the asked asset is a native token.
+regressionTest4 :: EmulatorTrace ()
+regressionTest4 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      askAsset = testToken1
+      offerAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-  tok1MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 1
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      askTok2 = uncurry AssetConfig testToken2
-      askTok2Name = genBeaconName askTok2
-
-      askTok3 = uncurry AssetConfig testToken3
-      askTok3Name = genBeaconName askTok3
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-
-      adaTok2Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok2Name
-          ""
-          ""
-          (fst testToken2)
-          (snd testToken2)
-          (unsafeRatio 1 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,1),(askTok2Name,1)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1,askTok3]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
-          , ( Just adaTok2Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok2Name 1
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,2)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 1_000_000
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 1_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-mintOtherTokenInAdditionToBeacon :: [DappScripts] -> EmulatorTrace ()
-mintOtherTokenInAdditionToBeacon ds = do
+-- | Create a multiple valid Swap UTxOs for the same offer asset but different asked assets. The
+-- offer asset is a native asset while one ask asset is a native asset and one ask asset is ADA.
+regressionTest5 :: EmulatorTrace ()
+regressionTest5 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset1 = (adaSymbol,adaToken)
+      askAsset2 = testToken2
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon1 = genBeaconName askAsset1
+      assetBeacon2 = genBeaconName askAsset2
+      swapDatum1 = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon1
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset1
+        , askName = snd askAsset1
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
+      swapDatum2 = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon2
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset2
+        , askName = snd askAsset2
+        , swapPrice = unsafeRatio 10 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,1),("other",1)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset1,askAsset2]
+              , mintTokens = [(assetBeacon1,1),(assetBeacon2,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum1
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon1 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum swapDatum2
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon2 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-beaconMintedToWrongAddress :: [DappScripts] -> EmulatorTrace ()
-beaconMintedToWrongAddress ds = do
+-- | Create a multiple valid Swap UTxOs for different offer assets and different asked assets. The
+-- offer assets are native assets while one ask asset is a native asset and one ask asset is ADA.
+regressionTest6 :: EmulatorTrace ()
+regressionTest6 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset1 = testToken1
+      offerAsset2 = testToken3
+      askAsset1 = (adaSymbol,adaToken)
+      askAsset2 = testToken2
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym1 = beaconCurrencySymbol offerAsset1
+      beaconSym2 = beaconCurrencySymbol offerAsset2
+      assetBeacon1 = genBeaconName askAsset1
+      assetBeacon2 = genBeaconName askAsset2
+      swapDatum1 = SwapDatum
+        { beaconId = beaconSym1
+        , beaconName = assetBeacon1
+        , offerId = fst offerAsset1
+        , offerName = snd offerAsset1
+        , askId = fst askAsset1
+        , askName = snd askAsset1
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
+      swapDatum2 = SwapDatum
+        { beaconId = beaconSym2
+        , beaconName = assetBeacon2
+        , offerId = fst offerAsset2
+        , offerName = snd offerAsset2
+        , askId = fst askAsset2
+        , askName = snd askAsset2
+        , swapPrice = unsafeRatio 10 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset1,offerAsset2]
 
-  let swapAddr = Address (ScriptCredential $ alwaysSucceedValidatorHash)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,1)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset1
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset1]
+              , mintTokens = [(assetBeacon1,1)]
+              }
+          , TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset2
+                  , Just (refScriptAddress, mintRefs!!1)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset2]
+              , mintTokens = [(assetBeacon2,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum1
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym1 assetBeacon1 1
+                    <> uncurry singleton offerAsset1 10
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum swapDatum2
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym2 assetBeacon2 1
+                    <> uncurry singleton offerAsset2 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-beaconMintedToNonStakingDappAddress :: [DappScripts] -> EmulatorTrace ()
-beaconMintedToNonStakingDappAddress ds = do
+-- | Create a multiple valid Swap UTxOs for different offer assets but the same asked asset. The
+-- offer assets are native assets while the ask asset is ADA.
+regressionTest7 :: EmulatorTrace ()
+regressionTest7 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset1 = testToken1
+      offerAsset2 = testToken3
+      askAsset1 = (adaSymbol,adaToken)
+      askAsset2 = askAsset1
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym1 = beaconCurrencySymbol offerAsset1
+      beaconSym2 = beaconCurrencySymbol offerAsset2
+      assetBeacon1 = genBeaconName askAsset1
+      assetBeacon2 = genBeaconName askAsset2
+      swapDatum1 = SwapDatum
+        { beaconId = beaconSym1
+        , beaconName = assetBeacon1
+        , offerId = fst offerAsset1
+        , offerName = snd offerAsset1
+        , askId = fst askAsset1
+        , askName = snd askAsset1
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
+      swapDatum2 = SwapDatum
+        { beaconId = beaconSym2
+        , beaconName = assetBeacon2
+        , offerId = fst offerAsset2
+        , offerName = snd offerAsset2
+        , askId = fst askAsset2
+        , askName = snd askAsset2
+        , swapPrice = unsafeRatio 10 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset1,offerAsset2]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         Nothing
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,1)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset1
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset1]
+              , mintTokens = [(assetBeacon1,1)]
+              }
+          , TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset2
+                  , Just (refScriptAddress, mintRefs!!1)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset2]
+              , mintTokens = [(assetBeacon2,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum1
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym1 assetBeacon1 1
+                    <> uncurry singleton offerAsset1 10
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum swapDatum2
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym2 assetBeacon2 1
+                    <> uncurry singleton offerAsset2 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-beaconsGroupedUp :: [DappScripts] -> EmulatorTrace ()
-beaconsGroupedUp ds = do
+-------------------------------------------------
+-- Failure Tests
+-------------------------------------------------
+-- | The redeemer asset list has a different asset than the one corresponding to the beacon minted.
+failureTest1 :: EmulatorTrace ()
+failureTest1 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,2)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 2
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [testToken5]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-extraBeaconWithdrawn :: [DappScripts] -> EmulatorTrace ()
-extraBeaconWithdrawn ds = do
+-- | The redeemer asset list is empty.
+failureTest2 :: EmulatorTrace ()
+failureTest2 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,2)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap []
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-beaconNotStoredWithOfferAsset :: [DappScripts] -> EmulatorTrace ()
-beaconNotStoredWithOfferAsset ds = do
+-- | Mint an addition beacon for an asset that is not in the redeemer's list.
+failureTest3 :: EmulatorTrace ()
+failureTest3 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  tok1MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 1
-
-  let askTok2 = uncurry AssetConfig testToken2
-      askTok2Name = genBeaconName askTok2
-
-      tok1Tok2Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 1) 
-          askTok2Name
-          (fst testToken1)
-          (snd testToken1)
-          (fst testToken2)
-          (snd testToken2)
-          (unsafeRatio 1 1)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok2Name,1)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok2]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just tok1Tok2Datum
-            , lovelaceValueOf 2_500_000 
-           <> singleton (beaconCurrencySymbol $ ds!!1) askTok2Name 1
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1),(genBeaconName testToken5,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = tail ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [tok1MintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-datumHasWrongBeaconId :: [DappScripts] -> EmulatorTrace ()
-datumHasWrongBeaconId ds = do
+-- | Withdraw the only minted beacon.
+failureTest4 :: EmulatorTrace ()
+failureTest4 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 1) 
-          askTok1Name
-          ""
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,1)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-datumHasWrongBeaconName :: [DappScripts] -> EmulatorTrace ()
-datumHasWrongBeaconName ds = do
+-- | When creating a single swap, mint an extra beacon and withdraw it.
+failureTest5 :: EmulatorTrace ()
+failureTest5 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          "askTok1Name"
-          ""
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,1)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,2)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-datumHasWrongOfferId :: [DappScripts] -> EmulatorTrace ()
-datumHasWrongOfferId ds = do
+-- | The Swap UTxO is stored at a non-dApp address.
+failureTest6 :: EmulatorTrace ()
+failureTest6 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential alwaysSucceedValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          (fst testToken1)
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,1)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-datumHasWrongOfferName :: [DappScripts] -> EmulatorTrace ()
-datumHasWrongOfferName ds = do
+-- | The Swap UTxO is stored at a dApp address without staking.
+failureTest7 :: EmulatorTrace ()
+failureTest7 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) Nothing
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          "other"
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,1)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-datumHasWrongAskId :: [DappScripts] -> EmulatorTrace ()
-datumHasWrongAskId ds = do
+-- | Mint an extra beacon and store it in the Swap UTxO.
+failureTest8 :: EmulatorTrace ()
+failureTest8 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          ""
-          ""
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,1)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,2)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 2
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-datumHasWrongAskName :: [DappScripts] -> EmulatorTrace ()
-datumHasWrongAskName ds = do
+-- | `SwapDatum` has the wrong policy id.
+failureTest9 :: EmulatorTrace ()
+failureTest9 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = adaSymbol
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          ""
-          (fst testToken1)
-          ""
-          (unsafeRatio 10 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,1)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-datumHasZeroPrice :: [DappScripts] -> EmulatorTrace ()
-datumHasZeroPrice ds = do
+-- | `SwapDatum` has the wrong beacon name.
+failureTest10 :: EmulatorTrace ()
+failureTest10 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = adaToken
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 0 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,1)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-datumHasNegativePrice :: [DappScripts] -> EmulatorTrace ()
-datumHasNegativePrice ds = do
+-- | `SwapDatum` has the wrong offer asset policy id.
+failureTest11 :: EmulatorTrace ()
+failureTest11 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst askAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio (-10) 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,1)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-datumNotInline :: [DappScripts] -> EmulatorTrace ()
-datumNotInline ds = do
+-- | `SwapDatum` has the wrong offer asset name.
+failureTest12 :: EmulatorTrace ()
+failureTest12 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd askAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,1)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = False
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-mixUpBeaconsWhenCreatingSwapsForDifferentPairs :: [DappScripts] -> EmulatorTrace ()
-mixUpBeaconsWhenCreatingSwapsForDifferentPairs ds = do
+-- | `SwapDatum` has the wrong ask asset policy id.
+failureTest13 :: EmulatorTrace ()
+failureTest13 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst offerAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-  tok1MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 1
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      askTok2 = uncurry AssetConfig testToken2
-      askTok2Name = genBeaconName askTok2
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-
-      adaTok2Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok2Name
-          ""
-          ""
-          (fst testToken2)
-          (snd testToken2)
-          (unsafeRatio 1 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,1),(askTok2Name,1)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1,askTok2]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok2Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
-          , ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok2Name 1
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-storeExtraneousAssetInSwap :: [DappScripts] -> EmulatorTrace ()
-storeExtraneousAssetInSwap ds = do
+-- | `SwapDatum` has the wrong ask asset name.
+failureTest14 :: EmulatorTrace ()
+failureTest14 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd offerAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,1)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-           <> uncurry singleton testToken1 10
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-maxCreationForSinglePair :: [DappScripts] -> EmulatorTrace ()
-maxCreationForSinglePair ds = do
+-- | `SwapDatum` has a zero price.
+failureTest15 :: EmulatorTrace ()
+failureTest15 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 0 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok1Name,59)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok1]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          replicate 59
-            ( Just adaTok1Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-maxCreationForMultiplePairs :: [DappScripts] -> EmulatorTrace ()
-maxCreationForMultiplePairs ds = do
+-- | `SwapDatum` has a negative price.
+failureTest16 :: EmulatorTrace ()
+failureTest16 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
-
-  initializeRefScripts ds refAddr
-
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      askTok2 = uncurry AssetConfig testToken2
-      askTok2Name = genBeaconName askTok2
-
-      askTok3 = uncurry AssetConfig testToken3
-      askTok3Name = genBeaconName askTok3
-
-      askTok4 = uncurry AssetConfig testToken4
-      askTok4Name = genBeaconName askTok4
-
-      askTok5 = uncurry AssetConfig testToken5
-      askTok5Name = genBeaconName askTok5
-
-      askTok6 = uncurry AssetConfig testToken6
-      askTok6Name = genBeaconName askTok6
-
-      askTok7 = uncurry AssetConfig testToken7
-      askTok7Name = genBeaconName askTok7
-
-      askTok8 = uncurry AssetConfig testToken8
-      askTok8Name = genBeaconName askTok8
-
-      askTok9 = uncurry AssetConfig testToken9
-      askTok9Name = genBeaconName askTok9
-
-      askTok10 = uncurry AssetConfig testToken10
-      askTok10Name = genBeaconName askTok10
-
-      askTok11 = uncurry AssetConfig testToken11
-      askTok11Name = genBeaconName askTok11
-
-      askTok12 = uncurry AssetConfig testToken12
-      askTok12Name = genBeaconName askTok12
-
-      askTok13 = uncurry AssetConfig testToken13
-      askTok13Name = genBeaconName askTok13
-
-      askTok14 = uncurry AssetConfig testToken14
-      askTok14Name = genBeaconName askTok14
-
-      askTok15 = uncurry AssetConfig testToken15
-      askTok15Name = genBeaconName askTok15
-
-      askTok16 = uncurry AssetConfig testToken16
-      askTok16Name = genBeaconName askTok16
-
-      askTok17 = uncurry AssetConfig testToken17
-      askTok17Name = genBeaconName askTok17
-
-      askTok18 = uncurry AssetConfig testToken18
-      askTok18Name = genBeaconName askTok18
-
-      askTok19 = uncurry AssetConfig testToken19
-      askTok19Name = genBeaconName askTok19
-
-      askTok20 = uncurry AssetConfig testToken20
-      askTok20Name = genBeaconName askTok20
-
-      askTok21 = uncurry AssetConfig testToken21
-      askTok21Name = genBeaconName askTok21
-
-      askTok22 = uncurry AssetConfig testToken22
-      askTok22Name = genBeaconName askTok22
-
-      askTok23 = uncurry AssetConfig testToken23
-      askTok23Name = genBeaconName askTok23
-
-      askTok24 = uncurry AssetConfig testToken24
-      askTok24Name = genBeaconName askTok24
-
-      askTok25 = uncurry AssetConfig testToken25
-      askTok25Name = genBeaconName askTok25
-
-      askTok26 = uncurry AssetConfig testToken26
-      askTok26Name = genBeaconName askTok26
-
-      askTok27 = uncurry AssetConfig testToken27
-      askTok27Name = genBeaconName askTok27
-
-      askTok28 = uncurry AssetConfig testToken28
-      askTok28Name = genBeaconName askTok28
-
-      askTok29 = uncurry AssetConfig testToken29
-      askTok29Name = genBeaconName askTok29
-
-      askTok30 = uncurry AssetConfig testToken30
-      askTok30Name = genBeaconName askTok30
-
-      askTok31 = uncurry AssetConfig testToken31
-      askTok31Name = genBeaconName askTok31
-
-      askTok32 = uncurry AssetConfig testToken32
-      askTok32Name = genBeaconName askTok32
-
-      askTok33 = uncurry AssetConfig testToken33
-      askTok33Name = genBeaconName askTok33
-
-      askTok34 = uncurry AssetConfig testToken34
-      askTok34Name = genBeaconName askTok34
-
-      askTok35 = uncurry AssetConfig testToken35
-      askTok35Name = genBeaconName askTok35
-
-      askTok36 = uncurry AssetConfig testToken36
-      askTok36Name = genBeaconName askTok36
-
-      askTok37 = uncurry AssetConfig testToken37
-      askTok37Name = genBeaconName askTok37
-
-      askTok38 = uncurry AssetConfig testToken38
-      askTok38Name = genBeaconName askTok38
-
-      askTok39 = uncurry AssetConfig testToken39
-      askTok39Name = genBeaconName askTok39
-
-      askTok40 = uncurry AssetConfig testToken40
-      askTok40Name = genBeaconName askTok40
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-
-      adaTok2Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok2Name
-          ""
-          ""
-          (fst testToken2)
-          (snd testToken2)
-          (unsafeRatio 1 1)
-
-      adaTok3Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok3Name
-          ""
-          ""
-          (fst testToken3)
-          (snd testToken3)
-          (unsafeRatio 1 1)
-
-      adaTok4Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok4Name
-          ""
-          ""
-          (fst testToken4)
-          (snd testToken4)
-          (unsafeRatio 1 1)
-      
-      adaTok5Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok5Name
-          ""
-          ""
-          (fst testToken5)
-          (snd testToken5)
-          (unsafeRatio 1 1)
-
-      adaTok6Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok6Name
-          ""
-          ""
-          (fst testToken6)
-          (snd testToken6)
-          (unsafeRatio 1 1)
-
-      adaTok7Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok7Name
-          ""
-          ""
-          (fst testToken7)
-          (snd testToken7)
-          (unsafeRatio 1 1)
-        
-      adaTok8Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok8Name
-          ""
-          ""
-          (fst testToken8)
-          (snd testToken8)
-          (unsafeRatio 1 1)
-      
-      adaTok9Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok9Name
-          ""
-          ""
-          (fst testToken9)
-          (snd testToken9)
-          (unsafeRatio 1 1)
-
-      adaTok10Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok10Name
-          ""
-          ""
-          (fst testToken10)
-          (snd testToken10)
-          (unsafeRatio 1 1)
-      
-      adaTok11Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok11Name
-          ""
-          ""
-          (fst testToken11)
-          (snd testToken11)
-          (unsafeRatio 1 1)
-
-      adaTok12Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok12Name
-          ""
-          ""
-          (fst testToken12)
-          (snd testToken12)
-          (unsafeRatio 1 1)
-
-      adaTok13Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok13Name
-          ""
-          ""
-          (fst testToken13)
-          (snd testToken13)
-          (unsafeRatio 1 1)
-
-      adaTok14Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok14Name
-          ""
-          ""
-          (fst testToken14)
-          (snd testToken14)
-          (unsafeRatio 1 1)
-
-      adaTok15Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok15Name
-          ""
-          ""
-          (fst testToken15)
-          (snd testToken15)
-          (unsafeRatio 1 1)
-
-      adaTok16Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok16Name
-          ""
-          ""
-          (fst testToken16)
-          (snd testToken16)
-          (unsafeRatio 1 1)
-
-      adaTok17Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok17Name
-          ""
-          ""
-          (fst testToken17)
-          (snd testToken17)
-          (unsafeRatio 1 1)
-      
-      adaTok18Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok18Name
-          ""
-          ""
-          (fst testToken18)
-          (snd testToken18)
-          (unsafeRatio 1 1)
-
-      adaTok19Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok19Name
-          ""
-          ""
-          (fst testToken19)
-          (snd testToken19)
-          (unsafeRatio 1 1)
-
-      adaTok20Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok20Name
-          ""
-          ""
-          (fst testToken20)
-          (snd testToken20)
-          (unsafeRatio 1 1)
-
-      adaTok21Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok21Name
-          ""
-          ""
-          (fst testToken21)
-          (snd testToken21)
-          (unsafeRatio 10 1_000_000)
-
-      adaTok22Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok22Name
-          ""
-          ""
-          (fst testToken22)
-          (snd testToken22)
-          (unsafeRatio 1 1)
-
-      adaTok23Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok23Name
-          ""
-          ""
-          (fst testToken23)
-          (snd testToken23)
-          (unsafeRatio 1 1)
-
-      adaTok24Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok24Name
-          ""
-          ""
-          (fst testToken24)
-          (snd testToken24)
-          (unsafeRatio 1 1)
-      
-      adaTok25Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok25Name
-          ""
-          ""
-          (fst testToken25)
-          (snd testToken25)
-          (unsafeRatio 1 1)
-
-      adaTok26Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok26Name
-          ""
-          ""
-          (fst testToken26)
-          (snd testToken26)
-          (unsafeRatio 1 1)
-
-      adaTok27Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok27Name
-          ""
-          ""
-          (fst testToken27)
-          (snd testToken27)
-          (unsafeRatio 1 1)
-        
-      adaTok28Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok28Name
-          ""
-          ""
-          (fst testToken28)
-          (snd testToken28)
-          (unsafeRatio 1 1)
-      
-      adaTok29Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok29Name
-          ""
-          ""
-          (fst testToken29)
-          (snd testToken29)
-          (unsafeRatio 1 1)
-
-      adaTok30Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok30Name
-          ""
-          ""
-          (fst testToken30)
-          (snd testToken30)
-          (unsafeRatio 1 1)
-      
-      adaTok31Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok31Name
-          ""
-          ""
-          (fst testToken31)
-          (snd testToken31)
-          (unsafeRatio 1 1)
-
-      adaTok32Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok32Name
-          ""
-          ""
-          (fst testToken32)
-          (snd testToken32)
-          (unsafeRatio 1 1)
-
-      adaTok33Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok33Name
-          ""
-          ""
-          (fst testToken33)
-          (snd testToken33)
-          (unsafeRatio 1 1)
-
-      adaTok34Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok34Name
-          ""
-          ""
-          (fst testToken34)
-          (snd testToken34)
-          (unsafeRatio 1 1)
-
-      adaTok35Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok35Name
-          ""
-          ""
-          (fst testToken35)
-          (snd testToken35)
-          (unsafeRatio 1 1)
-
-      adaTok36Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok36Name
-          ""
-          ""
-          (fst testToken36)
-          (snd testToken36)
-          (unsafeRatio 1 1)
-
-      adaTok37Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok37Name
-          ""
-          ""
-          (fst testToken37)
-          (snd testToken37)
-          (unsafeRatio 1 1)
-      
-      adaTok38Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok38Name
-          ""
-          ""
-          (fst testToken38)
-          (snd testToken38)
-          (unsafeRatio 1 1)
-
-      adaTok39Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok39Name
-          ""
-          ""
-          (fst testToken39)
-          (snd testToken39)
-          (unsafeRatio 1 1)
-
-      adaTok40Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok40Name
-          ""
-          ""
-          (fst testToken40)
-          (snd testToken40)
-          (unsafeRatio 1 1)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = 
-          [
-            [ (askTok1Name,1)
-            , (askTok2Name,1)
-            , (askTok3Name,1)
-            , (askTok4Name,1)
-            , (askTok5Name,1)
-            , (askTok6Name,1)
-            , (askTok7Name,1)
-            , (askTok8Name,1)
-            , (askTok9Name,1)
-            , (askTok10Name,1)
-            , (askTok11Name,1)
-            , (askTok12Name,1)
-            , (askTok13Name,1)
-            , (askTok14Name,1)
-            , (askTok15Name,1)
-            , (askTok16Name,1)
-            , (askTok17Name,1)
-            , (askTok18Name,1)
-            , (askTok19Name,1)
-            , (askTok20Name,1)
-            , (askTok21Name,1)
-            , (askTok22Name,1)
-            , (askTok23Name,1)
-            , (askTok24Name,1)
-            , (askTok25Name,1)
-            , (askTok26Name,1)
-            , (askTok27Name,1)
-            , (askTok28Name,1)
-            , (askTok29Name,1)
-            , (askTok30Name,1)
-            -- , (askTok31Name,1)
-            -- , (askTok32Name,1)
-            -- , (askTok33Name,1)
-            -- , (askTok34Name,1)
-            -- , (askTok35Name,1)
-            -- , (askTok36Name,1)
-            -- , (askTok37Name,1)
-            -- , (askTok38Name,1)
-            -- , (askTok39Name,1)
-            -- , (askTok40Name,1)
-            ]
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio (-1) 1
+        }
+
+  mintRefs <- initializeBeaconPolicies [offerAsset]
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapBeaconRedeemers = 
-          [ MintBeacons 
-              [ askTok1
-              , askTok2
-              , askTok3
-              , askTok4
-              , askTok5
-              , askTok6
-              , askTok7
-              , askTok8
-              , askTok9
-              , askTok10
-              , askTok11
-              , askTok12
-              , askTok13
-              , askTok14
-              , askTok15
-              , askTok16
-              , askTok17
-              , askTok18
-              , askTok19
-              , askTok20
-              , askTok21
-              , askTok22
-              , askTok23
-              , askTok24
-              , askTok25
-              , askTok26
-              , askTok27
-              , askTok28
-              , askTok29
-              , askTok30
-              -- , askTok31
-              -- , askTok32
-              -- , askTok33
-              -- , askTok34
-              -- , askTok35
-              -- , askTok36
-              -- , askTok37
-              -- , askTok38
-              -- , askTok39
-              -- , askTok40
-              ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
           ]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
-          , ( Just adaTok2Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok2Name 1
-            )
-          , ( Just adaTok3Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok3Name 1
-            )
-          , ( Just adaTok4Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok4Name 1
-            )
-          , ( Just adaTok5Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok5Name 1
-            )
-          , ( Just adaTok6Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok6Name 1
-            )
-          , ( Just adaTok7Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok7Name 1
-            )
-          , ( Just adaTok8Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok8Name 1
-            )
-          , ( Just adaTok9Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok9Name 1
-            )
-          , ( Just adaTok10Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok10Name 1
-            )
-          , ( Just adaTok11Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok11Name 1
-            )
-          , ( Just adaTok12Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok12Name 1
-            )
-          , ( Just adaTok13Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok13Name 1
-            )
-          , ( Just adaTok14Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok14Name 1
-            )
-          , ( Just adaTok15Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok15Name 1
-            )
-          , ( Just adaTok16Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok16Name 1
-            )
-          , ( Just adaTok17Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok17Name 1
-            )
-          , ( Just adaTok18Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok18Name 1
-            )
-          , ( Just adaTok19Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok19Name 1
-            )
-          , ( Just adaTok20Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok20Name 1
-            )
-          , ( Just adaTok21Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok21Name 1
-            )
-          , ( Just adaTok22Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok22Name 1
-            )
-          , ( Just adaTok23Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok23Name 1
-            )
-          , ( Just adaTok24Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok24Name 1
-            )
-          , ( Just adaTok25Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok25Name 1
-            )
-          , ( Just adaTok26Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok26Name 1
-            )
-          , ( Just adaTok27Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok27Name 1
-            )
-          , ( Just adaTok28Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok28Name 1
-            )
-          , ( Just adaTok29Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok29Name 1
-            )
-          , ( Just adaTok30Datum
-            , lovelaceValueOf 5_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok30Name 1
-            )
-          -- , ( Just adaTok31Datum
-          --   , lovelaceValueOf 5_000_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!0) askTok31Name 1
-          --   )
-          -- , ( Just adaTok32Datum
-          --   , lovelaceValueOf 5_000_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!0) askTok32Name 1
-          --   )
-          -- , ( Just adaTok33Datum
-          --   , lovelaceValueOf 5_000_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!0) askTok33Name 1
-          --   )
-          -- , ( Just adaTok34Datum
-          --   , lovelaceValueOf 5_000_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!0) askTok34Name 1
-          --   )
-          -- , ( Just adaTok35Datum
-          --   , lovelaceValueOf 5_000_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!0) askTok35Name 1
-          --   )
-          -- , ( Just adaTok36Datum
-          --   , lovelaceValueOf 5_000_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!0) askTok36Name 1
-          --   )
-          -- , ( Just adaTok37Datum
-          --   , lovelaceValueOf 5_000_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!0) askTok37Name 1
-          --   )
-          -- , ( Just adaTok38Datum
-          --   , lovelaceValueOf 5_000_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!0) askTok38Name 1
-          --   )
-          -- , ( Just adaTok39Datum
-          --   , lovelaceValueOf 5_000_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!0) askTok39Name 1
-          --   )
-          -- , ( Just adaTok40Datum
-          --   , lovelaceValueOf 5_000_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!0) askTok40Name 1
-          --   )
-          ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef]
-      , createSwapRefAddress = refAddr
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-successfullyCreateSwapsOfDifferentOffers :: [DappScripts] -> EmulatorTrace ()
-successfullyCreateSwapsOfDifferentOffers ds = do
+-- | Swap UTxO is not stored with some of the offered asset.
+failureTest17 :: EmulatorTrace ()
+failureTest17 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-  tok1MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 1
-
-  let askTok2 = uncurry AssetConfig testToken2
-      askTok2Name = genBeaconName askTok2
-
-      adaTok2Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok2Name
-          ""
-          ""
-          (fst testToken2)
-          (snd testToken2)
-          (unsafeRatio 10 1_000_000)
-      
-      tok1Tok2Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 1) 
-          askTok2Name
-          (fst testToken1)
-          (snd testToken1)
-          (fst testToken2)
-          (snd testToken2)
-          (unsafeRatio 1 1)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = [[(askTok2Name,1)],[(askTok2Name,1)]]
-      , createSwapBeaconRedeemers = [MintBeacons [askTok2], MintBeacons [askTok2]]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok2Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok2Name 1
-            )
-          , ( Just tok1Tok2Datum
-            , lovelaceValueOf 2_500_000 
-           <> singleton (beaconCurrencySymbol $ ds!!1) askTok2Name 1
-           <> uncurry singleton testToken1 10
-            )
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = [adaMintRef,tok1MintRef]
-      , createSwapRefAddress = refAddr
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
       }
 
-maxCreateSwapsOfDifferentOffers :: [DappScripts] -> EmulatorTrace ()
-maxCreateSwapsOfDifferentOffers ds = do
+-- | Extra assets are stored in the Swap UTxO.
+failureTest18 :: EmulatorTrace ()
+failureTest18 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
-  let refAddr = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
 
-  initializeRefScripts ds refAddr
+  mintRefs <- initializeBeaconPolicies [offerAsset]
 
-  let swapAddr = Address (ScriptCredential $ spendingValidatorHash $ ds!!0)
-                         (Just $ StakingHash
-                               $ PubKeyCredential
-                               $ unPaymentPubKeyHash
-                               $ mockWalletPaymentPubKeyHash
-                               $ knownWallet 1
-                         )
-
-  adaMintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 0
-  tok1MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 1
-  tok2MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 2
-  tok3MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 3
-  tok4MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 4
-  tok5MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 5
-  tok6MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 6
-  tok7MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 7
-  tok8MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 8
-  tok9MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 9
-  tok10MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 10
-  tok11MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 11
-  tok12MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 12
-  tok13MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 13
-  tok14MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 14
-  tok15MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 15
-  tok16MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 16
-  tok17MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 17
-  tok18MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 18
-  tok19MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 19
-  tok20MintRef <- txOutRefWithValue $ lovelaceValueOf $ minUTxOMintRef + 20
-
-  let askTok1 = uncurry AssetConfig testToken1
-      askTok1Name = genBeaconName askTok1
-
-      askTok2 = uncurry AssetConfig testToken2
-      askTok2Name = genBeaconName askTok2
-
-      askTok3 = uncurry AssetConfig testToken3
-      askTok3Name = genBeaconName askTok3
-
-      askTok4 = uncurry AssetConfig testToken4
-      askTok4Name = genBeaconName askTok4
-
-      askTok5 = uncurry AssetConfig testToken5
-      askTok5Name = genBeaconName askTok5
-
-      askTok6 = uncurry AssetConfig testToken6
-      askTok6Name = genBeaconName askTok6
-
-      askTok7 = uncurry AssetConfig testToken7
-      askTok7Name = genBeaconName askTok7
-
-      askTok8 = uncurry AssetConfig testToken8
-      askTok8Name = genBeaconName askTok8
-
-      askTok9 = uncurry AssetConfig testToken9
-      askTok9Name = genBeaconName askTok9
-
-      askTok10 = uncurry AssetConfig testToken10
-      askTok10Name = genBeaconName askTok10
-
-      askTok11 = uncurry AssetConfig testToken11
-      askTok11Name = genBeaconName askTok11
-
-      askTok12 = uncurry AssetConfig testToken12
-      askTok12Name = genBeaconName askTok12
-
-      askTok13 = uncurry AssetConfig testToken13
-      askTok13Name = genBeaconName askTok13
-
-      askTok14 = uncurry AssetConfig testToken14
-      askTok14Name = genBeaconName askTok14
-
-      askTok15 = uncurry AssetConfig testToken15
-      askTok15Name = genBeaconName askTok15
-
-      askTok16 = uncurry AssetConfig testToken16
-      askTok16Name = genBeaconName askTok16
-
-      askTok17 = uncurry AssetConfig testToken17
-      askTok17Name = genBeaconName askTok17
-
-      askTok18 = uncurry AssetConfig testToken18
-      askTok18Name = genBeaconName askTok18
-
-      askTok19 = uncurry AssetConfig testToken19
-      askTok19Name = genBeaconName askTok19
-
-      askTok20 = uncurry AssetConfig testToken20
-      askTok20Name = genBeaconName askTok20
-
-      adaTok1Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 0) 
-          askTok1Name
-          ""
-          ""
-          (fst testToken1)
-          (snd testToken1)
-          (unsafeRatio 10 1_000_000)
-      
-      tok1Tok2Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 1) 
-          askTok2Name
-          (fst testToken1)
-          (snd testToken1)
-          (fst testToken2)
-          (snd testToken2)
-          (unsafeRatio 1 1)
-
-      tok2Tok3Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 2) 
-          askTok3Name
-          (fst testToken2)
-          (snd testToken2)
-          (fst testToken3)
-          (snd testToken3)
-          (unsafeRatio 1 1)
-
-      tok3Tok4Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 3) 
-          askTok4Name
-          (fst testToken3)
-          (snd testToken3)
-          (fst testToken4)
-          (snd testToken4)
-          (unsafeRatio 1 1)
-      
-      tok4Tok5Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 4) 
-          askTok5Name
-          (fst testToken4)
-          (snd testToken4)
-          (fst testToken5)
-          (snd testToken5)
-          (unsafeRatio 1 1)
-
-      tok5Tok6Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 5) 
-          askTok6Name
-          (fst testToken5)
-          (snd testToken5)
-          (fst testToken6)
-          (snd testToken6)
-          (unsafeRatio 1 1)
-
-      tok6Tok7Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 6) 
-          askTok7Name
-          (fst testToken6)
-          (snd testToken6)
-          (fst testToken7)
-          (snd testToken7)
-          (unsafeRatio 1 1)
-        
-      tok7Tok8Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 7) 
-          askTok8Name
-          (fst testToken7)
-          (snd testToken7)
-          (fst testToken8)
-          (snd testToken8)
-          (unsafeRatio 1 1)
-      
-      tok8Tok9Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 8) 
-          askTok9Name
-          (fst testToken8)
-          (snd testToken8)
-          (fst testToken9)
-          (snd testToken9)
-          (unsafeRatio 1 1)
-
-      tok9Tok10Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 9) 
-          askTok10Name
-          (fst testToken9)
-          (snd testToken9)
-          (fst testToken10)
-          (snd testToken10)
-          (unsafeRatio 1 1)
-      
-      tok10Tok11Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 10) 
-          askTok11Name
-          (fst testToken10)
-          (snd testToken10)
-          (fst testToken11)
-          (snd testToken11)
-          (unsafeRatio 1 1)
-
-      tok11Tok12Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 11) 
-          askTok12Name
-          (fst testToken11)
-          (snd testToken11)
-          (fst testToken12)
-          (snd testToken12)
-          (unsafeRatio 1 1)
-
-      tok12Tok13Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 12) 
-          askTok13Name
-          (fst testToken12)
-          (snd testToken12)
-          (fst testToken13)
-          (snd testToken13)
-          (unsafeRatio 1 1)
-
-      tok13Tok14Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 13) 
-          askTok14Name
-          (fst testToken13)
-          (snd testToken13)
-          (fst testToken14)
-          (snd testToken14)
-          (unsafeRatio 1 1)
-      
-      tok14Tok15Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 14) 
-          askTok15Name
-          (fst testToken14)
-          (snd testToken14)
-          (fst testToken15)
-          (snd testToken15)
-          (unsafeRatio 1 1)
-
-      tok15Tok16Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 15) 
-          askTok16Name
-          (fst testToken15)
-          (snd testToken15)
-          (fst testToken16)
-          (snd testToken16)
-          (unsafeRatio 1 1)
-      
-      tok16Tok17Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 16) 
-          askTok17Name
-          (fst testToken16)
-          (snd testToken16)
-          (fst testToken17)
-          (snd testToken17)
-          (unsafeRatio 1 1)
-
-      tok17Tok18Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 17) 
-          askTok18Name
-          (fst testToken17)
-          (snd testToken17)
-          (fst testToken18)
-          (snd testToken18)
-          (unsafeRatio 1 1)
-
-      tok18Tok19Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 18) 
-          askTok19Name
-          (fst testToken18)
-          (snd testToken18)
-          (fst testToken19)
-          (snd testToken19)
-          (unsafeRatio 1 1)
-      
-      tok19Tok20Datum = 
-        SwapDatum 
-          (beaconCurrencySymbol $ ds !! 19) 
-          askTok20Name
-          (fst testToken19)
-          (snd testToken19)
-          (fst testToken20)
-          (snd testToken20)
-          (unsafeRatio 1 1)
-
-  callEndpoint @"create-swap" h1 $
-    CreateSwapParams
-      { createSwapBeaconsMinted = 
-          [ [(askTok1Name,1)]
-          , [(askTok2Name,1)]
-          , [(askTok3Name,1)]
-          , [(askTok4Name,1)]
-          , [(askTok5Name,1)]
-          -- , [(askTok6Name,1)]
-          -- , [(askTok7Name,1)]
-          -- , [(askTok8Name,1)]
-          -- , [(askTok9Name,1)]
-          -- , [(askTok10Name,1)]
-          -- , [(askTok11Name,1)]
-          -- , [(askTok12Name,1)]
-          -- , [(askTok13Name,1)]
-          -- , [(askTok14Name,1)]
-          -- , [(askTok15Name,1)]
-          -- , [(askTok16Name,1)]
-          -- , [(askTok17Name,1)]
-          -- , [(askTok18Name,1)]
-          -- , [(askTok19Name,1)]
-          -- , [(askTok20Name,1)]
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
           ]
-      , createSwapBeaconRedeemers = 
-          [ MintBeacons [askTok1]
-          , MintBeacons [askTok2]
-          , MintBeacons [askTok3]
-          , MintBeacons [askTok4]
-          , MintBeacons [askTok5]
-          -- , MintBeacons [askTok6]
-          -- , MintBeacons [askTok7]
-          -- , MintBeacons [askTok8]
-          -- , MintBeacons [askTok9]
-          -- , MintBeacons [askTok10]
-          -- , MintBeacons [askTok11]
-          -- , MintBeacons [askTok12]
-          -- , MintBeacons [askTok13]
-          -- , MintBeacons [askTok14]
-          -- , MintBeacons [askTok15]
-          -- , MintBeacons [askTok16]
-          -- , MintBeacons [askTok17]
-          -- , MintBeacons [askTok18]
-          -- , MintBeacons [askTok19]
-          -- , MintBeacons [askTok20]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    <> uncurry singleton testToken15 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
           ]
-      , createSwapAddress = swapAddr
-      , createSwapUTxOs =
-          [ ( Just adaTok1Datum
-            , lovelaceValueOf 20_000_000 
-           <> singleton (beaconCurrencySymbol $ ds!!0) askTok1Name 1
-            )
-          , ( Just tok1Tok2Datum
-            , lovelaceValueOf 2_500_000 
-           <> singleton (beaconCurrencySymbol $ ds!!1) askTok2Name 1
-           <> (uncurry singleton testToken1) 10
-            )
-          , ( Just tok2Tok3Datum
-            , lovelaceValueOf 2_500_000 
-           <> singleton (beaconCurrencySymbol $ ds!!2) askTok3Name 1
-           <> (uncurry singleton testToken2) 10
-            )
-          , ( Just tok3Tok4Datum
-            , lovelaceValueOf 2_500_000 
-           <> singleton (beaconCurrencySymbol $ ds!!3) askTok4Name 1
-           <> (uncurry singleton testToken3) 10
-            )
-          , ( Just tok4Tok5Datum
-            , lovelaceValueOf 2_500_000 
-           <> singleton (beaconCurrencySymbol $ ds!!4) askTok5Name 1
-           <> (uncurry singleton testToken4) 10
-            )
-          -- , ( Just tok5Tok6Datum
-          --   , lovelaceValueOf 2_500_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!5) askTok6Name 1
-          --  <> (uncurry singleton testToken5) 10
-          --   )
-          -- , ( Just tok6Tok7Datum
-          --   , lovelaceValueOf 2_500_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!6) askTok7Name 1
-          --  <> (uncurry singleton testToken6) 10
-          --   )
-          -- , ( Just tok7Tok8Datum
-          --   , lovelaceValueOf 2_500_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!7) askTok8Name 1
-          --  <> (uncurry singleton testToken7) 10
-          --   )
-          -- , ( Just tok8Tok9Datum
-          --   , lovelaceValueOf 2_500_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!8) askTok9Name 1
-          --  <> (uncurry singleton testToken8) 10
-          --   )
-          -- , ( Just tok9Tok10Datum
-          --   , lovelaceValueOf 2_500_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!9) askTok10Name 1
-          --  <> (uncurry singleton testToken9) 10
-          --   )
-          -- , ( Just tok10Tok11Datum
-          --   , lovelaceValueOf 2_500_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!10) askTok11Name 1
-          --  <> (uncurry singleton testToken10) 10
-          --   )
-          -- , ( Just tok11Tok12Datum
-          --   , lovelaceValueOf 2_500_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!11) askTok12Name 1
-          --  <> (uncurry singleton testToken11) 10
-          --   )
-          -- , ( Just tok12Tok13Datum
-          --   , lovelaceValueOf 2_500_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!12) askTok13Name 1
-          --  <> (uncurry singleton testToken12) 10
-          --   )
-          -- , ( Just tok13Tok14Datum
-          --   , lovelaceValueOf 2_500_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!13) askTok14Name 1
-          --  <> (uncurry singleton testToken13) 10
-          --   )
-          -- , ( Just tok14Tok15Datum
-          --   , lovelaceValueOf 2_500_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!14) askTok15Name 1
-          --  <> (uncurry singleton testToken14) 10
-          --   )
-          -- , ( Just tok15Tok16Datum
-          --   , lovelaceValueOf 2_500_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!15) askTok16Name 1
-          --  <> (uncurry singleton testToken15) 10
-          --   )
-          -- , ( Just tok16Tok17Datum
-          --   , lovelaceValueOf 2_500_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!16) askTok17Name 1
-          --  <> (uncurry singleton testToken16) 10
-          --   )
-          -- , ( Just tok17Tok18Datum
-          --   , lovelaceValueOf 2_500_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!17) askTok18Name 1
-          --  <> (uncurry singleton testToken17) 10
-          --   )
-          -- , ( Just tok18Tok19Datum
-          --   , lovelaceValueOf 2_500_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!18) askTok19Name 1
-          --  <> (uncurry singleton testToken18) 10
-          --   )
-          -- , ( Just tok19Tok20Datum
-          --   , lovelaceValueOf 2_500_000 
-          --  <> singleton (beaconCurrencySymbol $ ds!!19) askTok20Name 1
-          --  <> (uncurry singleton testToken19) 10
-          --   )
-          ]
-      , createSwapAsInline = True
-      , createSwapScripts = ds
-      , createSwapWithRefScripts = True
-      , createSwapRefScripts = 
-          [ adaMintRef
-          , tok1MintRef
-          , tok2MintRef
-          , tok3MintRef
-          , tok4MintRef
-          , tok5MintRef
-          -- , tok6MintRef
-          -- , tok7MintRef
-          -- , tok8MintRef
-          -- , tok9MintRef
-          -- , tok10MintRef
-          -- , tok11MintRef
-          -- , tok12MintRef
-          -- , tok13MintRef
-          -- , tok14MintRef
-          -- , tok15MintRef
-          -- , tok16MintRef
-          -- , tok17MintRef
-          -- , tok18MintRef
-          -- , tok19MintRef
-          -- , tok20MintRef
-          ]
-      , createSwapRefAddress = refAddr
+      , validityRange = ValidityInterval Nothing Nothing
       }
+
+-- | When creating multiple Swap UTxOs, the first swap output is invalid. This test and 
+-- `failureTest20` are to explicitly check that the order of swap outputs does not impact
+-- transaction validity.
+failureTest19 :: EmulatorTrace ()
+failureTest19 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
+
+  mintRefs <- initializeBeaconPolicies [offerAsset]
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,2)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | When creating multiple Swap UTxOs, the second swap output is invalid. This test and 
+-- `failureTest19` are to explicitly check that the order of swap outputs does not impact
+-- transaction validity.
+failureTest20 :: EmulatorTrace ()
+failureTest20 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
+
+  mintRefs <- initializeBeaconPolicies [offerAsset]
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,2)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | The swap price has a zero denominator.
+failureTest21 :: EmulatorTrace ()
+failureTest21 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = UnsafeDatum
+        { unsafeBeaconId = beaconSym
+        , unsafeBeaconName = assetBeacon
+        , unsafeOfferId = fst offerAsset
+        , unsafeOfferName = snd offerAsset
+        , unsafeAskId = fst askAsset
+        , unsafeAskName = snd askAsset
+        , unsafeSwapPrice = (10,0)
+        }
+
+  mintRefs <- initializeBeaconPolicies [offerAsset]
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | The swap price has a negative denominator.
+failureTest22 :: EmulatorTrace ()
+failureTest22 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = UnsafeDatum
+        { unsafeBeaconId = beaconSym
+        , unsafeBeaconName = assetBeacon
+        , unsafeOfferId = fst offerAsset
+        , unsafeOfferName = snd offerAsset
+        , unsafeAskId = fst askAsset
+        , unsafeAskName = snd askAsset
+        , unsafeSwapPrice = (10,-1)
+        }
+
+  mintRefs <- initializeBeaconPolicies [offerAsset]
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | `SwapDatum` is not an inline datum.
+failureTest23 :: EmulatorTrace ()
+failureTest23 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
+
+  mintRefs <- initializeBeaconPolicies [offerAsset]
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumHash $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | When creating multiple swaps for the same offer asset but different ask assets, the beacons
+-- are mixed up.
+failureTest24 :: EmulatorTrace ()
+failureTest24 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset1 = (adaSymbol,adaToken)
+      askAsset2 = testToken2
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon1 = genBeaconName askAsset1
+      assetBeacon2 = genBeaconName askAsset2
+      swapDatum1 = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon1
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset1
+        , askName = snd askAsset1
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
+      swapDatum2 = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon2
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset2
+        , askName = snd askAsset2
+        , swapPrice = unsafeRatio 10 1
+        }
+
+  mintRefs <- initializeBeaconPolicies [offerAsset]
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset1,askAsset2]
+              , mintTokens = [(assetBeacon1,1),(assetBeacon2,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum1
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon2 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum swapDatum2
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon1 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | When creating multiple swaps for different offer assets and different ask assets, the beacons
+-- are mixed up.
+failureTest25 :: EmulatorTrace ()
+failureTest25 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset1 = testToken1
+      offerAsset2 = testToken3
+      askAsset1 = (adaSymbol,adaToken)
+      askAsset2 = testToken2
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym1 = beaconCurrencySymbol offerAsset1
+      beaconSym2 = beaconCurrencySymbol offerAsset2
+      assetBeacon1 = genBeaconName askAsset1
+      assetBeacon2 = genBeaconName askAsset2
+      swapDatum1 = SwapDatum
+        { beaconId = beaconSym1
+        , beaconName = assetBeacon1
+        , offerId = fst offerAsset1
+        , offerName = snd offerAsset1
+        , askId = fst askAsset1
+        , askName = snd askAsset1
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
+      swapDatum2 = SwapDatum
+        { beaconId = beaconSym2
+        , beaconName = assetBeacon2
+        , offerId = fst offerAsset2
+        , offerName = snd offerAsset2
+        , askId = fst askAsset2
+        , askName = snd askAsset2
+        , swapPrice = unsafeRatio 10 1
+        }
+
+  mintRefs <- initializeBeaconPolicies [offerAsset1,offerAsset2]
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset1
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset1]
+              , mintTokens = [(assetBeacon1,1)]
+              }
+          , TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset2
+                  , Just (refScriptAddress, mintRefs!!1)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset2]
+              , mintTokens = [(assetBeacon2,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum1
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym2 assetBeacon2 1
+                    <> uncurry singleton offerAsset1 10
+                    )
+                  , ( Just $ TxOutDatumInline $ toDatum swapDatum2
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym1 assetBeacon1 1
+                    <> uncurry singleton offerAsset2 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | Mint beacons using the `BurnBeacons` redeemer.
+failureTest26 :: EmulatorTrace ()
+failureTest26 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
+
+  mintRefs <- initializeBeaconPolicies [offerAsset]
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer BurnBeacons
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-------------------------------------------------
+-- Benchmark Tests
+-------------------------------------------------
+-- | Create multiple Swap UTxOs for the same trading pair. The offered asset is a native asset.
+benchTest1 :: Int -> EmulatorTrace ()
+benchTest1 numberCreated = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
+
+  mintRefs <- initializeBeaconPolicies [offerAsset]
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon, fromIntegral numberCreated)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = replicate numberCreated
+                  ( Just $ TxOutDatumInline $ toDatum swapDatum
+                  , lovelaceValueOf 3_000_000 
+                  <> singleton beaconSym assetBeacon 1
+                  <> uncurry singleton offerAsset 10
+                  )
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | Create multiple Swap UTxOs for the same trading pair. The offered asset is ADA.
+benchTest2 :: Int -> EmulatorTrace ()
+benchTest2 numberCreated = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      askAsset = testToken1
+      offerAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
+
+  mintRefs <- initializeBeaconPolicies [offerAsset]
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon, fromIntegral numberCreated)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = replicate numberCreated
+                  ( Just $ TxOutDatumInline $ toDatum swapDatum
+                  , lovelaceValueOf 3_000_000 
+                  <> singleton beaconSym assetBeacon 1
+                  <> uncurry singleton offerAsset 10_000_000
+                  )
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | Create multiple Swap UTxOs for the same offer asset but different ask assets. The offer asset
+-- was a native token.
+benchTest3 :: Int -> EmulatorTrace ()
+benchTest3 numberCreated = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAssets = 
+        take numberCreated $
+          map (\i -> (fst $ testToken1, fromString $ "TestToken" <> show @Int i)) [2..100]
+      askBeacons = map genBeaconName askAssets
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = "" -- This will be replaced.
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = "" -- This will be replaced.
+        , askName = "" -- This will be replaced.
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
+
+  let sampleOutputs = take numberCreated $
+        zipWith 
+          (\a b ->
+            ( Just $ TxOutDatumInline
+                   $ toDatum swapDatum{askId = fst a, askName = snd a, beaconName = b}
+            , lovelaceValueOf 3_000_000
+            <> singleton beaconSym b 1
+            <> uncurry singleton offerAsset 10
+            )
+          )
+          askAssets
+          askBeacons
+
+  mintRefs <- initializeBeaconPolicies [offerAsset]
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap askAssets
+              , mintTokens = zip askBeacons $ repeat 1
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = sampleOutputs
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | Create multiple Swap UTxOs for the same offer asset but different ask assets. The offer asset
+-- was ADA.
+benchTest4 :: Int -> EmulatorTrace ()
+benchTest4 numberCreated = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = ("","")
+      askAssets = 
+        take numberCreated $
+          map (\i -> (fst $ testToken1, fromString $ "TestToken" <> show @Int i)) [2..100]
+      askBeacons = map genBeaconName askAssets
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = "" -- This will be replaced.
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = "" -- This will be replaced.
+        , askName = "" -- This will be replaced.
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
+
+  let sampleOutputs = take numberCreated $
+        zipWith 
+          (\a b ->
+            ( Just $ TxOutDatumInline
+                   $ toDatum swapDatum{askId = fst a, askName = snd a, beaconName = b}
+            , lovelaceValueOf 3_000_000
+            <> singleton beaconSym b 1
+            <> uncurry singleton offerAsset 1_000_000
+            )
+          )
+          askAssets
+          askBeacons
+
+  mintRefs <- initializeBeaconPolicies [offerAsset]
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap askAssets
+              , mintTokens = zip askBeacons $ repeat 1
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = sampleOutputs
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | Create multiple Swap UTxOs for different offer assets but the same ask asset. The ask asset 
+-- is ADA.
+benchTest5 :: Int -> EmulatorTrace ()
+benchTest5 numberCreated = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      askAsset = ("","")
+      offerAssets = 
+        take numberCreated $
+          map (\i -> (fst $ testToken1, fromString $ "TestToken" <> show @Int i)) [1..100]
+      askBeacon = genBeaconName askAsset
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSyms = map beaconCurrencySymbol offerAssets
+      swapDatum = SwapDatum
+        { beaconId = "" -- This will be replaced
+        , beaconName = askBeacon
+        , offerId = "" -- This will be replaced.
+        , offerName = "" -- This wil be replaced.
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
+
+  mintRefs <- initializeBeaconPolicies offerAssets
+
+  let sampleOutputs = take numberCreated $
+        zipWith 
+          (\a b ->
+            ( Just $ TxOutDatumInline
+                   $ toDatum swapDatum{offerId = fst a, offerName = snd a, beaconId = b}
+            , lovelaceValueOf 3_000_000
+            <> singleton b askBeacon 1
+            <> uncurry singleton a 10
+            )
+          )
+          offerAssets
+          beaconSyms
+
+  let sampleMints = take numberCreated $
+        zipWith
+          (\i o ->
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy o
+                  , Just (refScriptAddress, mintRefs!!i)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(askBeacon,1)]
+              }
+          )
+          [0..]
+          offerAssets
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = sampleMints
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = sampleOutputs
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | Create multiple Swap UTxOs for different offer assets but the same ask asset. The ask asset is
+-- a native token.
+benchTest6 :: Int -> EmulatorTrace ()
+benchTest6 numberCreated = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      askAsset = testToken25
+      offerAssets = 
+        take numberCreated $
+          map (\i -> (fst $ testToken1, fromString $ "TestToken" <> show @Int i)) [1..100]
+      askBeacon = genBeaconName askAsset
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSyms = map beaconCurrencySymbol offerAssets
+      swapDatum = SwapDatum
+        { beaconId = "" -- This will be replaced
+        , beaconName = askBeacon
+        , offerId = "" -- This will be replaced.
+        , offerName = "" -- This wil be replaced.
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
+
+  mintRefs <- initializeBeaconPolicies offerAssets
+
+  let sampleOutputs = take numberCreated $
+        zipWith 
+          (\a b ->
+            ( Just $ TxOutDatumInline
+                   $ toDatum swapDatum{offerId = fst a, offerName = snd a, beaconId = b}
+            , lovelaceValueOf 3_000_000
+            <> singleton b askBeacon 1
+            <> uncurry singleton a 10
+            )
+          )
+          offerAssets
+          beaconSyms
+
+  let sampleMints = take numberCreated $
+        zipWith
+          (\i o ->
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy o
+                  , Just (refScriptAddress, mintRefs!!i)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(askBeacon,1)]
+              }
+          )
+          [0..]
+          offerAssets
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = sampleMints
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = sampleOutputs
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | Create multiple Swap UTxOs for different offer assets and different ask assets.
+benchTest7 :: Int -> EmulatorTrace ()
+benchTest7 numberCreated = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      askAssets =
+        take numberCreated $
+          map (\i -> (fst $ testToken1, fromString $ "TestToken" <> show @Int i)) [21..40]
+      offerAssets = 
+        take numberCreated $
+          map (\i -> (fst $ testToken1, fromString $ "TestToken" <> show @Int i)) [1..20]
+      askBeacons = map genBeaconName askAssets
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSyms = map beaconCurrencySymbol offerAssets
+      swapDatum = SwapDatum
+        { beaconId = "" -- This will be replaced.
+        , beaconName = "" -- This will be replaced.
+        , offerId = "" -- This will be replaced.
+        , offerName = "" -- This wil be replaced.
+        , askId = "" -- This will be replaced.
+        , askName = "" -- This will be replaced.
+        , swapPrice = unsafeRatio 1_000_000 1
+        }
+
+  mintRefs <- initializeBeaconPolicies offerAssets
+
+  let sampleOutputs = take numberCreated $
+        map 
+          (\(ask,askBeacon,offer,beaconSym) ->
+            ( Just $ TxOutDatumInline
+                   $ toDatum swapDatum{ offerId = fst offer
+                                      , offerName = snd offer
+                                      , beaconId = beaconSym
+                                      , beaconName = askBeacon
+                                      , askId = fst ask
+                                      , askName = snd ask
+                                      }
+            , lovelaceValueOf 3_000_000
+            <> singleton beaconSym askBeacon 1
+            <> uncurry singleton offer 10
+            )
+          )
+          (zip4 askAssets askBeacons offerAssets beaconSyms)
+          
+
+  let sampleMints = take numberCreated $
+        map
+          (\(i,ask,askBeacon,offer) ->
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offer
+                  , Just (refScriptAddress, mintRefs!!i)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [ask]
+              , mintTokens = [(askBeacon,1)]
+              }
+          )
+          (zip4 [0..] askAssets askBeacons offerAssets)
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = sampleMints
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = sampleOutputs
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+benchTrace :: Int -> IO ()
+benchTrace = runEmulatorTraceIO' def emConfig . benchTest7
 
 -------------------------------------------------
 -- Test Function
 -------------------------------------------------
-tests :: [DappScripts] -> TestTree
-tests ds = do
+-- | A `TestTree` containing all `CreateSwap` scenarios.
+tests :: TestTree
+tests = do
   let opts = defaultCheckOptions & emulatorConfig .~ emConfig
   testGroup "Create Swap(s)"
-    [ checkPredicateOptions opts "Successfully create single swap"
-        assertNoFailedTransactions (successfullyCreateSingleSwap ds)
-    , checkPredicateOptions opts "Successfully create multiple swaps for the same trading pair"
-        assertNoFailedTransactions (successfullyCreateMultipleSwapsOfSamePair ds)
-    , checkPredicateOptions opts "Successfully create multiple swaps for different trading pairs"
-        assertNoFailedTransactions (successfullyCreateMultipleSwapsOfDifferentPairs ds)
-    , checkPredicateOptions opts "Fail if redeemer has different assets than beacons minted"
-        (Test.not assertNoFailedTransactions) (differentAssetConfigInRedeemer ds)
-    , checkPredicateOptions opts "Fail if other token minted in addition to beacon"
-        (Test.not assertNoFailedTransactions) (mintOtherTokenInAdditionToBeacon ds)
-    , checkPredicateOptions opts "Fail if beacon minted to non-dApp address"
-        (Test.not assertNoFailedTransactions) (beaconMintedToWrongAddress ds)
-    , checkPredicateOptions opts "Fail if beacon minted to a dApp address without staking"
-        (Test.not assertNoFailedTransactions) (beaconMintedToNonStakingDappAddress ds)
-    , checkPredicateOptions opts "Fail if beacons are not stored individually"
-        (Test.not assertNoFailedTransactions) (beaconsGroupedUp ds)
-    , checkPredicateOptions opts "Fail if extra minted beacon is withdrawn"
-        (Test.not assertNoFailedTransactions) (extraBeaconWithdrawn ds)
-    , checkPredicateOptions opts "Fail if beacon not stored with offer asset"
-        (Test.not assertNoFailedTransactions) (beaconNotStoredWithOfferAsset ds)
-    , checkPredicateOptions opts "Fail if SwapDatum has wrong beaconId"
-        (Test.not assertNoFailedTransactions) (datumHasWrongBeaconId ds)
-    , checkPredicateOptions opts "Fail if SwapDatum has wrong beaconName"
-        (Test.not assertNoFailedTransactions) (datumHasWrongBeaconName ds)
-    , checkPredicateOptions opts "Fail if SwapDatum has wrong offerId"
-        (Test.not assertNoFailedTransactions) (datumHasWrongOfferId ds)
-    , checkPredicateOptions opts "Fail if SwapDatum has wrong offerName"
-        (Test.not assertNoFailedTransactions) (datumHasWrongOfferName ds)
-    , checkPredicateOptions opts "Fail if SwapDatum has wrong askId"
-        (Test.not assertNoFailedTransactions) (datumHasWrongAskId ds)
-    , checkPredicateOptions opts "Fail if SwapDatum has wrong askName"
-        (Test.not assertNoFailedTransactions) (datumHasWrongAskName ds)
-    , checkPredicateOptions opts "Fail if SwapDatum has zero price"
-        (Test.not assertNoFailedTransactions) (datumHasZeroPrice ds)
-    , checkPredicateOptions opts "Fail if SwapDatum has negative price"
-        (Test.not assertNoFailedTransactions) (datumHasNegativePrice ds)
-    , checkPredicateOptions opts "Fail if SwapDatum is not inline"
-        (Test.not assertNoFailedTransactions) (datumNotInline ds)
-    , checkPredicateOptions opts "Fail if SwapDatums mixed up when creating swaps for different pairs"
-        (Test.not assertNoFailedTransactions) (mixUpBeaconsWhenCreatingSwapsForDifferentPairs ds)
-    , checkPredicateOptions opts "Fail if an extraneous asset is stored in the swap"
-        (Test.not assertNoFailedTransactions) (storeExtraneousAssetInSwap ds)
-    , checkPredicateOptions opts "Successfully create swaps of different offers"
-        assertNoFailedTransactions (successfullyCreateSwapsOfDifferentOffers ds)
+    [ -- Success Tests (Regression Tests)
+      checkPredicateOptions opts "regressionTest1"
+        assertNoFailedTransactions regressionTest1
+    , checkPredicateOptions opts "regressionTest2"
+        assertNoFailedTransactions regressionTest2
+    , checkPredicateOptions opts "regressionTest3"
+        assertNoFailedTransactions regressionTest3
+    , checkPredicateOptions opts "regressionTest4"
+        assertNoFailedTransactions regressionTest4
+    , checkPredicateOptions opts "regressionTest5"
+        assertNoFailedTransactions regressionTest5
+    , checkPredicateOptions opts "regressionTest6"
+        assertNoFailedTransactions regressionTest6
+    , checkPredicateOptions opts "regressionTest7"
+        assertNoFailedTransactions regressionTest7
+
+      -- Failure Tests
+    , checkPredicateOptions opts "failureTest1"
+        (assertEvaluationError "Only the beacons in the redeemer can be minted/burned") failureTest1
+    , checkPredicateOptions opts "failureTest2"
+        (assertEvaluationError "Only the beacons in the redeemer can be minted/burned") failureTest2
+    , checkPredicateOptions opts "failureTest3"
+        (assertEvaluationError "Only the beacons in the redeemer can be minted/burned") failureTest3
+      -- Since the error message uses app_name, it cannot be hardcoded.
+    , checkPredicateOptions opts "failureTest4"
+        (Test.not assertNoFailedTransactions) failureTest4
+      -- Since the error message uses app_name, it cannot be hardcoded.
+    , checkPredicateOptions opts "failureTest5"
+        (Test.not assertNoFailedTransactions) failureTest5
+      -- Since the error message uses app_name, it cannot be hardcoded.
+    , checkPredicateOptions opts "failureTest6"
+        (Test.not assertNoFailedTransactions) failureTest6
+      -- Since the error message uses app_name, it cannot be hardcoded.
+    , checkPredicateOptions opts "failureTest7"
+        (Test.not assertNoFailedTransactions) failureTest7
+    , checkPredicateOptions opts "failureTest8"
+        (assertEvaluationError "Beacons must be stored individually") failureTest8
+    , checkPredicateOptions opts "failureTest9"
+        (assertEvaluationError "Invalid SwapDatum beacon_id") failureTest9
+    , checkPredicateOptions opts "failureTest10"
+        (assertEvaluationError "Invalid SwapDatum beacon_name") failureTest10
+    , checkPredicateOptions opts "failureTest11"
+        (assertEvaluationError "Invalid SwapDatum offer_id") failureTest11
+    , checkPredicateOptions opts "failureTest12"
+        (assertEvaluationError "Invalid SwapDatum offer_name") failureTest12
+    , checkPredicateOptions opts "failureTest13"
+        (assertEvaluationError "Invalid SwapDatum ask_id") failureTest13
+    , checkPredicateOptions opts "failureTest14"
+        (assertEvaluationError "Invalid SwapDatum ask_name") failureTest14
+    , checkPredicateOptions opts "failureTest15"
+        (assertEvaluationError "Swap price not > 0") failureTest15
+    , checkPredicateOptions opts "failureTest16"
+        (assertEvaluationError "Swap price not > 0") failureTest16
+    , checkPredicateOptions opts "failureTest17"
+        (assertEvaluationError "Beacons must be stored with some of the offered asset") failureTest17
+    , checkPredicateOptions opts "failureTest18"
+        (assertEvaluationError "No extraneous assets can be stored in the swap UTxO") failureTest18
+    , checkPredicateOptions opts "failureTest19"
+        (assertEvaluationError "Beacons must be stored with some of the offered asset") failureTest19
+    , checkPredicateOptions opts "failureTest20"
+        (assertEvaluationError "Beacons must be stored with some of the offered asset") failureTest20
+    , checkPredicateOptions opts "failureTest21"
+        (assertEvaluationError "Swap price denominator not > 0") failureTest21
+    , checkPredicateOptions opts "failureTest22"
+        (assertEvaluationError "Swap price denominator not > 0") failureTest22
+    , checkPredicateOptions opts "failureTest23"
+        (assertEvaluationError "All swap datums must be inline datums") failureTest23
+    , checkPredicateOptions opts "failureTest24"
+        (assertEvaluationError "Invalid SwapDatum beacon_name") failureTest24
+    , checkPredicateOptions opts "failureTest25"
+        (assertEvaluationError "Beacons must be stored with some of the offered asset") failureTest25
+    , checkPredicateOptions opts "failureTest26"
+        (assertEvaluationError "This redeemer can only be used to burn") failureTest26
+
+      -- Benchmark tests
+    , checkPredicateOptions opts "benchTest1"
+        assertNoFailedTransactions $ benchTest1 49
+    , checkPredicateOptions opts "benchTest2"
+        assertNoFailedTransactions $ benchTest2 59
+    , checkPredicateOptions opts "benchTest3"
+        assertNoFailedTransactions $ benchTest3 28
+    , checkPredicateOptions opts "benchTest4"
+        assertNoFailedTransactions $ benchTest4 29
+    , checkPredicateOptions opts "benchTest5"
+        assertNoFailedTransactions $ benchTest5 15
+    , checkPredicateOptions opts "benchTest6"
+        assertNoFailedTransactions $ benchTest6 15
+    , checkPredicateOptions opts "benchTest7"
+        assertNoFailedTransactions $ benchTest7 15
+
+      -- Performance Increases tests
+    , checkPredicateOptions opts "perfIncreaseTest1"
+        (Test.not assertNoFailedTransactions) $ benchTest1 50
+    , checkPredicateOptions opts "perfIncreaseTest2"
+        (Test.not assertNoFailedTransactions) $ benchTest2 60
+    , checkPredicateOptions opts "perfIncreaseTest3"
+        (Test.not assertNoFailedTransactions) $ benchTest3 29
+    , checkPredicateOptions opts "perfIncreaseTest4"
+        (Test.not assertNoFailedTransactions) $ benchTest4 30
+    , checkPredicateOptions opts "perfIncreaseTest5"
+        (Test.not assertNoFailedTransactions) $ benchTest5 16
+    , checkPredicateOptions opts "perfIncreaseTest6"
+        (Test.not assertNoFailedTransactions) $ benchTest6 16
+    , checkPredicateOptions opts "perfIncreaseTest7"
+        (Test.not assertNoFailedTransactions) $ benchTest7 16
     ]
 
-testTrace :: [DappScripts] -> IO ()
-testTrace = runEmulatorTraceIO' def emConfig . maxCreateSwapsOfDifferentOffers
+testTrace :: IO ()
+testTrace = runEmulatorTraceIO' def emConfig regressionTest7

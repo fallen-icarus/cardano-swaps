@@ -7,7 +7,9 @@ license: Apache-2.0
 author: fallen-icarus
 maintainer: modern.daidalos+git@gmail.com
 copyright: 2022 fallen-icarus
-extra-source-files: CHANGELOG.md
+extra-source-files: 
+  CHANGELOG.md,
+  aiken/plutus.json
 
 common lang
   build-depends: base ^>=4.14
@@ -36,6 +38,7 @@ library
     , serialise
     , aeson
     , text
+    , file-embed
   hs-source-dirs: src
   ghc-options:
     -fobject-code 
@@ -55,7 +58,8 @@ test-suite cardano-swaps-tests
     -Wno-deprecations -Wno-unused-matches
     -Wno-unused-local-binds -Wno-unused-top-binds
   other-modules:
-      Test.Common
+      Test.Internal
+    , Test.Config
     , Test.CloseOrUpdate
     , Test.Swap
     , Test.CreateSwap

@@ -8,5 +8,5 @@ import CLI.Run
 main :: IO ()
 main = do
   let preferences = prefs $ showHelpOnError <> showHelpOnEmpty
-      opts = info (parseCommand <**> helper) (fullDesc <> progDesc "A p2p Cardano DEX")
+      opts = info (parseCommand <**> helper) (fullDesc <> progDesc "A fully p2p Cardano DEX")
   customExecParser preferences opts >>= runCommand

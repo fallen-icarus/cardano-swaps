@@ -124,7 +124,7 @@ pairBeaconAddressListApi :<|> offerBeaconAddressListApi :<|> addressUTxOsApi = c
 -- Koios Query Functions
 -------------------------------------------------
 queryAllSwapsByTradingPair :: CurrencySymbol -> TokenName -> AssetConfig -> ClientM [SwapUTxO]
-queryAllSwapsByTradingPair beaconSym beaconTokName AssetConfig{..} = do
+queryAllSwapsByTradingPair beaconSym beaconTokName (assetId,assetName) = do
   let beacon = (show beaconSym, drop 2 $ show beaconTokName)
       offer = (show assetId, drop 2 $ show assetName)
   addrs <- pairBeaconAddressListApi beaconSym beaconTokName "payment_address"

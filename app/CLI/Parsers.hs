@@ -95,7 +95,7 @@ parseCreateBeaconRedeemer = hsubparser $ mconcat
     ]
   where
     pMint :: Parser Command
-    pMint = CreateBeaconRedeemer <$> (MintBeacons <$> some pAskConfig) <*> pOutputFile
+    pMint = CreateBeaconRedeemer <$> (CreateSwap <$> some pAskConfig) <*> pOutputFile
 
     pBurn :: Parser Command
     pBurn = CreateBeaconRedeemer <$> pure BurnBeacons <*> pOutputFile
@@ -195,10 +195,10 @@ pOutputFile = strOption
   )
 
 pOfferConfig :: Parser AssetConfig
-pOfferConfig = pOfferLovelace <|> (AssetConfig <$> pOfferSymbol <*> pOfferName)
+pOfferConfig = pOfferLovelace <|> ((,) <$> pOfferSymbol <*> pOfferName)
   where
     pOfferLovelace :: Parser AssetConfig
-    pOfferLovelace = flag' (AssetConfig adaSymbol adaToken)
+    pOfferLovelace = flag' (adaSymbol,adaToken)
       (  long "offer-lovelace"
       <> help "The offered asset is lovelace."
       )
@@ -218,10 +218,10 @@ pOfferConfig = pOfferLovelace <|> (AssetConfig <$> pOfferSymbol <*> pOfferName)
       )
 
 pAskConfig :: Parser AssetConfig
-pAskConfig = pAskLovelace <|> (AssetConfig <$> pAskSymbol <*> pAskName)
+pAskConfig = pAskLovelace <|> ((,) <$> pAskSymbol <*> pAskName)
   where
     pAskLovelace :: Parser AssetConfig
-    pAskLovelace = flag' (AssetConfig adaSymbol adaToken)
+    pAskLovelace = flag' (adaSymbol,adaToken)
       (  long "ask-lovelace"
       <> help "The asked asset is lovelace."
       )

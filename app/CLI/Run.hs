@@ -8,18 +8,10 @@ module CLI.Run
 import Data.Aeson
 import Data.Aeson.Encode.Pretty
 import qualified Data.ByteString.Lazy as BL
-import Data.ByteString (ByteString)
-import Data.FileEmbed
 
 import CardanoSwaps
 import CLI.Types
 import CLI.Query
-
-blueprintsFile :: ByteString
-blueprintsFile = $(embedFile "aiken/plutus.json")
-
-blueprints :: Blueprints
-blueprints = parseBlueprints $ BL.fromStrict blueprintsFile
 
 runCommand :: Command -> IO ()
 runCommand cmd = case cmd of
@@ -33,8 +25,8 @@ runCommand cmd = case cmd of
 runExportScriptCmd :: Script -> FilePath -> IO ()
 runExportScriptCmd script file = do
   let script' = case script of
-        SwapScript -> genSwapScript blueprints
-        BeaconPolicy cfg -> genBeaconPolicy cfg blueprints
+        SwapScript -> swapScript
+        BeaconPolicy cfg -> beaconScript cfg
   res <- writeScript file script'
   case res of
     Right _ -> return ()
@@ -42,22 +34,22 @@ runExportScriptCmd script file = do
 
 runCreateDatum :: SwapDatumInfo -> FilePath -> IO ()
 runCreateDatum (SwapDatumInfo offerConfig askConfig swapPrice') file = do
-  let beaconSym = genBeaconCurrencySymbol offerConfig blueprints
+  let beaconSym = beaconCurrencySymbol offerConfig
   writeData file $ 
     SwapDatum 
       { beaconId = beaconSym
       , beaconName = genBeaconName askConfig
-      , offerId = assetId offerConfig
-      , offerName = assetName offerConfig
-      , askId = assetId askConfig
-      , askName = assetName askConfig
+      , offerId = fst offerConfig
+      , offerName = snd offerConfig
+      , askId = fst askConfig
+      , askName = snd askConfig
       , swapPrice = swapPrice'
       }
 
 runBeaconInfo :: BeaconInfo -> Output -> IO ()
 runBeaconInfo info output = do
   let i = case info of
-            PolicyId offerCfg -> show $ genBeaconCurrencySymbol offerCfg blueprints
+            PolicyId offerCfg -> show $ beaconCurrencySymbol offerCfg
             AssetName askCfg -> drop 2 $ show $ genBeaconName askCfg
   case output of
     Stdout -> putStr i
@@ -66,21 +58,21 @@ runBeaconInfo info output = do
 runQuery :: Query -> IO ()
 runQuery query = case query of
   QueryAllSwapsByTradingPair network api offerCfg askCfg output -> do
-    let beaconSym = genBeaconCurrencySymbol offerCfg blueprints
+    let beaconSym = beaconCurrencySymbol offerCfg
         beaconTokName = genBeaconName askCfg
     runQueryAllSwapsByTradingPair network api beaconSym beaconTokName offerCfg >>= toOutput output
 
   QueryOwnSwapsByTradingPair network api addr offerCfg askCfg output -> do
-    let beaconSym = genBeaconCurrencySymbol offerCfg blueprints
+    let beaconSym = beaconCurrencySymbol offerCfg
         beaconTokName = genBeaconName askCfg
     runQueryOwnSwapsByTradingPair network api addr beaconSym beaconTokName >>= toOutput output
 
   QueryAllSwapsByOffer network offerCfg output -> do
-    let beaconSym = genBeaconCurrencySymbol offerCfg blueprints
+    let beaconSym = beaconCurrencySymbol offerCfg
     runQueryAllSwapsByOffer network beaconSym >>= toOutput output
 
   QueryOwnSwapsByOffer network addr offerCfg output -> do
-    let beaconSym = genBeaconCurrencySymbol offerCfg blueprints
+    let beaconSym = beaconCurrencySymbol offerCfg
     runQueryOwnSwapsByOffer network addr beaconSym >>= toOutput output
 
   QueryOwnSwaps network api addr output -> do

@@ -138,7 +138,7 @@ queryAllSwapsByTradingPair :: BlockfrostApiKey
                            -> TokenName
                            -> AssetConfig
                            -> ClientM [SwapUTxO]
-queryAllSwapsByTradingPair apiKey beaconSym beaconTokName AssetConfig{..} = do
+queryAllSwapsByTradingPair apiKey beaconSym beaconTokName (assetId,assetName) = do
   let beacon = BeaconId (show beaconSym, drop 2 $ show beaconTokName)
       offer = (show assetId, drop 2 $ show assetName)
   -- | Get all the addresses that currently hold the beacon

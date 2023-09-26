@@ -17,11 +17,14 @@
 
 module CardanoSwaps
 (
-  AssetConfig(..),
+  -- * On-Chain Data Types
+  PlutusRational,
+  AssetConfig,
   SwapDatum(..),
   SwapRedeemer(..),
   BeaconRedeemer(..),
 
+  -- * Contracts
   swapScript,
   swapValidator,
   swapValidatorHash,
@@ -31,23 +34,38 @@ module CardanoSwaps
   beaconMintingPolicyHash,
   beaconCurrencySymbol,
 
+  -- * Serialization
   writeData,
   writeScript,
   decodeDatum,
 
-  genBeaconName,
+  -- * Parsers
+  readTokenName,
+  readCurrencySymbol,
 
+  -- * Off-Chain Helper Functions
+  genBeaconName,
+  UtxoPriceInfo(..),
+  calcWeightedPrice,
+  showTokenName,
+
+  -- * Misc Functions
   unsafeFromRight,
   dataFromCBOR,
   toCBOR,
 
+  -- * Re-exports
   Ledger.scriptSize,
+  CurrencySymbol(..),
+  TokenName(..),
+  unsafeRatio,
+  adaSymbol,
+  adaToken
 ) where
 
 import Prelude hiding (fromInteger)
 import Data.Aeson as Aeson
 import Control.Monad
-import Data.Text (pack)
 import Plutus.V2.Ledger.Api as Api
 import qualified PlutusTx
 import qualified PlutusTx.Prelude as Plutus
@@ -57,8 +75,6 @@ import Ledger (Script(..),applyArguments,scriptSize)
 import Cardano.Api hiding (Script,Address)
 import Cardano.Api.Shelley (PlutusScript (..))
 import Data.ByteString.Lazy (fromStrict,toStrict)
-import Data.ByteString (ByteString)
-import qualified Data.ByteString as B
 import Data.Text (Text)
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Short as SBS
@@ -67,13 +83,9 @@ import Ledger.Bytes (fromHex,bytes,encodeByteString)
 import qualified Data.Map as Map
 import Ledger.Tx.CardanoAPI.Internal
 import Plutus.Script.Utils.V2.Scripts
-import Ledger.Slot
-import PlutusTx.Ratio (unsafeRatio, fromInteger)
-import Cardano.Node.Emulator.TimeSlot
-import PlutusTx.Builtins.Internal (BuiltinByteString(..))
-import Data.Maybe (fromJust)
-import Ledger.Address
+import PlutusTx.Ratio (unsafeRatio)
 import Data.FileEmbed
+import Data.List (foldl')
 
 -------------------------------------------------
 -- On-Chain Data Types
@@ -191,11 +203,48 @@ decodeDatum = unsafeFromRight . fmap (PlutusTx.fromBuiltinData . fromCardanoScri
             . scriptDataFromJson ScriptDataJsonDetailedSchema
 
 -------------------------------------------------
+-- Functions for parsing user input.
+-------------------------------------------------
+-- | Parse `CurrencySymbol` from user supplied `String`.
+readCurrencySymbol :: String -> Either String CurrencySymbol
+readCurrencySymbol s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> Right $ CurrencySymbol bytes'
+  Left msg                   -> Left $ "could not convert: " <> msg
+
+-- | Parse `TokenName` from user supplied `String`.
+readTokenName :: String -> Either String TokenName
+readTokenName s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> Right $ TokenName bytes'
+  Left msg                   -> Left $ "could not convert: " <> msg
+
+-------------------------------------------------
 -- Other Off-Chain functions
 -------------------------------------------------
+-- | Generate the beacon asset name by hashing the ask asset policy id and name.
 genBeaconName :: AssetConfig -> TokenName
 genBeaconName ((CurrencySymbol sym),(TokenName name)) =
   TokenName $ Plutus.sha2_256 $ sym <> name
+
+data UtxoPriceInfo = UtxoPriceInfo
+  { utxoAmount :: Integer -- ^ The amount of the offer asset in this UTxO.
+  , price :: PlutusRational -- ^ The price for this UTxO.
+  } deriving (Show)
+
+-- | Helper function to calculate the weighted price.
+-- Will match the weighted price calculation done by script.
+calcWeightedPrice :: [UtxoPriceInfo] -> PlutusRational
+calcWeightedPrice xs = snd $ foldl' foo (0,Plutus.fromInteger 0) xs
+  where 
+    foo :: (Integer,PlutusRational) -> UtxoPriceInfo -> (Integer,PlutusRational)
+    foo (runningTot,wp) UtxoPriceInfo{..} =
+      let newAmount = runningTot + utxoAmount
+          newWp = Plutus.unsafeRatio runningTot newAmount Plutus.* wp Plutus.+
+                  Plutus.unsafeRatio utxoAmount newAmount Plutus.* price
+      in (newAmount,newWp)
+
+-- | Show the token name in hexidecimal.
+showTokenName :: TokenName -> String
+showTokenName (TokenName name) = show $ PubKeyHash name
 
 -------------------------------------------------
 -- Misc

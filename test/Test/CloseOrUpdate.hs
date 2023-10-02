@@ -7650,7 +7650,7 @@ benchTest17 numberUpdated = do
       }
 
 benchTrace :: Int -> IO ()
-benchTrace = runEmulatorTraceIO' def emConfig . benchTest17
+benchTrace = runEmulatorTraceIO' def emConfig . benchTest1
 
 -------------------------------------------------
 -- Test Function
@@ -7750,73 +7750,73 @@ tests = do
 
       -- Benchmark tests
     , checkPredicateOptions opts "benchTest1"
-        assertNoFailedTransactions $ benchTest1 49
+        assertNoFailedTransactions $ benchTest1 55
     , checkPredicateOptions opts "benchTest2"
         assertNoFailedTransactions $ benchTest2 7
     , checkPredicateOptions opts "benchTest3"
-        assertNoFailedTransactions $ benchTest3 50
+        assertNoFailedTransactions $ benchTest3 56
     , checkPredicateOptions opts "benchTest4"
         assertNoFailedTransactions $ benchTest4 8
     , checkPredicateOptions opts "benchTest5"
-        assertNoFailedTransactions $ benchTest5 49
+        assertNoFailedTransactions $ benchTest5 54
     , checkPredicateOptions opts "benchTest6"
-        assertNoFailedTransactions $ benchTest6 49
+        assertNoFailedTransactions $ benchTest6 55
     , checkPredicateOptions opts "benchTest7"
         assertNoFailedTransactions $ benchTest7 14
     , checkPredicateOptions opts "benchTest8"
-        assertNoFailedTransactions $ benchTest8 15
+        assertNoFailedTransactions $ benchTest8 16
     , checkPredicateOptions opts "benchTest9"
-        assertNoFailedTransactions $ benchTest9 36
+        assertNoFailedTransactions $ benchTest9 38
     , checkPredicateOptions opts "benchTest10"
-        assertNoFailedTransactions $ benchTest10 36
+        assertNoFailedTransactions $ benchTest10 38
     , checkPredicateOptions opts "benchTest11"
         assertNoFailedTransactions $ benchTest11 16
     , checkPredicateOptions opts "benchTest12"
         assertNoFailedTransactions $ benchTest12 16
     , checkPredicateOptions opts "benchTest13"
-        assertNoFailedTransactions $ benchTest13 36
+        assertNoFailedTransactions $ benchTest13 38
     , checkPredicateOptions opts "benchTest14"
         assertNoFailedTransactions $ benchTest14 16
     , checkPredicateOptions opts "benchTest15"
         assertNoFailedTransactions $ benchTest15 14
     , checkPredicateOptions opts "benchTest16"
-        assertNoFailedTransactions $ benchTest16 12
+        assertNoFailedTransactions $ benchTest16 13
     , checkPredicateOptions opts "benchTest17"
         assertNoFailedTransactions $ benchTest17 10
 
       -- Performance Increases tests
     , checkPredicateOptions opts "perfIncreaseTest1"
-        (Test.not assertNoFailedTransactions) $ benchTest1 50
+        (Test.not assertNoFailedTransactions) $ benchTest1 56
     , checkPredicateOptions opts "perfIncreaseTest2"
         (Test.not assertNoFailedTransactions) $ benchTest2 8
     , checkPredicateOptions opts "perfIncreaseTest3"
-        (Test.not assertNoFailedTransactions) $ benchTest3 51
+        (Test.not assertNoFailedTransactions) $ benchTest3 57
     , checkPredicateOptions opts "perfIncreaseTest4"
         (Test.not assertNoFailedTransactions) $ benchTest4 9
     , checkPredicateOptions opts "perfIncreaseTest5"
-        (Test.not assertNoFailedTransactions) $ benchTest5 50
+        (Test.not assertNoFailedTransactions) $ benchTest5 55
     , checkPredicateOptions opts "perfIncreaseTest6"
-        (Test.not assertNoFailedTransactions) $ benchTest6 50
+        (Test.not assertNoFailedTransactions) $ benchTest6 56
     , checkPredicateOptions opts "perfIncreaseTest7"
         (Test.not assertNoFailedTransactions) $ benchTest7 15
     , checkPredicateOptions opts "perfIncreaseTest8"
-        (Test.not assertNoFailedTransactions) $ benchTest8 16
+        (Test.not assertNoFailedTransactions) $ benchTest8 17
     , checkPredicateOptions opts "perfIncreaseTest9"
-        (Test.not assertNoFailedTransactions) $ benchTest9 37
+        (Test.not assertNoFailedTransactions) $ benchTest9 39
     , checkPredicateOptions opts "perfIncreaseTest10"
-        (Test.not assertNoFailedTransactions) $ benchTest10 37
+        (Test.not assertNoFailedTransactions) $ benchTest10 39
     , checkPredicateOptions opts "perfIncreaseTest11"
         (Test.not assertNoFailedTransactions) $ benchTest11 17
     , checkPredicateOptions opts "perfIncreaseTest12"
         (Test.not assertNoFailedTransactions) $ benchTest12 17
     , checkPredicateOptions opts "perfIncreaseTest13"
-        (Test.not assertNoFailedTransactions) $ benchTest13 37
+        (Test.not assertNoFailedTransactions) $ benchTest13 39
     , checkPredicateOptions opts "perfIncreaseTest14"
         (Test.not assertNoFailedTransactions) $ benchTest14 17
     , checkPredicateOptions opts "perfIncreaseTest15"
         (Test.not assertNoFailedTransactions) $ benchTest15 15
     , checkPredicateOptions opts "perfIncreaseTest16"
-        (Test.not assertNoFailedTransactions) $ benchTest16 13
+        (Test.not assertNoFailedTransactions) $ benchTest16 14
     , checkPredicateOptions opts "perfIncreaseTest17"
         (Test.not assertNoFailedTransactions) $ benchTest17 11
     ]

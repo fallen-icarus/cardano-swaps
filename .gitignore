@@ -1,6 +1,6 @@
 dist-newstyle/
 TODO
-assets/
+ignored/
 aiken/artifacts/
 aiken/build/
 aiken/docs/

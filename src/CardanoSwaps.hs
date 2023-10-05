@@ -52,6 +52,7 @@ module CardanoSwaps
   -- * Misc Functions
   unsafeFromRight,
   dataFromCBOR,
+  decodeHex,
   toCBOR,
 
   -- * Re-exports
@@ -60,7 +61,9 @@ module CardanoSwaps
   TokenName(..),
   unsafeRatio,
   adaSymbol,
-  adaToken
+  adaToken,
+  numerator,
+  denominator
 ) where
 
 import Prelude hiding (fromInteger)
@@ -83,7 +86,7 @@ import Ledger.Bytes (fromHex,bytes,encodeByteString)
 import qualified Data.Map as Map
 import Ledger.Tx.CardanoAPI.Internal
 import Plutus.Script.Utils.V2.Scripts
-import PlutusTx.Ratio (unsafeRatio)
+import PlutusTx.Ratio (unsafeRatio,numerator,denominator)
 import Data.FileEmbed
 import Data.List (foldl')
 
@@ -102,7 +105,7 @@ data SwapDatum = SwapDatum
   , askName :: TokenName
   , swapPrice :: PlutusRational
   }
-  deriving (Generic,Show)
+  deriving (Generic,Show,Eq)
 
 data SwapRedeemer
   = CloseOrUpdate
@@ -254,7 +257,10 @@ unsafeFromRight (Right x) = x
 unsafeFromRight _ = error "unsafeFromRight used on Left"
 
 dataFromCBOR :: String -> Either String Data
-dataFromCBOR = fmap (deserialise . fromStrict . bytes) . fromHex . fromString
+dataFromCBOR = fmap deserialise . decodeHex
+
+decodeHex :: String -> Either String LBS.ByteString
+decodeHex = fmap (fromStrict . bytes) . fromHex . fromString
 
 toCBOR :: Serialise a => a -> Text
 toCBOR = encodeByteString . toStrict . serialise

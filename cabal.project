@@ -13,8 +13,8 @@ repository cardano-haskell-packages
 
 -- See CONTRIBUTING.adoc for how to update index-state
 index-state:
-  , hackage.haskell.org 2023-04-20T00:00:00Z
-  , cardano-haskell-packages 2023-05-10T00:00:00Z
+  , hackage.haskell.org 2023-04-19T21:29:05Z
+  , cardano-haskell-packages 2023-05-09T19:32:49Z
 
 extra-packages:
   cardano-crypto-class
@@ -194,11 +194,3 @@ source-repository-package
       libs/small-steps
       libs/small-steps-test
       libs/non-integral
-
-source-repository-package
-  type: git
-  location: https://github.com/well-typed/plutonomy.git
-  tag: 6c01302ba8cf3be4f71617e106cd5ef7ed10fc63
-
-package plutonomy
-  flags: +plutus-f680ac697

@@ -1,19 +1,19 @@
 #!/bin/sh
 
 # Variables
-dir="../assets/swap-files/"
-tmpDir="../assets/tmp/"
+dir="../../ignored/swap-files/"
+tmpDir="../../ignored/tmp/"
 
 swapScriptFile="${dir}spend.plutus" # This is used to create the swap address.
 
-ownerPubKeyFile="../assets/wallets/01Stake.vkey"
+ownerPubKeyFile="../../ignored/wallets/01Stake.vkey"
 
 swapAddrFile="${dir}swap.addr"
 
 swapDatumFile1="${dir}swapDatum1.json"
 swapDatumFile2="${dir}swapDatum2.json"
 
-beaconRedeemerFile="${dir}mintBeacons.json"
+beaconRedeemerFile="${dir}createSwap.json"
 
 # Export the swap validator script.
 echo "Exporting the swap validator script..."
@@ -29,6 +29,7 @@ cardano-cli address build \
   --out-file $swapAddrFile
 
 # Helper beacon variables.
+echo "Calculating the beacon names..."
 beaconPolicyId1=$(cardano-swaps beacon-info policy-id \
   --offer-lovelace \
   --stdout)
@@ -74,30 +75,26 @@ cardano-swaps swap-datum \
   --out-file $swapDatumFile2
 
 # Create the transaction.
-cardano-cli query protocol-parameters \
-  --testnet-magic 1 \
-  --out-file "${tmpDir}protocol.json"
-
+echo "Building the transaction..."
 cardano-cli transaction build \
-  --tx-in 89b67297cff33ce4dfb5bbd1d2414b313cf8ee26ce0e7e970aa9c4a2682f38f5#1 \
+  --tx-in 6db024cde5401d4a8e58e10170f543da29a8534208277b83355dd538519ea550#2 \
   --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace + 1 ${beacon1}" \
   --tx-out-inline-datum-file $swapDatumFile1 \
   --tx-out "$(cat ${swapAddrFile}) + 10000000 lovelace + 1 ${beacon2}" \
   --tx-out-inline-datum-file $swapDatumFile2 \
   --mint "1 ${beacon1} + 1 ${beacon2}" \
-  --mint-tx-in-reference c774e01a1f0e4cd06d62780dcd52f6d00290b8217ac0e538747bf79d1a49dbfb#1 \
+  --mint-tx-in-reference 6ea0a8eb9d0ad061c816b1207c21dedddf3d3c1b438d5541fefbf200b87ba705#1 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id "$beaconPolicyId1" \
-  --change-address "$(cat ../assets/wallets/01.addr)" \
+  --change-address "$(cat ../../ignored/wallets/01.addr)" \
   --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
   --testnet-magic 1 \
-  --protocol-params-file "${tmpDir}protocol.json" \
   --out-file "${tmpDir}tx.body"
 
 cardano-cli transaction sign \
   --tx-body-file "${tmpDir}tx.body" \
-  --signing-key-file ../assets/wallets/01.skey \
+  --signing-key-file ../../ignored/wallets/01.skey \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.signed"
 

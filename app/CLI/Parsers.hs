@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module CLI.Parsers
 (
   parseCommand
@@ -24,9 +22,13 @@ parseCommand = hsubparser $ mconcat
   , command "beacon-redeemer"
       (info parseCreateBeaconRedeemer $ progDesc "Create a redeemer for the beacon policy.")
   , command "beacon-info"
-      (info parseBeaconInfo $ progDesc "Generate beacon policy id or asset name.")
+      (info parseBeaconInfo $ progDesc "Generate a beacon policy id or asset name.")
   , command "query"
-      (info parseQueryBeacons $ progDesc "Query the dApp's beacon tokens.")
+      (info parseQuery $ progDesc "Query the blockchain.")
+  , command "submit"
+      (info pSubmit $ progDesc "Submit a transaction to the blockchain.")
+  , command "export-protocol-params"
+      (info pExportParams $ progDesc "Export the current protocol parameters.")
   ]
 
 -------------------------------------------------
@@ -43,7 +45,7 @@ parseExportScript = hsubparser $ mconcat
     pExportPolicy :: Parser Command
     pExportPolicy = 
       ExportScript 
-        <$> (BeaconPolicy <$> pOfferConfig)
+        <$> (BeaconPolicy . OfferAsset <$> pOfferAsset)
         <*> pOutputFile
     
     pExportSwap :: Parser Command
@@ -56,13 +58,13 @@ parseExportScript = hsubparser $ mconcat
 -- CreateDatum Parser
 -------------------------------------------------
 pCreateDatum :: Parser Command
-pCreateDatum = CreateDatum <$> pSwapDatumInfo <*> pOutputFile
+pCreateDatum = CreateDatum <$> pInternalSwapDatum <*> pOutputFile
   where
-    pSwapDatumInfo :: Parser SwapDatumInfo
-    pSwapDatumInfo = 
-      SwapDatumInfo 
-        <$> pOfferConfig 
-        <*> pAskConfig 
+    pInternalSwapDatum :: Parser InternalSwapDatum
+    pInternalSwapDatum = 
+      InternalSwapDatum 
+        <$> (OfferAsset <$> pOfferAsset)
+        <*> (AskAsset <$> pAskAsset)
         <*> pSwapPrice
 
 -------------------------------------------------
@@ -95,7 +97,7 @@ parseCreateBeaconRedeemer = hsubparser $ mconcat
     ]
   where
     pMint :: Parser Command
-    pMint = CreateBeaconRedeemer <$> (CreateSwap <$> some pAskConfig) <*> pOutputFile
+    pMint = CreateBeaconRedeemer <$> (CreateSwap <$> some pAskAsset) <*> pOutputFile
 
     pBurn :: Parser Command
     pBurn = CreateBeaconRedeemer <$> pure BurnBeacons <*> pOutputFile
@@ -109,79 +111,145 @@ parseBeaconInfo = hsubparser $ mconcat
         (info pGenPolicyId $ progDesc "Generate the beacon policy id for a specific offer asset.")
     , command "asset-name"
         (info pGenAssetName $ progDesc "Generate the beacon asset name for a specific ask asset.")
+    , command "full-name"
+        (info pGenFullName $ progDesc "Generate the full beacon name for a specific trading pair.")
     ]
   where
     pGenPolicyId :: Parser Command
     pGenPolicyId = 
       BeaconInfo 
-        <$> (PolicyId <$> pOfferConfig)
+        <$> (PolicyId . OfferAsset <$> pOfferAsset)
         <*> pOutput
 
     pGenAssetName :: Parser Command
     pGenAssetName =
       BeaconInfo
-        <$> (AssetName <$> pAskConfig)
+        <$> (AssetName . AskAsset <$> pAskAsset)
+        <*> pOutput
+
+    pGenFullName :: Parser Command
+    pGenFullName =
+      BeaconInfo
+        <$> ( FullName 
+                <$> (OfferAsset <$> pOfferAsset) 
+                <*> (AskAsset <$> pAskAsset)
+            )
         <*> pOutput
 
 -------------------------------------------------
 -- QueryBeacons Parser
 -------------------------------------------------
-parseQueryBeacons :: Parser Command
-parseQueryBeacons = fmap QueryBeacons . hsubparser $ mconcat
-    [ command "available-swaps-by-pair"
-        (info pQueryAllBeaconsByTradingPair $ progDesc "Query available swaps for a specific trading pair.")
-    , command "available-swaps-by-offer"
-        (info pQueryAllSwapsByOffer $ progDesc "Query all swaps with a specific offer asset.")
-    , command "own-swaps"
-        (info pQueryOwnSwaps $ progDesc "Query all own swaps")
-    , command "own-swaps-by-offer"
-        (info pQueryOwnSwapsByOffer $ progDesc "Query all own swaps with a specific offer asset.")
-    , command "own-swaps-by-pair"
-        (info pQueryOwnSwapsByTradingPair $ progDesc "Query all own swaps for a specific trading pair.")
-    ]
+parseQuery :: Parser Command
+parseQuery = fmap Query . hsubparser $ mconcat
+  [ command "own-swaps"
+      (info parseQueryOwn $ progDesc "Query your own swaps.") 
+  , command "all-swaps"
+      (info parseQueryAll $ progDesc "Query all swaps.") 
+  , command "personal-address"
+      (info pQueryPersonal $ progDesc "Query your personal address.") 
+  ]
+
+parseQueryOwn :: Parser Query
+parseQueryOwn = fmap QueryOwn . hsubparser $ mconcat
+  [ command "all"
+      (info pQueryAll $ progDesc "Query all of your own swaps.")
+  , command "offer"
+      (info pQueryOffer $ progDesc "Query swaps by offer asset.")
+  , command "trading-pair"
+      (info pQueryTradingPair $ progDesc "Query swaps by trading pair.")
+  ]
   where
-    pQueryAllBeaconsByTradingPair :: Parser Query
-    pQueryAllBeaconsByTradingPair =
-      QueryAllSwapsByTradingPair
-        <$> pNetwork
-        <*> pApiEndpoint
-        <*> pOfferConfig
-        <*> pAskConfig
-        <*> pOutput
-
-    pQueryAllSwapsByOffer :: Parser Query
-    pQueryAllSwapsByOffer =
-      QueryAllSwapsByOffer
-        <$> pNetwork
-        <*> pOfferConfig
-        <*> pOutput
-
-    pQueryOwnSwaps :: Parser Query
-    pQueryOwnSwaps =
+    pQueryAll :: Parser QueryOwn
+    pQueryAll =
       QueryOwnSwaps
         <$> pNetwork
-        <*> pApiEndpoint
-        <*> pSwapAddress
+        <*> pQueryEndpoint
+        <*> pUserAddress
+        <*> pFormat
         <*> pOutput
 
-    pQueryOwnSwapsByOffer :: Parser Query
-    pQueryOwnSwapsByOffer =
+    pQueryOffer :: Parser QueryOwn
+    pQueryOffer =
       QueryOwnSwapsByOffer
         <$> pNetwork
-        <*> pSwapAddress
-        <*> pOfferConfig
+        <*> pQueryEndpoint
+        <*> pUserAddress
+        <*> (OfferAsset <$> pOfferAsset)
+        <*> pFormat
         <*> pOutput
 
-    pQueryOwnSwapsByTradingPair :: Parser Query
-    pQueryOwnSwapsByTradingPair =
+    pQueryTradingPair :: Parser QueryOwn
+    pQueryTradingPair =
       QueryOwnSwapsByTradingPair
         <$> pNetwork
-        <*> pApiEndpoint
-        <*> pSwapAddress
-        <*> pOfferConfig
-        <*> pAskConfig
+        <*> pQueryEndpoint
+        <*> pUserAddress
+        <*> (OfferAsset <$> pOfferAsset)
+        <*> (AskAsset <$> pAskAsset)
+        <*> pFormat
         <*> pOutput
-    
+
+parseQueryAll :: Parser Query
+parseQueryAll = fmap QueryAll . hsubparser $ mconcat
+  [ command "offer"
+      (info pQueryOffer $ progDesc "Query swaps by offer asset.")
+  , command "trading-pair"
+      (info pQueryTradingPair $ progDesc "Query swaps by trading pair.")
+  ]
+  where
+    pQueryOffer :: Parser QueryAll
+    pQueryOffer =
+      QueryAllSwapsByOffer
+        <$> pNetwork
+        <*> pQueryEndpoint
+        <*> (OfferAsset <$> pOfferAsset)
+        <*> pFormat
+        <*> pOutput
+
+    pQueryTradingPair :: Parser QueryAll
+    pQueryTradingPair =
+      QueryAllSwapsByTradingPair
+        <$> pNetwork
+        <*> pQueryEndpoint
+        <*> (OfferAsset <$> pOfferAsset)
+        <*> (AskAsset <$> pAskAsset)
+        <*> pFormat
+        <*> pOutput
+
+pQueryPersonal :: Parser Query
+pQueryPersonal =
+  QueryPersonal
+    <$> pNetwork
+    <*> pQueryEndpoint
+    <*> pUserAddress
+    <*> pFormat
+    <*> pOutput
+
+-------------------------------------------------
+-- ExportParams Parser
+-------------------------------------------------
+pExportParams :: Parser Command
+pExportParams =
+  ExportParams
+    <$> pNetwork
+    <*> pOutput
+
+-------------------------------------------------
+-- Submit Parser
+-------------------------------------------------
+pSubmit :: Parser Command
+pSubmit = 
+    Submit 
+      <$> pNetwork
+      <*> pQueryEndpoint
+      <*> pTxFile
+  where
+    pTxFile :: Parser FilePath
+    pTxFile = strOption
+      (  long "tx-file"
+      <> metavar "STRING"
+      <> help "Transaction file path."
+      )
 
 -------------------------------------------------
 -- Basic Helper Parsers
@@ -190,12 +258,12 @@ pOutputFile :: Parser FilePath
 pOutputFile = strOption
   (  long "out-file"
   <> metavar "FILE"
-  <> help "The output file."
+  <> help "Save to file."
   <> completer (bashCompleter "file")
   )
 
-pOfferConfig :: Parser AssetConfig
-pOfferConfig = pOfferLovelace <|> ((,) <$> pOfferSymbol <*> pOfferName)
+pOfferAsset :: Parser AssetConfig
+pOfferAsset = pOfferLovelace <|> ((,) <$> pOfferSymbol <*> pOfferName)
   where
     pOfferLovelace :: Parser AssetConfig
     pOfferLovelace = flag' (adaSymbol,adaToken)
@@ -217,8 +285,8 @@ pOfferConfig = pOfferLovelace <|> ((,) <$> pOfferSymbol <*> pOfferName)
       <> help "The token name (in hexidecimal) of the offered asset."
       )
 
-pAskConfig :: Parser AssetConfig
-pAskConfig = pAskLovelace <|> ((,) <$> pAskSymbol <*> pAskName)
+pAskAsset :: Parser AssetConfig
+pAskAsset = pAskLovelace <|> ((,) <$> pAskSymbol <*> pAskName)
   where
     pAskLovelace :: Parser AssetConfig
     pAskLovelace = flag' (adaSymbol,adaToken)
@@ -284,32 +352,51 @@ pOutput = pStdOut <|> File <$> pOutputFile
       <> help "Display to stdout."
       )
 
+pFormat :: Parser Format
+pFormat = pJSON <|> pPretty <|> pPlain
+  where
+    pJSON :: Parser Format
+    pJSON = flag' JSON
+      (  long "json"
+      <> help "Format as JSON."
+      )
+
+    pPretty :: Parser Format
+    pPretty = flag' Pretty
+      (  long "pretty"
+      <> help "Format for pretty-printing."
+      )
+
+    pPlain :: Parser Format
+    pPlain = flag' Plain
+      (  long "plain"
+      <> help "Format for pretty-printing without colors."
+      )
+
 pNetwork :: Parser Network
-pNetwork = pPreProdTestnet
+pNetwork = pPreProdTestnet <|> pMainnet
   where
     pPreProdTestnet :: Parser Network
     pPreProdTestnet = flag' PreProdTestnet
       (  long "testnet"
       <> help "Query the preproduction testnet.")
 
-pApiEndpoint :: Parser ApiEndpoint
-pApiEndpoint = pKoios <|> pBlockfrost
-  where
-    pKoios :: Parser ApiEndpoint
-    pKoios = flag' Koios
-      (  long "koios"
-      <> help "Query using Koios."
-      )
+    pMainnet :: Parser Network
+    pMainnet = flag' Mainnet
+      (  long "mainnet"
+      <> help "Query the mainnet.")
 
-    pBlockfrost :: Parser ApiEndpoint
-    pBlockfrost = Blockfrost <$> strOption
-      (  long "blockfrost"
-      <> metavar "STRING"
-      <> help "Query using Blockfrost with the supplied api key."
-      )
+pQueryEndpoint :: Parser QueryEndpoint
+pQueryEndpoint = pure Koios
+  -- where
+  --   pKoios :: Parser ApiEndpoint
+  --   pKoios = flag' Koios
+  --     (  long "koios"
+  --     <> help "Query using Koios."
+  --     )
 
-pSwapAddress :: Parser SwapAddress
-pSwapAddress = SwapAddress <$> strOption
+pUserAddress :: Parser UserAddress
+pUserAddress = UserAddress <$> strOption
   (  long "address"
   <> metavar "STRING"
   <> help "Address in bech32 format."

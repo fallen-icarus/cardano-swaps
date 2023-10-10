@@ -5,7 +5,7 @@ all benchmarking tests. All scripts were used as reference scripts to get the be
 possible.
 
 The universal swap spending script requires about 27 ADA to store on-chain.
-Each minting policy requires about 22 ADA to be stored on-chain.
+The universal minting policy requires about 22 ADA to be stored on-chain.
 
 ## Creating swaps
 

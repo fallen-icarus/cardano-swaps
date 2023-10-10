@@ -1,5 +1,5 @@
 use aiken/bytearray
-use aiken/dict.{Dict}
+use aiken/dict
 use aiken/hash.{Hash,Blake2b_224}
 use aiken/list
 use aiken/math/rational.{Rational} as ratio
@@ -8,44 +8,25 @@ use aiken/string.{concat}
 use aiken/transaction.{Datum,InlineDatum,Input,Output} as tx
 use aiken/transaction/credential.{
   Address,
-  Inline,
   Script,
   ScriptCredential,
-  StakeCredential,
-  VerificationKey,
-  VerificationKeyCredential
   }
 use aiken/transaction/value.{PolicyId,AssetName,MintedValue,Value}
 
-use cardano_swaps/types.{
-  AssetConfig,
+use cardano_swaps/common/types.{app_name,AssetConfig} as common_types
+use cardano_swaps/common/utils.{
+  error_if_false,
+  trace_if_false
+  } as common_utils
+use cardano_swaps/one_way_swap/types.{
   BeaconRedeemer,
   BurnBeacons,
   CreateSwap,
   SwapDatum,
-}
-
-const app_name = @"testing"
-
-pub fn trace_if_false(msg: String, predicate: Bool) {
-  if !predicate {
-    trace msg
-    predicate
-  } else {
-    predicate
-  }
-}
-
-pub fn error_if_false(msg: String, predicate: Bool) {
-  if !predicate {
-    error msg
-  } else {
-    predicate
-  }
-}
+  } as one_way_types
 
 // This parses the datums attached to target UTxOs. It will fail with an error unless
-// the datum is an Inline SwapDatum.
+// the datum is an inline SwapDatum.
 fn parse_datum(raw_datum: Datum) -> SwapDatum {
   when raw_datum is {
     InlineDatum(d) -> {
@@ -65,33 +46,9 @@ pub fn generate_beacon_name(asset: AssetConfig) -> AssetName {
   )
 }
 
-// Check that either the staking pubkey signed or the staking script was executed.
-pub fn staking_credential_approves(
-  swap_addr: Address, 
-  withdrawals: Dict<StakeCredential, Int>,
-  extra_signatories: List<Hash<Blake2b_224, VerificationKey>>
-) -> Bool {
-  let Address(_,staking_cred) = swap_addr
-  when staking_cred is {
-    // This is to prevent permanent locking of funds. Beacons can never be minted to an address
-    // without a valid staking credential.
-    None -> True
-
-    // If the address uses a staking pubkey, it must have signed the tx.
-    Some(Inline(VerificationKeyCredential(skey))) -> {
-      list.has(extra_signatories,skey)
-    }
-
-    // If the address uses a staking script, it must have been executed in the tx. In order for
-    // the staking credential to show up in this dictionary, it must be registered.
-    Some(svh) -> {
-      dict.has_key(withdrawals,svh)
-    }
-  }
-}
-
 // Check if the owner stores the beacons in a UTxO with a proper inline SwapDatum. This will crash 
-// the script if the SwapDatum is not an inline datum. It is used for both MintBeacon and CloseOrUpdate.
+// the script if the `SwapDatum` is not an inline datum. It is used for both `CreateSwap` and 
+// `CloseOrUpdate`.
 fn valid_swap_datum_creation(
   beacon_id: PolicyId,
   beacon_name: AssetName,
@@ -102,7 +59,7 @@ fn valid_swap_datum_creation(
   datum: Datum
 ) -> Bool {
   // Try to parse the datum and extract out the information. This will crash the script if the
-  // datum is not an inline SwapDatum.
+  // datum is not an inline `SwapDatum`.
   let SwapDatum( 
     beacon_id_, 
     beacon_name_,
@@ -138,7 +95,8 @@ fn valid_swap_datum_creation(
   trace_if_false( @"Swap price not > 0", ratio.compare(price,ratio.zero()) == Greater )
 }
 
-// Check whether the proper beacons are minted/burned based on the redeemer. It returns True or False.
+// Check whether the proper beacons are minted/burned based on the redeemer. It returns `True` or 
+// `False`.
 pub fn mint_check(
   beacon_id: PolicyId,
   beacon_names: List<AssetName>,
@@ -153,7 +111,7 @@ pub fn mint_check(
   when redeemer is {
     CreateSwap(_) -> {
       // Checks:
-      // 1) Only the beacon for the target asset can/must be mint.
+      // 1) Only the beacon for the target asset can be minted.
       // 2) The token name must be: sha2_256( ask_id ++ ask_name ).
       
       // Convert the dictionary to a list and extract the first element in each tuple.
@@ -183,7 +141,7 @@ pub fn mint_check(
 }
 
 // Check if the beacons are minted to the proper address and the UTxO is configured properly.
-// This function will return True or False. It uses app_name in the error message to generate
+// This function will return `True` or `False`. It uses `app_name` in the error message to generate
 // a unique beacon policy for testing.
 pub fn beacon_destination_check(
   dapp_hash: Hash<Blake2b_224, Script>,
@@ -198,18 +156,18 @@ pub fn beacon_destination_check(
   // 1) The beacons must go to an addres protected by the dApp validator script.
   // 2) The beacons must go to an address using a valid staking credential.
   // 3) The beacons must be stored individually at the dApp address.
-  // 4) The beacons must be stored with the proper inline SwapDatum:
-  //      beacon_id == this policy id.
-  //      beacon_name == sha2_256( ask_asset policy id ++ ask_asset asset name )
-  //      offer_id == asset_id of offer_config
-  //      offer_name == asset_name of offer_config
-  //      ask_id == asset_id of ask_asset
-  //      ask_name == asset_name of ask_asset
-  //      price denominator > 0
-  //      price > 0
+  // 4) The beacons must be stored with the proper inline `SwapDatum`:
+  //      a) `beacon_id` == this policy id.
+  //      b) `beacon_name` == sha2_256( ask_asset policy id ++ ask_asset asset name )
+  //      c) `offer_id` == asset_id of offer_config
+  //      d) `offer_name` == asset_name of offer_config
+  //      e) `ask_id` == asset_id of ask_asset
+  //      f) `ask_name` == asset_name of ask_asset
+  //      g) `price` denominator > 0
+  //      h) `price` > 0
   // 5) The beacons must be stored with some of the offered asset.
 
-  // Create a map from beacon names to AssetConfig (information from redeemer).
+  // Create a map from beacon names to `AssetConfig` (information from redeemer).
   let xs = list.zip(beacon_names,ask_assets) |> dict.from_list(_,bytearray.compare)
 
   // A function to map over the list of outputs.
@@ -226,8 +184,8 @@ pub fn beacon_destination_check(
         // Check if the beacon in this output is one of the newly minted ones. If it is, it would
         // be found in the redeemer (this redeemer only allows minting beacons found in the
         // redeemer). If it isn't found in the redeemer, then this beacon must have come from an
-        // input. That is only possible if this redeemer is composed with either the CloseOrUpdate
-        // spending redeemer or the Swap spending redeemer. Both of the spending redeemers
+        // input. That is only possible if this redeemer is composed with either the `CloseOrUpdate`
+        // spending redeemer or the `Swap` spending redeemer. Both of the spending redeemers
         // check that the beacons are stored properly so there is no need for the minting policy
         // to check the destination of beacons from inputs. Therefore, the minting policy
         // only needs to check the destination of newly minted beacons.
@@ -241,7 +199,7 @@ pub fn beacon_destination_check(
             // extraneous assets are present.
             let assets_present = value.flatten(val)
             
-            // The beacon must be stored at a dapp address with staking. Uses app_name in 
+            // The beacon must be stored at a dapp address with staking. Uses `app_name` in 
             // the error message.
             trace_if_false( 
               concat(@"Beacon must go to a ", app_name) |> concat(_,@" dApp address with staking"),
@@ -279,8 +237,8 @@ pub fn beacon_destination_check(
                 )
             ) &&
 
-            // The beacons must be stored with the proper inline SwapDatum. This function has its own
-            // error messages.
+            // The beacons must be stored with the proper inline SwapDatum. This function has its 
+            // own error messages.
             valid_swap_datum_creation(
               beacon_id,
               beacon_name,
@@ -310,19 +268,20 @@ pub fn beacon_destination_check(
   list.foldl( outputs, True, foo )
 }
 
-// Checks whether the beacons are stored properly when the CloseOrUpdate redeemer is used.
+// Checks whether the beacons are stored properly when the `CloseOrUpdate` redeemer is used.
 pub fn valid_update_outputs(
   swap_datum: SwapDatum,
   outputs: List<Output>,
   swap_addr: Address
 ) -> Bool {
   // Checks:
-  // 1) Any beacons not burned must be re-output to this address with the proper inline SwapDatum.
-  //      all fields same as input datum except the price
-  //      price denominator > 0
-  //      price > 0
+  // 1) Any beacons not burned must be re-output to this address with the proper inline `SwapDatum`.
+  //      a) all fields same as input datum except the `price`
+  //      b) `price` denominator > 0
+  //      c) `price` > 0
   // 2) The beacons must be stored with some of the offered asset.
   // 3) The beacons must be stored individually.
+  // 4) No extraneous assets can be in the swap.
 
   // Extract out the information from the current datum.
   let SwapDatum(
@@ -386,7 +345,7 @@ pub fn valid_update_outputs(
           )
       ) &&
 
-      // The beacons must be stored with the proper inline SwapDatum. This function has its own
+      // The beacons must be stored with the proper inline `SwapDatum`. This function has its own
       // error messages.
       valid_swap_datum_creation(
         beacon_id,
@@ -414,7 +373,7 @@ pub fn valid_update_outputs(
 }
 
 // Get the total input value for a specific trading pair from this swap address.
-// The Rational returned is the weighted avg price of all the relevant inputs.
+// The `Rational` returned is the weighted avg price of all the relevant inputs.
 fn swap_input_info(
   beacon_id: PolicyId,
   beacon_name: AssetName,
@@ -423,7 +382,7 @@ fn swap_input_info(
   swap_addr: Address,
   inputs: List<Input>
 ) -> (Value,Rational) {
-  // This function maps over the inputs to build up the accumulator. The Int is a temp variable
+  // This function maps over the inputs to build up the accumulator. The `Int` is a temp variable
   // to keep track of the running total. It is needed to calculate the weighted avg price.
   let foo = fn (in: Input, acc: (Value,Int,Rational)) {
     // Extract out the information from the input.
@@ -482,9 +441,9 @@ fn swap_input_info(
   (val,wp)
 }
 
-// Calculate the swap flux for this specific trading pair from this address. Negative values mean the
-// address gained the asset while positive values mean the address lost that asset. This also checks that
-// any output to the swap address has the proper datum.
+// Calculate the swap flux for this specific trading pair from this address. Negative values mean 
+// the address gained the asset while positive values mean the address lost that asset. This also 
+// checks that any output to the swap address has the proper datum.
 fn swap_value_diff(
   beacon_id: PolicyId,
   beacon_name: AssetName,
@@ -507,7 +466,7 @@ fn swap_value_diff(
     if value.quantity_of( oval, beacon_id, beacon_name ) > 0 {
       // Check if the input is from this address.
       if addr == swap_addr {
-        // Parse the datum for this output. It must have an inline SwapDatum.
+        // Parse the datum for this output. It must have an inline `SwapDatum`.
         let SwapDatum( 
           beacon_id_, 
           beacon_name_,
@@ -595,7 +554,7 @@ fn only_proper_assets_swapped(
 
   // Map over the list of assets in flux.
   list.foldl(
-    value.flatten(flux), // Convert the Value to List<(PolicyId,AssetName,Int)>
+    value.flatten(flux), // Convert the `Value` to `List<(PolicyId,AssetName,Int)>`
     True,
     foo
   )
@@ -641,19 +600,19 @@ pub fn valid_swap(
   let ask_given = 
     value.quantity_of( swap_flux, ask_id, ask_name )
     |> fn(x) {-x} // Must negate the number since negative means the asset was received.
-    |> ratio.from_int(_) // Convert it to a Rational.
+    |> ratio.from_int(_) // Convert it to a `Rational`.
 
   // Calculate the quantity of the offer asset in flux.
   let offer_taken =
     value.quantity_of( swap_flux, offer_id, offer_name )
-    |> ratio.from_int(_) // Convert it to a Rational.
+    |> ratio.from_int(_) // Convert it to a `Rational`.
 
   // Compare the ask and offer quantities.
   let swap_ratio = 
     ratio.mul(offer_taken, weighted_price) // Convert the offer asset to units of the ask asset.
     |> ratio.compare(_, ask_given) // Compare it against the amount of ask given.
 
-  // The swap_ratio must be Less or Equal.
+  // The swap_ratio must be `Less` or `Equal`. Using `!= Greater` had a performance regression...
   trace_if_false( 
     @"Fail: offer_taken * weighted_price <= ask_given",
     swap_ratio == Less || swap_ratio == Equal 

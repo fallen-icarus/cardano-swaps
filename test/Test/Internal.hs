@@ -23,7 +23,6 @@ module Test.Internal
     TokenMint(..)
   , UtxoInput(..)
   , UtxoOutput(..)
-  , UnsafeDatum(..)
   
     -- * Model Parameters
   , CreateReferenceScriptParams(..)
@@ -98,7 +97,7 @@ import Plutus.Script.Utils.V2.Generators
 import Plutus.V2.Ledger.Api (Credential(..), StakingCredential(..), FromData(..))
 import Plutus.V1.Ledger.Value
 
-import CardanoSwaps
+import CardanoSwaps.Utils
 
 -------------------------------------------------
 -- Helper Types
@@ -136,28 +135,6 @@ data UtxoOutput = UtxoOutput
   { toAddress :: Address
   , outputUtxos :: [(Maybe (TxOutDatum Datum), Value)]
   } deriving (Generic,ToJSON,FromJSON)
-
-data UnsafeDatum = UnsafeDatum
-  { unsafeBeaconId :: CurrencySymbol
-  , unsafeBeaconName :: TokenName
-  , unsafeOfferId :: CurrencySymbol
-  , unsafeOfferName :: TokenName
-  , unsafeAskId :: CurrencySymbol
-  , unsafeAskName :: TokenName
-  , unsafeSwapPrice :: (Integer,Integer)
-  }
-
-instance PlutusTx.ToData UnsafeDatum where
-  toBuiltinData UnsafeDatum{..} = PlutusTx.dataToBuiltinData $
-    PlutusTx.Constr 0 
-      [ PlutusTx.toData unsafeBeaconId
-      , PlutusTx.toData unsafeBeaconName
-      , PlutusTx.toData unsafeOfferId
-      , PlutusTx.toData unsafeOfferName
-      , PlutusTx.toData unsafeAskId
-      , PlutusTx.toData unsafeAskName
-      , PlutusTx.toData unsafeSwapPrice
-      ]
 
 -------------------------------------------------
 -- Params
@@ -293,7 +270,7 @@ txOutRefWithValueAndDatum value' datum = do
   return $ findTxId value' dHash xs
 
 -- | Find all TxOutRefs and their datums located at the address.
-txOutRefsAndDatumsAtAddress :: Address -> EmulatorTrace [(TxOutRef,Maybe SwapDatum)]
+txOutRefsAndDatumsAtAddress :: (FromData a) => Address -> EmulatorTrace [(TxOutRef,Maybe a)]
 txOutRefsAndDatumsAtAddress addr = do
   state <- chainState
   let xs = Map.toList $ getIndex (state ^. index)

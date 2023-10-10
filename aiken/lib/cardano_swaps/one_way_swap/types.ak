@@ -1,11 +1,6 @@
 use aiken/transaction/value.{PolicyId,AssetName}
 use aiken/math/rational.{Rational}
-
-// An extra parameter so that every offer asset gets its own beacon.
-pub type AssetConfig {
-  asset_id: PolicyId,
-  asset_name: AssetName
-}
+use cardano_swaps/common/types.{AssetConfig}
 
 pub type SwapDatum {
   SwapDatum { 
@@ -28,3 +23,4 @@ pub type BeaconRedeemer {
   CreateSwap { ask_assets: List<AssetConfig> } // Mint a beacon for the target trading pairs.
   BurnBeacons
 }
+

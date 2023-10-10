@@ -5,7 +5,7 @@
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Test.CloseOrUpdate
+module Test.OneWaySwap.CloseOrUpdate
   (
     -- * Scenarios Tested
     -- ** Scenarios that should succeed
@@ -86,7 +86,9 @@ import Data.List (zip4,elemIndex)
 
 import Test.Internal
 import Test.Config
-import CardanoSwaps
+import Test.OneWaySwap.Utils
+import CardanoSwaps.OneWaySwap
+import CardanoSwaps.Utils
 
 -------------------------------------------------
 -- Initialize reference script.
@@ -431,7 +433,7 @@ regressionTest3 = do
 
   void $ waitNSlots 2
 
-  swaps <- txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   callEndpoint @"create-transaction" h1 $
     CreateTransactionParams
@@ -523,7 +525,7 @@ regressionTest4 = do
 
   void $ waitNSlots 2
 
-  swaps <- txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   callEndpoint @"create-transaction" h1 $
     CreateTransactionParams
@@ -618,7 +620,7 @@ regressionTest5 = do
 
   void $ waitNSlots 2
 
-  swaps <- txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   callEndpoint @"create-transaction" h1 $
     CreateTransactionParams
@@ -710,7 +712,7 @@ regressionTest6 = do
 
   void $ waitNSlots 2
 
-  swaps <- txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   callEndpoint @"create-transaction" h1 $
     CreateTransactionParams
@@ -1263,7 +1265,7 @@ regressionTest11 = do
 
   void $ waitNSlots 2
 
-  swaps <- txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   let sampleBurns = take 3 $
         zipWith
@@ -1380,7 +1382,7 @@ regressionTest12 = do
 
   void $ waitNSlots 2
 
-  swaps <- txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   let sampleBurns = take 3 $
         zipWith
@@ -1497,7 +1499,7 @@ regressionTest13 = do
 
   void $ waitNSlots 2
 
-  swaps <- txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   let newSampleOutputs = take 3 $
         zipWith 
@@ -1620,7 +1622,7 @@ regressionTest14 = do
 
   void $ waitNSlots 2
 
-  swaps <- txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   let newSampleOutputs = take 3 $
         zipWith 
@@ -1749,7 +1751,7 @@ regressionTest15 = do
 
   void $ waitNSlots 2
 
-  swaps <- txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   let sampleBurns = take 3 $
         map
@@ -1871,7 +1873,7 @@ regressionTest16 = do
 
   void $ waitNSlots 2
 
-  swaps <- txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   let newSampleOutputs = take 3 $
         map 
@@ -2679,7 +2681,7 @@ failureTest3 = do
 
   void $ waitNSlots 2
 
-  swaps <- txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   callEndpoint @"create-transaction" h1 $
     CreateTransactionParams
@@ -2897,7 +2899,7 @@ failureTest5 = do
 
   void $ waitNSlots 2
 
-  swaps <- txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   let sampleBurns = take 3 $
         map
@@ -3642,7 +3644,7 @@ failureTest11 = do
 
   void $ waitNSlots 2
 
-  swaps <- txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   callEndpoint @"create-transaction" h1 $
     CreateTransactionParams
@@ -5489,7 +5491,7 @@ benchTest1 numberClosed = do
 
   void $ waitNSlots 2
 
-  swaps <- txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   callEndpoint @"create-transaction" h1 $
     CreateTransactionParams
@@ -5573,7 +5575,7 @@ benchTest2 numberUpdated = do
 
   void $ waitNSlots 2
 
-  swaps <- txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   callEndpoint @"create-transaction" h1 $
     CreateTransactionParams
@@ -5688,7 +5690,7 @@ benchTest3 numberClosed = do
 
   void $ waitNSlots 2
 
-  swaps <- txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   callEndpoint @"create-transaction" h1 $
     CreateTransactionParams
@@ -5772,7 +5774,7 @@ benchTest4 numberUpdated = do
 
   void $ waitNSlots 2
 
-  swaps <- txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   callEndpoint @"create-transaction" h1 $
     CreateTransactionParams
@@ -5903,7 +5905,7 @@ benchTest5 numberClosed = do
 
   void $ waitNSlots 2 
 
-  targets <- txOutRefsAndDatumsAtAddress swapAddr
+  targets <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr
 
   callEndpoint @"create-transaction" h1 $
     CreateTransactionParams
@@ -6023,7 +6025,7 @@ benchTest6 numberClosed = do
 
   void $ waitNSlots 2 
 
-  targets <- txOutRefsAndDatumsAtAddress swapAddr
+  targets <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr
 
   callEndpoint @"create-transaction" h1 $
     CreateTransactionParams
@@ -6143,7 +6145,7 @@ benchTest7 numberUpdated = do
   
   void $ waitNSlots 2
 
-  targets <- txOutRefsAndDatumsAtAddress swapAddr
+  targets <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr
 
   let newSampleOutputs = take numberUpdated $
         zipWith 
@@ -6276,7 +6278,7 @@ benchTest8 numberUpdated = do
   
   void $ waitNSlots 2
 
-  targets <- txOutRefsAndDatumsAtAddress swapAddr
+  targets <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr
 
   let newSampleOutputs = take numberUpdated $
         zipWith 
@@ -6434,7 +6436,7 @@ benchTest9 numberClosed = do
 
   void $ waitNSlots 2
 
-  swaps <- take numberClosed <$> txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- take numberClosed <$> txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   let sampleBurns = 
         map
@@ -6586,7 +6588,7 @@ benchTest10 numberClosed = do
 
   void $ waitNSlots 2
 
-  swaps <- take numberClosed <$> txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- take numberClosed <$> txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   let sampleBurns = 
         map
@@ -6738,7 +6740,7 @@ benchTest11 numberUpdated = do
 
   void $ waitNSlots 2
 
-  swaps <- take numberUpdated <$> txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- take numberUpdated <$> txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   let newSampleOutputs = 
         map
@@ -6890,7 +6892,7 @@ benchTest12 numberUpdated = do
 
   void $ waitNSlots 2
 
-  swaps <- take numberUpdated <$> txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- take numberUpdated <$> txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   let newSampleOutputs = 
         map
@@ -7045,7 +7047,7 @@ benchTest13 numberClosed = do
 
   void $ waitNSlots 2
 
-  swaps <- take numberClosed <$> txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- take numberClosed <$> txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   let sampleBurns = 
         map
@@ -7200,7 +7202,7 @@ benchTest14 numberUpdated = do
 
   void $ waitNSlots 2
 
-  swaps <- take numberUpdated <$> txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- take numberUpdated <$> txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   let newSampleOutputs = 
         map
@@ -7294,7 +7296,7 @@ benchTest15 numberChanged = do
 
   void $ waitNSlots 2
 
-  swaps <- txOutRefsAndDatumsAtAddress swapAddr
+  swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr
 
   let newAskAsset = testToken2
       newBeaconName = genBeaconName testToken2
@@ -7400,7 +7402,7 @@ benchTest16 numberChanged = do
 
   void $ waitNSlots 2
 
-  swaps <- txOutRefsAndDatumsAtAddress swapAddr
+  swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr
 
   let newAskAssets = take numberChanged $ 
           map (\i -> (fst $ testToken1, fromString $ "TestToken" <> show @Int i)) [41..80]
@@ -7571,7 +7573,7 @@ benchTest17 numberUpdated = do
 
   void $ waitNSlots 2
 
-  swaps <- take numberUpdated <$> txOutRefsAndDatumsAtAddress swapAddr 
+  swaps <- take numberUpdated <$> txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   let endSampleOutputs = 
         take numberUpdated $ map 

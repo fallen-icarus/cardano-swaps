@@ -12,19 +12,11 @@ import Ledger.Tx.CardanoAPI.Internal (toCardanoValue)
 import Plutus.Trace.Emulator
 
 import Test.Internal
-import CardanoSwaps
+import CardanoSwaps.Utils
 
 -------------------------------------------------
 -- Configs
 -------------------------------------------------
--- | 26 ADA is the default. This is what the cardano-swaps spending validator requires.
-minUTxOSpendRef :: Integer
-minUTxOSpendRef = 26_000_000
-
--- | 18 ADA is the default. This is what the cardano-loans minting policy requires.
-minUTxOMintRef :: Integer
-minUTxOMintRef = 18_000_000
-
 -- | An always succeeding validator address without a staking credential.
 refScriptAddress :: Address
 refScriptAddress = Address (ScriptCredential alwaysSucceedValidatorHash) Nothing
@@ -170,6 +162,12 @@ testToken46 = ("c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","TestT
 testToken47 :: (CurrencySymbol,TokenName)
 testToken47 = ("c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","TestToken47")
 
+testToken48 :: (CurrencySymbol,TokenName)
+testToken48 = ("c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","TestToken48")
+
+testToken49 :: (CurrencySymbol,TokenName)
+testToken49 = ("c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","TestToken49")
+
 emConfig :: EmulatorConfig
 emConfig = EmulatorConfig (Left $ Map.fromList wallets) def
   where
@@ -215,6 +213,15 @@ emConfig = EmulatorConfig (Left $ Map.fromList wallets) def
          <> (uncurry singleton testToken38) 1000
          <> (uncurry singleton testToken39) 1000
          <> (uncurry singleton testToken40) 1000
+         <> (uncurry singleton testToken41) 1000
+         <> (uncurry singleton testToken42) 1000
+         <> (uncurry singleton testToken43) 1000
+         <> (uncurry singleton testToken44) 1000
+         <> (uncurry singleton testToken45) 1000
+         <> (uncurry singleton testToken46) 1000
+         <> (uncurry singleton testToken47) 1000
+         <> (uncurry singleton testToken48) 1000
+         <> (uncurry singleton testToken49) 1000
 
     user2 :: C.Value
     user2 = unsafeFromRight . toCardanoValue $ lovelaceValueOf 1_000_000_000
@@ -235,6 +242,29 @@ emConfig = EmulatorConfig (Left $ Map.fromList wallets) def
          <> (uncurry singleton testToken15) 1000
          <> (uncurry singleton testToken16) 1000
          <> (uncurry singleton testToken17) 1000
+         <> (uncurry singleton testToken18) 1000
+         <> (uncurry singleton testToken19) 1000
+         <> (uncurry singleton testToken20) 1000
+         <> (uncurry singleton testToken21) 1000
+         <> (uncurry singleton testToken22) 1000
+         <> (uncurry singleton testToken23) 1000
+         <> (uncurry singleton testToken24) 1000
+         <> (uncurry singleton testToken25) 1000
+         <> (uncurry singleton testToken26) 1000
+         <> (uncurry singleton testToken27) 1000
+         <> (uncurry singleton testToken28) 1000
+         <> (uncurry singleton testToken29) 1000
+         <> (uncurry singleton testToken30) 1000
+         <> (uncurry singleton testToken31) 1000
+         <> (uncurry singleton testToken32) 1000
+         <> (uncurry singleton testToken33) 1000
+         <> (uncurry singleton testToken34) 1000
+         <> (uncurry singleton testToken35) 1000
+         <> (uncurry singleton testToken36) 1000
+         <> (uncurry singleton testToken37) 1000
+         <> (uncurry singleton testToken38) 1000
+         <> (uncurry singleton testToken39) 1000
+         <> (uncurry singleton testToken40) 1000
     
     user3 :: C.Value
     user3 = unsafeFromRight . toCardanoValue $ lovelaceValueOf 1_000_000_000

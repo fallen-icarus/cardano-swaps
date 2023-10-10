@@ -34,7 +34,12 @@ library
   import:
       lang
     , internals
-  exposed-modules: CardanoSwaps
+  exposed-modules: 
+      CardanoSwaps
+    , CardanoSwaps.Blueprints
+    , CardanoSwaps.OneWaySwap
+    , CardanoSwaps.TwoWaySwap
+    , CardanoSwaps.Utils
   build-depends:
       bytestring
     , serialise
@@ -62,9 +67,16 @@ test-suite cardano-swaps-tests
   other-modules:
       Test.Internal
     , Test.Config
-    , Test.CloseOrUpdate
-    , Test.Swap
-    , Test.CreateSwap
+    , Test.OneWaySwap
+    , Test.OneWaySwap.CloseOrUpdate
+    , Test.OneWaySwap.CreateSwap
+    , Test.OneWaySwap.Swap
+    , Test.OneWaySwap.Utils
+    , Test.TwoWaySwap
+    , Test.TwoWaySwap.CloseOrUpdate
+    , Test.TwoWaySwap.CreateSwap
+    , Test.TwoWaySwap.Swap
+    , Test.TwoWaySwap.Utils
   build-depends:
       cardano-swaps
     , plutus-contract

@@ -4,9 +4,8 @@ module Main where
 
 import Test.Tasty
 
-import Test.CreateSwap as CreateSwap
-import Test.CloseOrUpdate as CloseOrUpdate
-import Test.Swap as Swap
+import Test.OneWaySwap as OneWaySwap
+import Test.TwoWaySwap as TwoWaySwap
 
 {- | Tests are broken into 5 categories:
 
@@ -25,7 +24,6 @@ main :: IO ()
 main = do
   defaultMain $ testGroup "Cardano-Swaps"
     [ 
-      CreateSwap.tests
-    , CloseOrUpdate.tests
-    , Swap.tests
+      OneWaySwap.tests
+    , TwoWaySwap.tests
     ]

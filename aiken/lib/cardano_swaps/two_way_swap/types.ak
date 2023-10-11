@@ -5,8 +5,8 @@ use cardano_swaps/common/types.{AssetConfig}
 
 pub type SwapDatum {
   SwapDatum { 
-    beacon_id: PolicyId, // The beacon policy id for the associated trading pair.
-    beacon_name: AssetName, // The asset name for the beacon.
+    beacon_id: PolicyId, // The beacon policy id for two-way swaps.
+    beacon_name: AssetName, // The asset name for the beacon for this trading pair.
     asset1_id: PolicyId, // The policy id for the first asset.
     asset1_name: AssetName, // The asset name for the first asset.
     asset2_id: PolicyId, // The policy id for the second asset.

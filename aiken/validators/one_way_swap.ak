@@ -38,6 +38,7 @@ validator() {
         //      a) all fields same as input datum except the price
         //      b) price denominator > 0
         //      c) price > 0
+        //      d) prev_input == Nothing
         // 3) The beacons must be stored with some of the offered asset.
         // 4) No extraneous assets can be stored in the swap UTxO.
         // 5) The beacons must be stored individually.

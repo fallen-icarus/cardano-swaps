@@ -16,13 +16,11 @@ be found [here](./Benchmarks/).
 - [Preliminary Discussion](#preliminary-discussion)
 - [Specification](#specification)
 - [Features Discussion](#features-discussion)
-- [Future Directions](#future-directions)
-- [UTxO Concurrency Discussion](#utxo-concurrency-discussion)
 - [Conclusion](#conclusion)
 
 ## Abstract
 
-{::comment}
+<!---
 The core ideas of this protocol are:
 1) One-way swaps: basic limit order.
 2) Two-way swaps: naturally incentivizes providing liquidity.
@@ -30,7 +28,7 @@ The core ideas of this protocol are:
 4) Arbitragers are naturally incentivized to spread the liquidity across all trading pairs.
 5) Concurrency scales with the number of users.
 6) Users maintain full custody, delegation control, and voting control of their assets at all times.
-{:/comment}
+--->
 
 Cardano-Swaps is a p2p-DeFi protocol for swapping fungible tokens on the Cardano Settlement Layer
 (CSL). It solves many of the pitfalls of current DEX implementations by empowering users to deploy

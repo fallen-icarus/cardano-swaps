@@ -1,6 +1,8 @@
 # Benchmarks (YMMV)
 
-The node emulator from [plutus-apps](https://github.com/input-output-hk/plutus-apps) was used to do all benchmarking tests. All scripts were used as reference scripts to get the best performance possible.
+The node emulator from [plutus-apps](https://github.com/input-output-hk/plutus-apps) was used to do
+all benchmarking tests. All scripts were used as reference scripts to get the best performance 
+possible.
 
 The universal swap spending script requires about 26 ADA to store on-chain.
 Each minting policy requires about 18 ADA to be stored on-chain.
@@ -20,9 +22,9 @@ beacon queries.
 | 30 | 1.093132 ADA | 1.639698 ADA |
 | 40 | 1.397183 ADA | 2.095775 ADA |
 | 50 | 1.695163 ADA | 2.542745 ADA |
-| 59 | 1.964127 ADA | 2.946181 ADA | 
+| 58 | 1.968027 ADA | 2.952041 ADA | 
 
-59 swaps was the upper limit for this test.
+58 swaps was the upper limit for this test.
 
 #### All swaps are for the same trading pair. The offered asset was a native token.
 | Number of Swaps Created | Tx Fee | Collateral Required |
@@ -32,9 +34,9 @@ beacon queries.
 | 20 | 0.700861 ADA | 1.051292 ADA |
 | 30 | 1.246651 ADA | 1.869977 ADA |
 | 40 | 1.591113 ADA | 2.386670 ADA |
-| 49 | 1.895840 ADA | 2.842760 ADA |
+| 48 | 1.893118 ADA | 2.839677 ADA |
 
-49 swaps was the upper limit for this test.
+48 swaps was the upper limit for this test.
 
 #### All swaps are for the same offer asset but different ask assets. The offer asset was a native token.
 | Number of Swaps Created | Tx Fee | Collateral Required |
@@ -45,9 +47,9 @@ beacon queries.
 | 15 | 1.000096 ADA | 1.500144 ADA |
 | 20 | 1.321653 ADA | 1.982480 ADA |
 | 25 | 1.679266 ADA | 2.518899 ADA |
-| 29 | 1.975656 ADA | 2.963484 ADA |
+| 28 | 1.923147 ADA | 2.884736 ADA |
 
-29 swaps was the upper limit for this test.
+28 swaps was the upper limit for this test.
 
 #### All swaps are for the same offer asset but different ask assets. The offer asset is ADA.
 | Number of Swaps Created | Tx Fee | Collateral Required |
@@ -58,9 +60,9 @@ beacon queries.
 | 15 | 0.870619 ADA | 1.305929 ADA |
 | 20 | 1.160354 ADA | 1.740531 ADA |
 | 25 | 1.492042 ADA | 2.238063 ADA |
-| 30 | 1.849519 ADA | 2.774279 ADA |
+| 29 | 1.796413 ADA | 2.694620 ADA |
 
-30 swaps was the upper limit for this test.
+29 swaps was the upper limit for this test.
 
 #### All swaps are for different offer assets but the same ask asset. The ask asset is ADA.
 | Number of Swaps Created | Tx Fee | Collateral Required |
@@ -94,6 +96,60 @@ beacon queries.
 
 
 
+## Swap Assets
+Swaps are validated by checking each output in the transaction. The checks are essentially:
+1) Does this output have the beacon from the input?
+2) If "Yes" to (1), is this output locked at the address where the input comes from?
+3) If "Yes" to (2), does this output have the proper datum for the corresponding output?
+
+Whenever a question is answered "No", the checks stop for that output and the validator moves on
+to the next output. Because of this, the best possible performance is when all swaps are for unique
+trading pairs (ie, the checks stop after the first question for all but the relevant output). The
+worst possible performance is when all swaps are for the same trading pair AND are all from the
+same address. All other scenarios will fall somewhere in between.
+
+#### WORST CASE SCENARIO: Execute multiple swap UTxOs for the same trading pair and from the same address. 
+| Number of Swaps | Tx Fee | Collateral Required |
+|:--:|:--:|:--:|
+| 1 | 0.242436 ADA | 0.363654 ADA |
+| 2 | 0.309928 ADA | 0.464892 ADA |
+| 3 | 0.385710 ADA | 0.578565 ADA |
+| 4 | 0.469694 ADA | 0.704541 ADA |
+| 5 | 0.561925 ADA | 0.842888 ADA |
+| 6 | 0.662402 ADA | 0.993603 ADA |
+| 7 | 0.771124 ADA | 1.156686 ADA |
+| 8 | 0.888093 ADA | 1.332140 ADA |
+| 9 | 1.013308 ADA | 1.519962 ADA |
+| 10 | 1.152841 ADA | 1.729262 ADA |
+| 11 | 1.294548 ADA | 1.941822 ADA |
+| 12 | 1.444502 ADA | 2.166753 ADA |
+
+The maximum number of swaps that could fit in the transaction was 12.
+
+#### BEST CASE SCENARIO: Execute multiple swap UTxOs for the different trading pairs. 
+| Number of Swaps | Tx Fee | Collateral Required |
+|:--:|:--:|:--:|
+| 1 | 0.248778 ADA | 0.373167 ADA |
+| 2 | 0.318082 ADA | 0.477123 ADA |
+| 3 | 0.392362 ADA | 0.588543 ADA |
+| 4 | 0.469743 ADA | 0.704615 ADA |
+| 5 | 0.556761 ADA | 0.835142 ADA |
+| 6 | 0.638943 ADA | 0.958415 ADA |
+| 7 | 0.724225 ADA | 1.086338 ADA |
+| 8 | 0.814483 ADA | 1.221725 ADA |
+| 9 | 0.916287 ADA | 1.374431 ADA | 
+| 10 | 1.011478 ADA | 1.517217 ADA |
+| 11 | 1.109769 ADA | 1.664654 ADA |
+| 12 | 1.211161 ADA | 1.816742 ADA |
+| 13 | 1.321680 ADA | 1.982520 ADA |
+| 14 | 1.429271 ADA | 2.143907 ADA |
+| 15 | 1.539962 ADA | 2.309943 ADA |
+| 16 | 1.655630 ADA | 2.483445 ADA | 
+
+The maximum number of swaps that could fit in the transaction was 16.
+
+
+
 ## Closing swaps
 #### Closing swaps for the same trading pair. The offered asset is a native asset.
 | Number Closed | Tx Fee | Collateral Required |
@@ -104,9 +160,9 @@ beacon queries.
 | 30 | 0.849415 ADA | 1.274123 ADA |
 | 40 | 1.190277 ADA | 1.785716 ADA |
 | 50 | 1.398190 ADA | 2.097285 ADA | 
-| 55 | 1.584887 ADA | 2.377331 ADA | 
+| 54 | 1.576342 ADA | 2.364513 ADA | 
 
-The upper limit was 55 swaps closed in a single transaction.
+The upper limit was 54 swaps closed in a single transaction.
 
 #### Closing swaps for the same trading pair. The offered asset is ADA.
 | Number Closed | Tx Fee | Collateral Required |
@@ -117,9 +173,9 @@ The upper limit was 55 swaps closed in a single transaction.
 | 30 | 0.831758 ADA | 1.247637 ADA |
 | 40 | 1.168203 ADA | 1.752305 ADA |
 | 50 | 1.566264 ADA | 2.349396 ADA | 
-| 56 | 1.596858 ADA | 2.395287 ADA |
+| 55 | 1.588828 ADA | 2.383242 ADA |
 
-The upper limit was 56 swaps closed in a single transaction.
+The upper limit was 55 swaps closed in a single transaction.
 
 #### Closing swaps for the same offer asset but different ask assets. The offered asset is a native asset.
 | Number Closed | Tx Fee | Collateral Required |
@@ -130,9 +186,9 @@ The upper limit was 56 swaps closed in a single transaction.
 | 30 | 0.895693 ADA | 1.343540 ADA |
 | 40 | 1.256152 ADA | 1.884228 ADA |
 | 50 | 1.495494 ADA | 2.243241 ADA |
-| 54 | 1.652088 ADA | 2.478132 ADA | 
+| 53 | 1.641421 ADA | 2.462132 ADA | 
 
-The upper limit was 54 swaps closed in a single transaction.
+The upper limit was 53 swaps closed in a single transaction.
 
 #### Closing swaps for the same offer asset but different ask assets. The offered asset is ADA.
 | Number Closed | Tx Fee | Collateral Required |
@@ -143,9 +199,9 @@ The upper limit was 54 swaps closed in a single transaction.
 | 30 | 0.880375 ADA | 1.320563 ADA |
 | 40 | 1.236418 ADA | 1.854627 ADA |
 | 50 | 1.471343 ADA | 2.207015 ADA |
-| 55 | 1.666071 ADA | 2.499107 ADA |
+| 54 | 1.655919 ADA | 2.483879 ADA |
 
-The upper limit was 55 swaps closed in a single transaction.
+The upper limit was 54 swaps closed in a single transaction.
 
 #### Closing swaps for different offer assets but the same ask asset. The asked asset is ADA.
 | Number Closed | Tx Fee | Collateral Required |
@@ -154,9 +210,9 @@ The upper limit was 55 swaps closed in a single transaction.
 | 10 | 0.458133 ADA | 0.687200 ADA |
 | 20 | 0.845325 ADA | 1.267988 ADA |
 | 30 | 1.339440 ADA | 2.009160 ADA |
-| 38 | 1.699855 ADA | 2.549783 ADA |
+| 37 | 1.699855 ADA | 2.549783 ADA |
 
-The upper limit was 38 swaps closed in a single transaction.
+The upper limit was 37 swaps closed in a single transaction.
 
 #### Closing swaps for different offer assets but the same ask asset. The asked asset is a native asset.
 | Number Closed | Tx Fee | Collateral Required |
@@ -165,9 +221,9 @@ The upper limit was 38 swaps closed in a single transaction.
 | 10 | 0.458133 ADA | 0.687200 ADA |
 | 20 | 0.845325 ADA | 1.267988 ADA |
 | 30 | 1.339440 ADA | 2.009160 ADA |
-| 38 | 1.699855 ADA | 2.549783 ADA |
+| 37 | 1.663178 ADA | 2.494767 ADA |
 
-The upper limit was 38 swaps closed in a single transaction.
+The upper limit was 37 swaps closed in a single transaction.
 
 #### Closing swaps for different offer assets and different ask assets.
 | Number Closed | Tx Fee | Collateral Required |
@@ -176,9 +232,9 @@ The upper limit was 38 swaps closed in a single transaction.
 | 10 | 0.458133 ADA | 0.687200 ADA |
 | 20 | 0.845325 ADA | 1.267988 ADA |
 | 30 | 1.339440 ADA | 2.009160 ADA |
-| 38 | 1.699899 ADA | 2.549849 ADA |
+| 37 | 1.663090 ADA | 2.494635 ADA |
 
-The upper limit was 38 swaps closed in a single transaction.
+The upper limit was 37 swaps closed in a single transaction.
 
 
 
@@ -216,9 +272,9 @@ The upper limit was 8 swaps updated in a single transaction.
 | 1 | 0.228396 ADA | 0.342594 ADA |
 | 5 | 0.490379 ADA | 1.735569 ADA |
 | 10 | 0.976553 ADA | 1.464830 ADA |
-| 14 | 1.508528 ADA | 2.262792 ADA | 
+| 15 | 1.552419 ADA | 2.328629 ADA | 
 
-The upper limit was 14 swaps updated in a single transaction.
+The upper limit was 15 swaps updated in a single transaction.
 
 #### Updating swaps for the same offer asset but different ask assets. The offered asset is ADA.
 | Number Updated | Tx Fee | Collateral Required |
@@ -227,9 +283,8 @@ The upper limit was 14 swaps updated in a single transaction.
 | 5 | 0.446417 ADA | 1.669626 ADA |
 | 10 | 0.878887 ADA | 1.318331 ADA |
 | 15 | 1.469409 ADA | 2.204114 ADA | 
-| 16 | 1.574326 ADA | 2.361489 ADA |
 
-The upper limit was 16 swaps updated in a single transaction.
+The upper limit was 15 swaps updated in a single transaction.
 
 #### Updating swaps for different offer assets but the same ask asset. The asked asset is ADA.
 | Number Updated | Tx Fee | Collateral Required |
@@ -264,6 +319,10 @@ The upper limit was 16 swaps updated in a single transaction.
 
 
 ## Changing what trading pairs swaps are for
+By composing both the `CreateSwap` minting redeemer and the `CloseOrUpdate` spending redeemer, it
+is possible change what trading pair a swap is for in a single transaction (ie, you do not need to
+first close the swap in one tx and than open the new swap in another tx).
+
 #### The swaps started for the same trading pair and ended for the same trading pair. The offer asset remained the same before and after.
 | Number Changed | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
@@ -292,47 +351,3 @@ The upper limit was 13 swaps updated in a single transaction.
 | 10 | 1.611050 ADA | 2.416575 ADA |
 
 The upper limit was 10 swaps updated in a single transaction.
-
-
-
-## Swap Assets
-#### Execute multiple swap UTxOs for the same trading pair and from the same address. The swap change was consolidated into a single output.
-| Number of Swaps | Tx Fee | Collateral Required |
-|:--:|:--:|:--:|
-| 1 | 0.260583 ADA | 0.390875 ADA |
-| 2 | 0.386608 ADA | 0.579912 ADA |
-| 3 | 0.572880 ADA | 0.859320 ADA |
-| 4 | 0.818312 ADA | 1.228968 ADA |
-| 5 | 1.125948 ADA | 1.688922 ADA |
-
-The maximum number of swaps that could fit in the transaction was 5.
-
-#### Execute multiple swap UTxOs for the different trading pairs but from the same address. 
-| Number of Swaps | Tx Fee | Collateral Required |
-|:--:|:--:|:--:|
-| 1 | 0.260495 ADA | 0.390743 ADA |
-| 2 | 0.347506 ADA | 0.521259 ADA |
-| 3 | 0.459940 ADA | 0.689910 ADA |
-| 4 | 0.561859 ADA | 0.856689 ADA |
-| 5 | 0.694843 ADA | 1.042265 ADA |
-| 6 | 0.851581 ADA | 1.277372 ADA |
-| 7 | 1.001450 ADA | 1.502175 ADA |
-| 8 | 1.188749 ADA | 1.782974 ADA |
-| 9 | 1.361449 ADA | 2.042174 ADA | 
-
-The maximum number of swaps that could fit in the transaction was 9.
-
-#### Execute multiple swap UTxOs for the same trading pair and from different addresses. 
-| Number of Swaps | Tx Fee | Collateral Required |
-|:--:|:--:|:--:|
-| 1 | 0.260583 ADA | 0.390875 ADA |
-| 2 | 0.353085 ADA | 0.529628 ADA |
-| 3 | 0.460125 ADA | 0.690188 ADA |
-| 4 | 0.582229 ADA | 0.873344 ADA |
-| 5 | 0.720060 ADA | 1.080090 ADA |
-| 6 | 0.872384 ADA | 1.308576 ADA |
-| 7 | 1.040433 ADA | 1.560650 ADA |
-| 8 | 1.222976 ADA | 1.834464 ADA |
-| 9 | 1.421244 ADA | 2.131866 ADA | 
-
-The maximum number of swaps that could fit in the transaction was 9.

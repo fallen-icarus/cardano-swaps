@@ -5,7 +5,7 @@ use aiken/list
 use aiken/math/rational.{Rational} as ratio
 use aiken/option.{is_some}
 use aiken/string.{concat}
-use aiken/transaction.{Datum,InlineDatum,Input,Output} as tx
+use aiken/transaction.{Datum,InlineDatum,Output,OutputReference} as tx
 use aiken/transaction/credential.{
   Address,
   Script,
@@ -67,7 +67,8 @@ fn valid_swap_datum_creation(
     offer_name_,
     ask_id_,
     ask_name_,
-    price
+    price,
+    prev_input
   ) = parse_datum(datum)
 
   // The beacon_id must be the policy id of the beacon policy.
@@ -92,7 +93,10 @@ fn valid_swap_datum_creation(
   trace_if_false( @"Swap price denominator not > 0", ratio.denominator(price) > 0 ) &&
 
   // The price must be > 0.
-  trace_if_false( @"Swap price not > 0", ratio.compare(price,ratio.zero()) == Greater )
+  trace_if_false( @"Swap price not > 0", ratio.compare(price,ratio.zero()) == Greater ) &&
+
+  // The prev_input must be == None.
+  trace_if_false( @"Swap prev_input not None", prev_input == None )
 }
 
 // Check whether the proper beacons are minted/burned based on the redeemer. It returns `True` or 
@@ -165,6 +169,7 @@ pub fn beacon_destination_check(
   //      f) `ask_name` == asset_name of ask_asset
   //      g) `price` denominator > 0
   //      h) `price` > 0
+  //      i) `prev_input` == `None`
   // 5) The beacons must be stored with some of the offered asset.
 
   // Create a map from beacon names to `AssetConfig` (information from redeemer).
@@ -279,6 +284,7 @@ pub fn valid_update_outputs(
   //      a) all fields same as input datum except the `price`
   //      b) `price` denominator > 0
   //      c) `price` > 0
+  //      d) `prev_input` == `None`
   // 2) The beacons must be stored with some of the offered asset.
   // 3) The beacons must be stored individually.
   // 4) No extraneous assets can be in the swap.
@@ -291,7 +297,8 @@ pub fn valid_update_outputs(
     offer_name,
     ask_id,
     ask_name,
-    _ // The price isn't needed since it can be replaced.
+    _, // The price isn't needed since it can be replaced.
+    _ // prev_input isn't needed since it will be set to None.
   ) = swap_datum
 
   // This function is used to map over the outputs to check validity.
@@ -372,155 +379,156 @@ pub fn valid_update_outputs(
   list.foldl( outputs, True, foo )
 }
 
-// Get the total input value for a specific trading pair from this swap address.
-// The `Rational` returned is the weighted avg price of all the relevant inputs.
-fn swap_input_info(
-  beacon_id: PolicyId,
-  beacon_name: AssetName,
-  offer_id: PolicyId,
-  offer_name: AssetName,
-  swap_addr: Address,
-  inputs: List<Input>
-) -> (Value,Rational) {
-  // This function maps over the inputs to build up the accumulator. The `Int` is a temp variable
-  // to keep track of the running total. It is needed to calculate the weighted avg price.
-  let foo = fn (in: Input, acc: (Value,Int,Rational)) {
-    // Extract out the information from the input.
-    let Input(_,Output(addr,ival,d,_)) = in
-
-    // Extract out the current information from the accumulator.
-    let (val,taken,wp) = acc
-
-    // Check if the input has the beacon for this trading pair.
-    if value.quantity_of( ival, beacon_id, beacon_name ) > 0 {
-      // Check if the input is from this address.
-      if addr == swap_addr {
-        // Calculate the new total taken.
-        let this_taken = value.quantity_of( ival, offer_id, offer_name ) 
-        let new_taken = this_taken + taken
-
-        // Calculate the new weighted price.
-        let SwapDatum(_,_,_,_,_,_,price) = parse_datum(d)
-        expect Some(prev_prop) = ratio.new( taken, new_taken ) // Will fail if new_taken == 0.
-        expect Some(this_prop) = ratio.new( this_taken, new_taken ) // Will fail if new_taken == 0.
-        let new_weighted_price =
-          ratio.reduce(
-            ratio.add(
-              ratio.mul( prev_prop, wp ),
-              ratio.mul( this_prop, price )
-            )
-          )
-
-        // Calculate the new total value.
-        let new_val = value.merge( val, ival )
-
-        // Return the results.
-        ( new_val, new_taken, new_weighted_price )
-      }
-
-      // If it is from a different address, this input can be ignored.
-      else {
-        acc
-      }
-    }
-
-    // If no beacons are present, this input can be ignored.
-    else {
-      acc
-    }
-  }
-
-  // Map over the inputs.
-  let (val,_,wp) = list.foldl(
-    inputs, 
-    ( value.zero(), 0, ratio.zero()),
-    foo
-  )
-
-  // Drop the Int and return the results.
-  (val,wp)
-}
-
-// Calculate the swap flux for this specific trading pair from this address. Negative values mean 
-// the address gained the asset while positive values mean the address lost that asset. This also 
-// checks that any output to the swap address has the proper datum.
+// Calculate the swap flux for this specific Swap UTxO. The value is compared againts an output
+// Swap UTxO with the exact same datum except the `prev_input` field is set to the current
+// input's `OutputReference`. Negative values mean the swap gained the asset while positive 
+// values mean the swap lost that asset. This is a recursive function that will terminate when the
+// corresponding output is found or when no corresponding output is found. When no corresponding 
+// output is found, the function will throw an error.
 fn swap_value_diff(
+  input_ref: OutputReference,
+  input_val: Value,
+  swap_addr: Address,
   beacon_id: PolicyId,
   beacon_name: AssetName,
   offer_id: PolicyId,
   offer_name: AssetName,
   ask_id: PolicyId,
   ask_name: AssetName,
-  req_price: Rational,
-  outputs: List<Output>,
-  total_input_val: Value,
-  swap_addr: Address
+  price: Rational,
+  outputs: List<Output>
 ) -> Value {
-  // A function to map over the outputs and build up the value flux. It will also check that the
-  // swap output is valid.
-  let foo = fn (out: Output, acc: Value) {
-    // Extract the information from the output.
-    let Output(addr,oval,d,_) = out
+  when outputs is {
+    [] -> error @"Corresponding swap output not found"
+    [Output(addr,oval,d,_), ..rest] -> {
+      // Requirements for a valid corresponding output:
+      // 1) The output is to the same swap address where the input originates.
+      // 2) The output has exactly one of the proper beacon.
+      // 3) The output's datum is exactly the same accept the `prev_input` == `Some(input_ref)`.
 
-    // Check if the output has the beacon for this trading pair.
-    if value.quantity_of( oval, beacon_id, beacon_name ) > 0 {
-      // Check if the input is from this address.
-      if addr == swap_addr {
-        // Parse the datum for this output. It must have an inline `SwapDatum`.
-        let SwapDatum( 
-          beacon_id_, 
-          beacon_name_,
-          offer_id_,
-          offer_name_,
-          ask_id_,
-          ask_name_,
-          price
-        ) = parse_datum(d)
+      // Check if the output has the beacon for this trading pair. It must have exactly one.
+      if value.quantity_of( oval, beacon_id, beacon_name ) == 1 {
+        // Check if the output is to this swap address.
+        if swap_addr == addr {
+          // Check if the datum is correct.
+          let SwapDatum(
+            beacon_id_,
+            beacon_name_,
+            offer_id_,
+            offer_name_,
+            ask_id_,
+            ask_name_,
+            price_,
+            prev_input
+          ) = parse_datum(d)
 
-        // The beacon_id must be the policy id of the beacon policy.
-        expect True = error_if_false( @"Invalid SwapDatum beacon_id", beacon_id == beacon_id_ )
+          // Check if the prev_input field points to this input.
+          if prev_input == Some(input_ref) {
+            // The beacon_id must be the policy id of the beacon policy.
+            expect True = error_if_false( 
+              @"Invalid SwapDatum beacon_id", 
+              beacon_id == beacon_id_ 
+            )
 
-        // The beacon name must be sha2_256( ask_asset policy id ++ ask_asset asset name )
-        expect True = error_if_false( @"Invalid SwapDatum beacon_name", beacon_name == beacon_name_ )
+            // The beacon_name must be the beacon_name from the input.
+            expect True = error_if_false( 
+              @"Invalid SwapDatum beacon_name", 
+              beacon_name == beacon_name_ 
+            )
 
-        // The offer_id must be the offer_id that this beacon policy is for.
-        expect True = error_if_false( @"Invalid SwapDatum offer_id", offer_id == offer_id_ )
+            // The offer_id must be the offer_id from the input.
+            expect True = error_if_false( 
+              @"Invalid SwapDatum offer_id", 
+              offer_id == offer_id_
+            )
 
-        // The offer_name must be the offer_name that this beacon policy is for.
-        expect True = error_if_false( @"Invalid SwapDatum offer_name", offer_name == offer_name_ )
+            // The offer_name must be the offer_name from the input.
+            expect True = error_if_false( 
+              @"Invalid SwapDatum offer_name", 
+              offer_name == offer_name_ 
+            )
 
-        // The ask_id must be the ask_id for this beacon.
-        expect True = error_if_false( @"Invalid SwapDatum ask_id", ask_id == ask_id_ )
+            // The ask_id must be the ask_id from the input.
+            expect True = error_if_false( 
+              @"Invalid SwapDatum ask_id", 
+              ask_id == ask_id_ 
+            )
 
-        // The ask_name must be the ask_name for this beacon.
-        expect True = error_if_false( @"Invalid SwapDatum ask_name", ask_name == ask_name_ )
+            // The ask_name must be the ask_name from the input.
+            expect True = error_if_false( 
+              @"Invalid SwapDatum ask_name", 
+              ask_name == ask_name_ 
+            )
 
-        // The price must be the required price.
-        expect True = error_if_false ( @"SwapDatum price not weighted avg", price == req_price )
+            // The price must be the price from the input.
+            expect True = error_if_false( 
+              @"Invalid SwapDatum price", 
+              price == price_
+            )
 
-        // Subtract the output value from the input.
-        value.merge( acc, value.negate(oval) )
+            // Subtract the output value from the input. This stops the recursion.
+            value.merge( input_val, value.negate(oval) )
+          }
+
+          // This cannot be the corresponding output so recurse.
+          else {
+            swap_value_diff(
+              input_ref,
+              input_val,
+              swap_addr,
+              beacon_id,
+              beacon_name,
+              offer_id,
+              offer_name,
+              ask_id,
+              ask_name,
+              price,
+              rest
+            )
+          }
+        }
+
+        // This cannot be the corresponding output so recurse.
+        else {
+          swap_value_diff(
+            input_ref,
+            input_val,
+            swap_addr,
+            beacon_id,
+            beacon_name,
+            offer_id,
+            offer_name,
+            ask_id,
+            ask_name,
+            price,
+            rest
+          )
+        }
       }
-
-      // If the output is to a different address, ignore it.
+      
+      // This cannot be the corresponding output so recurse.
       else {
-        acc
+        swap_value_diff(
+          input_ref,
+          input_val,
+          swap_addr,
+          beacon_id,
+          beacon_name,
+          offer_id,
+          offer_name,
+          ask_id,
+          ask_name,
+          price,
+          rest
+        )
       }
-    }
-
-    // If it does not have any beacons, ignore this output.
-    else {
-      acc
     }
   }
-
-  // Map the function over the outputs.
-  list.foldl( outputs, total_input_val, foo )
 }
 
 // Check that only the offered asset leaves during the swap. It also checks that a swap only
 // gained the ask asset. This helps optimize the beacon querying by contraining UTxO
-// assets to just the relevant assets.
+// assets to just the relevant assets. 
 fn only_proper_assets_swapped(
   flux: Value, 
   offer_id: PolicyId, 
@@ -560,40 +568,33 @@ fn only_proper_assets_swapped(
   )
 }
 
-// Compare the inputs and outputs to check that the swap is valid.
+// Compare the input and output to check that the swap is valid.
 pub fn valid_swap(
+  input_ref: OutputReference,
+  input_val: Value,
+  swap_addr: Address,
   beacon_id: PolicyId,
   beacon_name: AssetName,
   offer_id: PolicyId,
   offer_name: AssetName,
   ask_id: PolicyId,
   ask_name: AssetName,
+  price: Rational,
   outputs: List<Output>,
-  inputs: List<Input>,
-  swap_addr: Address
 ) -> Bool {
-  // Get the swap input information.
-  let (swap_input_value, weighted_price) = swap_input_info(
-    beacon_id,
-    beacon_name,
-    offer_id,
-    offer_name,
-    swap_addr,
-    inputs
-  )
-
   // Get the swap flux for this address.
   let swap_flux = swap_value_diff(
+    input_ref,
+    input_val,
+    swap_addr,
     beacon_id,
     beacon_name,
     offer_id,
     offer_name,
     ask_id,
     ask_name,
-    weighted_price,
-    outputs,
-    swap_input_value,
-    swap_addr
+    price,
+    outputs
   )
 
   // Calculate the quantity of the ask asset in flux.
@@ -609,12 +610,12 @@ pub fn valid_swap(
 
   // Compare the ask and offer quantities.
   let swap_ratio = 
-    ratio.mul(offer_taken, weighted_price) // Convert the offer asset to units of the ask asset.
+    ratio.mul(offer_taken, price) // Convert the offer asset to units of the ask asset.
     |> ratio.compare(_, ask_given) // Compare it against the amount of ask given.
 
   // The swap_ratio must be `Less` or `Equal`. Using `!= Greater` had a performance regression...
   trace_if_false( 
-    @"Fail: offer_taken * weighted_price <= ask_given",
+    @"Fail: offer_taken * price <= ask_given",
     swap_ratio == Less || swap_ratio == Equal 
   ) &&
 

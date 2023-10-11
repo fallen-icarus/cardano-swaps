@@ -41,7 +41,18 @@ The maximum number of swaps that could be created was 26.
 
 
 ## Swap Assets
-#### Execute multiple swap UTxOs for the same trading pair.
+Swaps are validated by checking each output in the transaction. The checks are essentially:
+1) Does this output have the beacon from the input?
+2) If "Yes" to (1), is this output locked at the address where the input comes from?
+3) If "Yes" to (2), does this output have the proper datum for the corresponding output?
+
+Whenever a question is answered "No", the checks stop for that output and the validator moves on
+to the next output. Because of this, the best possible performance is when all swaps are for unique
+trading pairs (ie, the checks stop after the first question for all but the relevant output). The
+worst possible performance is when all swaps are for the same trading pair AND are all from the
+same address. All other scenarios will fall somewhere in between.
+
+#### WORST CASE SCENARIO: Execute multiple swap UTxOs for the same trading pair and from the same address.
 | Number of Swaps | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
 | 1 | 0.248129 ADA | 0.372194 ADA |
@@ -59,7 +70,7 @@ The maximum number of swaps that could be created was 26.
 
 The maximum number of swaps that could fit in the transaction was 12.
 
-#### Execute multiple swap UTxOs for the same trading pair.
+#### BEST CASE SCENARIO: Execute multiple swap UTxOs for the different trading pairs.
 | Number of Swaps | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
 | 1 | 0.284246 ADA | 0.426369 ADA |
@@ -138,10 +149,13 @@ The maximum number of swaps that could be updated in the transaction was 15.
 
 
 ## Changing Swap Trading Pair
-Since there are many different scenarios that are possible, instead of testing all of them only the
-worst possible scenario was benchmarked. All other scenarios should have better performance.
+By composing both the `CreateSwap` minting redeemer and the `CloseOrUpdate` spending redeemer, it
+is possible change what trading pair a swap is for in a single transaction (ie, you do not need to
+first close the swap in one tx and than open the new swap in another tx).
 
-If you are aware of a worse scenario, please open an issue.
+Since there are many different scenarios that are possible, instead of testing all of them only the
+worst possible scenario was benchmarked. All other scenarios should have better performance. If 
+you are aware of a an even worse scenario, please open an issue so its benchmarks can be added.
 
 #### All swaps start as different trading pairs and end as different trading pairs.
 | Number Updated | Tx Fee | Collateral Required |

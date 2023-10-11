@@ -54,6 +54,7 @@ module Test.OneWaySwap.CloseOrUpdate
   , failureTest22
   , failureTest23
   , failureTest24
+  , failureTest25
 
     -- ** Benchmark Tests
   , benchTest1
@@ -158,6 +159,7 @@ regressionTest1 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -274,6 +276,7 @@ regressionTest2 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -399,6 +402,7 @@ regressionTest3 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -491,6 +495,7 @@ regressionTest4 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -586,6 +591,7 @@ regressionTest5 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -678,6 +684,7 @@ regressionTest6 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -776,6 +783,7 @@ regressionTest7 = do
         , askId = "" -- This will be replaced.
         , askName = "" -- This will be replaced.
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   let sampleOutputs = take 3 $
@@ -879,6 +887,7 @@ regressionTest8 = do
         , askId = "" -- This will be replaced.
         , askName = "" -- This will be replaced.
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   let sampleOutputs = take 3 $
@@ -997,6 +1006,7 @@ regressionTest9 = do
         , askId = "" -- This will be replaced.
         , askName = "" -- This will be replaced.
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   let sampleOutputs = take 3 $
@@ -1100,6 +1110,7 @@ regressionTest10 = do
         , askId = "" -- This will be replaced.
         , askName = "" -- This will be replaced.
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   let sampleOutputs = take 3 $
@@ -1218,6 +1229,7 @@ regressionTest11 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   ( mintRefs,spendRef ) <- initializeScripts offerAssets
@@ -1335,6 +1347,7 @@ regressionTest12 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   ( mintRefs,spendRef ) <- initializeScripts offerAssets
@@ -1452,6 +1465,7 @@ regressionTest13 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   ( mintRefs,spendRef ) <- initializeScripts offerAssets
@@ -1575,6 +1589,7 @@ regressionTest14 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   ( mintRefs,spendRef ) <- initializeScripts offerAssets
@@ -1699,6 +1714,7 @@ regressionTest15 = do
         , askId = "" -- This will be replaced.
         , askName = "" -- This will be replaced.
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   ( mintRefs,spendRef ) <- initializeScripts offerAssets
@@ -1821,6 +1837,7 @@ regressionTest16 = do
         , askId = "" -- This will be replaced.
         , askName = "" -- This will be replaced.
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   ( mintRefs,spendRef ) <- initializeScripts offerAssets
@@ -1949,6 +1966,7 @@ regressionTest17 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -2091,6 +2109,7 @@ regressionTest18 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -2248,6 +2267,7 @@ regressionTest19 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -2408,6 +2428,7 @@ failureTest1 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -2522,6 +2543,7 @@ failureTest2 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -2647,6 +2669,7 @@ failureTest3 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -2742,6 +2765,7 @@ failureTest4 = do
         , askId = "" -- This will be replaced.
         , askName = "" -- This will be replaced.
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   let sampleOutputs = take 3 $
@@ -2847,6 +2871,7 @@ failureTest5 = do
         , askId = "" -- This will be replaced.
         , askName = "" -- This will be replaced.
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   ( mintRefs,spendRef ) <- initializeScripts offerAssets
@@ -2965,6 +2990,7 @@ failureTest6 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -3090,6 +3116,7 @@ failureTest7 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -3215,6 +3242,7 @@ failureTest8 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -3281,6 +3309,7 @@ failureTest8 = do
         , unsafeAskId = askId swapDatum
         , unsafeAskName = askName swapDatum
         , unsafeSwapPrice = (10,0)
+        , unsafePrevInput = Nothing
         }
 
   callEndpoint @"create-transaction" h1 $
@@ -3350,6 +3379,7 @@ failureTest9 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -3416,6 +3446,7 @@ failureTest9 = do
         , unsafeAskId = askId swapDatum
         , unsafeAskName = askName swapDatum
         , unsafeSwapPrice = (10,-1)
+        , unsafePrevInput = Nothing
         }
 
   callEndpoint @"create-transaction" h1 $
@@ -3485,6 +3516,7 @@ failureTest10 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -3610,6 +3642,7 @@ failureTest11 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -3708,6 +3741,7 @@ failureTest12 = do
         , askId = "" -- This will be replaced.
         , askName = "" -- This will be replaced.
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   let sampleOutputs = take 3 $
@@ -3822,6 +3856,7 @@ failureTest13 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -3949,6 +3984,7 @@ failureTest14 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -4076,6 +4112,7 @@ failureTest15 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -4203,6 +4240,7 @@ failureTest16 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -4330,6 +4368,7 @@ failureTest17 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -4457,6 +4496,7 @@ failureTest18 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -4584,6 +4624,7 @@ failureTest19 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -4712,6 +4753,7 @@ failureTest20 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -4871,6 +4913,7 @@ failureTest21 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -5028,6 +5071,7 @@ failureTest22 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -5169,6 +5213,7 @@ failureTest23 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -5310,6 +5355,7 @@ failureTest24 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -5402,6 +5448,135 @@ failureTest24 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
+-- | New swap output' datum does not have `Nothing` for `prevInput`.
+failureTest25 :: EmulatorTrace ()
+failureTest25 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
+        }
+
+  (mintRefs,spendRef) <- initializeScripts [offerAsset]
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  swap <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconSym assetBeacon 1
+            <> uncurry singleton offerAsset 10
+            )
+            swapDatum
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [
+            ScriptUtxoInput
+              { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer CloseOrUpdate
+              , spendFromAddress = swapAddr
+              , spendUtxos = [ swap ]
+              }
+          ]
+      , outputs = 
+          [
+            UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline 
+                           $ toDatum swapDatum{ swapPrice = unsafeRatio 10 1
+                                              , prevInput = Just $ TxOutRef "" 0
+                                              }
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
 -------------------------------------------------
 -- Benchmark Tests
 -------------------------------------------------
@@ -5427,6 +5602,7 @@ benchTest1 numberClosed = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -5541,6 +5717,7 @@ benchTest2 numberUpdated = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -5626,6 +5803,7 @@ benchTest3 numberClosed = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -5740,6 +5918,7 @@ benchTest4 numberUpdated = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -5838,6 +6017,7 @@ benchTest5 numberClosed = do
         , askId = "" -- This will be replaced.
         , askName = "" -- This will be replaced.
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   let sampleOutputs = take numberClosed $
@@ -5958,6 +6138,7 @@ benchTest6 numberClosed = do
         , askId = "" -- This will be replaced.
         , askName = "" -- This will be replaced.
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   let sampleOutputs = take numberClosed $
@@ -6078,6 +6259,7 @@ benchTest7 numberUpdated = do
         , askId = "" -- This will be replaced.
         , askName = "" -- This will be replaced.
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   let sampleOutputs = take numberUpdated $
@@ -6211,6 +6393,7 @@ benchTest8 numberUpdated = do
         , askId = "" -- This will be replaced.
         , askName = "" -- This will be replaced.
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   let sampleOutputs = take numberUpdated $
@@ -6343,6 +6526,7 @@ benchTest9 numberClosed = do
         , askId = "" 
         , askName = "" 
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   ( mintRefs,spendRef ) <- initializeScripts offerAssets
@@ -6495,6 +6679,7 @@ benchTest10 numberClosed = do
         , askId = fst askAsset
         , askName = snd askAsset 
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   ( mintRefs,spendRef ) <- initializeScripts offerAssets
@@ -6647,6 +6832,7 @@ benchTest11 numberUpdated = do
         , askId = "" 
         , askName = "" 
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   ( mintRefs,spendRef ) <- initializeScripts offerAssets
@@ -6799,6 +6985,7 @@ benchTest12 numberUpdated = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   ( mintRefs,spendRef ) <- initializeScripts offerAssets
@@ -6951,6 +7138,7 @@ benchTest13 numberClosed = do
         , askId = "" -- This will get replaced.
         , askName = "" -- This will get replaced.
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   ( mintRefs,spendRef ) <- initializeScripts offerAssets
@@ -7106,6 +7294,7 @@ benchTest14 numberUpdated = do
         , askId = "" -- This will be replaced.
         , askName = "" -- This will be replaced.
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   ( mintRefs,spendRef ) <- initializeScripts offerAssets
@@ -7261,6 +7450,7 @@ benchTest15 numberChanged = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -7368,6 +7558,7 @@ benchTest16 numberChanged = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   (mintRefs,spendRef) <- initializeScripts [offerAsset]
@@ -7502,6 +7693,7 @@ benchTest17 numberUpdated = do
         , askId = "" -- This will be replaced.
         , askName = "" -- This will be replaced.
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   ( mintRefs,spendRef ) <- initializeScripts offerAssets
@@ -7652,7 +7844,7 @@ benchTest17 numberUpdated = do
       }
 
 benchTrace :: Int -> IO ()
-benchTrace = runEmulatorTraceIO' def emConfig . benchTest1
+benchTrace = runEmulatorTraceIO' def emConfig . benchTest12
 
 -------------------------------------------------
 -- Test Function
@@ -7749,34 +7941,36 @@ tests = do
         (assertEvaluationError "Only the beacons in the redeemer can be minted/burned") failureTest23
     , checkPredicateOptions opts "failureTest24"
         (assertEvaluationError "Staking credential did not approve") failureTest24
+    , checkPredicateOptions opts "failureTest25"
+        (assertEvaluationError "Swap prev_input not None") failureTest25
 
       -- Benchmark tests
     , checkPredicateOptions opts "benchTest1"
-        assertNoFailedTransactions $ benchTest1 55
+        assertNoFailedTransactions $ benchTest1 54
     , checkPredicateOptions opts "benchTest2"
         assertNoFailedTransactions $ benchTest2 7
     , checkPredicateOptions opts "benchTest3"
-        assertNoFailedTransactions $ benchTest3 56
+        assertNoFailedTransactions $ benchTest3 55
     , checkPredicateOptions opts "benchTest4"
         assertNoFailedTransactions $ benchTest4 8
     , checkPredicateOptions opts "benchTest5"
-        assertNoFailedTransactions $ benchTest5 54
+        assertNoFailedTransactions $ benchTest5 53
     , checkPredicateOptions opts "benchTest6"
-        assertNoFailedTransactions $ benchTest6 55
+        assertNoFailedTransactions $ benchTest6 54
     , checkPredicateOptions opts "benchTest7"
-        assertNoFailedTransactions $ benchTest7 14
+        assertNoFailedTransactions $ benchTest7 15
     , checkPredicateOptions opts "benchTest8"
-        assertNoFailedTransactions $ benchTest8 16
+        assertNoFailedTransactions $ benchTest8 15
     , checkPredicateOptions opts "benchTest9"
-        assertNoFailedTransactions $ benchTest9 38
+        assertNoFailedTransactions $ benchTest9 37
     , checkPredicateOptions opts "benchTest10"
-        assertNoFailedTransactions $ benchTest10 38
+        assertNoFailedTransactions $ benchTest10 37
     , checkPredicateOptions opts "benchTest11"
         assertNoFailedTransactions $ benchTest11 16
     , checkPredicateOptions opts "benchTest12"
         assertNoFailedTransactions $ benchTest12 16
     , checkPredicateOptions opts "benchTest13"
-        assertNoFailedTransactions $ benchTest13 38
+        assertNoFailedTransactions $ benchTest13 37
     , checkPredicateOptions opts "benchTest14"
         assertNoFailedTransactions $ benchTest14 16
     , checkPredicateOptions opts "benchTest15"
@@ -7788,31 +7982,31 @@ tests = do
 
       -- Performance Increases tests
     , checkPredicateOptions opts "perfIncreaseTest1"
-        (Test.not assertNoFailedTransactions) $ benchTest1 56
+        (Test.not assertNoFailedTransactions) $ benchTest1 55
     , checkPredicateOptions opts "perfIncreaseTest2"
         (Test.not assertNoFailedTransactions) $ benchTest2 8
     , checkPredicateOptions opts "perfIncreaseTest3"
-        (Test.not assertNoFailedTransactions) $ benchTest3 57
+        (Test.not assertNoFailedTransactions) $ benchTest3 56
     , checkPredicateOptions opts "perfIncreaseTest4"
         (Test.not assertNoFailedTransactions) $ benchTest4 9
     , checkPredicateOptions opts "perfIncreaseTest5"
-        (Test.not assertNoFailedTransactions) $ benchTest5 55
+        (Test.not assertNoFailedTransactions) $ benchTest5 54
     , checkPredicateOptions opts "perfIncreaseTest6"
-        (Test.not assertNoFailedTransactions) $ benchTest6 56
+        (Test.not assertNoFailedTransactions) $ benchTest6 55
     , checkPredicateOptions opts "perfIncreaseTest7"
-        (Test.not assertNoFailedTransactions) $ benchTest7 15
+        (Test.not assertNoFailedTransactions) $ benchTest7 16
     , checkPredicateOptions opts "perfIncreaseTest8"
-        (Test.not assertNoFailedTransactions) $ benchTest8 17
+        (Test.not assertNoFailedTransactions) $ benchTest8 16
     , checkPredicateOptions opts "perfIncreaseTest9"
-        (Test.not assertNoFailedTransactions) $ benchTest9 39
+        (Test.not assertNoFailedTransactions) $ benchTest9 38
     , checkPredicateOptions opts "perfIncreaseTest10"
-        (Test.not assertNoFailedTransactions) $ benchTest10 39
+        (Test.not assertNoFailedTransactions) $ benchTest10 38
     , checkPredicateOptions opts "perfIncreaseTest11"
         (Test.not assertNoFailedTransactions) $ benchTest11 17
     , checkPredicateOptions opts "perfIncreaseTest12"
         (Test.not assertNoFailedTransactions) $ benchTest12 17
     , checkPredicateOptions opts "perfIncreaseTest13"
-        (Test.not assertNoFailedTransactions) $ benchTest13 39
+        (Test.not assertNoFailedTransactions) $ benchTest13 38
     , checkPredicateOptions opts "perfIncreaseTest14"
         (Test.not assertNoFailedTransactions) $ benchTest14 17
     , checkPredicateOptions opts "perfIncreaseTest15"

@@ -5,6 +5,7 @@
 module Test.OneWaySwap.Utils where
 
 import qualified PlutusTx
+import Plutus.V2.Ledger.Api (TxOutRef)
 import PlutusTx.Prelude hiding (Semigroup (..))
 import Plutus.Script.Utils.Value
 
@@ -12,9 +13,9 @@ import Plutus.Script.Utils.Value
 minUTxOSpendRef :: Integer
 minUTxOSpendRef = 26_000_000
 
--- | 18 ADA is the default. This is what the cardano-loans minting policy requires.
+-- | 19 ADA is the default. This is what the cardano-loans minting policy requires.
 minUTxOMintRef :: Integer
-minUTxOMintRef = 18_000_000
+minUTxOMintRef = 19_000_000
 
 data UnsafeDatum = UnsafeDatum
   { unsafeBeaconId :: CurrencySymbol
@@ -24,6 +25,7 @@ data UnsafeDatum = UnsafeDatum
   , unsafeAskId :: CurrencySymbol
   , unsafeAskName :: TokenName
   , unsafeSwapPrice :: (Integer,Integer)
+  , unsafePrevInput :: Maybe TxOutRef
   }
 
 instance PlutusTx.ToData UnsafeDatum where
@@ -36,4 +38,5 @@ instance PlutusTx.ToData UnsafeDatum where
       , PlutusTx.toData unsafeAskId
       , PlutusTx.toData unsafeAskName
       , PlutusTx.toData unsafeSwapPrice
+      , PlutusTx.toData unsafePrevInput
       ]

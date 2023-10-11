@@ -1,3 +1,4 @@
+use aiken/transaction.{OutputReference}
 use aiken/transaction/value.{PolicyId,AssetName}
 use aiken/math/rational.{Rational}
 use cardano_swaps/common/types.{AssetConfig}
@@ -10,7 +11,8 @@ pub type SwapDatum {
     offer_name: AssetName, // The asset name for the asset being offered.
     ask_id: PolicyId, // The policy id for the asset being asked for.
     asked_name: AssetName, // The asset name for the asset being asked for.
-    price: Rational // The swap price as a fraction: Ask/Offer
+    price: Rational, // The swap price as a fraction: Ask/Offer
+    prev_input: Option<OutputReference>
   }
 }
 

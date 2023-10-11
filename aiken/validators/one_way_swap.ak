@@ -25,9 +25,9 @@ validator() {
     // Get required information for script context.
     expect ScriptContext( 
       Transaction(inputs,_,outputs,_,_,_,wtdr,_,sigs,..), 
-      tx.Spend(out_ref)
+      tx.Spend(input_ref)
     ) = ctx
-    expect Some(Input(_, Output(addr,val,..))) = tx.find_input(inputs,out_ref)
+    expect Some(Input(_, Output(addr,val,..))) = tx.find_input(inputs,input_ref)
 
     when redeemer is {
       // Close or update open swap positions.
@@ -45,8 +45,7 @@ validator() {
         // Requirement 2 guarantees that beacons from other trading pairs cannot be combined into
         // one output UTxO; all trading pairs must get their own swap UTxOs.
         //
-        // Requirement 5 forces the user to burn extra beacons. Extra beacons can arise when
-        // swap inputs are consolidated during an asset swap.
+        // Requirement 5 forces the user to burn extra beacons. 
         
         // The address' staking credential must signal approval (Requirement 1).
         trace_if_false( 
@@ -58,24 +57,27 @@ validator() {
         utils.valid_update_outputs( datum, outputs, addr )
       }
 
-      // Swap assets. This uses all inputs with the same beacon and from the same address to get the
-      // value flux. This allows the same address to be used for different swaps within the same tx.
+      // Swap assets. It compares the input value against the corresponding output value to 
+      // determine the value flux. This allows the same address to be used for different swaps 
+      // within the same tx.
       Swap -> {
         // Requirements:
         // 1) The input must contain the beacon for that trading pair.
-        // 2) All beacons must be re-output to this address with the proper inline `SwapDatum`.
-        //      a) all fields same as input datum except the price
-        //      b) price must be weighted avg of all relevant input prices
-        // 3) Offered asset taken * weighted avg price <= asked asset given
-        // 4) Only the offered asset leaves and only the ask asset is deposited.
+        // 2) There must must be an output to this address with the proper value and inline
+        //    SwapDatum:
+        //      a) Must contain exactly 1 beacon.
+        //      b) The swap datum must be exactly the same as the input's except the prev_input
+        //         must be == Some(input_ref).
+        // 3) Offer asset taken * price <= Ask asset given
+        // 4) Only Offer asset leaves and only Ask asset is deposited. ADA can always be deposited.
         //
         // Requirement 1 guarantees that all invalid UTxOs belong to the address owner and that
         // swap inputs have a valid price:
-        //      a) denominator > 0
+        //      a) `price` denominator > 0
         //      b) `price` > 0
         //
         // Requirement 2 guarantees that beacons from other trading pairs cannot be combined into
-        // one output UTxO; all trading pairs must get their own swap UTxOs.
+        // one output UTxO; all swaps must get their own swap UTxOs.
         //
         // Requirement 4 helps optimize beacon queries by keeping UTxO asset lists to the smallest
         // possible size.
@@ -88,7 +90,8 @@ validator() {
           offer_name,
           ask_id,
           ask_name,
-          _ // Not needed since presence of beacons means price is valid.
+          price,
+          _ // prev_input is not needed.
         ) = datum
 
         // The input must have the swap beacon for this trading pair.
@@ -99,15 +102,17 @@ validator() {
 
         // The following checks requirements 2,3,4. It has its own error messages.
         utils.valid_swap(
+          input_ref,
+          val, // Input's value.
+          addr, // This address.
           beacon_id,
           beacon_name,
           offer_id,
           offer_name,
           ask_id,
           ask_name,
-          outputs,
-          inputs,
-          addr
+          price,
+          outputs
         )
       }
     }
@@ -123,7 +128,7 @@ validator(dapp_hash: Hash<Blake2b_224, Script>, offer_config: AssetConfig) {
       // Mint a beacon for those trading pairs.
       CreateSwap(ask_assets) -> {
         // Requirements:
-        // 1) Only the beacons for the target assets can/must be minted (they must appear in the
+        // 1) Only the beacons for the target assets can be minted/burned (they must appear in the
         //    redeemer).
         // 2) The token name for the beacons must be:
         //      sha2_256( ask_asset policy id ++ ask_asset asset name )
@@ -139,6 +144,7 @@ validator(dapp_hash: Hash<Blake2b_224, Script>, offer_config: AssetConfig) {
         //      f) ask_name == asset_name of ask_asset
         //      g) price denominator > 0.
         //      h) price > 0
+        //      i) prev_input == None.
         // 7) The beacons must be stored with some of the offered asset.
         // 8) No extraneous assets can be stored in the swap UTxO.
 

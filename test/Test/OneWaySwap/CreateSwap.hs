@@ -44,6 +44,7 @@ module Test.OneWaySwap.CreateSwap
   , failureTest24
   , failureTest25
   , failureTest26
+  , failureTest27
 
     -- ** Benchmark Tests
   , benchTest1
@@ -126,6 +127,7 @@ regressionTest1 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -199,6 +201,7 @@ regressionTest2 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -271,6 +274,7 @@ regressionTest3 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -332,6 +336,7 @@ regressionTest4 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -395,6 +400,7 @@ regressionTest5 = do
         , askId = fst askAsset1
         , askName = snd askAsset1
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
         { beaconId = beaconSym
@@ -404,6 +410,7 @@ regressionTest5 = do
         , askId = fst askAsset2
         , askName = snd askAsset2
         , swapPrice = unsafeRatio 10 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -485,6 +492,7 @@ regressionTest6 = do
         , askId = fst askAsset1
         , askName = snd askAsset1
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
         { beaconId = beaconSym2
@@ -494,6 +502,7 @@ regressionTest6 = do
         , askId = fst askAsset2
         , askName = snd askAsset2
         , swapPrice = unsafeRatio 10 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset1,offerAsset2]
@@ -583,6 +592,7 @@ regressionTest7 = do
         , askId = fst askAsset1
         , askName = snd askAsset1
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
         { beaconId = beaconSym2
@@ -592,6 +602,7 @@ regressionTest7 = do
         , askId = fst askAsset2
         , askName = snd askAsset2
         , swapPrice = unsafeRatio 10 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset1,offerAsset2]
@@ -679,6 +690,7 @@ failureTest1 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -750,6 +762,7 @@ failureTest2 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -821,6 +834,7 @@ failureTest3 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -892,6 +906,7 @@ failureTest4 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -962,6 +977,7 @@ failureTest5 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -1033,6 +1049,7 @@ failureTest6 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -1104,6 +1121,7 @@ failureTest7 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -1175,6 +1193,7 @@ failureTest8 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -1246,6 +1265,7 @@ failureTest9 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -1317,6 +1337,7 @@ failureTest10 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -1388,6 +1409,7 @@ failureTest11 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -1459,6 +1481,7 @@ failureTest12 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -1530,6 +1553,7 @@ failureTest13 = do
         , askId = fst offerAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -1601,6 +1625,7 @@ failureTest14 = do
         , askId = fst askAsset
         , askName = snd offerAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -1672,6 +1697,7 @@ failureTest15 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 0 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -1743,6 +1769,7 @@ failureTest16 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio (-1) 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -1814,6 +1841,7 @@ failureTest17 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -1884,6 +1912,7 @@ failureTest18 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -1958,6 +1987,7 @@ failureTest19 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -2019,6 +2049,7 @@ failureTest20 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -2078,6 +2109,7 @@ failureTest21 = do
         , unsafeAskId = fst askAsset
         , unsafeAskName = snd askAsset
         , unsafeSwapPrice = (10,0)
+        , unsafePrevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -2149,6 +2181,7 @@ failureTest22 = do
         , unsafeAskId = fst askAsset
         , unsafeAskName = snd askAsset
         , unsafeSwapPrice = (10,-1)
+        , unsafePrevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -2220,6 +2253,7 @@ failureTest23 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -2294,6 +2328,7 @@ failureTest24 = do
         , askId = fst askAsset1
         , askName = snd askAsset1
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
         { beaconId = beaconSym
@@ -2303,6 +2338,7 @@ failureTest24 = do
         , askId = fst askAsset2
         , askName = snd askAsset2
         , swapPrice = unsafeRatio 10 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -2384,6 +2420,7 @@ failureTest25 = do
         , askId = fst askAsset1
         , askName = snd askAsset1
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
         { beaconId = beaconSym2
@@ -2393,6 +2430,7 @@ failureTest25 = do
         , askId = fst askAsset2
         , askName = snd askAsset2
         , swapPrice = unsafeRatio 10 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset1,offerAsset2]
@@ -2477,6 +2515,7 @@ failureTest26 = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -2491,6 +2530,78 @@ failureTest26 = do
                   , Just (refScriptAddress, mintRefs!!0)
                   )
               , mintRedeemer = toRedeemer BurnBeacons
+              , mintTokens = [(assetBeacon,1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym assetBeacon 1
+                    <> uncurry singleton offerAsset 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumHash $ toDatum ()
+                    , lovelaceValueOf 20_000_000
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | `prevInput` in the `SwapDatum` is not `Nothing`.
+failureTest27 :: EmulatorTrace ()
+failureTest27 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offerAsset = testToken1
+      askAsset = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol offerAsset
+      assetBeacon = genBeaconName askAsset
+      swapDatum = SwapDatum
+        { beaconId = beaconSym
+        , beaconName = assetBeacon
+        , offerId = fst offerAsset
+        , offerName = snd offerAsset
+        , askId = fst askAsset
+        , askName = snd askAsset
+        , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Just (TxOutRef "" 1)
+        }
+
+  mintRefs <- initializeBeaconPolicies [offerAsset]
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy offerAsset
+                  , Just (refScriptAddress, mintRefs!!0)
+                  )
+              , mintRedeemer = toRedeemer $ CreateSwap [askAsset]
               , mintTokens = [(assetBeacon,1)]
               }
           , TokenMint 
@@ -2551,6 +2662,7 @@ benchTest1 numberCreated = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -2605,6 +2717,7 @@ benchTest2 numberCreated = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies [offerAsset]
@@ -2662,6 +2775,7 @@ benchTest3 numberCreated = do
         , askId = "" -- This will be replaced.
         , askName = "" -- This will be replaced.
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   let sampleOutputs = take numberCreated $
@@ -2727,6 +2841,7 @@ benchTest4 numberCreated = do
         , askId = "" -- This will be replaced.
         , askName = "" -- This will be replaced.
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   let sampleOutputs = take numberCreated $
@@ -2792,6 +2907,7 @@ benchTest5 numberCreated = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies offerAssets
@@ -2862,6 +2978,7 @@ benchTest6 numberCreated = do
         , askId = fst askAsset
         , askName = snd askAsset
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies offerAssets
@@ -2933,6 +3050,7 @@ benchTest7 numberCreated = do
         , askId = "" -- This will be replaced.
         , askName = "" -- This will be replaced.
         , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
         }
 
   mintRefs <- initializeBeaconPolicies offerAssets
@@ -2984,7 +3102,7 @@ benchTest7 numberCreated = do
       }
 
 benchTrace :: Int -> IO ()
-benchTrace = runEmulatorTraceIO' def emConfig . benchTest3
+benchTrace = runEmulatorTraceIO' def emConfig . benchTest4
 
 -------------------------------------------------
 -- Test Function
@@ -3067,16 +3185,18 @@ tests = do
         (assertEvaluationError "Beacons must be stored with some of the offered asset") failureTest25
     , checkPredicateOptions opts "failureTest26"
         (assertEvaluationError "This redeemer can only be used to burn") failureTest26
+    , checkPredicateOptions opts "failureTest27"
+        (assertEvaluationError "Swap prev_input not None") failureTest27
 
       -- Benchmark tests
     , checkPredicateOptions opts "benchTest1"
-        assertNoFailedTransactions $ benchTest1 49
+        assertNoFailedTransactions $ benchTest1 48
     , checkPredicateOptions opts "benchTest2"
-        assertNoFailedTransactions $ benchTest2 59
+        assertNoFailedTransactions $ benchTest2 58
     , checkPredicateOptions opts "benchTest3"
-        assertNoFailedTransactions $ benchTest3 29
+        assertNoFailedTransactions $ benchTest3 28
     , checkPredicateOptions opts "benchTest4"
-        assertNoFailedTransactions $ benchTest4 30
+        assertNoFailedTransactions $ benchTest4 29
     , checkPredicateOptions opts "benchTest5"
         assertNoFailedTransactions $ benchTest5 15
     , checkPredicateOptions opts "benchTest6"
@@ -3086,13 +3206,13 @@ tests = do
 
       -- Performance Increases tests
     , checkPredicateOptions opts "perfIncreaseTest1"
-        (Test.not assertNoFailedTransactions) $ benchTest1 50
+        (Test.not assertNoFailedTransactions) $ benchTest1 49
     , checkPredicateOptions opts "perfIncreaseTest2"
-        (Test.not assertNoFailedTransactions) $ benchTest2 60
+        (Test.not assertNoFailedTransactions) $ benchTest2 59
     , checkPredicateOptions opts "perfIncreaseTest3"
-        (Test.not assertNoFailedTransactions) $ benchTest3 30
+        (Test.not assertNoFailedTransactions) $ benchTest3 29
     , checkPredicateOptions opts "perfIncreaseTest4"
-        (Test.not assertNoFailedTransactions) $ benchTest4 31
+        (Test.not assertNoFailedTransactions) $ benchTest4 30
     , checkPredicateOptions opts "perfIncreaseTest5"
         (Test.not assertNoFailedTransactions) $ benchTest5 16
     , checkPredicateOptions opts "perfIncreaseTest6"
@@ -3102,4 +3222,4 @@ tests = do
     ]
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig regressionTest7
+testTrace = runEmulatorTraceIO' def emConfig failureTest27

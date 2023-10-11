@@ -44,6 +44,7 @@ data SwapDatum = SwapDatum
   , askId :: CurrencySymbol
   , askName :: TokenName
   , swapPrice :: PlutusRational
+  , prevInput :: Maybe TxOutRef
   }
   deriving (Generic,Show,Eq)
 

@@ -40,6 +40,10 @@ module Test.Internal
   , unValidatorHash
   , unMintingPolicyHash
   , grouped
+  , (.*.)
+  , (.+.)
+  , (.-.)
+  , ceiling
 
     -- * Re-exports
   , module Data.Default
@@ -360,3 +364,19 @@ txOutDatum (I.TxOut (Api.TxOut _aie _tov tod _rs)) =
       fromBuiltinData @d  $ PlutusTx.dataToBuiltinData $ Api.toPlutusData scriptData
     Api.TxOutDatumInTx _era scriptData ->
       fromBuiltinData @d  $ PlutusTx.dataToBuiltinData $ Api.toPlutusData scriptData
+
+(.*.) :: Rational -> Rational -> Rational
+r1 .*. r2 = r1 * r2
+
+(.+.) :: Rational -> Rational -> Rational
+r1 .+. r2 = r1 + r2
+
+(.-.) :: Rational -> Rational -> Rational
+r1 .-. r2 = r1 - r2
+
+ceiling :: Rational -> Integer
+ceiling r
+  | fromInteger rounded >= r = rounded
+  | otherwise = rounded + 1
+  where
+    rounded = round r

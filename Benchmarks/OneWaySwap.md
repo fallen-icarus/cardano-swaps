@@ -160,9 +160,9 @@ The maximum number of swaps that could fit in the transaction was 16.
 | 30 | 0.849415 ADA | 1.274123 ADA |
 | 40 | 1.190277 ADA | 1.785716 ADA |
 | 50 | 1.398190 ADA | 2.097285 ADA | 
-| 54 | 1.576342 ADA | 2.364513 ADA | 
+| 53 | 1.560789 ADA | 2.341184 ADA | 
 
-The upper limit was 54 swaps closed in a single transaction.
+The upper limit was 53 swaps closed in a single transaction.
 
 #### Closing swaps for the same trading pair. The offered asset is ADA.
 | Number Closed | Tx Fee | Collateral Required |
@@ -173,9 +173,9 @@ The upper limit was 54 swaps closed in a single transaction.
 | 30 | 0.831758 ADA | 1.247637 ADA |
 | 40 | 1.168203 ADA | 1.752305 ADA |
 | 50 | 1.566264 ADA | 2.349396 ADA | 
-| 55 | 1.588828 ADA | 2.383242 ADA |
+| 54 | 1.573670 ADA | 2.360505 ADA |
 
-The upper limit was 55 swaps closed in a single transaction.
+The upper limit was 54 swaps closed in a single transaction.
 
 #### Closing swaps for the same offer asset but different ask assets. The offered asset is a native asset.
 | Number Closed | Tx Fee | Collateral Required |
@@ -199,9 +199,9 @@ The upper limit was 53 swaps closed in a single transaction.
 | 30 | 0.880375 ADA | 1.320563 ADA |
 | 40 | 1.236418 ADA | 1.854627 ADA |
 | 50 | 1.471343 ADA | 2.207015 ADA |
-| 54 | 1.655919 ADA | 2.483879 ADA |
+| 53 | 1.655919 ADA | 2.483879 ADA |
 
-The upper limit was 54 swaps closed in a single transaction.
+The upper limit was 53 swaps closed in a single transaction.
 
 #### Closing swaps for different offer assets but the same ask asset. The asked asset is ADA.
 | Number Closed | Tx Fee | Collateral Required |
@@ -262,9 +262,8 @@ The upper limit was 7 swaps updated in a single transaction.
 | 5 | 0.722773 ADA | 1.084160 ADA |
 | 6 | 0.927893 ADA | 1.391840 ADA |
 | 7 | 1.174027 ADA | 1.761041 ADA | 
-| 8 | 1.450067 ADA | 2.175101 ADA |
 
-The upper limit was 8 swaps updated in a single transaction.
+The upper limit was 7 swaps updated in a single transaction.
 
 #### Updating swaps for the same offer asset but different ask assets. The offered asset is a native asset.
 | Number Updated | Tx Fee | Collateral Required |
@@ -292,9 +291,9 @@ The upper limit was 15 swaps updated in a single transaction.
 | 1 | 0.226063 ADA | 0.339095 ADA |
 | 5 | 0.464905 ADA | 0.697358 ADA |
 | 10 | 0.896373 ADA | 1.344560 ADA |
-| 16 | 1.608552 ADA | 2.412828 ADA | 
+| 15 | 1.608552 ADA | 2.412828 ADA | 
 
-The upper limit was 16 swaps updated in a single transaction.
+The upper limit was 15 swaps updated in a single transaction.
 
 #### Updating swaps for different offer assets but the same ask asset. The asked asset is a native token.
 | Number Updated | Tx Fee | Collateral Required |
@@ -302,9 +301,9 @@ The upper limit was 16 swaps updated in a single transaction.
 | 1 | 0.227867 ADA | 0.341801 ADA |
 | 5 | 0.473925 ADA | 0.710888 ADA |
 | 10 | 0.914413 ADA | 1.371620 ADA |
-| 16 | 1.637944 ADA | 2.456916 ADA | 
+| 15 | 1.637944 ADA | 2.456916 ADA | 
 
-The upper limit was 16 swaps updated in a single transaction.
+The upper limit was 15 swaps updated in a single transaction.
 
 #### Updating swaps for different offer assets and different ask assets.
 | Number Updated | Tx Fee | Collateral Required |
@@ -312,9 +311,9 @@ The upper limit was 16 swaps updated in a single transaction.
 | 1 | 0.227735 ADA | 0.341603 ADA |
 | 5 | 0.473265 ADA | 0.709898 ADA |
 | 10 | 0.913181 ADA | 1.369772 ADA |
-| 16 | 1.636448 ADA | 2.454672 ADA | 
+| 15 | 1.636448 ADA | 2.454672 ADA | 
 
-The upper limit was 16 swaps updated in a single transaction.
+The upper limit was 15 swaps updated in a single transaction.
 
 
 

@@ -34,11 +34,11 @@ validator() {
       CloseOrUpdate -> {
         // Requirements:
         // 1) Staking credential must signal approval.
-        // 2) Any beacons not burned must be re-output to this address with the proper inline SwapDatum.
+        // 2) Any beacons not burned must be re-output to a dApp address with staking and with the 
+        //    proper inline SwapDatum:
         //      a) all fields same as input datum except the price
         //      b) price denominator > 0
         //      c) price > 0
-        //      d) prev_input == Nothing
         // 3) The beacons must be stored with some of the offered asset.
         // 4) No extraneous assets can be stored in the swap UTxO.
         // 5) The beacons must be stored individually.
@@ -145,7 +145,6 @@ validator(dapp_hash: Hash<Blake2b_224, Script>, offer_config: AssetConfig) {
         //      f) ask_name == asset_name of ask_asset
         //      g) price denominator > 0.
         //      h) price > 0
-        //      i) prev_input == None.
         // 7) The beacons must be stored with some of the offered asset.
         // 8) No extraneous assets can be stored in the swap UTxO.
 

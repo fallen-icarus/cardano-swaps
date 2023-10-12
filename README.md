@@ -252,7 +252,6 @@ In order to mint beacons with this redeemer, **all of the following must be true
       - `askName` == `TokenName` for the corresponding `AssetConfig` in the redeemer.
       - `price` denominator > 0.
       - `price` > 0.
-      - `prevInput` == `Nothing`
 7. The beacons must be stored with some of the offer asset.
 8. No extraneous assets can be stored in the swap UTxO.
 
@@ -287,11 +286,11 @@ can also be updated inplace instead. The requirements for successfully using the
 redeemer are:
 
 1. The staking credential must signal approval (via key signing or staking script execution).
-2. Any beacons not burned must be re-output to this address with the proper inline SwapDatum.
+2. Any beacons not burned must be re-output to a dApp address with staking and with the proper 
+   inline SwapDatum:
     - all fields the same as the input datum except for the updated price.
     - `price` denominator must be > 0.
     - `price` must be > 0.
-    - `prevInput` == `Nothing`
 3. The beacons must be stored with some of the offer asset.
 4. No extraneos assets can be stored in the swap UTxO.
 5. The beacons must be stored individually.
@@ -478,7 +477,6 @@ In order to mint beacons with this redeemer, **all of the following must be true
       - `forwardPrice` > 0.
       - `reversePrice` denominator > 0.
       - `reversePrice` > 0.
-      - `prevInput` == `Nothing`
 7. The beacons must be stored with asset1 and/or asset2.
 8. No extraneous assets can be stored in the swap UTxO.
 
@@ -513,13 +511,13 @@ can also be updated inplace instead. The requirements for successfully using the
 redeemer are:
 
 1. The staking credential must signal approval (via key signing or staking script execution).
-2. Any beacons not burned must be re-output to this address with the proper inline SwapDatum.
+2. Any beacons not burned must be re-output to as dApp address with staking and with the proper 
+   inline SwapDatum:
     - all fields the same as the input datum except for the updated price.
     - `forwardPrice` denominator > 0.
     - `forwardPrice` > 0.
     - `reversePrice` denominator > 0.
     - `reversePrice` > 0.
-    - `prevInput` == `Nothing`
 3. The beacons must be stored with asset1 and/or asset2.
 4. No extraneos assets can be stored in the swap UTxO.
 5. The beacons must be stored individually.
@@ -581,9 +579,6 @@ UTxO. This as two beneficial consequences:
 single Tx as well as how easily the beacons can be queried.
 
 Custom error messages are included to help troubleshoot why a swap failed.
-
-
-
 
 
 ## Features Discussion

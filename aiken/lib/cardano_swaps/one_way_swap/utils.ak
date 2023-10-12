@@ -68,7 +68,7 @@ fn valid_swap_datum_creation(
     ask_id_,
     ask_name_,
     price,
-    prev_input
+    _
   ) = parse_datum(datum)
 
   // The beacon_id must be the policy id of the beacon policy.
@@ -93,10 +93,7 @@ fn valid_swap_datum_creation(
   trace_if_false( @"Swap price denominator not > 0", ratio.denominator(price) > 0 ) &&
 
   // The price must be > 0.
-  trace_if_false( @"Swap price not > 0", ratio.compare(price,ratio.zero()) == Greater ) &&
-
-  // The prev_input must be == None.
-  trace_if_false( @"Swap prev_input not None", prev_input == None )
+  trace_if_false( @"Swap price not > 0", ratio.compare(price,ratio.zero()) == Greater )
 }
 
 // Check whether the proper beacons are minted/burned based on the redeemer. It returns `True` or 
@@ -169,7 +166,6 @@ pub fn beacon_destination_check(
   //      f) `ask_name` == asset_name of ask_asset
   //      g) `price` denominator > 0
   //      h) `price` > 0
-  //      i) `prev_input` == `None`
   // 5) The beacons must be stored with some of the offered asset.
 
   // Create a map from beacon names to `AssetConfig` (information from redeemer).
@@ -280,11 +276,11 @@ pub fn valid_update_outputs(
   swap_addr: Address
 ) -> Bool {
   // Checks:
-  // 1) Any beacons not burned must be re-output to this address with the proper inline `SwapDatum`.
+  // 1) Any beacons not burned must be re-output to a dApp address with staking and with the 
+  //    proper inline `SwapDatum`:
   //      a) all fields same as input datum except the `price`
   //      b) `price` denominator > 0
   //      c) `price` > 0
-  //      d) `prev_input` == `None`
   // 2) The beacons must be stored with some of the offered asset.
   // 3) The beacons must be stored individually.
   // 4) No extraneous assets can be in the swap.
@@ -301,10 +297,13 @@ pub fn valid_update_outputs(
     _ // prev_input isn't needed since it will be set to None.
   ) = swap_datum
 
+  // Get the dapp credential from the swap address.
+  let Address(dapp_cred,_) = swap_addr
+
   // This function is used to map over the outputs to check validity.
   let foo = fn (out: Output, acc: Bool) {
     // Extract out the output's information.
-    let Output(addr,val,d,_) = out
+    let Output(Address(pay,stake),val,d,_) = out
 
     // Get the number of beacons in this UTxO.
     let beacon_num = value.quantity_of( val, beacon_id, beacon_name )
@@ -315,10 +314,11 @@ pub fn valid_update_outputs(
       // extraneous assets are present.
       let assets_present = value.flatten(val)
 
-      // The beacon must be stored at this address.
+      // The beacon must be stored at a dapp address with staking. Uses `app_name` in 
+      // the error message.
       trace_if_false( 
-        @"Beacons not stored at this swap address",
-        addr == swap_addr
+        concat(@"Beacon must go to a ", app_name) |> concat(_,@" dApp address with staking"),
+        pay == dapp_cred && is_some(stake)
       ) &&
 
       // The beacons must be stored individually.

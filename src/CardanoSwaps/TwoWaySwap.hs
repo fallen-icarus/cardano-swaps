@@ -17,9 +17,6 @@ module CardanoSwaps.TwoWaySwap
   , beaconMintingPolicy
   , beaconMintingPolicyHash
   , beaconCurrencySymbol
-
-    -- * Generate Beacon Name
-  , genBeaconName
   ) where
 
 import Plutus.V2.Ledger.Api as Api
@@ -29,7 +26,6 @@ import Ledger (Script(..))
 import qualified Data.Map as Map
 import Plutus.Script.Utils.V2.Scripts
 import qualified PlutusTx.Prelude as Plutus
-import Data.List (sort)
 import Data.Maybe (fromJust)
 
 import CardanoSwaps.Utils
@@ -40,11 +36,13 @@ import CardanoSwaps.Blueprints
 -------------------------------------------------
 data SwapDatum = SwapDatum
   { beaconId :: CurrencySymbol
-  , beaconName :: TokenName
+  , pairBeacon :: TokenName
   , asset1Id :: CurrencySymbol
   , asset1Name :: TokenName
+  , asset1Beacon :: TokenName
   , asset2Id :: CurrencySymbol
   , asset2Name :: TokenName
+  , asset2Beacon :: TokenName
   , forwardPrice :: PlutusRational
   , reversePrice :: PlutusRational
   , prevInput :: Maybe TxOutRef
@@ -58,40 +56,13 @@ data SwapRedeemer
   deriving (Generic,Show)
 
 data BeaconRedeemer
-  = CreateSwap [(AssetConfig,AssetConfig)] -- ^ The trading pairs.
+  = CreateSwap 
   | BurnBeacons
   deriving (Generic,Show)
 
-instance ToData BeaconRedeemer where
-  toBuiltinData (CreateSwap xs) = dataToBuiltinData $
-    Constr 0 
-      [ Map $
-          map (\((assetXid,assetXname),(assetYid,assetYname)) -> 
-                ( Constr 0 [toData $ assetXid, toData $ assetXname]
-                , Constr 0 [toData $ assetYid, toData $ assetYname]
-                )
-              ) 
-              xs
-      ]
-     
-  toBuiltinData BurnBeacons = dataToBuiltinData $
-    Constr 1 []
-
-instance FromData BeaconRedeemer where
-  fromBuiltinData (BuiltinData (Constr 0 [Map pairs])) = 
-    Just $ CreateSwap $
-      map (\(Constr 0 [assetXid,assetXname],Constr 0 [assetYid,assetYname]) ->
-              ( (fromJust $ fromData assetXid, fromJust $ fromData assetXname)
-              , (fromJust $ fromData assetYid, fromJust $ fromData assetYname)
-              )
-          )
-          pairs
-    
-  fromBuiltinData (BuiltinData (Constr 1 [])) = Just BurnBeacons
-  fromBuiltinData _ = Nothing
-
 PlutusTx.unstableMakeIsData ''SwapDatum
 PlutusTx.unstableMakeIsData ''SwapRedeemer
+PlutusTx.unstableMakeIsData ''BeaconRedeemer
 
 -------------------------------------------------
 -- Contracts
@@ -120,13 +91,3 @@ beaconMintingPolicyHash = mintingPolicyHash beaconMintingPolicy
 beaconCurrencySymbol :: CurrencySymbol
 beaconCurrencySymbol = scriptCurrencySymbol beaconMintingPolicy
 
--------------------------------------------------
--- Generate Beacon Name
--------------------------------------------------
--- | Generate the beacon asset name by hashing asset1 ++ asset2. The trading pair is first
--- sorted so that the beacon name is independent of the ordering.
-genBeaconName :: (AssetConfig,AssetConfig) -> TokenName
-genBeaconName (assetX,assetY) =
-  let [((CurrencySymbol sym1),(TokenName name1)),((CurrencySymbol sym2),(TokenName name2))] =
-        sort [assetX,assetY]
-  in TokenName $ Plutus.sha2_256 $ sym1 <> name1 <> sym2 <> name2

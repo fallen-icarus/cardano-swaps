@@ -15,13 +15,14 @@ minUTxOSpendRef = 26_000_000
 
 -- | 19 ADA is the default. This is what the cardano-loans minting policy requires.
 minUTxOMintRef :: Integer
-minUTxOMintRef = 19_000_000
+minUTxOMintRef = 16_000_000
 
 data UnsafeDatum = UnsafeDatum
   { unsafeBeaconId :: CurrencySymbol
-  , unsafeBeaconName :: TokenName
+  , unsafePairBeacon :: TokenName
   , unsafeOfferId :: CurrencySymbol
   , unsafeOfferName :: TokenName
+  , unsafeOfferBeacon :: TokenName
   , unsafeAskId :: CurrencySymbol
   , unsafeAskName :: TokenName
   , unsafeSwapPrice :: (Integer,Integer)
@@ -32,9 +33,10 @@ instance PlutusTx.ToData UnsafeDatum where
   toBuiltinData UnsafeDatum{..} = PlutusTx.dataToBuiltinData $
     PlutusTx.Constr 0 
       [ PlutusTx.toData unsafeBeaconId
-      , PlutusTx.toData unsafeBeaconName
+      , PlutusTx.toData unsafePairBeacon
       , PlutusTx.toData unsafeOfferId
       , PlutusTx.toData unsafeOfferName
+      , PlutusTx.toData unsafeOfferBeacon
       , PlutusTx.toData unsafeAskId
       , PlutusTx.toData unsafeAskName
       , PlutusTx.toData unsafeSwapPrice

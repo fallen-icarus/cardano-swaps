@@ -1,7 +1,6 @@
 use aiken/hash.{Hash,Blake2b_224}
-use aiken/list
 use aiken/transaction.{ScriptContext,Transaction,Input,Output} as tx
-use aiken/transaction/credential.{Script}
+use aiken/transaction/credential.{Script,ScriptCredential,Address}
 use aiken/transaction/value
 
 use cardano_swaps/two_way_swap/types.{ 
@@ -30,22 +29,35 @@ validator() {
       // Close or update open swap positions.
       CloseOrUpdate -> {
         // Requirements:
-        // 1) Staking credential must signal approval.
-        // 2) Any beacons not burned must be re-output to a dApp address with staking and with the 
-        //    proper inline SwapDatum:
-        //      a) all fields same as input datum except the prices.
-        //      b) forward_price denominator > 0
-        //      c) forward_price > 0
-        //      d) reverse_price denominator > 0
-        //      e) reverse_price > 0
-        // 3) The beacons must be stored with asset1 and/or asset2.
-        // 4) No extraneous assets can be stored in the swap UTxO.
-        // 5) The beacons must be stored individually.
+        // 1) The beacons must go to an addres protected by the dApp validator script.
+        // 2) The beacons must go to an address using a valid staking credential.
+        // 3) The UTxOs with the beacons must have the proper value:
+        //      a) Exactly three kinds of beacons: pair beacon, asset1 beacon, and asset2 beacon.
+        //      b) The beacons must correspond to the beacons in the datum.
+        //      c) There must be exactly 1 of each beacon.
+        //      d) The UTxO must have asset1 and/or asset2.
+        //      e) No extraneous assets are in the UTxO.
+        // 4) The beacons must be stored with the proper inline `SwapDatum`:
+        //      a) `beacon_id` == this policy id.
+        //      b) `pair_beacon` == sha2_256(asset1_id ++ asset1_name ++ asset2_id ++ asset2_name)
+        //      c) `asset1_id` == asset_id of asset1 for that trading pair.
+        //      d) `asset1_name` == asset_name of asset1 for that trading_pair.
+        //      e) `asset1_beacon` == sha2_256(asset1_id ++ asset1_name).
+        //      f) `asset2_id` == asset_id asset2 for that trading_pair.
+        //      g) `asset2_name` == asset_name asset2 for that trading_pair.
+        //      h) `asset2_beacon` == sha2_256(asset2_id ++ asset2_name).
+        //      i) `forward_price` denominator > 0
+        //      j) `forward_price` > 0
+        //      k) `reverse_price` denominator > 0
+        //      l) `reverse_price` > 0
+        //      m) asset1 < asset2
+        // 5) The address' staking credential must approve.
         //
-        // Requirement 2 guarantees that beacons from other trading pairs cannot be combined into
-        // one output UTxO; all swaps must get their own swap UTxOs.
-        //
-        // Requirement 5 forces the user to burn extra beacons. 
+        // The validator assumes the trading pairs are sorted which is why asset1 must be less than
+        // asset2. Asset1 and asset2 cannot be the same asset.
+
+        expect Address(ScriptCredential(dapp_hash),_) = addr
+        let SwapDatum(beacon_id,..) = datum
 
         // The address' staking credential must signal approval (Requirement 1).
         trace_if_false( 
@@ -53,8 +65,11 @@ validator() {
           common_utils.staking_credential_approves( addr, wtdr, sigs)
         ) &&
 
-        // The outputs must be valid. This checks requirements 2,3,4. It has its own error messages.
-        utils.valid_update_outputs( datum, outputs, addr )
+        utils.beacon_destination_check(
+          dapp_hash,
+          beacon_id,
+          outputs
+        )
       }
 
       // Swap asset1 for asset2. It compares the input value against the corresponding output
@@ -84,11 +99,13 @@ validator() {
         // Extract out the information from this datum.
         let SwapDatum(
           beacon_id, 
-          beacon_name,
+          pair_beacon,
           asset1_id,
           asset1_name,
+          asset1_beacon,
           asset2_id,
           asset2_name,
+          asset2_beacon,
           forward_price,
           reverse_price,
           _ // prev_input is not needed.
@@ -96,8 +113,8 @@ validator() {
 
         // The input must have the swap beacon for this trading pair.
         trace_if_false( 
-          @"Swap input missing swap beacon",
-          value.quantity_of(val,beacon_id,beacon_name) > 0
+          @"Swap input missing pair beacon",
+          value.quantity_of(val,beacon_id,pair_beacon) > 0
         ) &&
 
         // The following checks requirements 2,3,4. It has its own error messages.
@@ -106,11 +123,13 @@ validator() {
           val, // Input's value.
           addr, // This address.
           beacon_id,
-          beacon_name,
+          pair_beacon,
           asset1_id,
           asset1_name,
+          asset1_beacon,
           asset2_id,
           asset2_name,
+          asset2_beacon,
           forward_price,
           reverse_price,
           outputs,
@@ -145,11 +164,13 @@ validator() {
         // Extract out the information from this datum.
         let SwapDatum(
           beacon_id, 
-          beacon_name,
+          pair_beacon,
           asset1_id,
           asset1_name,
+          asset1_beacon,
           asset2_id,
           asset2_name,
+          asset2_beacon,
           forward_price,
           reverse_price,
           _ // prev_input is not needed.
@@ -157,8 +178,8 @@ validator() {
 
         // The input must have the swap beacon for this trading pair.
         trace_if_false( 
-          @"Swap input missing swap beacon",
-          value.quantity_of(val,beacon_id,beacon_name) > 0
+          @"Swap input missing pair beacon",
+          value.quantity_of(val,beacon_id,pair_beacon) > 0
         ) &&
 
         // The following checks requirements 2,3,4. It has its own error messages.
@@ -167,11 +188,13 @@ validator() {
           val, // Input's value.
           addr, // This address.
           beacon_id,
-          beacon_name,
+          pair_beacon,
           asset1_id,
           asset1_name,
+          asset1_beacon,
           asset2_id,
           asset2_name,
+          asset2_beacon,
           forward_price,
           reverse_price,
           outputs,
@@ -188,52 +211,47 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
     expect ScriptContext( Transaction(_,_,outputs,_,mint,..), tx.Mint(policy_id) ) = ctx
 
     when redeemer is {
-      // Mint a beacon for that trading pairs.
-      CreateSwap(trading_pairs) -> {
+      CreateSwap -> {
         // Requirements:
-        // 1) The first asset in the sorted trading pair is asset1 and the second asset is
-        //    asset2.
-        // 2) Beacons can only be minted with this redeemer.
-        // 3) The token name for the beacons must be:
-        //      sha_256( asset1_id ++ asset1_name ++ asset2_id ++ asset2_name )
-        // 3) The beacons must go to an address protected by the dApp validator script.
-        // 4) The beacons must go to an address using a valid staking credential.
-        // 5) The beacons must be stored individually at the dApp address.
-        // 6) The beacons must be stored with the proper inline SwapDatum:
-        //      a) beacon_id == this policy id.
-        //      c) asset1_id == asset_id of asset1
-        //      d) asset1_name == asset_name of asset1
-        //      e) asset2_id == asset_id of asset2
-        //      f) asset2_name == asset_name of asset2
-        //      g) forward_price denominator > 0.
-        //      h) forward_price > 0
-        //      i) reverse_price denominator > 0.
-        //      j) reverse_price > 0
-        // 7) The beacons must be stored with asset1 and/or asset2.
-        // 8) No extraneous assets can be stored in the swap UTxO.
+        // 1) The beacons must go to an addres protected by the dApp validator script.
+        // 2) The beacons must go to an address using a valid staking credential.
+        // 3) The UTxOs with the beacons must have the proper value:
+        //      a) Exactly three kinds of beacons: pair beacon, asset1 beacon, and asset2 beacon.
+        //      b) The beacons must correspond to the beacons in the datum.
+        //      c) There must be exactly 1 of each beacon.
+        //      d) The UTxO must have asset1 and/or asset2.
+        //      e) No extraneous assets are in the UTxO.
+        // 4) The beacons must be stored with the proper inline `SwapDatum`:
+        //      a) `beacon_id` == this policy id.
+        //      b) `pair_beacon` == sha2_256(asset1_id ++ asset1_name ++ asset2_id ++ asset2_name)
+        //      c) `asset1_id` == asset_id of asset1 for that trading pair.
+        //      d) `asset1_name` == asset_name of asset1 for that trading_pair.
+        //      e) `asset1_beacon` == sha2_256(asset1_id ++ asset1_name).
+        //      f) `asset2_id` == asset_id asset2 for that trading_pair.
+        //      g) `asset2_name` == asset_name asset2 for that trading_pair.
+        //      h) `asset2_beacon` == sha2_256(asset2_id ++ asset2_name).
+        //      i) `forward_price` denominator > 0
+        //      j) `forward_price` > 0
+        //      k) `reverse_price` denominator > 0
+        //      l) `reverse_price` > 0
+        //      m) asset1 < asset2
+        //
+        // The validator assumes the trading pairs are sorted which is why asset1 must be less than
+        // asset2. Asset1 and asset2 cannot be the same asset.
 
-        // Sort the trading pairs. This is to ensure beacon tokens are independent of the trading
-        // pair direction.
-        let sorted_trading_pairs = list.map(trading_pairs,utils.sort_pair)
-        let beacon_names = list.map(sorted_trading_pairs,utils.generate_beacon_name) 
-
-        // This function checks requirements 1 & 2.
-        utils.mint_check( policy_id, beacon_names, redeemer, mint ) &&
-
-        // This function checks the rest of the requirements.
         utils.beacon_destination_check(
           dapp_hash,
           policy_id,
-          sorted_trading_pairs,
-          beacon_names,
           outputs
         )
       }
 
-      // Burn beacons.
       BurnBeacons -> {
         // Always allowed as long as this redeemer is only used to burn.
-        utils.mint_check( policy_id, [], redeemer, mint )
+        trace_if_false(
+          @"Redeemer can only be used to burn",
+          common_utils.beacons_only_burned(policy_id,mint)
+        )
       }
     }
   }

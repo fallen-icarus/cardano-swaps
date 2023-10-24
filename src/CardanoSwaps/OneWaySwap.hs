@@ -17,9 +17,6 @@ module CardanoSwaps.OneWaySwap
   , beaconMintingPolicy
   , beaconMintingPolicyHash
   , beaconCurrencySymbol
-
-    -- * Generate Beacon Name
-  , genBeaconName
   ) where
 
 import Plutus.V2.Ledger.Api as Api
@@ -38,9 +35,10 @@ import CardanoSwaps.Blueprints
 -------------------------------------------------
 data SwapDatum = SwapDatum
   { beaconId :: CurrencySymbol
-  , beaconName :: TokenName
+  , pairBeacon :: TokenName
   , offerId :: CurrencySymbol
   , offerName :: TokenName
+  , offerBeacon :: TokenName
   , askId :: CurrencySymbol
   , askName :: TokenName
   , swapPrice :: PlutusRational
@@ -54,7 +52,7 @@ data SwapRedeemer
   deriving (Generic,Show)
 
 data BeaconRedeemer
-  = CreateSwap [AssetConfig] -- ^ The assets being asked for.
+  = CreateSwap
   | BurnBeacons
   deriving (Generic,Show)
 
@@ -74,29 +72,17 @@ swapValidator = Validator swapScript
 swapValidatorHash :: ValidatorHash
 swapValidatorHash = validatorHash swapValidator
 
--- | This script is still missing the `AssetConfig`.
-partialBeaconScript :: Ledger.Script
-partialBeaconScript =
+beaconScript :: Ledger.Script
+beaconScript =
   applyArguments
     (parseScriptFromCBOR $ blueprints Map.! "one_way_swap.mint")
     [toData swapValidatorHash]
 
-beaconScript :: AssetConfig -> Ledger.Script
-beaconScript cfg = applyArguments partialBeaconScript [toData cfg]
+beaconMintingPolicy :: MintingPolicy
+beaconMintingPolicy = MintingPolicy beaconScript
 
-beaconMintingPolicy :: AssetConfig -> MintingPolicy
-beaconMintingPolicy = MintingPolicy . beaconScript
+beaconMintingPolicyHash :: MintingPolicyHash
+beaconMintingPolicyHash = mintingPolicyHash beaconMintingPolicy
 
-beaconMintingPolicyHash :: AssetConfig -> MintingPolicyHash
-beaconMintingPolicyHash = mintingPolicyHash . beaconMintingPolicy
-
-beaconCurrencySymbol :: AssetConfig -> CurrencySymbol
-beaconCurrencySymbol = scriptCurrencySymbol . beaconMintingPolicy
-
--------------------------------------------------
--- Generate Beacon Name
--------------------------------------------------
--- | Generate the beacon asset name by hashing the ask asset policy id and name.
-genBeaconName :: AssetConfig -> TokenName
-genBeaconName ((CurrencySymbol sym),(TokenName name)) =
-  TokenName $ Plutus.sha2_256 $ sym <> name
+beaconCurrencySymbol :: CurrencySymbol
+beaconCurrencySymbol = scriptCurrencySymbol beaconMintingPolicy

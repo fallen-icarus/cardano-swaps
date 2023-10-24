@@ -2,12 +2,18 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module CardanoSwaps.Utils
   ( 
     -- * On-Chain Data Types
     PlutusRational
   , AssetConfig
+
+    -- * Generate Beacon Names
+  , genSortedPairBeaconName
+  , genUnsortedPairBeaconName
+  , genOfferBeaconName
   
     -- * Serialization
   , writeData
@@ -57,13 +63,52 @@ import Data.String (fromString)
 import Ledger.Bytes (fromHex,bytes,encodeByteString)
 import Ledger.Tx.CardanoAPI.Internal
 import PlutusTx.Ratio (unsafeRatio,numerator,denominator)
-import Data.List (foldl')
+import Data.List (sort,foldl')
 
 -------------------------------------------------
 -- On-Chain Data Types
 -------------------------------------------------
 type PlutusRational = Plutus.Rational
 type AssetConfig = (CurrencySymbol,TokenName)
+
+-------------------------------------------------
+-- Generate Beacon Name
+-------------------------------------------------
+-- | Generate the beacon asset name by hashing asset1 ++ asset2. The trading pair is first
+-- sorted so that the beacon name is independent of the ordering. This is used for two-way swaps.
+genSortedPairBeaconName :: AssetConfig -> AssetConfig -> TokenName
+genSortedPairBeaconName assetX assetY =
+  let [((CurrencySymbol sym1'),(TokenName name1)),((CurrencySymbol sym2'),(TokenName name2))] =
+        sort [assetX,assetY]
+      sym1 = 
+        if sym1' == "" 
+        then unsafeToBuiltinByteString "00" 
+        else sym1'
+      sym2 = 
+        if sym2' == "" 
+        then unsafeToBuiltinByteString "00" 
+        else sym2'
+  in TokenName $ Plutus.sha2_256 $ sym1 <> name1 <> sym2 <> name2
+
+-- | Generate the beacon asset name by hashing offer ++ ask. This is used for one-way swaps.
+genUnsortedPairBeaconName :: AssetConfig -> AssetConfig -> TokenName
+genUnsortedPairBeaconName assetX assetY =
+  let [((CurrencySymbol sym1'),(TokenName name1)),((CurrencySymbol sym2'),(TokenName name2))] =
+        [assetX,assetY]
+      sym1 = 
+        if sym1' == "" 
+        then unsafeToBuiltinByteString "00" 
+        else sym1'
+      sym2 = 
+        if sym2' == "" 
+        then unsafeToBuiltinByteString "00" 
+        else sym2'
+  in TokenName $ Plutus.sha2_256 $ sym1 <> name1 <> sym2 <> name2
+
+-- | Generate the beacon asset name by hashing the ask asset policy id and name.
+genOfferBeaconName :: CurrencySymbol -> TokenName -> TokenName
+genOfferBeaconName (CurrencySymbol sym) (TokenName name) =
+  TokenName $ Plutus.sha2_256 $ sym <> name
 
 -------------------------------------------------
 -- Serialization
@@ -154,3 +199,10 @@ calcWeightedPrice xs = snd $ foldl' foo (0,Plutus.fromInteger 0) xs
 -- | Show the token name in hexidecimal.
 showTokenName :: TokenName -> String
 showTokenName (TokenName name) = show $ PubKeyHash name
+
+unsafeToBuiltinByteString :: String -> BuiltinByteString
+unsafeToBuiltinByteString = (\(LedgerBytes bytes') -> bytes')
+                          . unsafeFromRight
+                          . fromHex
+                          . fromString
+

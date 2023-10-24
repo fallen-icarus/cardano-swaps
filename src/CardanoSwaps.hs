@@ -68,12 +68,14 @@ import CardanoSwaps.Utils
 -------------------------------------------------
 data OneWaySwapDatum = OneWaySwapDatum
   { oneWayBeaconId :: CurrencySymbol
-  , oneWayBeaconName :: TokenName
+  , oneWayPairBeacon :: TokenName
   , oneWayOfferId :: CurrencySymbol
   , oneWayOfferName :: TokenName
+  , oneWayOfferBeacon :: TokenName
   , oneWayAskId :: CurrencySymbol
   , oneWayAskName :: TokenName
   , oneWaySwapPrice :: PlutusRational
+  , oneWayPrevInput :: Maybe TxOutRef
   }
   deriving (Generic,Show,Eq)
 
@@ -83,7 +85,7 @@ data OneWaySwapRedeemer
   deriving (Generic,Show)
 
 data OneWayBeaconRedeemer
-  = OneWayCreateSwap [AssetConfig] -- ^ The assets being asked for.
+  = OneWayCreateSwap 
   | OneWayBurnBeacons
   deriving (Generic,Show)
 
@@ -103,14 +105,14 @@ oneWaySwapValidator = Validator oneWaySwapScript
 oneWaySwapValidatorHash :: ValidatorHash
 oneWaySwapValidatorHash = validatorHash oneWaySwapValidator
 
-oneWayBeaconScript :: AssetConfig -> Ledger.Script
+oneWayBeaconScript :: Ledger.Script
 oneWayBeaconScript = OneWaySwap.beaconScript
 
-oneWayBeaconMintingPolicy :: AssetConfig -> MintingPolicy
-oneWayBeaconMintingPolicy = MintingPolicy . oneWayBeaconScript
+oneWayBeaconMintingPolicy :: MintingPolicy
+oneWayBeaconMintingPolicy = MintingPolicy oneWayBeaconScript
 
-oneWayBeaconMintingPolicyHash :: AssetConfig -> MintingPolicyHash
-oneWayBeaconMintingPolicyHash = mintingPolicyHash . oneWayBeaconMintingPolicy
+oneWayBeaconMintingPolicyHash :: MintingPolicyHash
+oneWayBeaconMintingPolicyHash = mintingPolicyHash oneWayBeaconMintingPolicy
 
-oneWayBeaconCurrencySymbol :: AssetConfig -> CurrencySymbol
-oneWayBeaconCurrencySymbol = scriptCurrencySymbol . oneWayBeaconMintingPolicy
+oneWayBeaconCurrencySymbol :: CurrencySymbol
+oneWayBeaconCurrencySymbol = scriptCurrencySymbol oneWayBeaconMintingPolicy

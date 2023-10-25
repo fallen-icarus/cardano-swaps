@@ -3,6 +3,9 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module CardanoSwaps.Utils
   ( 
@@ -28,6 +31,7 @@ module CardanoSwaps.Utils
     -- This is just so that certain things do not need to be re-exported.
   , readTokenName
   , readCurrencySymbol
+  , readTxId
 
     -- * Misc
   , unsafeFromRight
@@ -45,6 +49,8 @@ module CardanoSwaps.Utils
   , adaToken
   , numerator
   , denominator
+  , TxOutRef(..)
+  , TxId(..)
   ) where
 
 import Data.Aeson as Aeson
@@ -53,7 +59,7 @@ import qualified PlutusTx
 import qualified PlutusTx.Prelude as Plutus
 import Codec.Serialise hiding (decode,encode)
 import Ledger (Script(..),applyArguments,scriptSize)
-import Cardano.Api hiding (Script,Address)
+import Cardano.Api hiding (TxId,Script,Address)
 import Cardano.Api.Shelley (PlutusScript (..))
 import Data.ByteString.Lazy (fromStrict,toStrict)
 import Data.Text (Text)
@@ -64,12 +70,16 @@ import Ledger.Bytes (fromHex,bytes,encodeByteString)
 import Ledger.Tx.CardanoAPI.Internal
 import PlutusTx.Ratio (unsafeRatio,numerator,denominator)
 import Data.List (sort,foldl')
+import Prettyprinter
 
 -------------------------------------------------
 -- On-Chain Data Types
 -------------------------------------------------
 type PlutusRational = Plutus.Rational
 type AssetConfig = (CurrencySymbol,TokenName)
+
+instance Pretty PlutusRational where
+  pretty num = pretty (numerator num) <> " / " <> pretty (denominator num)
 
 -------------------------------------------------
 -- Generate Beacon Name
@@ -170,6 +180,12 @@ readCurrencySymbol s = case fromHex $ fromString s of
 readTokenName :: String -> Either String TokenName
 readTokenName s = case fromHex $ fromString s of
   Right (LedgerBytes bytes') -> Right $ TokenName bytes'
+  Left msg                   -> Left $ "could not convert: " <> msg
+
+-- | Parse `TxId` from user supplied `String`.
+readTxId :: String -> Either String TxId
+readTxId s = case fromHex $ fromString s of
+  Right (LedgerBytes bytes') -> Right $ TxId bytes'
   Left msg                   -> Left $ "could not convert: " <> msg
 
 -------------------------------------------------

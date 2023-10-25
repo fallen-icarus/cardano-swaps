@@ -1,8 +1,5 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-
-{-# OPTIONS_GHC -Wno-orphans #-}
 
 module CLI.Types where
 
@@ -15,64 +12,65 @@ import Servant.API (Accept(..),MimeRender(..))
 
 import CardanoSwaps
 
-newtype OfferAsset = OfferAsset AssetConfig
-newtype AskAsset = AskAsset AssetConfig
+newtype OfferAsset = OfferAsset { unOfferAsset :: AssetConfig }
+newtype AskAsset = AskAsset { unAskAsset :: AssetConfig }
+newtype TwoWayPair = TwoWayPair { unTwoWayPair :: (AssetConfig,AssetConfig) }
+newtype ApiKey = ApiKey String
 
 data Command
   = ExportScript Script FilePath
-  | CreateDatum InternalSwapDatum FilePath
-  | CreateSwapRedeemer SwapRedeemer FilePath
-  | CreateBeaconRedeemer BeaconRedeemer FilePath
+  | CreateDatum InternalDatum FilePath
+  | CreateSpendingRedeemer SpendingRedeemer FilePath
+  | CreateMintingRedeemer MintingRedeemer FilePath
   | BeaconInfo BeaconInfo Output
   | Query Query
-  | Submit Network QueryEndpoint FilePath
+  | Submit Network Endpoint FilePath
   | ExportParams Network Output
 
-data Script = BeaconPolicy OfferAsset | SwapScript
+data Script 
+  = OneWayBeaconPolicy 
+  | OneWaySwapScript
+  | TwoWayBeaconPolicy 
+  | TwoWaySwapScript
 
--- | This has all the info necessary to create the actual SwapDatum.
-data InternalSwapDatum = 
-  InternalSwapDatum 
-    OfferAsset
-    AskAsset
-    PlutusRational -- ^ Swap price
+-- | This has all the info necessary to create the actual SwapDatums.
+data InternalDatum 
+  = InternalOneWaySwapDatum 
+      OfferAsset
+      AskAsset
+      PlutusRational -- ^ Swap price
+      (Maybe TxOutRef)
+  | InternalTwoWaySwapDatum
+      TwoWayPair
+      PlutusRational -- ^ ForwardSwap price.
+      PlutusRational -- ^ reverseSwap price.
+      (Maybe TxOutRef)
+
+data SpendingRedeemer
+  = OneWaySpendingRedeemer OneWaySwapRedeemer
+  | TwoWaySpendingRedeemer TwoWaySwapRedeemer
+
+data MintingRedeemer
+  = OneWayMintingRedeemer OneWayBeaconRedeemer
+  | TwoWayMintingRedeemer TwoWayBeaconRedeemer
+
+data BeaconInfo 
+  = OneWayPolicyId
+  | OneWayOfferBeaconAssetName OfferAsset
+  | OneWayPairBeaconAssetName (OfferAsset,AskAsset)
+  | TwoWayPolicyId
+  | TwoWayOfferBeaconAssetName AssetConfig
+  | TwoWayPairBeaconAssetName TwoWayPair
+
+-- | For when saving to file is optional
+data Output = Stdout | File FilePath
 
 data Network
   = PreProdTestnet
   | Mainnet
 
-data QueryEndpoint
+data Endpoint
   = Koios
-
--- | For when saving to file is optional
-data Output = Stdout | File FilePath
-
-data Format = JSON | Pretty | Plain
-
-data BeaconInfo 
-  = PolicyId OfferAsset 
-  | AssetName AskAsset
-  | FullName OfferAsset AskAsset
-
-newtype UserAddress = UserAddress Text 
-  deriving (Show,Eq)
-
-instance Pretty UserAddress where
-  pretty (UserAddress addr) = pretty addr
-
-data Query
-  = QueryOwn QueryOwn
-  | QueryAll QueryAll
-  | QueryPersonal Network QueryEndpoint UserAddress Format Output
-
-data QueryOwn
-  = QueryOwnSwaps Network QueryEndpoint UserAddress Format Output
-  | QueryOwnSwapsByOffer Network QueryEndpoint UserAddress OfferAsset Format Output
-  | QueryOwnSwapsByTradingPair Network QueryEndpoint UserAddress OfferAsset AskAsset Format Output
-
-data QueryAll
-  = QueryAllSwapsByOffer Network QueryEndpoint OfferAsset Format Output
-  | QueryAllSwapsByTradingPair Network QueryEndpoint OfferAsset AskAsset Format Output
 
 newtype TxCBOR = TxCBOR ByteString
 
@@ -91,6 +89,31 @@ instance Accept CBOR where
 
 instance MimeRender CBOR TxCBOR where
   mimeRender _ (TxCBOR cbor) = cbor
+
+data Format = JSON | Pretty | Plain
+
+newtype UserAddress = UserAddress Text 
+  deriving (Show,Eq)
+
+instance Pretty UserAddress where
+  pretty (UserAddress addr) = pretty addr
+
+data Query
+  = QueryOwnSwaps QueryOwnSwaps
+  | QueryAllSwaps QueryAll
+  | QueryPersonal Network Endpoint UserAddress Format Output
+
+data QueryOwnSwaps
+  = QueryOwnOneWaySwaps Network Endpoint UserAddress Format Output
+  | QueryOwnOneWaySwapsByOffer Network Endpoint UserAddress OfferAsset Format Output
+  | QueryOwnOneWaySwapsByTradingPair Network Endpoint UserAddress OfferAsset AskAsset Format Output
+  | QueryOwnTwoWaySwaps Network Endpoint UserAddress Format Output
+  | QueryOwnTwoWaySwapsByOffer Network Endpoint UserAddress AssetConfig Format Output
+  | QueryOwnTwoWaySwapsByTradingPair Network Endpoint UserAddress TwoWayPair Format Output
+
+data QueryAll
+  = QueryAllSwapsByOffer Network Endpoint OfferAsset Format Output
+  | QueryAllSwapsByTradingPair Network Endpoint OfferAsset AskAsset Format Output
 
 data Asset = Asset
   { assetPolicyId :: Text
@@ -132,6 +155,21 @@ instance ToJSON PersonalUTxO where
            , "assets" .= personalValue
            ]
 
+data SwapDatum
+  = OneWayDatum OneWaySwapDatum
+  | TwoWayDatum TwoWaySwapDatum
+  deriving (Show)
+
+instance ToJSON SwapDatum where
+  toJSON (OneWayDatum datum) =
+    object [ "type" .= ("one-way" :: Text)
+           , "datum" .= datum
+           ]
+  toJSON (TwoWayDatum datum) =
+    object [ "type" .= ("two-way" :: Text)
+           , "datum" .= datum
+           ]
+
 -- | Type that captures all info a user needs to interact with available swaps.
 data SwapUTxO = SwapUTxO
   { swapAddress :: UserAddress
@@ -139,14 +177,7 @@ data SwapUTxO = SwapUTxO
   , swapOutputIndex :: Integer
   , swapValue :: [Asset]
   , swapDatum :: Maybe SwapDatum
-  } deriving (Show,Eq)
-
-instance Ord SwapUTxO where
-  (SwapUTxO _ _ _ _ (Just SwapDatum{swapPrice=price1})) <= 
-    (SwapUTxO _ _ _ _ (Just SwapDatum{swapPrice=price2})) = price1 <= price2
-  (SwapUTxO _ _ _ _ (Just _)) <= (SwapUTxO _ _ _ _ Nothing) = True
-  (SwapUTxO _ _ _ _ Nothing) <= (SwapUTxO _ _ _ _ (Just _)) = False
-  _ <= _ = True
+  } deriving (Show)
 
 instance ToJSON SwapUTxO where
   toJSON SwapUTxO{swapAddress=(UserAddress addr),..} =
@@ -154,22 +185,6 @@ instance ToJSON SwapUTxO where
            , "tx_hash" .= swapTxHash
            , "output_index" .= swapOutputIndex
            , "amount" .= swapValue
-           , "swap_datum" .= swapDatum
+           , "swap_info" .= swapDatum
            ]
 
--------------------------------------------------
--- Orphan Instances
--------------------------------------------------
-instance ToJSON SwapDatum where
-  toJSON SwapDatum{..} = 
-    object [ "beacon_id" .= show beaconId
-           , "beacon_name" .= showTokenName beaconName
-           , "offer_id" .= show offerId
-           , "offer_name" .= showTokenName offerName
-           , "ask_id" .= show askId
-           , "ask_name" .= showTokenName askName
-           , "price" .= swapPrice 
-           ]
-
-instance Pretty PlutusRational where
-  pretty num = pretty (numerator num) <> " / " <> pretty (denominator num)

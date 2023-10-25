@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module CardanoSwaps.TwoWaySwap
   (
@@ -25,8 +27,7 @@ import GHC.Generics (Generic)
 import Ledger (Script(..))
 import qualified Data.Map as Map
 import Plutus.Script.Utils.V2.Scripts
-import qualified PlutusTx.Prelude as Plutus
-import Data.Maybe (fromJust)
+import Data.Aeson
 
 import CardanoSwaps.Utils
 import CardanoSwaps.Blueprints
@@ -48,6 +49,21 @@ data SwapDatum = SwapDatum
   , prevInput :: Maybe TxOutRef
   }
   deriving (Generic,Show,Eq)
+
+instance ToJSON SwapDatum where
+  toJSON SwapDatum{..} = 
+    object [ "beacon_id" .= show beaconId
+           , "pair_beacon" .= showTokenName pairBeacon
+           , "asset1_id" .= show asset1Id
+           , "asset1_name" .= showTokenName asset1Name
+           , "asset1_beacon" .= showTokenName asset1Beacon
+           , "asset2_id" .= show asset2Id
+           , "asset2_name" .= showTokenName asset2Name
+           , "asset2_beacon" .= showTokenName asset2Beacon
+           , "forward_price" .= forwardPrice 
+           , "reverse_price" .= reversePrice 
+           , "prev_input" .= prevInput
+           ]
 
 data SwapRedeemer
   = CloseOrUpdate

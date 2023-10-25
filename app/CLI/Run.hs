@@ -14,6 +14,7 @@ import qualified Data.Text.IO as TIO
 import qualified Data.Text as T
 import Data.Text (Text)
 import Data.FileEmbed
+import Data.List (sort)
 
 import CardanoSwaps
 import CLI.Types
@@ -29,55 +30,96 @@ runCommand :: Command -> IO ()
 runCommand cmd = case cmd of
   ExportScript script file -> runExportScriptCmd script file
   CreateDatum d file -> runCreateDatum d file
-  CreateSwapRedeemer r file -> writeData file r
-  CreateBeaconRedeemer r file -> writeData file r
+  CreateSpendingRedeemer r file -> runCreateSpendingRedeemer r file
+  CreateMintingRedeemer r file -> runCreateMintingRedeemer r file
   BeaconInfo info output -> runBeaconInfo info output
   Query query -> runQuery query
   Submit network api txFile -> 
     runSubmit network api txFile >>= TIO.putStrLn
-  ExportParams network output -> case (network,output) of
-    (PreProdTestnet,Stdout) -> SBS.putStr preprodParams
-    (PreProdTestnet,File file) -> SBS.writeFile file preprodParams
-    (Mainnet,Stdout) -> SBS.putStr mainnetParams
-    (Mainnet,File file) -> SBS.writeFile file mainnetParams
+  ExportParams network output -> runExportParams network output
 
 runExportScriptCmd :: Script -> FilePath -> IO ()
 runExportScriptCmd script file = do
   res <- writeScript file $ case script of
-    SwapScript -> swapScript
-    BeaconPolicy (OfferAsset cfg) -> beaconScript cfg
+    OneWaySwapScript -> oneWaySwapScript
+    OneWayBeaconPolicy -> oneWayBeaconScript
+    TwoWaySwapScript -> twoWaySwapScript
+    TwoWayBeaconPolicy -> twoWayBeaconScript
   case res of
     Right _ -> return ()
     Left err -> putStrLn $ "There was an error: " <> show err
 
-runCreateDatum :: InternalSwapDatum -> FilePath -> IO ()
-runCreateDatum (InternalSwapDatum (OfferAsset offerCfg) (AskAsset askCfg) swapPrice') file = do
-  writeData file $ 
-    SwapDatum 
-      { beaconId = beaconCurrencySymbol offerCfg
-      , beaconName = genBeaconName askCfg
-      , offerId = fst offerCfg
-      , offerName = snd offerCfg
-      , askId = fst askCfg
-      , askName = snd askCfg
-      , swapPrice = swapPrice'
+runCreateDatum :: InternalDatum -> FilePath -> IO ()
+runCreateDatum 
+  (InternalOneWaySwapDatum (OfferAsset offerCfg) (AskAsset askCfg) swapPrice' mPrev) file = do
+    writeData file $ OneWaySwapDatum 
+      { oneWayBeaconId = oneWayBeaconCurrencySymbol
+      , oneWayPairBeacon = genUnsortedPairBeaconName offerCfg askCfg
+      , oneWayOfferId = fst offerCfg
+      , oneWayOfferName = snd offerCfg
+      , oneWayOfferBeacon = uncurry genOfferBeaconName offerCfg
+      , oneWayAskId = fst askCfg
+      , oneWayAskName = snd askCfg
+      , oneWaySwapPrice = swapPrice'
+      , oneWayPrevInput = mPrev
       }
+runCreateDatum 
+  (InternalTwoWaySwapDatum (TwoWayPair (assetX,assetY)) forwardPrice' reversePrice' mPrev) file = do
+    let [asset1,asset2] = sort [assetX,assetY]
+    writeData file $ TwoWaySwapDatum 
+        { twoWayBeaconId = twoWayBeaconCurrencySymbol
+        , twoWayPairBeacon = genUnsortedPairBeaconName asset1 asset2
+        , twoWayAsset1Id = fst asset1
+        , twoWayAsset1Name = snd asset1
+        , twoWayAsset1Beacon = uncurry genOfferBeaconName asset1
+        , twoWayAsset2Id = fst asset2
+        , twoWayAsset2Name = snd asset2
+        , twoWayAsset2Beacon = uncurry genOfferBeaconName asset2
+        , twoWayForwardPrice = forwardPrice'
+        , twoWayReversePrice = reversePrice'
+        , twoWayPrevInput = mPrev
+        }
+
+runCreateSpendingRedeemer :: SpendingRedeemer -> FilePath -> IO ()
+runCreateSpendingRedeemer (OneWaySpendingRedeemer r) file = writeData file r
+runCreateSpendingRedeemer (TwoWaySpendingRedeemer r) file = writeData file r
+
+runCreateMintingRedeemer :: MintingRedeemer -> FilePath -> IO ()
+runCreateMintingRedeemer (OneWayMintingRedeemer r) file = writeData file r
+runCreateMintingRedeemer (TwoWayMintingRedeemer r) file = writeData file r
 
 runBeaconInfo :: BeaconInfo -> Output -> IO ()
-runBeaconInfo info output = do
-  let i = case info of
-            PolicyId (OfferAsset offerCfg) -> show $ beaconCurrencySymbol offerCfg
-            AssetName (AskAsset askCfg) -> drop 2 $ show $ genBeaconName askCfg
-            FullName (OfferAsset offerCfg) (AskAsset askCfg) ->
-              show (beaconCurrencySymbol offerCfg) ++ "." ++ drop 2 (show $ genBeaconName askCfg)
-  case output of
-    Stdout -> Prelude.putStr i
-    File file -> Prelude.writeFile file i
+runBeaconInfo info output = case output of
+    Stdout -> Prelude.putStr name
+    File file -> Prelude.writeFile file name
+  where
+    name :: String
+    name = 
+      case info of
+        OneWayPolicyId -> 
+          show oneWayBeaconCurrencySymbol
+        OneWayOfferBeaconAssetName (OfferAsset cfg) -> 
+          drop 2 $ show $ uncurry genOfferBeaconName cfg
+        OneWayPairBeaconAssetName (OfferAsset offerCfg, AskAsset askCfg) ->
+          drop 2 $ show $ genUnsortedPairBeaconName offerCfg askCfg
+        TwoWayPolicyId -> 
+          show twoWayBeaconCurrencySymbol
+        TwoWayOfferBeaconAssetName cfg -> 
+          drop 2 $ show $ uncurry genOfferBeaconName cfg
+        TwoWayPairBeaconAssetName (TwoWayPair (assetX,assetY)) ->
+          drop 2 $ show $ genSortedPairBeaconName assetX assetY
+
+runExportParams :: Network -> Output -> IO ()
+runExportParams network output = case (network,output) of
+  (PreProdTestnet,Stdout) -> SBS.putStr preprodParams
+  (PreProdTestnet,File file) -> SBS.writeFile file preprodParams
+  (Mainnet,Stdout) -> SBS.putStr mainnetParams
+  (Mainnet,File file) -> SBS.writeFile file mainnetParams
 
 runQuery :: Query -> IO ()
 runQuery query = case query of
-  QueryOwn queryOwn -> runQueryOwn queryOwn
-  QueryAll queryAll -> runQueryAll queryAll
+  QueryAllSwaps queryAll -> runQueryAll queryAll
+  QueryOwnSwaps queryOwn -> runQueryOwn queryOwn
   QueryPersonal network api addr format output ->
     runQueryPersonalAddress network api addr >>= 
       case format of
@@ -93,50 +135,71 @@ runQuery query = case query of
                 . vsep 
                 . map prettyPersonalUTxO
 
-runQueryOwn :: QueryOwn -> IO ()
+runQueryAll :: QueryAll -> IO ()
+runQueryAll queryAll = case queryAll of
+  QueryAllSwapsByTradingPair 
+    network api offer ask format output ->
+      runQueryAllSwapsByTradingPair network api offer ask >>= 
+        case format of
+          JSON -> toJSONOutput output
+          Pretty -> toPrettyOutput output . (<> hardline) . vsep . map prettySwapUTxO 
+          Plain -> toPlainOutput output . (<> hardline) . vsep . map prettySwapUTxO
+  QueryAllSwapsByOffer 
+    network api offer format output ->
+      runQueryAllSwapsByOffer network api offer >>= 
+        case format of
+          JSON -> toJSONOutput output
+          Pretty -> toPrettyOutput output . (<> hardline) . vsep . map prettySwapUTxO 
+          Plain -> toPlainOutput output . (<> hardline) . vsep . map prettySwapUTxO
+
+runQueryOwn :: QueryOwnSwaps -> IO ()
 runQueryOwn queryOwn = case queryOwn of
-  QueryOwnSwaps 
+  QueryOwnOneWaySwaps 
     network api addr format output -> 
       runQueryOwnSwaps network api addr >>= 
         case format of
           JSON -> toJSONOutput output
           Pretty -> toPrettyOutput output . (<> hardline) . vsep . map prettySwapUTxO 
           Plain -> toPlainOutput output . (<> hardline) . vsep . map prettySwapUTxO
-  QueryOwnSwapsByOffer 
+  QueryOwnOneWaySwapsByOffer 
     network api addr (OfferAsset cfg) format output ->
-      runQueryOwnSwapsByOffer network api addr (beaconCurrencySymbol cfg) >>= 
-        case format of
-          JSON -> toJSONOutput output
-          Pretty -> toPrettyOutput output . (<> hardline) . vsep . map prettySwapUTxO 
-          Plain -> toPlainOutput output . (<> hardline) . vsep . map prettySwapUTxO
-  QueryOwnSwapsByTradingPair 
+      runQueryOwnSwapsByBeacon 
+        network api addr oneWayBeaconCurrencySymbol (uncurry genOfferBeaconName cfg) >>= 
+      case format of
+        JSON -> toJSONOutput output
+        Pretty -> toPrettyOutput output . (<> hardline) . vsep . map prettySwapUTxO 
+        Plain -> toPlainOutput output . (<> hardline) . vsep . map prettySwapUTxO
+  QueryOwnOneWaySwapsByTradingPair 
     network api addr (OfferAsset offerCfg) (AskAsset askCfg) format output ->
-      let symbol = beaconCurrencySymbol offerCfg
-          name = genBeaconName askCfg
-      in  runQueryOwnSwapsByTradingPair network api addr symbol name >>= 
-            case format of
-              JSON -> toJSONOutput output
-              Pretty -> toPrettyOutput output . (<> hardline) . vsep . map prettySwapUTxO 
-              Plain -> toPlainOutput output . (<> hardline) . vsep . map prettySwapUTxO
-
-runQueryAll :: QueryAll -> IO ()
-runQueryAll queryAll = case queryAll of
-  QueryAllSwapsByOffer 
-    network api (OfferAsset cfg) format output ->
-      runQueryAllSwapsByOffer network api (beaconCurrencySymbol cfg) >>= 
+      runQueryOwnSwapsByBeacon 
+        network api addr oneWayBeaconCurrencySymbol (genUnsortedPairBeaconName offerCfg askCfg) >>= 
+      case format of
+        JSON -> toJSONOutput output
+        Pretty -> toPrettyOutput output . (<> hardline) . vsep . map prettySwapUTxO 
+        Plain -> toPlainOutput output . (<> hardline) . vsep . map prettySwapUTxO
+  QueryOwnTwoWaySwaps 
+    network api addr format output -> 
+      runQueryOwnSwaps network api addr >>= 
         case format of
           JSON -> toJSONOutput output
           Pretty -> toPrettyOutput output . (<> hardline) . vsep . map prettySwapUTxO 
           Plain -> toPlainOutput output . (<> hardline) . vsep . map prettySwapUTxO
-  QueryAllSwapsByTradingPair 
-    network api offer@(OfferAsset offerCfg) (AskAsset askCfg) format output ->
-      let symbol = beaconCurrencySymbol offerCfg
-          name = genBeaconName askCfg
-      in  runQueryAllSwapsByTradingPair network api symbol name offer >>= 
-            case format of
-              JSON -> toJSONOutput output
-              Pretty -> toPrettyOutput output . (<> hardline) . vsep . map prettySwapUTxO 
-              Plain -> toPlainOutput output . (<> hardline) . vsep . map prettySwapUTxO
+  QueryOwnTwoWaySwapsByOffer 
+    network api addr cfg format output ->
+      runQueryOwnSwapsByBeacon 
+        network api addr twoWayBeaconCurrencySymbol (uncurry genOfferBeaconName cfg) >>= 
+      case format of
+        JSON -> toJSONOutput output
+        Pretty -> toPrettyOutput output . (<> hardline) . vsep . map prettySwapUTxO 
+        Plain -> toPlainOutput output . (<> hardline) . vsep . map prettySwapUTxO
+  QueryOwnTwoWaySwapsByTradingPair 
+    network api addr (TwoWayPair (assetX,assetY)) format output ->
+      runQueryOwnSwapsByBeacon 
+        network api addr twoWayBeaconCurrencySymbol (genSortedPairBeaconName assetX assetY) >>= 
+      case format of
+        JSON -> toJSONOutput output
+        Pretty -> toPrettyOutput output . (<> hardline) . vsep . map prettySwapUTxO 
+        Plain -> toPlainOutput output . (<> hardline) . vsep . map prettySwapUTxO
 
 -------------------------------------------------
 -- Helper Functions
@@ -162,12 +225,22 @@ prettySwapUTxO SwapUTxO{..} =
        ]
   where
     prettySwapDatum :: SwapDatum -> Doc AnsiStyle
-    prettySwapDatum SwapDatum{..} =
-      vsep [ (annotate (color Green) "offer:") <+>
-               (pretty $ toAssetName offerId offerName)
+    prettySwapDatum (OneWayDatum OneWaySwapDatum{..}) =
+      vsep [ (annotate (color Green) "type:") <+> pretty @Text "one-way"
+           , (annotate (color Green) "offer:") <+>
+               (pretty $ toAssetName oneWayOfferId oneWayOfferName)
            , (annotate (color Green) "ask:") <+>
-               (pretty $ toAssetName askId askName)
-           , (annotate (color Green) "price:") <+> pretty swapPrice
+               (pretty $ toAssetName oneWayAskId oneWayAskName)
+           , (annotate (color Green) "price:") <+> pretty oneWaySwapPrice
+           ]
+    prettySwapDatum (TwoWayDatum TwoWaySwapDatum{..}) =
+      vsep [ (annotate (color Green) "type:") <+> pretty @Text "two-way"
+           , (annotate (color Green) "asset1:") <+>
+               (pretty $ toAssetName twoWayAsset1Id twoWayAsset1Name)
+           , (annotate (color Green) "asset2:") <+>
+               (pretty $ toAssetName twoWayAsset2Id twoWayAsset2Name)
+           , (annotate (color Green) "forward_price:") <+> pretty twoWayForwardPrice
+           , (annotate (color Green) "reverse_price:") <+> pretty twoWayReversePrice
            ]
 
 prettyPersonalUTxO :: PersonalUTxO -> Doc AnsiStyle
@@ -223,3 +296,4 @@ toPrettyOutput (File file) xs =
 toJSONOutput :: (ToJSON a) => Output -> [a] -> IO ()
 toJSONOutput Stdout xs = LBS.putStr $ encode xs
 toJSONOutput (File file) xs = LBS.writeFile file $ encode xs
+

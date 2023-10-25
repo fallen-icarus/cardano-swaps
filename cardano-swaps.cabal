@@ -46,6 +46,7 @@ library
     , aeson
     , text
     , file-embed
+    , prettyprinter
   hs-source-dirs: src
   ghc-options:
     -fobject-code 

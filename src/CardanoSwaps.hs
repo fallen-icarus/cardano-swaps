@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 {- | 
  
@@ -34,7 +36,7 @@ the contracts.
 
 module CardanoSwaps
   (
-    -- * One Way Swap
+    -- * One-Way Swap
     -- ** On-Chain Data Types
     OneWaySwapDatum(..)
   , OneWaySwapRedeemer(..)
@@ -49,6 +51,21 @@ module CardanoSwaps
   , oneWayBeaconMintingPolicyHash
   , oneWayBeaconCurrencySymbol
 
+    -- * Two-Way Swap
+    -- ** On-Chain Data Types
+  , TwoWaySwapDatum(..)
+  , TwoWaySwapRedeemer(..)
+  , TwoWayBeaconRedeemer(..)
+
+    -- ** Contracts
+  , twoWaySwapScript
+  , twoWaySwapValidator
+  , twoWaySwapValidatorHash
+  , twoWayBeaconScript
+  , twoWayBeaconMintingPolicy
+  , twoWayBeaconMintingPolicyHash
+  , twoWayBeaconCurrencySymbol
+
     -- * Re-Export
   , module CardanoSwaps.Utils
   ) where
@@ -59,8 +76,10 @@ import qualified PlutusTx
 import GHC.Generics (Generic)
 import Ledger (Script(..))
 import Plutus.Script.Utils.V2.Scripts
+import Data.Aeson
 
 import qualified CardanoSwaps.OneWaySwap as OneWaySwap
+import qualified CardanoSwaps.TwoWaySwap as TwoWaySwap
 import CardanoSwaps.Utils
 
 -------------------------------------------------
@@ -79,6 +98,19 @@ data OneWaySwapDatum = OneWaySwapDatum
   }
   deriving (Generic,Show,Eq)
 
+instance ToJSON OneWaySwapDatum where
+  toJSON OneWaySwapDatum{..} = 
+    object [ "beacon_id" .= show oneWayBeaconId
+           , "pair_beacon" .= showTokenName oneWayPairBeacon
+           , "offer_id" .= show oneWayOfferId
+           , "offer_name" .= showTokenName oneWayOfferName
+           , "offer_beacon" .= showTokenName oneWayOfferBeacon
+           , "ask_id" .= show oneWayAskId
+           , "ask_name" .= showTokenName oneWayAskName
+           , "price" .= oneWaySwapPrice 
+           , "prev_input" .= oneWayPrevInput
+           ]
+
 data OneWaySwapRedeemer
   = OneWayCloseOrUpdate
   | OneWaySwap
@@ -92,6 +124,50 @@ data OneWayBeaconRedeemer
 PlutusTx.unstableMakeIsData ''OneWaySwapDatum
 PlutusTx.unstableMakeIsData ''OneWaySwapRedeemer
 PlutusTx.unstableMakeIsData ''OneWayBeaconRedeemer
+
+data TwoWaySwapDatum = TwoWaySwapDatum
+  { twoWayBeaconId :: CurrencySymbol
+  , twoWayPairBeacon :: TokenName
+  , twoWayAsset1Id :: CurrencySymbol
+  , twoWayAsset1Name :: TokenName
+  , twoWayAsset1Beacon :: TokenName
+  , twoWayAsset2Id :: CurrencySymbol
+  , twoWayAsset2Name :: TokenName
+  , twoWayAsset2Beacon :: TokenName
+  , twoWayForwardPrice :: PlutusRational
+  , twoWayReversePrice :: PlutusRational
+  , twoWayPrevInput :: Maybe TxOutRef
+  } deriving (Generic,Show,Eq)
+
+instance ToJSON TwoWaySwapDatum where
+  toJSON TwoWaySwapDatum{..} = 
+    object [ "beacon_id" .= show twoWayBeaconId
+           , "pair_beacon" .= showTokenName twoWayPairBeacon
+           , "asset1_id" .= show twoWayAsset1Id
+           , "asset1_name" .= showTokenName twoWayAsset1Name
+           , "asset1_beacon" .= showTokenName twoWayAsset1Beacon
+           , "asset2_id" .= show twoWayAsset2Id
+           , "asset2_name" .= showTokenName twoWayAsset2Name
+           , "asset2_beacon" .= showTokenName twoWayAsset2Beacon
+           , "forward_price" .= twoWayForwardPrice 
+           , "reverse_price" .= twoWayReversePrice 
+           , "prev_input" .= twoWayPrevInput
+           ]
+
+data TwoWaySwapRedeemer
+  = TwoWayCloseOrUpdate
+  | TwoWayForwardSwap
+  | TwoWayReverseSwap
+  deriving (Generic,Show)
+
+data TwoWayBeaconRedeemer
+  = TwoWayCreateSwap 
+  | TwoWayBurnBeacons
+  deriving (Generic,Show)
+
+PlutusTx.unstableMakeIsData ''TwoWaySwapDatum
+PlutusTx.unstableMakeIsData ''TwoWaySwapRedeemer
+PlutusTx.unstableMakeIsData ''TwoWayBeaconRedeemer
 
 -------------------------------------------------
 -- Contracts
@@ -116,3 +192,24 @@ oneWayBeaconMintingPolicyHash = mintingPolicyHash oneWayBeaconMintingPolicy
 
 oneWayBeaconCurrencySymbol :: CurrencySymbol
 oneWayBeaconCurrencySymbol = scriptCurrencySymbol oneWayBeaconMintingPolicy
+
+twoWaySwapScript :: Ledger.Script
+twoWaySwapScript = TwoWaySwap.swapScript
+
+twoWaySwapValidator :: Validator
+twoWaySwapValidator = Validator twoWaySwapScript
+
+twoWaySwapValidatorHash :: ValidatorHash
+twoWaySwapValidatorHash = validatorHash twoWaySwapValidator
+
+twoWayBeaconScript :: Ledger.Script
+twoWayBeaconScript = TwoWaySwap.beaconScript
+
+twoWayBeaconMintingPolicy :: MintingPolicy
+twoWayBeaconMintingPolicy = MintingPolicy twoWayBeaconScript
+
+twoWayBeaconMintingPolicyHash :: MintingPolicyHash
+twoWayBeaconMintingPolicyHash = mintingPolicyHash twoWayBeaconMintingPolicy
+
+twoWayBeaconCurrencySymbol :: CurrencySymbol
+twoWayBeaconCurrencySymbol = scriptCurrencySymbol twoWayBeaconMintingPolicy

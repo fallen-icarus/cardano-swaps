@@ -13,22 +13,22 @@ import CLI.Types
 -------------------------------------------------
 parseCommand :: Parser Command
 parseCommand = hsubparser $ mconcat
-  [ command "export-script"
-      (info parseExportScript $ progDesc "Export a dApp plutus script.")
-  , command "swap-datum"
-      (info pCreateDatum $ progDesc "Create a swap datum for the dApp.")
-  , command "swap-redeemer"
-      (info  pCreateSwapRedeemer $ progDesc "Create a redeemer for the universal swap script.")
-  , command "beacon-redeemer"
-      (info parseCreateBeaconRedeemer $ progDesc "Create a redeemer for the beacon policy.")
-  , command "beacon-info"
-      (info parseBeaconInfo $ progDesc "Generate a beacon policy id or asset name.")
-  , command "query"
-      (info parseQuery $ progDesc "Query the blockchain.")
-  , command "submit"
-      (info pSubmit $ progDesc "Submit a transaction to the blockchain.")
-  , command "export-protocol-params"
-      (info pExportParams $ progDesc "Export the current protocol parameters.")
+  [ command "scripts" $
+      info parseExportScript $ progDesc "Export a dApp plutus script."
+  , command "datums" $
+      info parseCreateDatum $ progDesc "Create a datum for the dApp."
+  , command "spending-redeemers" $
+      info  parseCreateSpendingRedeemer $ progDesc "Create a spending redeemer."
+  , command "beacon-redeemers" $
+      info parseCreateMintingRedeemer $ progDesc "Create a redeemer for the beacon policy."
+  , command "beacon-info" $
+      info parseBeaconInfo $ progDesc "Calculate a beacon policy id or asset name."
+  , command "query" $
+      info parseQuery $ progDesc "Query the blockchain."
+  , command "submit" $
+      info pSubmit $ progDesc "Submit a transaction to the blockchain."
+  , command "protocol-params" $
+      info pExportParams $ progDesc "Export the current protocol parameters."
   ]
 
 -------------------------------------------------
@@ -36,194 +36,268 @@ parseCommand = hsubparser $ mconcat
 -------------------------------------------------
 parseExportScript :: Parser Command
 parseExportScript = hsubparser $ mconcat
-    [ command "beacon-policy"
-        (info pExportPolicy $ progDesc "Export the beacon policy for a specific offer asset.")
-    , command "swap-script"
-        (info pExportSwap $ progDesc "Export the universal swap validator script.")
+    [ command "one-way" $
+        info parseOneWayExportScript $ progDesc "Export a one-way swap script."
+    , command "two-way" $
+        info parseTwoWayExportScript $ progDesc "Export a two-way swap script."
+    ]
+
+parseOneWayExportScript :: Parser Command
+parseOneWayExportScript = hsubparser $ mconcat
+    [ command "beacon-policy" $
+        info pExportPolicy $ progDesc "Export the beacon policy for one-way swaps."
+    , command "swap-script" $
+        info pExportSwap $ progDesc "Export the swap validator for one-way swaps."
     ]
   where
     pExportPolicy :: Parser Command
     pExportPolicy = 
       ExportScript 
-        <$> (BeaconPolicy . OfferAsset <$> pOfferAsset)
+        <$> pure OneWayBeaconPolicy
         <*> pOutputFile
     
     pExportSwap :: Parser Command
     pExportSwap = 
       ExportScript 
-        <$> pure SwapScript
+        <$> pure OneWaySwapScript
+        <*> pOutputFile
+
+parseTwoWayExportScript :: Parser Command
+parseTwoWayExportScript = hsubparser $ mconcat
+    [ command "beacon-policy" $
+        info pExportPolicy $ progDesc "Export the beacon policy for two-way swaps."
+    , command "swap-script" $
+        info pExportSwap $ progDesc "Export the swap validator for two-way swaps."
+    ]
+  where
+    pExportPolicy :: Parser Command
+    pExportPolicy = 
+      ExportScript 
+        <$> pure TwoWayBeaconPolicy
+        <*> pOutputFile
+    
+    pExportSwap :: Parser Command
+    pExportSwap = 
+      ExportScript 
+        <$> pure TwoWaySwapScript
         <*> pOutputFile
 
 -------------------------------------------------
 -- CreateDatum Parser
 -------------------------------------------------
-pCreateDatum :: Parser Command
-pCreateDatum = CreateDatum <$> pInternalSwapDatum <*> pOutputFile
+parseCreateDatum :: Parser Command
+parseCreateDatum = hsubparser $ mconcat
+    [ command "one-way" $
+        info pCreateOneWayDatum $ progDesc "Create a one-way swap datum."
+    , command "two-way" $
+        info pCreateTwoWayDatum $ progDesc "Create a two-way swap datum."
+    ]
+
+pCreateOneWayDatum :: Parser Command
+pCreateOneWayDatum = CreateDatum <$> pInternalOneWaySwapDatum <*> pOutputFile
   where
-    pInternalSwapDatum :: Parser InternalSwapDatum
-    pInternalSwapDatum = 
-      InternalSwapDatum 
-        <$> (OfferAsset <$> pOfferAsset)
-        <*> (AskAsset <$> pAskAsset)
-        <*> pSwapPrice
+    pInternalOneWaySwapDatum :: Parser InternalDatum
+    pInternalOneWaySwapDatum = 
+      InternalOneWaySwapDatum 
+        <$> (OfferAsset <$> pOneWayAsset "offer")
+        <*> (AskAsset <$> pOneWayAsset "ask")
+        <*> pPrice "price"
+        <*> pPrevInput
+
+pCreateTwoWayDatum :: Parser Command
+pCreateTwoWayDatum = CreateDatum <$> pInternalTwoWaySwapDatum <*> pOutputFile
+  where
+    pInternalTwoWaySwapDatum :: Parser InternalDatum
+    pInternalTwoWaySwapDatum = 
+      InternalTwoWaySwapDatum 
+        <$> (fmap TwoWayPair . (,) <$> pTwoWayAsset "first" <*> pTwoWayAsset "second")
+        <*> pPrice "forward-price"
+        <*> pPrice "reverse-price"
+        <*> pPrevInput
 
 -------------------------------------------------
--- Swap Redeemer Parser
+-- Spending Redeemer Parser
 -------------------------------------------------
-pCreateSwapRedeemer :: Parser Command
-pCreateSwapRedeemer = CreateSwapRedeemer <$> (pCloseOrUpdate <|> pSwap) <*> pOutputFile
+parseCreateSpendingRedeemer :: Parser Command
+parseCreateSpendingRedeemer = hsubparser $ mconcat
+    [ command "one-way" $
+        info pCreateOneWaySpendingRedeemer $ progDesc "Create a one-way swap spending redeemer."
+    , command "two-way" $
+        info pCreateTwoWaySpendingRedeemer $ progDesc "Create a two-way swap spending redeemer."
+    ]
+
+pCreateOneWaySpendingRedeemer :: Parser Command
+pCreateOneWaySpendingRedeemer = 
+    CreateSpendingRedeemer 
+      <$> (OneWaySpendingRedeemer <$> (pCloseOrUpdate <|> pSwap))
+      <*> pOutputFile
   where
-    pCloseOrUpdate :: Parser SwapRedeemer
-    pCloseOrUpdate = flag' CloseOrUpdate
+    pCloseOrUpdate :: Parser OneWaySwapRedeemer
+    pCloseOrUpdate = flag' OneWayCloseOrUpdate
       (  long "close-or-update"
       <> help "Close or update swap positions."
       )
 
-    pSwap :: Parser SwapRedeemer
-    pSwap = flag' Swap
+    pSwap :: Parser OneWaySwapRedeemer
+    pSwap = flag' OneWaySwap
       (  long "swap" 
       <> help "Swap with assets at a swap address."
+      )
+
+pCreateTwoWaySpendingRedeemer :: Parser Command
+pCreateTwoWaySpendingRedeemer = 
+    CreateSpendingRedeemer 
+      <$> (TwoWaySpendingRedeemer <$> (pCloseOrUpdate <|> pForwardSwap <|> pReverseSwap))
+      <*> pOutputFile
+  where
+    pCloseOrUpdate :: Parser TwoWaySwapRedeemer
+    pCloseOrUpdate = flag' TwoWayCloseOrUpdate
+      (  long "close-or-update"
+      <> help "Close or update swap positions."
+      )
+
+    pForwardSwap :: Parser TwoWaySwapRedeemer
+    pForwardSwap = flag' TwoWayForwardSwap
+      (  long "forward-swap" 
+      <> help "Take asset2 from a swap."
+      )
+
+    pReverseSwap :: Parser TwoWaySwapRedeemer
+    pReverseSwap = flag' TwoWayReverseSwap
+      (  long "reverse-swap" 
+      <> help "Take asset1 from a swap."
       )
 
 -------------------------------------------------
 -- Beacon Redeemer Parser
 -------------------------------------------------
-parseCreateBeaconRedeemer :: Parser Command
-parseCreateBeaconRedeemer = hsubparser $ mconcat
-    [ command "mint"
-        (info pMint $ progDesc "Create a beacon minting redeemer.")
-    , command "burn"
-        (info pBurn $ progDesc "Create a beacon burning redeemer.")
+parseCreateMintingRedeemer :: Parser Command
+parseCreateMintingRedeemer = hsubparser $ mconcat
+    [ command "one-way" $
+        info pCreateOneWayBeaconRedeemer $ progDesc "Create a one-way swap beacon redeemer."
+    , command "two-way" $
+        info pCreateTwoWayBeaconRedeemer $ progDesc "Create a two-way swap beacon redeemer."
     ]
-  where
-    pMint :: Parser Command
-    pMint = CreateBeaconRedeemer <$> (CreateSwap <$> some pAskAsset) <*> pOutputFile
 
-    pBurn :: Parser Command
-    pBurn = CreateBeaconRedeemer <$> pure BurnBeacons <*> pOutputFile
+pCreateOneWayBeaconRedeemer :: Parser Command
+pCreateOneWayBeaconRedeemer = 
+    CreateMintingRedeemer
+      <$> (pMint <|> pBurn)
+      <*> pOutputFile
+  where
+    pMint :: Parser MintingRedeemer
+    pMint = flag' (OneWayMintingRedeemer OneWayCreateSwap)
+      (  long "create-swap"
+      <> help "Mint the beacons for a new swap UTxO."
+      )
+
+    pBurn :: Parser MintingRedeemer
+    pBurn = flag' (OneWayMintingRedeemer OneWayCreateSwap)
+      (  long "burn"
+      <> help "Burn the beacons for a swap UTxO."
+      )
+
+pCreateTwoWayBeaconRedeemer :: Parser Command
+pCreateTwoWayBeaconRedeemer = 
+    CreateMintingRedeemer
+      <$> (pMint <|> pBurn)
+      <*> pOutputFile
+  where
+    pMint :: Parser MintingRedeemer
+    pMint = flag' (TwoWayMintingRedeemer TwoWayCreateSwap)
+      (  long "create-swap"
+      <> help "Mint the beacons for a new swap UTxO."
+      )
+
+    pBurn :: Parser MintingRedeemer
+    pBurn = flag' (TwoWayMintingRedeemer TwoWayCreateSwap)
+      (  long "burn"
+      <> help "Burn the beacons for a swap UTxO."
+      )
 
 -------------------------------------------------
 -- Beacon Info Parser
 -------------------------------------------------
 parseBeaconInfo :: Parser Command
 parseBeaconInfo = hsubparser $ mconcat
-    [ command "policy-id"
-        (info pGenPolicyId $ progDesc "Generate the beacon policy id for a specific offer asset.")
-    , command "asset-name"
-        (info pGenAssetName $ progDesc "Generate the beacon asset name for a specific ask asset.")
-    , command "full-name"
-        (info pGenFullName $ progDesc "Generate the full beacon name for a specific trading pair.")
+    [ command "one-way" $
+        info pOneWayBeaconInfo $ progDesc "Calculate the name for a one-way beacon."
+    , command "two-way" $
+        info pTwoWayBeaconInfo $ progDesc "Calculate the name for a two-way beacon."
+    ]
+
+pOneWayBeaconInfo :: Parser Command
+pOneWayBeaconInfo = hsubparser $ mconcat
+    [ command "policy-id" $
+        info pPolicyId $ progDesc "Calculate the one-way beacon policy id."
+    , command "offer-beacon" $
+        info pOfferName $ progDesc "Calculate the one-way offer beacon asset name."
+    , command "pair-beacon" $
+        info pPairName $ progDesc "Calculate the one-way trading pair beacon asset name."
     ]
   where
-    pGenPolicyId :: Parser Command
-    pGenPolicyId = 
-      BeaconInfo 
-        <$> (PolicyId . OfferAsset <$> pOfferAsset)
+    pPolicyId :: Parser Command
+    pPolicyId = BeaconInfo <$> pure OneWayPolicyId <*> pOutput
+
+    pOfferName :: Parser Command
+    pOfferName = 
+      BeaconInfo
+        <$> (OneWayOfferBeaconAssetName <$> (OfferAsset <$> pOneWayAsset "offer"))
         <*> pOutput
 
-    pGenAssetName :: Parser Command
-    pGenAssetName =
+    pPairName :: Parser Command
+    pPairName = 
       BeaconInfo
-        <$> (AssetName . AskAsset <$> pAskAsset)
+        <$> ( fmap OneWayPairBeaconAssetName . (,) 
+                <$> (OfferAsset <$> pOneWayAsset "offer") <*> (AskAsset <$> pOneWayAsset "ask")
+            )
         <*> pOutput
 
-    pGenFullName :: Parser Command
-    pGenFullName =
+pTwoWayBeaconInfo :: Parser Command
+pTwoWayBeaconInfo = hsubparser $ mconcat
+    [ command "policy-id" $
+        info pPolicyId $ progDesc "Calculate the two-way beacon policy id."
+    , command "offer-beacon" $
+        info pOfferName $ progDesc "Calculate the two-way offer beacon asset name."
+    , command "pair-beacon" $
+        info pPairName $ progDesc "Calculate the two-way trading pair beacon asset name."
+    ]
+  where
+    pPolicyId :: Parser Command
+    pPolicyId = BeaconInfo <$> pure TwoWayPolicyId <*> pOutput
+
+    pOfferName :: Parser Command
+    pOfferName = 
       BeaconInfo
-        <$> ( FullName 
-                <$> (OfferAsset <$> pOfferAsset) 
-                <*> (AskAsset <$> pAskAsset)
+        <$> ( TwoWayOfferBeaconAssetName 
+                <$> (pTwoWayAsset "first" <|> pTwoWayAsset "second")
+            )
+        <*> pOutput
+
+    pPairName :: Parser Command
+    pPairName = 
+      BeaconInfo
+        <$> ( fmap TwoWayPairBeaconAssetName . fmap TwoWayPair . (,) 
+                <$> (pTwoWayAsset "first") <*> (pTwoWayAsset "second")
             )
         <*> pOutput
 
 -------------------------------------------------
--- QueryBeacons Parser
+-- Submit Parser
 -------------------------------------------------
-parseQuery :: Parser Command
-parseQuery = fmap Query . hsubparser $ mconcat
-  [ command "own-swaps"
-      (info parseQueryOwn $ progDesc "Query your own swaps.") 
-  , command "all-swaps"
-      (info parseQueryAll $ progDesc "Query all swaps.") 
-  , command "personal-address"
-      (info pQueryPersonal $ progDesc "Query your personal address.") 
-  ]
-
-parseQueryOwn :: Parser Query
-parseQueryOwn = fmap QueryOwn . hsubparser $ mconcat
-  [ command "all"
-      (info pQueryAll $ progDesc "Query all of your own swaps.")
-  , command "offer"
-      (info pQueryOffer $ progDesc "Query swaps by offer asset.")
-  , command "trading-pair"
-      (info pQueryTradingPair $ progDesc "Query swaps by trading pair.")
-  ]
+pSubmit :: Parser Command
+pSubmit = 
+    Submit 
+      <$> pNetwork
+      <*> pEndpoint
+      <*> pTxFile
   where
-    pQueryAll :: Parser QueryOwn
-    pQueryAll =
-      QueryOwnSwaps
-        <$> pNetwork
-        <*> pQueryEndpoint
-        <*> pUserAddress
-        <*> pFormat
-        <*> pOutput
-
-    pQueryOffer :: Parser QueryOwn
-    pQueryOffer =
-      QueryOwnSwapsByOffer
-        <$> pNetwork
-        <*> pQueryEndpoint
-        <*> pUserAddress
-        <*> (OfferAsset <$> pOfferAsset)
-        <*> pFormat
-        <*> pOutput
-
-    pQueryTradingPair :: Parser QueryOwn
-    pQueryTradingPair =
-      QueryOwnSwapsByTradingPair
-        <$> pNetwork
-        <*> pQueryEndpoint
-        <*> pUserAddress
-        <*> (OfferAsset <$> pOfferAsset)
-        <*> (AskAsset <$> pAskAsset)
-        <*> pFormat
-        <*> pOutput
-
-parseQueryAll :: Parser Query
-parseQueryAll = fmap QueryAll . hsubparser $ mconcat
-  [ command "offer"
-      (info pQueryOffer $ progDesc "Query swaps by offer asset.")
-  , command "trading-pair"
-      (info pQueryTradingPair $ progDesc "Query swaps by trading pair.")
-  ]
-  where
-    pQueryOffer :: Parser QueryAll
-    pQueryOffer =
-      QueryAllSwapsByOffer
-        <$> pNetwork
-        <*> pQueryEndpoint
-        <*> (OfferAsset <$> pOfferAsset)
-        <*> pFormat
-        <*> pOutput
-
-    pQueryTradingPair :: Parser QueryAll
-    pQueryTradingPair =
-      QueryAllSwapsByTradingPair
-        <$> pNetwork
-        <*> pQueryEndpoint
-        <*> (OfferAsset <$> pOfferAsset)
-        <*> (AskAsset <$> pAskAsset)
-        <*> pFormat
-        <*> pOutput
-
-pQueryPersonal :: Parser Query
-pQueryPersonal =
-  QueryPersonal
-    <$> pNetwork
-    <*> pQueryEndpoint
-    <*> pUserAddress
-    <*> pFormat
-    <*> pOutput
+    pTxFile :: Parser FilePath
+    pTxFile = strOption
+      (  long "tx-file"
+      <> metavar "STRING"
+      <> help "Transaction file path."
+      )
 
 -------------------------------------------------
 -- ExportParams Parser
@@ -235,21 +309,140 @@ pExportParams =
     <*> pOutput
 
 -------------------------------------------------
--- Submit Parser
+-- Query Parser
 -------------------------------------------------
-pSubmit :: Parser Command
-pSubmit = 
-    Submit 
-      <$> pNetwork
-      <*> pQueryEndpoint
-      <*> pTxFile
+parseQuery :: Parser Command
+parseQuery = fmap Query . hsubparser $ mconcat
+  [ command "own-swaps" $
+      info parseQueryOwnSwaps $ progDesc "Query your own swaps." 
+  , command "all-swaps" $
+      info parseQueryAll $ progDesc "Query all swaps." 
+  , command "personal-address" $
+      info pQueryPersonal $ progDesc "Query your personal address." 
+  ]
+
+pQueryPersonal :: Parser Query
+pQueryPersonal =
+  QueryPersonal
+    <$> pNetwork
+    <*> pEndpoint
+    <*> pUserAddress
+    <*> pFormat
+    <*> pOutput
+
+parseQueryOwnSwaps :: Parser Query
+parseQueryOwnSwaps = hsubparser $ mconcat
+  [ command "one-way" $
+      info parseQueryOwnOneWaySwaps $ progDesc "Query your own one-way swaps." 
+  , command "two-way" $
+      info parseQueryOwnTwoWaySwaps $ progDesc "Query your own two-way swaps." 
+  ]
+
+parseQueryOwnOneWaySwaps :: Parser Query
+parseQueryOwnOneWaySwaps = fmap QueryOwnSwaps . hsubparser $ mconcat
+  [ command "all"
+      (info pQueryAll $ progDesc "Query all of your own swaps.")
+  , command "offer"
+      (info pQueryOffer $ progDesc "Query swaps by offer asset.")
+  , command "trading-pair"
+      (info pQueryTradingPair $ progDesc "Query swaps by trading pair.")
+  ]
   where
-    pTxFile :: Parser FilePath
-    pTxFile = strOption
-      (  long "tx-file"
-      <> metavar "STRING"
-      <> help "Transaction file path."
-      )
+    pQueryAll :: Parser QueryOwnSwaps
+    pQueryAll =
+      QueryOwnOneWaySwaps
+        <$> pNetwork
+        <*> pEndpoint
+        <*> pUserAddress
+        <*> pFormat
+        <*> pOutput
+
+    pQueryOffer :: Parser QueryOwnSwaps
+    pQueryOffer =
+      QueryOwnOneWaySwapsByOffer
+        <$> pNetwork
+        <*> pEndpoint
+        <*> pUserAddress
+        <*> (OfferAsset <$> pOneWayAsset "offer")
+        <*> pFormat
+        <*> pOutput
+
+    pQueryTradingPair :: Parser QueryOwnSwaps
+    pQueryTradingPair =
+      QueryOwnOneWaySwapsByTradingPair
+        <$> pNetwork
+        <*> pEndpoint
+        <*> pUserAddress
+        <*> (OfferAsset <$> pOneWayAsset "offer")
+        <*> (AskAsset <$> pOneWayAsset "ask")
+        <*> pFormat
+        <*> pOutput
+
+parseQueryOwnTwoWaySwaps :: Parser Query
+parseQueryOwnTwoWaySwaps = fmap QueryOwnSwaps . hsubparser $ mconcat
+  [ command "all"
+      (info pQueryAll $ progDesc "Query all of your own swaps.")
+  , command "offer"
+      (info pQueryOffer $ progDesc "Query swaps by offer asset.")
+  , command "trading-pair"
+      (info pQueryTradingPair $ progDesc "Query swaps by trading pair.")
+  ]
+  where
+    pQueryAll :: Parser QueryOwnSwaps
+    pQueryAll =
+      QueryOwnTwoWaySwaps
+        <$> pNetwork
+        <*> pEndpoint
+        <*> pUserAddress
+        <*> pFormat
+        <*> pOutput
+
+    pQueryOffer :: Parser QueryOwnSwaps
+    pQueryOffer =
+      QueryOwnTwoWaySwapsByOffer
+        <$> pNetwork
+        <*> pEndpoint
+        <*> pUserAddress
+        <*> (pTwoWayAsset "first" <|> pTwoWayAsset "second")
+        <*> pFormat
+        <*> pOutput
+
+    pQueryTradingPair :: Parser QueryOwnSwaps
+    pQueryTradingPair =
+      QueryOwnTwoWaySwapsByTradingPair
+        <$> pNetwork
+        <*> pEndpoint
+        <*> pUserAddress
+        <*> (fmap TwoWayPair . (,) <$> pTwoWayAsset "first" <*> pTwoWayAsset "second")
+        <*> pFormat
+        <*> pOutput
+
+parseQueryAll :: Parser Query
+parseQueryAll = fmap QueryAllSwaps . hsubparser $ mconcat
+  [ command "offer"
+      (info pQueryOffer $ progDesc "Query swaps by offer asset.")
+  , command "trading-pair"
+      (info pQueryTradingPair $ progDesc "Query swaps by trading pair.")
+  ]
+  where
+    pQueryOffer :: Parser QueryAll
+    pQueryOffer =
+      QueryAllSwapsByOffer
+        <$> pNetwork
+        <*> pEndpoint
+        <*> (OfferAsset <$> pOneWayAsset "offer")
+        <*> pFormat
+        <*> pOutput
+
+    pQueryTradingPair :: Parser QueryAll
+    pQueryTradingPair =
+      QueryAllSwapsByTradingPair
+        <$> pNetwork
+        <*> pEndpoint
+        <*> (OfferAsset <$> pOneWayAsset "offer")
+        <*> (AskAsset <$> pOneWayAsset "ask")
+        <*> pFormat
+        <*> pOutput
 
 -------------------------------------------------
 -- Basic Helper Parsers
@@ -262,85 +455,87 @@ pOutputFile = strOption
   <> completer (bashCompleter "file")
   )
 
-pOfferAsset :: Parser AssetConfig
-pOfferAsset = pOfferLovelace <|> ((,) <$> pOfferSymbol <*> pOfferName)
+pOneWayAsset :: String -> Parser AssetConfig
+pOneWayAsset asset = pLovelace <|> ((,) <$> pSymbol <*> pName)
   where
-    pOfferLovelace :: Parser AssetConfig
-    pOfferLovelace = flag' (adaSymbol,adaToken)
-      (  long "offer-lovelace"
-      <> help "The offered asset is lovelace."
+    pLovelace :: Parser AssetConfig
+    pLovelace = flag' (adaSymbol,adaToken)
+      (  long (asset <> "-lovelace")
+      <> help ("The " <> asset <> " asset is lovelace.")
       )
 
-    pOfferSymbol :: Parser CurrencySymbol
-    pOfferSymbol = option (eitherReader readCurrencySymbol)
-      (  long "offer-policy-id" 
+    pSymbol :: Parser CurrencySymbol
+    pSymbol = option (eitherReader readCurrencySymbol)
+      (  long (asset <> "-policy-id") 
       <> metavar "STRING" 
-      <> help "The policy id of the offered asset."
+      <> help ("The policy id of the " <> asset <> " asset.")
       )
     
-    pOfferName :: Parser TokenName
-    pOfferName = option (eitherReader readTokenName)
-      (  long "offer-token-name"
+    pName :: Parser TokenName
+    pName = option (eitherReader readTokenName)
+      (  long (asset <> "-token-name")
       <> metavar "STRING"
-      <> help "The token name (in hexidecimal) of the offered asset."
+      <> help ("The token name (in hexidecimal) of the " <> asset <> " asset.")
       )
 
-pAskAsset :: Parser AssetConfig
-pAskAsset = pAskLovelace <|> ((,) <$> pAskSymbol <*> pAskName)
+pPrice :: String -> Parser PlutusRational
+pPrice prefix = unsafeRatio <$> pPriceNum <*> pPriceDen
   where
-    pAskLovelace :: Parser AssetConfig
-    pAskLovelace = flag' (adaSymbol,adaToken)
-      (  long "ask-lovelace"
-      <> help "The asked asset is lovelace."
-      )
-
-    pAskSymbol :: Parser CurrencySymbol
-    pAskSymbol = option (eitherReader readCurrencySymbol)
-      (  long "ask-policy-id" 
-      <> metavar "STRING" 
-      <> help "The policy id of the asked asset."
-      )
-    
-    pAskName :: Parser TokenName
-    pAskName = option (eitherReader readTokenName)
-      (  long "ask-token-name"
-      <> metavar "STRING"
-      <> help "The token name (in hexidecimal) of the asked asset."
-      )
-
-pSwapPrice :: Parser PlutusRational
-pSwapPrice = pPrice <|> pWeightedPrice
-  where
-    pPrice :: Parser PlutusRational
-    pPrice = unsafeRatio <$> pPriceNum <*> pPriceDen
-
     pPriceNum :: Parser Integer
     pPriceNum = option auto
-      ( long "price-numerator"
+      ( long (prefix <> "-numerator")
       <> metavar "INT"
-      <> help "The numerator of the swap price."
+      <> help ("The numerator of the " <> prefix <> ".")
       )
 
     pPriceDen :: Parser Integer
     pPriceDen = option auto
-      ( long "price-denominator"
+      ( long (prefix <> "-denominator")
       <> metavar "INT"
-      <> help "The denominator of the swap price."
+      <> help ("The denominator of the " <> prefix <> ".")
       )
 
-    pWeightedPrice :: Parser PlutusRational
-    pWeightedPrice = calcWeightedPrice <$> some pUtxoPriceInfo
+pPrevInput :: Parser (Maybe TxOutRef)
+pPrevInput = pTxOutRef <|> pure Nothing 
+  where
+    pTxOutRef :: Parser (Maybe TxOutRef)
+    pTxOutRef = Just <$> (TxOutRef <$> pTxId <*> pOutputIndex)
 
-    pUtxoPriceInfo :: Parser UtxoPriceInfo
-    pUtxoPriceInfo = UtxoPriceInfo
-      <$> pAmount
-      <*> pPrice
+    pTxId :: Parser TxId
+    pTxId = option (eitherReader readTxId)
+      (  long "tx-hash"
+      <> metavar "STRING"
+      <> help "The transaction hash for the corresponding swap input."
+      )
+
+    pOutputIndex :: Parser Integer
+    pOutputIndex = option auto
+      (  long "output-index"
+      <> metavar "STRING"
+      <> help "The output index for the corresponding swap input."
+      )
+
+pTwoWayAsset :: String -> Parser AssetConfig
+pTwoWayAsset prefix = pLovelace <|> ((,) <$> pSymbol <*> pName)
+  where
+    pLovelace :: Parser AssetConfig
+    pLovelace = flag' (adaSymbol,adaToken)
+      (  long (prefix <> "-asset-lovelace")
+      <> help ("The " <> prefix <> " asset is lovelace.")
+      )
+
+    pSymbol :: Parser CurrencySymbol
+    pSymbol = option (eitherReader readCurrencySymbol)
+      (  long (prefix <> "-policy-id") 
+      <> metavar "STRING" 
+      <> help ("The policy id of the " <> prefix <> "asset.")
+      )
     
-    pAmount :: Parser Integer
-    pAmount = option auto
-      (  long "utxo-balance"
-      <> metavar "INT"
-      <> help "How much of the target asset is in this UTxO."
+    pName :: Parser TokenName
+    pName = option (eitherReader readTokenName)
+      (  long (prefix <> "-token-name")
+      <> metavar "STRING"
+      <> help ("The token name (in hexidecimal) of " <> prefix <> "asset.")
       )
 
 pOutput :: Parser Output
@@ -350,6 +545,28 @@ pOutput = pStdOut <|> File <$> pOutputFile
     pStdOut = flag' Stdout
       (  long "stdout"
       <> help "Display to stdout."
+      )
+
+pNetwork :: Parser Network
+pNetwork = pPreProdTestnet <|> pMainnet
+  where
+    pPreProdTestnet :: Parser Network
+    pPreProdTestnet = flag' PreProdTestnet
+      (  long "testnet"
+      <> help "Query the preproduction testnet.")
+
+    pMainnet :: Parser Network
+    pMainnet = flag' Mainnet
+      (  long "mainnet"
+      <> help "Query the mainnet.")
+
+pEndpoint :: Parser Endpoint
+pEndpoint = pKoios 
+  where
+    pKoios :: Parser Endpoint
+    pKoios = flag' Koios
+      (  long "koios"
+      <> help "Use Koios."
       )
 
 pFormat :: Parser Format
@@ -372,28 +589,6 @@ pFormat = pJSON <|> pPretty <|> pPlain
       (  long "plain"
       <> help "Format for pretty-printing without colors."
       )
-
-pNetwork :: Parser Network
-pNetwork = pPreProdTestnet <|> pMainnet
-  where
-    pPreProdTestnet :: Parser Network
-    pPreProdTestnet = flag' PreProdTestnet
-      (  long "testnet"
-      <> help "Query the preproduction testnet.")
-
-    pMainnet :: Parser Network
-    pMainnet = flag' Mainnet
-      (  long "mainnet"
-      <> help "Query the mainnet.")
-
-pQueryEndpoint :: Parser QueryEndpoint
-pQueryEndpoint = pure Koios
-  -- where
-  --   pKoios :: Parser ApiEndpoint
-  --   pKoios = flag' Koios
-  --     (  long "koios"
-  --     <> help "Query using Koios."
-  --     )
 
 pUserAddress :: Parser UserAddress
 pUserAddress = UserAddress <$> strOption

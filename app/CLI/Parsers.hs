@@ -561,13 +561,13 @@ pNetwork = pPreProdTestnet <|> pMainnet
       <> help "Query the mainnet.")
 
 pEndpoint :: Parser Endpoint
-pEndpoint = pKoios 
-  where
-    pKoios :: Parser Endpoint
-    pKoios = flag' Koios
-      (  long "koios"
-      <> help "Use Koios."
-      )
+pEndpoint = pure Koios
+  -- where
+  --   pKoios :: Parser Endpoint
+  --   pKoios = flag' Koios
+  --     (  long "koios"
+  --     <> help "Use Koios."
+  --     )
 
 pFormat :: Parser Format
 pFormat = pJSON <|> pPretty <|> pPlain

@@ -29,6 +29,8 @@ parseCommand = hsubparser $ mconcat
       info pSubmit $ progDesc "Submit a transaction to the blockchain."
   , command "protocol-params" $
       info pExportParams $ progDesc "Export the current protocol parameters."
+  , command "evaluate-tx" $
+      info pEvaluateTx $ progDesc "Estimate script execution units for a transaction."
   ]
 
 -------------------------------------------------
@@ -287,17 +289,20 @@ pTwoWayBeaconInfo = hsubparser $ mconcat
 -------------------------------------------------
 pSubmit :: Parser Command
 pSubmit = 
-    Submit 
-      <$> pNetwork
-      <*> pEndpoint
-      <*> pTxFile
-  where
-    pTxFile :: Parser FilePath
-    pTxFile = strOption
-      (  long "tx-file"
-      <> metavar "STRING"
-      <> help "Transaction file path."
-      )
+  Submit 
+    <$> pNetwork
+    <*> pEndpoint
+    <*> pTxFile
+
+-------------------------------------------------
+-- EvaluateTx Parser
+-------------------------------------------------
+pEvaluateTx :: Parser Command
+pEvaluateTx = 
+  EvaluateTx 
+    <$> pNetwork
+    <*> pEndpoint
+    <*> pTxFile
 
 -------------------------------------------------
 -- ExportParams Parser
@@ -595,4 +600,11 @@ pUserAddress = UserAddress <$> strOption
   (  long "address"
   <> metavar "STRING"
   <> help "Address in bech32 format."
+  )
+
+pTxFile :: Parser FilePath
+pTxFile = strOption
+  (  long "tx-file"
+  <> metavar "STRING"
+  <> help "Transaction file path."
   )

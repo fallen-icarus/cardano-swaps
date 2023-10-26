@@ -35,7 +35,9 @@ runCommand cmd = case cmd of
   BeaconInfo info output -> runBeaconInfo info output
   Query query -> runQuery query
   Submit network api txFile -> 
-    runSubmit network api txFile >>= TIO.putStrLn
+    runSubmit network api txFile >>= LBS.putStr . encode
+  EvaluateTx network api txFile -> 
+    runEvaluateTx network api txFile >>= LBS.putStr . encode
   ExportParams network output -> runExportParams network output
 
 runExportScriptCmd :: Script -> FilePath -> IO ()

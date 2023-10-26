@@ -12,6 +12,7 @@ module CLI.Query.Koios
   , queryOwnSwaps
   , queryOwnSwapsByBeacon
   , submitTx
+  , evaluateTx
   , queryPersonalAddress
   ) where
 
@@ -79,29 +80,51 @@ instance ToJSON AddressList where
            , "_extended" .= True
            ]
 
+newtype SubmitTxCBOR = SubmitTxCBOR TxCBOR
+
+instance ToJSON SubmitTxCBOR where
+  toJSON (SubmitTxCBOR (TxCBOR cbor)) = 
+    object [ "jsonrpc" .= ("2.0" :: Text)
+           , "method" .= ("submitTransaction" :: Text)
+           , "params" .= object [ "transaction" .= object [ "cbor" .= cbor ] ]
+           , "id" .= (Nothing :: Maybe ())
+           ]
+
+newtype EvaluateTxCBOR = EvaluateTxCBOR TxCBOR
+
+instance ToJSON EvaluateTxCBOR where
+  toJSON (EvaluateTxCBOR (TxCBOR cbor)) = 
+    object [ "jsonrpc" .= ("2.0" :: Text)
+           , "method" .= ("evaluateTransaction" :: Text)
+           , "params" .= object [ "transaction" .= object [ "cbor" .= cbor ] ]
+           , "id" .= (Nothing :: Maybe ())
+           ]
+
 -------------------------------------------------
 -- Koios Api
 -------------------------------------------------
 type KoiosApi
-  =    "submittx"
-     :> ReqBody '[CBOR] TxCBOR
-     :> Post '[JSON] Text
+  =     ReqBody '[JSON] SubmitTxCBOR
+     :> Post '[JSON] Value
 
-  :<|> "asset_utxos"
+  :<|>  ReqBody '[JSON] EvaluateTxCBOR
+     :> Post '[JSON] Value
+
+  :<|>  "asset_utxos"
      :> QueryParam' '[Required] "select" Text
      :> QueryParam' '[Required] "is_spent" Text
      :> QueryParam "asset_list" Text
      :> ReqBody '[JSON] AssetList
      :> Post '[JSON] [KoiosUTxO]
 
-  :<|> "address_utxos"
+  :<|>  "address_utxos"
      :> QueryParam' '[Required] "select" Text
      :> QueryParam' '[Required] "is_spent" Text
      :> QueryParam "asset_list" Text
      :> ReqBody '[JSON] AddressList
      :> Post '[JSON] [KoiosUTxO]
 
-submitApi :<|> assetUTxOsApi :<|> addressUTxOsApi = client api
+submitApi :<|> evaluateApi :<|> assetUTxOsApi :<|> addressUTxOsApi = client api
   where
     api :: Proxy KoiosApi
     api = Proxy
@@ -148,8 +171,11 @@ queryAllSwapsByOffer (OfferAsset offer@(currSym,_))  = do
       (AssetList [twoWayBeacon])
   return $ map convertToSwapUTxO $ oneWayUTxOs <> twoWayUTxOs
 
-submitTx :: TxCBOR -> ClientM Text
-submitTx = submitApi
+submitTx :: TxCBOR -> ClientM Value
+submitTx = submitApi . SubmitTxCBOR
+
+evaluateTx :: TxCBOR -> ClientM Value
+evaluateTx = evaluateApi . EvaluateTxCBOR
 
 queryPersonalAddress :: UserAddress -> ClientM [PersonalUTxO]
 queryPersonalAddress addr =
@@ -214,7 +240,7 @@ convertToSwapUTxO KoiosUTxO{..} =
       (Nothing,Nothing) -> Nothing
       (Just oneDatum,Nothing) -> Just $ OneWayDatum oneDatum
       (Nothing,Just twoDatum) -> Just $ TwoWayDatum twoDatum
-      _ -> error "The impossible happened"
+      _ -> Prelude.error "The impossible happened"
 
 assetToQueryParam :: AssetConfig -> Text
 assetToQueryParam (currSym,tokName) = 

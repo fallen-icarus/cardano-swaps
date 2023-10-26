@@ -6,9 +6,7 @@ module CLI.Types where
 import Data.Aeson
 import Data.Text (Text)
 import Prettyprinter
-import Data.ByteString.Lazy (ByteString)
 import Control.Monad (mzero)
-import Servant.API (Accept(..),MimeRender(..))
 
 import CardanoSwaps
 
@@ -25,6 +23,7 @@ data Command
   | BeaconInfo BeaconInfo Output
   | Query Query
   | Submit Network Endpoint FilePath
+  | EvaluateTx Network Endpoint FilePath
   | ExportParams Network Output
 
 data Script 
@@ -72,23 +71,11 @@ data Network
 data Endpoint
   = Koios
 
-newtype TxCBOR = TxCBOR ByteString
+newtype TxCBOR = TxCBOR Text
 
 instance FromJSON TxCBOR where
-  parseJSON (Object o) = do
-    cborHex <- o .: "cborHex"
-    case decodeHex cborHex of
-      Right cbor -> return $ TxCBOR cbor
-      Left _ -> mzero
+  parseJSON (Object o) = TxCBOR <$> o .: "cborHex"
   parseJSON _ = mzero
-
-data CBOR
-
-instance Accept CBOR where
-  contentType = pure "application/cbor"
-
-instance MimeRender CBOR TxCBOR where
-  mimeRender _ (TxCBOR cbor) = cbor
 
 data Format = JSON | Pretty | Plain
 

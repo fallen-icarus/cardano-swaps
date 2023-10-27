@@ -167,7 +167,7 @@ that would normally go into the change output. You can let the auto-balancer bal
 
 `cardano-cli transaction build` requires a local node for the auto-balancer which means it cannot be
 used to build a transaction. Instead, the `cardano-cli transaction build-raw` command is required.
-This command requires three steps:
+This command requires the following steps:
 1. Build a temporary transaction that is missing the execution units and transaciton fee but is
    properly balanced. You can assume a fee of zero for this transaction.
 2. Submit the temporary transaction for execution budget estimations.
@@ -285,8 +285,8 @@ offerBeaconName=$(cardano-swaps beacon-info one-way offer-beacon \
   --stdout)
 
 # Create the required full beacon names.
-pairBeacon="${beaconPolicyId}.${pairBeaconName1}"
-offerBeacon="${beaconPolicyId}.${offerBeaconName1}"
+pairBeacon="${beaconPolicyId}.${pairBeaconName}"
+offerBeacon="${beaconPolicyId}.${offerBeaconName}"
 ```
 
 The above beacons are for a swap that is offering a native token in exchange for ADA.
@@ -366,8 +366,8 @@ offerBeaconName=$(cardano-swaps beacon-info one-way offer-beacon \
   --offer-token-name 4f74686572546f6b656e0a \
   --stdout)
 
-pairBeacon="${beaconPolicyId}.${pairBeaconName1}"
-offerBeacon="${beaconPolicyId}.${offerBeaconName1}"
+pairBeacon="${beaconPolicyId}.${pairBeaconName}"
+offerBeacon="${beaconPolicyId}.${offerBeaconName}"
 ```
 
 ##### Create the required burning redeemer

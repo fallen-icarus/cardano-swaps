@@ -30,9 +30,9 @@ cardano-swaps spending-redeemers two-way \
 # Create the swap datum.
 echo "Creating the swap datum..."
 cardano-swaps datums two-way \
-  --first-asset-lovelace \
-  --second-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --second-token-name 4f74686572546f6b656e0a \
+  --asset1-is-lovelace \
+  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --asset2-token-name 4f74686572546f6b656e0a \
   --forward-price-numerator 1000000 \
   --forward-price-denominator 1 \
   --reverse-price-numerator 1 \
@@ -45,18 +45,18 @@ beaconPolicyId1=$(cardano-swaps beacon-info two-way policy-id \
   --stdout)
 
 pairBeaconName1=$(cardano-swaps beacon-info two-way pair-beacon \
-  --first-asset-lovelace \
-  --second-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --second-token-name 4f74686572546f6b656e0a \
+  --asset1-is-lovelace \
+  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --asset2-token-name 4f74686572546f6b656e0a \
   --stdout)
 
 asset1BeaconName1=$(cardano-swaps beacon-info two-way offer-beacon \
-  --first-asset-lovelace \
+  --asset1-is-lovelace \
   --stdout)
 
 asset2BeaconName1=$(cardano-swaps beacon-info two-way offer-beacon \
-  --second-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --second-token-name 4f74686572546f6b656e0a \
+  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --asset2-token-name 4f74686572546f6b656e0a \
   --stdout)
 
 pairBeacon1="${beaconPolicyId1}.${pairBeaconName1}"

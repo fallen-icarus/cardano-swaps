@@ -14,7 +14,6 @@ import qualified Data.Text.IO as TIO
 import qualified Data.Text as T
 import Data.Text (Text)
 import Data.FileEmbed
-import Data.List (sort)
 
 import CardanoSwaps
 import CLI.Types
@@ -66,8 +65,7 @@ runCreateDatum
       , oneWayPrevInput = mPrev
       }
 runCreateDatum 
-  (InternalTwoWaySwapDatum (TwoWayPair (assetX,assetY)) forwardPrice' reversePrice' mPrev) file = do
-    let [asset1,asset2] = sort [assetX,assetY]
+  (InternalTwoWaySwapDatum (TwoWayPair (asset1,asset2)) forwardPrice' reversePrice' mPrev) file = do
     writeData file $ TwoWaySwapDatum 
         { twoWayBeaconId = twoWayBeaconCurrencySymbol
         , twoWayPairBeacon = genUnsortedPairBeaconName asset1 asset2

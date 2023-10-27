@@ -1,35 +1,41 @@
 # Getting Started
 
-:warning: Assumes a local PreProduction Testnet node running locally and `cardano-cli` installed since it is used to actually build and sign transactions.
+`cardano-swaps` assumes that all transactions are built and signed using `cardano-cli`. **Access to
+a local node is not necessary**, although it does simplify things. Koios can be used for all steps
+that require access to a node.
 
-Template bash scripts that follow these steps are available [here](scripts/).
-
-For now, Cardano-Swaps is only for the testnet. While the smart contracts already work on mainnet, the CLI is only meant to facilitate using the Preproduction testnet. Support for mainnet will be added to the CLI after:
-1. The smart contracts have undergone a security audit.
-2. Aiken has an official mainnet release.
-
+Template bash scripts that follow these steps are available [here](scripts/). There are examples
+using a local node and a remote node. Using a remote node requires extra steps since the transaction
+must be balanced manually.
 
 ## Table of Contents
 - [Installing](#installing)
-- [Minting test tokens](#minting-test-tokens)
-- [Create a swap](#creating-a-swap)
-- [Close or update swaps](#close-or-update-swaps)
-- [Perform a swap](#perform-a-swap)
-- [Query swaps](#query-swaps)
-- [Staking credential hash](#staking-credential-hash)
+- [Aiken For Developers](#aiken-for-developers)
+- [`cardano-cli`s Auto-Balancing](#cardano-clis-auto-balancing)
+- [Minting Test Tokens](#minting-test-tokens)
+- [One-Way Swaps](#one-way-swaps)
+  - [Creating Reference Scripts](#create-reference-scripts)
+  - [Creating A Swap](#creating-a-swap)
+  - [Closing A Swap](#closing-a-swap)
+  - [Updating A Swap](#updating-a-swap)
+  - [Converting A Swap To A New Trading Pair](#converting-a-swap-to-a-new-trading-pair)
+
 
 
 ## Installing
-### Using Cabal - RECOMMENDED
 
-#### Install the necessary packages - similar to cardano-node
+Make sure `cardano-cli` is also installed. You can get the most up-to-date copy from IOG's
+cardano-node repo [here](https://github.com/input-output-hk/cardano-node). It will be in the
+cardano-node tarball under the latest release.
+
+### Install the necessary packages - similar to cardano-node
 ```
 sudo apt update
 sudo apt upgrade
 sudo apt-get install autoconf automake build-essential curl g++ git jq libffi-dev libgmp-dev libncursesw5 libssl-dev libsystemd-dev libtinfo-dev libtool make pkg-config wget zlib1g-dev liblzma-dev libpq-dev
 ```
 
-#### Install libsodium and scep256k1
+### Install libsodium and scep256k1
 ```
 git clone https://github.com/input-output-hk/libsodium
 cd libsodium
@@ -57,7 +63,7 @@ export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
 export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
 ```
 
-#### Install GHC 8.10.7 and cabal
+### Install GHC 8.10.7 and cabal
 ```
 cd
 curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
@@ -77,490 +83,506 @@ ghcup install ghc 8.10.7
 ghcup set ghc 8.10.7
 ```
 
-#### Build the executable
+### Build the executable
 ```
 git clone https://github.com/fallen-icarus/cardano-swaps
 cd cardano-swaps
 cabal clean
 cabal update
-cabal build all
+cabal build exe:cardano-swaps
 ```
 
-The `cardano-swaps` CLI program should now be at `dist-newstyle/build/x86_64-linux/ghc-8.10.7/cardano-swaps-0.4.0.0/x/cardano-swaps/build/cardano-swaps/cardano-swaps`. Move the program to somewhere in your `$PATH`.
+The `cardano-swaps` CLI program should now be at
+`dist-newstyle/build/x86_64-linux/ghc-8.10.7/cardano-swaps-1.0.0.0/x/cardano-swaps/build/cardano-swaps/cardano-swaps`.
+Move the program to somewhere in your `$PATH`.
 
-All `cardano-swaps` subcommands have an associated `--help` option. The functionality is meant to feel like `cardano-cli`.
+All `cardano-swaps` subcommands have an associated `--help` option. The functionality is meant to
+feel like `cardano-cli`.
 
-### Using Nix
-The [Nix Package Manager](https://nixos.org/) can be installed on most Linux distributions by downloading and running the installation script
-```
-curl -L https://nixos.org/nix/install > install-nix.sh
-chmod +x install-nix.sh
-./install-nix.sh
-```
-and following the directions.
+The smart contracts are compiled *into* the created `cardano-swaps` CLI. The executable has
+everything you need for using the DEX.
 
-#### Configuring the Binary Caches
-While this step is optional, it can save several hours of time since nix will need a copy of every necessary package. Therefore, it is highly recommended that you do this.
-```
-sudo mkdir -p /etc/nix
-cat <<EOF | sudo tee -a /etc/nix/nix.conf
-experimental-features = nix-command flakes
-allow-import-from-derivation = true
-substituters = https://cache.nixos.org https://cache.iog.io https://cache.zw3rk.com
-trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= loony-tools:pr9m4BkM/5/eSTZlkQyRt57Jz7OMBxNSUiMC4FkcNfk=
-EOF
-```
-The caches used here come from the plutus-apps contributing [doc](https://github.com/input-output-hk/plutus-apps/blob/713955dea45739de6df3c388717123cfec648914/CONTRIBUTING.adoc#how-to-get-a-shell-environment-with-tools).
+## Aiken For Developers
 
-You will need to restart the nix service in order to make sure that it uses the newly configured caches. A sure fire way to do this is restart your machine.
-
-#### Building the Executable
-```
-git clone https://github.com/fallen-icarus/cardano-swaps
-git clone https://github.com/input-output-hk/plutus-apps
-cd plutus-apps
-git checkout 68c3721
-nix develop # This step can take an hour even with the caches configured
-# Set accept-flake-config to true and permanently mark the value as trusted
-```
-The last command should drop you into a nix terminal once it is finished running. Execute the following within the nix terminal.
-```
-cd ../cardano-swaps
-cabal clean
-cabal update
-cabal build all
-```
-
-If all goes well, the `cardano-swaps` CLI program should now be at `dist-newstyle/build/x86_64-linux/ghc-8.10.7/cardano-swaps-0.4.0.0/x/cardano-swaps/build/cardano-swaps/cardano-swaps`. Move the program to somewhere in your $PATH.
-
-You can now exit the nix terminal with `exit`.
-
-All `cardano-swaps` subcommands have an associated `--help` option. The functionality is meant to feel like `cardano-cli`.
-
-#### Troubleshooting Nix
-If you encounter a libsodium error, you may need to first install libsodium separately. While not inside the nix terminal (you can leave with `exit`), execute the following:
-```
-cd # return to your home directory
-git clone https://github.com/input-output-hk/libsodium
-cd libsodium
-git checkout dbb48cc
-./autogen.sh
-./configure
-make
-sudo make install
-```
-Once installed, you can retry the build after exporting the following variables while inside the nix terminal:
-```
-cd ../plutus-apps
-nix develop # This should only take a minute this time
-export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
-export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
-cabal build all
-```
-
-### Aiken For Developers
-The aiken smart contracts come precompiled but if you would like to make changes or wish to confirm the compiled scripts yourself, you will also need to install `aiken`. You can install `aiken` using cargo like this:
+The aiken smart contracts come precompiled but if you would like to make changes or wish to confirm
+the compiled scripts yourself, you will also need to install `aiken`. You can install `aiken` using
+cargo like this:
 
 ``` Bash
-cargo install aiken --version 1.0.13-alpha
+cargo install aiken --version 1.0.20-alpha
 ```
 
-Make sure you instal verison 1.0.13-alpha. Newer versions may change some things and so the source code may not compile. As aiken stabilizes, the code will be updated to the latest version.
+Make sure you instal verison 1.0.20-alpha. Newer versions may change some things and so the source
+code may not compile or may result in a different script. As aiken stabilizes, the code will be
+updated to the latest version.
 
 When building the dApp's blueprints, make sure to use
+
 ``` Bash
 aiken build --keep-traces
 ```
-or else the user friendly error messages will be stripped from the smart contracts and the resulting beacons will be different.
 
-For integration testing, you can create your own custom beacons without changing the dApp's logic by changing the string passed [here](aiken/lib/cardano_swaps/utils.ak#L28). Currently, it is set to "testing". You can change this to any string personal to you so that you can get custom beacons to play with for testing.
+or else the user friendly error messages will be stripped from the smart contracts and the resulting
+beacons will be different.
+
+For integration testing, you can create your own custom beacons without changing the dApp's logic by
+changing the string passed [here](aiken/lib/cardano_swaps/common/types.ak#L4). Currently, it is set
+to "". You can change this to any string personal to you so that you can get custom beacons
+to play with for testing.
+
+If you would like to use the `cardano-swaps` CLI after making your changes, you will need to
+rebuild it with `cabal bulid exe:cardano-swaps`. As long as you did not make any breaking changes,
+the CLI should still work for you.
+
+If you would like to test your changes, you can run the tests using `cabal run tests`. As long
+as you did not make any breaking changes, the tests should quickly give you feedback. There are
+four kinds of tests:
+
+1) Regression tests - tests for features that should work.
+2) Failure tests - tests for scenarios that are supposed to fail.
+3) Bench tests - tests to check for degraded performance in specific scenarios.
+4) Performance Increase tests - tests to check for improved performance in specific scenarios.
+
+To see the documentation for the tests, you can build the haddocks for the tests using `cabal
+haddock tests`. The documentation may be easier to read than the source code. You can view the
+documentation in any browser.
+
+## `cardano-cli` Auto-Balancing
+
+While `cardano-cli` is able to auto-balance transactions, the auto-balancer does not work when
+scripts are executed in a transaction where native tokens must go to the change address. It does not
+properly add the change *before* estimating the execution budgets for the transaction which always
+results in it under-estimating the required execution units needed by the scripts. There are open
+issues about this [here](https://github.com/input-output-hk/cardano-node/issues/5386) and
+[here](https://github.com/input-output-hk/cardano-api/issues/302). If you ever see a very long and
+confusing error message about overspending budgets, this is probably the issue.
+
+As a work around, whenever you build a transaction using `cardano-cli transaction build` where
+scripts are being executed, you must manually create an output that has all of the native tokens
+that would normally go into the change output. You can let the auto-balancer balance the ADA.
+
+## Using Remote Nodes
+
+`cardano-cli transaction build` requires a local node for the auto-balancer which means it cannot be
+used to build a transaction. Instead, the `cardano-cli transaction build-raw` command is required.
+This command requires three steps:
+1. Build a temporary transaction that is missing the execution units and transaciton fee but is
+   properly balanced. You can assume a fee of zero for this transaction.
+2. Submit the temporary transaction for execution budget estimations.
+3. Rebuild the transaction with the proper execution budgets. The fee is still set to zero.
+4. Calculate the required fee for this new temporary transaction.
+5. Create the final transaction with the required fee and properly balanced outputs (subtract off
+   the fee from the change).
+6. Sign the transaction and submit to a remote node.
+
+Submitting a transaction for execution budget estimations can be done with this command:
+```Bash
+cardano-swaps evaluate-tx \
+  --testnet \
+  --tx-file tx.body
+```
+
+The returned budgets will be indexed by the input order. **This may not be the same order you
+specified when building the temporary transaction.** The node will reorder the inputs
+lexicographically based on the inputs' tx hashes and output indexes.
+
+Submitting the final transaction for addition to the blockchain can be done with this command:
+```Bash
+cardano-swaps submit \
+  --testnet \
+  --tx-file tx.signed
+```
+
+## Minting Test Tokens
+
+An always succeeding minting policy as well as the required redeemer are included with template bash
+scripts for either a local node or a remote node. These can be used to create as many native tokens
+as needed to test this DEX.
+
+To see how to mint test tokens using a local node, refer 
+[here](scripts/local/mint-test-tokens/mint.sh).
+
+To see how to build the transaction using a remote node, refer
+[here](scripts/remote/mint-test-tokens/mint.sh).
 
 
-## Minting test tokens
-An always succeeding minting policy as well as the required redeemer are included [here](scripts/mint-test-tokens/). In that directory is also the template bash script that uses them. These can be used to create as many native tokens as needed to test this DEX.
+## One-Way Swaps
 
+### Creating Reference Scripts
 
-## Creating a Swap
+Creating reference scripts involves the following steps:
+1. Export the scripts from the `cardano-swaps` CLI.
+2. Submit a transaction with the reference scripts stored in the outputs.
 
-#### Export the spending script for that trading pair
-``` Bash
-cardano-swaps export-script swap-script \
-  --out-file swap.plutus
-``` 
+##### Exporting the scripts
+```Bash
+# Export the swap validator script.
+cardano-swaps scripts one-way swap-script \
+  --out-file oneWaySwap.plutus
 
-#### Create the swap address with staking capabilities (using a staking pubkey)
-``` Bash
+# Export the beacon policy.
+cardano-swaps scripts one-way beacon-policy \
+  --out-file oneWayBeacons.plutus
+```
+
+##### Building the transaction
+To see how to build the transaction using a local node, refer 
+[here](scripts/local/one-way/create-reference-scripts.sh).
+
+To see how to build the transaction using a remote node, refer
+[here](scripts/remote/one-way/create-reference-scripts.sh).
+
+### Creating A Swap
+
+Creating a swap involves the following steps:
+1. Create your swap address.
+2. Calculate the required beacon names to mint.
+3. Create the required beacon minting redeemer.
+4. Create the required swap datum for each swap.
+5. Submit a transaction that creates the swaps.
+
+##### Creating your swap address
+```Bash
+# Export the swap validator script.
+cardano-swaps scripts one-way swap-script \
+  --out-file oneWaySwap.plutus
+
+# Create the swap address.
 cardano-cli address build \
-  --payment-script-file swap.plutus \
-  --stake-verification-key-file ownerStaking.vkey \
+  --payment-script-file oneWaySwap.plutus \
+  --stake-verification-key-file ownerStake.vkey \
   --testnet-magic 1 \
-  --out-file swap.addr
+  --out-file oneWaySwap.addr
 ```
 
-If you would like to use a staking script instead, use `--stake-script-file` with your staking script instead of `--stake-verification-key-file` with the staking pubkey.
+Cardano-Swaps also supports using staking scripts for the address. To use a staking script, use
+the `--stake-script-file` flag instead of the `--stake-verification-key-file` flag.
 
-#### Helper beacon variables
-``` Bash
-beaconPolicyId1=$(cardano-swaps beacon-info policy-id \
-  --offer-lovelace \
-  --stdout)
+For a mainnet address, just use the `--mainnet` flag instead of `--testnet-magic 1` when creating
+the address.
 
-beaconName1=$(cardano-swaps beacon-info asset-name \
-  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --ask-token-name 4f74686572546f6b656e0a \
-  --stdout)
+##### Calculate the required beacon names to mint
+One-way swaps require two beacons: the trading pair beacon and the offer beacon.
 
-beaconName2=$(cardano-swaps beacon-info asset-name \
-  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --ask-token-name 54657374546f6b656e34 \
-  --stdout)
-
-beacon1="${beaconPolicyId1}.${beaconName1}"
-beacon2="${beaconPolicyId1}.${beaconName2}"
-```
-
-There is one beacon policy for every offer asset. The beacon name is used to represent the ask asset. Therefore the full beacon name represents the full trading pair.
-
-#### Create the datum for the swap positions
-``` Bash
-cardano-swaps swap-datum \
-  --offer-lovelace \
-  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --ask-token-name 4f74686572546f6b656e0a \
-  --price-numerator 10 \
-  --price-denominator 1000000 \
-  --out-file swapDatum1.json
-
-cardano-swaps swap-datum \
-  --offer-lovelace \
-  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --ask-token-name 54657374546f6b656e34 \
-  --price-numerator 1 \
-  --price-denominator 1000000 \
-  --out-file swapDatum2.json
-```
-
-The price is always `ask / offer`.
-
-#### Create the beacon redeemer for minting the beacon.
-``` Bash
-cardano-swaps beacon-redeemer mint \
-  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --ask-token-name 4f74686572546f6b656e0a \
-  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --ask-token-name 54657374546f6b656e34 \
-  --out-file mintBeacons.json
-```
-
-All beacons that will be minted must be present in this redeemer. Repeat the following for each ask asset:
 ```Bash
-  --ask-policy-id ... \
-  --ask-token-name ... \
+# Get the policy id for the one-way swap beacons.
+beaconPolicyId=$(cardano-swaps beacon-info one-way policy-id \
+  --stdout)
+
+# Get the required trading pair beacon name.
+pairBeaconName=$(cardano-swaps beacon-info one-way pair-beacon \
+  --ask-lovelace \
+  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --offer-token-name 4f74686572546f6b656e0a \
+  --stdout)
+
+# Get the required offer beacon name.
+offerBeaconName=$(cardano-swaps beacon-info one-way offer-beacon \
+  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --offer-token-name 4f74686572546f6b656e0a \
+  --stdout)
+
+# Create the required full beacon names.
+pairBeacon="${beaconPolicyId}.${pairBeaconName1}"
+offerBeacon="${beaconPolicyId}.${offerBeaconName1}"
 ```
 
-#### Build the transaction, sign it, and submit it
-``` Bash
-cardano-cli query protocol-parameters \
-  --testnet-magic 1 \
-  --out-file protocol.json
+The above beacons are for a swap that is offering a native token in exchange for ADA.
 
-cardano-cli transaction build \
-  --tx-in <owner_needs_to_pay_tx_fee_and_supply_offer_asset> \
-  --tx-out "$(cat swap.addr) + 10000000 lovelace + 1 ${beacon1}" \
-  --tx-out-inline-datum-file swapDatum1.json \
-  --tx-out "$(cat swap.addr) + 10000000 lovelace + 1 ${beacon2}" \
-  --tx-out-inline-datum-file swapDatum2.json \
-  --mint "1 ${beacon1} + 1 ${beacon2}" \
-  --mint-tx-in-reference <beacon_reference_script_utxo> \
-  --mint-plutus-script-v2 \
-  --mint-reference-tx-in-redeemer-file mintBeacons.json \
-  --policy-id "$beaconPolicyId1" \
-  --change-address $(cat owner.addr) \
-  --tx-in-collateral <owner_needs_to_put_up_collateral> \
-  --testnet-magic 1 \
-  --protocol-params-file protocol.json \
-  --out-file tx.body
-
-cardano-cli transaction sign \
-  --tx-body-file tx.body \
-  --signing-key-file owner.skey \
-  --testnet-magic 1 \
-  --out-file tx.signed
-
-cardano-cli transaction submit \
-  --testnet-magic 1 \
-  --tx-file tx.signed
-```
-
-
-## Close or Update Swaps
-#### Generate the hash for the staking verification key.
+##### Create the required minting redeemer
 ```Bash
+cardano-swaps beacon-redeemers one-way \
+  --create-swap \
+  --out-file createOneWaySwap.json
+```
+
+##### Creating the required swap datum
+```Bash
+cardano-swaps datums one-way \
+  --ask-lovelace \
+  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --offer-token-name 4f74686572546f6b656e0a \
+  --price-numerator 1000000 \
+  --price-denominator 1 \
+  --out-file oneWaySwapDatum.json
+```
+
+**The price is always Ask/Offer.** In the above example, the swap wants 1 ADA per 1 native token
+taken.
+
+##### Building the transaction
+To see how to build the transaction using a local node, refer 
+[here](scripts/local/one-way/create-swap.sh).
+
+To see how to build the transaction using a remote node, refer
+[here](scripts/remote/one-way/create-swap.sh).
+
+
+### Closing A Swap
+
+Closing a swap requires the following steps:
+1. Calculate the hash of the swap's staking credential.
+2. Create the required spending redeemer.
+3. Calculate the required beacon names to burn.
+4. Create the required beacon burning redeemer.
+5. Submit the transaction.
+
+##### Calculate the hash of the swap's staking credential
+```Bash
+# Generate the hash for a staking verification key.
 ownerPubKeyHash=$(cardano-cli stake-address key-hash \
-  --stake-verification-key-file ownerStaking.vkey)
+  --stake-verification-key-file ownerStake.vkey)
+
+# Generate the hash for a staking script.
+ownerStakingScriptHash=$(cardano-cli transaction policyid \
+  --script-file ownerStake.plutus)
 ```
 
-#### Helper beacon variables
-``` Bash
-beaconPolicyId1=$(cardano-swaps beacon-info policy-id \
-  --offer-lovelace \
-  --stdout)
+While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
+creating the hash of *any* script.
 
-beaconName1=$(cardano-swaps beacon-info asset-name \
-  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --ask-token-name 4f74686572546f6b656e0a \
-  --stdout)
-
-beaconName2=$(cardano-swaps beacon-info asset-name \
-  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --ask-token-name 54657374546f6b656e34 \
-  --stdout)
-
-beacon1="${beaconPolicyId1}.${beaconName1}"
-beacon2="${beaconPolicyId1}.${beaconName2}"
-```
-
-#### Create the CloseOrUpdate redeemer
-``` Bash
-cardano-swaps swap-redeemer \
-  --close-or-update \
-  --out-file closeOrUpdate.json
-```
-
-#### Create the new swap datum.
+##### Create the required spending redeemer
 ```Bash
-cardano-swaps swap-datum \
-  --offer-lovelace \
-  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --ask-token-name 4f74686572546f6b656e0a \
-  --price-numerator 20 \
-  --price-denominator 1000000 \
-  --out-file swapDatum1.json
+cardano-swaps spending-redeemers one-way \
+  --close-or-update \
+  --out-file closeOrUpdateOneWaySwap.json
 ```
 
-#### Create the beacon redeemer
-If no beacons need to be minted, it is cheaper to use the BurnBeacons redeemer. However, if even one beacon must be minted, then the MintBeacons redeemer must be used. Beacons can still be burned with MintBeacons redeemer but only the beacons present in the redeemer can be minted.
-``` Bash
-cardano-swaps beacon-redeemer burn \
-  --out-file burn.json
+##### Calculate the required beacon names to burn
+```Bash
+beaconPolicyId=$(cardano-swaps beacon-info one-way policy-id \
+  --stdout)
+
+pairBeaconName=$(cardano-swaps beacon-info one-way pair-beacon \
+  --ask-lovelace \
+  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --offer-token-name 4f74686572546f6b656e0a \
+  --stdout)
+
+offerBeaconName=$(cardano-swaps beacon-info one-way offer-beacon \
+  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --offer-token-name 4f74686572546f6b656e0a \
+  --stdout)
+
+pairBeacon="${beaconPolicyId}.${pairBeaconName1}"
+offerBeacon="${beaconPolicyId}.${offerBeaconName1}"
 ```
 
-#### Create the transaction, sign it, and submit
-``` Bash
-cardano-cli query protocol-parameters \
-  --testnet-magic 1 \
-  --out-file protocol.json
-
-cardano-cli transaction build \
-  --tx-in <swap_utxo_with_beacon1> \
-  --spending-tx-in-reference <utxo_with_swap_reference_script> \
-  --spending-plutus-script-v2 \
-  --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file closeOrUpdate.json \
-  --tx-in <swap_utxo_with_beacon2> \
-  --spending-tx-in-reference <utxo_with_swap_reference_script> \
-  --spending-plutus-script-v2 \
-  --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file closeOrUpdate.json \
-  --tx-out "$(cat swap.addr) + 10000000 lovelace + 1 ${beacon1}" \
-  --tx-out-inline-datum-file swapDatum1.json \
-  --mint "-1 ${beacon2}" \
-  --mint-tx-in-reference <beacon_reference_script_utxo> \
-  --mint-plutus-script-v2 \
-  --mint-reference-tx-in-redeemer-file burn.json \
-  --policy-id "$beaconPolicyId1" \
-  --change-address $(cat owner.addr) \
-  --required-signer-hash $ownerPubKeyHash \
-  --tx-in-collateral <owner_needs_to_put_up_collateral> \
-  --testnet-magic 1 \
-  --protocol-params-file protocol.json \
-  --out-file tx.body
-
-cardano-cli transaction sign \
-  --tx-body-file tx.body \
-  --signing-key-file owner.skey \
-  --signing-key-file ownerStaking.skey \
-  --testnet-magic 1 \
-  --out-file tx.signed
-
-cardano-cli transaction submit \
-  --testnet-magic 1 \
-  --tx-file tx.signed
+##### Create the required burning redeemer
+```Bash
+cardano-swaps beacon-redeemers one-way \
+  --burn \
+  --out-file burnOneWayBeacons.json
 ```
 
-This part should be repeated for every utxo at the swap address:
-``` Bash
-  --tx-in <swap_utxo_at_swap_address> \
-  --spending-tx-in-reference <utxo_with_swap_reference_script> \
-  --spending-plutus-script-v2 \
-  --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file closeOrUpdate.json \
+##### Building the transaction
+To see how to build the transaction using a local node, refer 
+[here](scripts/local/one-way/close-swap.sh).
+
+To see how to build the transaction using a remote node, refer
+[here](scripts/remote/one-way/close-swap.sh).
+
+
+### Updating A Swap
+
+Updating a swap requires the following steps:
+1. Calculate the hash of the swap's staking credential.
+2. Create the required spending redeemer.
+3. Create the new swap datum.
+4. Submit the transaction.
+
+##### Calculate the hash of the swap's staking credential
+```Bash
+# Generate the hash for a staking verification key.
+ownerPubKeyHash=$(cardano-cli stake-address key-hash \
+  --stake-verification-key-file ownerStake.vkey)
+
+# Generate the hash for a staking script.
+ownerStakingScriptHash=$(cardano-cli transaction policyid \
+  --script-file ownerStake.plutus)
 ```
 
-The `--required-signer-hash` option is required to tell the smart contract what key to look for. **This cannot make it so that a non-owner can close a swap**; it just needs to be present to properly build the transaction. The `ownerStaking.skey` must sign in addition to the usual payment key because the script will check if the address' staking credential approves of the transaction.
+While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
+creating the hash of *any* script.
 
-If the transaction is successfully built, then it is should to work on-chain as long as all tx-in utxos still exist when a stake pool operator goes to add your transaction and the transaction does not exceed the execution limits (if it does, no collateral will be lost).
+##### Create the required spending redeemer
+```Bash
+cardano-swaps spending-redeemers one-way \
+  --close-or-update \
+  --out-file closeOrUpdateOneWaySwap.json
+```
+
+##### Creating the new swap datum
+```Bash
+cardano-swaps datums one-way \
+  --ask-lovelace \
+  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --offer-token-name 4f74686572546f6b656e0a \
+  --price-numerator 1000000 \
+  --price-denominator 2 \
+  --out-file oneWaySwapDatum.json
+```
+
+##### Building the transaction
+To see how to build the transaction using a local node, refer 
+[here](scripts/local/one-way/update-price.sh).
+
+To see how to build the transaction using a remote node, refer
+[here](scripts/remote/one-way/update-price.sh).
 
 
-## Perform a swap
-#### Create the Swap redeemer
-``` Bash
-cardano-swaps swap-redeemer \
+### Converting A Swap To A New Trading Pair
+
+Converting a swap requires the following steps:
+1. Calculate the hash of the swap's staking credential.
+2. Create the required spending redeemer.
+3. Create the required minting redeemer.
+4. Calculate the required beacon names to mint. These are for the new pair.
+5. Calculate the required beacon names to burn. These are for the old pair.
+6. Create the new swap datum.
+7. Submit the transaction.
+
+##### Calculate the hash of the swap's staking credential
+```Bash
+# Generate the hash for a staking verification key.
+ownerPubKeyHash=$(cardano-cli stake-address key-hash \
+  --stake-verification-key-file ownerStake.vkey)
+
+# Generate the hash for a staking script.
+ownerStakingScriptHash=$(cardano-cli transaction policyid \
+  --script-file ownerStake.plutus)
+```
+
+While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
+creating the hash of *any* script.
+
+##### Create the required spending redeemer
+```Bash
+cardano-swaps spending-redeemers one-way \
+  --close-or-update \
+  --out-file closeOrUpdateOneWaySwap.json
+```
+
+##### Create the required minting redeemer
+```Bash
+cardano-swaps beacon-redeemers one-way \
+  --create-swap \
+  --out-file createOneWaySwap.json
+```
+
+This redeemer can be used to both burn the old beacons and mint the new ones.
+
+##### Calculate the required beacon names to mint
+One-way swaps require two beacons: the trading pair beacon and the offer beacon.
+
+```Bash
+# Get the policy id for the one-way swap beacons.
+beaconPolicyId=$(cardano-swaps beacon-info one-way policy-id \
+  --stdout)
+
+# Get the required trading pair beacon name.
+newPairBeaconName=$(cardano-swaps beacon-info one-way pair-beacon \
+  --ask-lovelace \
+  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --offer-token-name 54657374546f6b656e31 \
+  --stdout)
+
+# Get the required offer beacon name.
+newOfferBeaconName=$(cardano-swaps beacon-info one-way offer-beacon \
+  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --offer-token-name 54657374546f6b656e31 \
+  --stdout)
+
+# Create the required full beacon names.
+newPairBeacon="${beaconPolicyId}.${newPairBeaconName}"
+newOfferBeacon="${beaconPolicyId}.${newOfferBeaconName}"
+```
+
+The above beacons are for a swap that is offering a native token in exchange for ADA.
+
+##### Calculate the required beacon names to burn
+
+```Bash
+# Get the policy id for the one-way swap beacons.
+beaconPolicyId=$(cardano-swaps beacon-info one-way policy-id \
+  --stdout)
+
+# Get the required trading pair beacon name.
+oldPairBeaconName=$(cardano-swaps beacon-info one-way pair-beacon \
+  --ask-lovelace \
+  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --offer-token-name 4f74686572546f6b656e0a \
+  --stdout)
+
+# Get the required offer beacon name.
+oldOfferBeacon=$(cardano-swaps beacon-info one-way offer-beacon \
+  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --offer-token-name 4f74686572546f6b656e0a \
+  --stdout)
+
+# Create the required full beacon names.
+oldPairBeacon="${beaconPolicyId}.${oldPairBeaconName}"
+oldOfferBeacon="${beaconPolicyId}.${oldOfferBeacon}"
+```
+
+##### Creating the new swap datum
+```Bash
+cardano-swaps datums one-way \
+  --ask-lovelace \
+  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --offer-token-name 54657374546f6b656e31 \
+  --price-numerator 1000000 \
+  --price-denominator 2 \
+  --out-file oneWaySwapDatum.json
+```
+
+##### Building the transaction
+To see how to build the transaction using a local node, refer 
+[here](scripts/local/one-way/convert-swap.sh).
+
+To see how to build the transaction using a remote node, refer
+[here](scripts/remote/one-way/convert-swap.sh).
+
+
+
+### Executing A Swap
+
+Executing a swap involves the following steps:
+1. Create the spending redeemer.
+2. Create the corresponding swap datum for the target swap.
+3. Submit the transaction.
+
+It may be helpful to also calculate the beacon names and store them as variables since the swap
+output still needs them.
+
+##### Create the spending redeemer
+```Bash
+cardano-swaps spending-redeemers one-way \
   --swap \
-  --out-file swap.json
+  --out-file $swapRedeemerFile
 ```
 
-#### Create the swap datum for any change being returned to the swap address
-You can create datums for swap change by directly saying what each input price is.
-
-``` Bash
-cardano-swaps swap-datum \
-  --offer-lovelace \
-  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --ask-token-name 4f74686572546f6b656e0a \
-  --utxo-balance 10000000 \
+##### Create the corresponding swap datum for the target swap.
+```Bash
+cardano-swaps datums one-way \
+  --ask-lovelace \
+  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --offer-token-name 4f74686572546f6b656e0a \
   --price-numerator 1 \
   --price-denominator 50000 \
-  --utxo-balance 10000000 \
-  --price-numerator 1 \
-  --price-denominator 100000 \
-  --out-file swapDatum1.json
+  --tx-hash 71ae3f66eead7198a79232ff8f2c032d845d0070d3f066f1b5dec3c2abe99788 \
+  --output-index 0 \
+  --out-file $swapDatumFile1
 ```
 
-This part should be repeated for each utxo being swapped from that address:
-
-``` Bash
-  --utxo-balance 20 \
-  --price-numerator 3 \
-  --price-denominator 2 \
-```
-
-`cardano-swaps` can properly calculate the weighted price from this. The `utxo-balance` is the amount of the offered asset in that utxo. Any other assets included in the utxo can be ignored. The price calculated will be identical to the weighted price calculated by the script. If the weighted price does not need to be calculated, the datum can be created using just `price-numerator` and `price-denominator`.
-
-#### Helper beacon variables.
-```Bash
-beaconPolicyId1=$(cardano-swaps beacon-info policy-id \
-  --offer-lovelace \
-  --stdout)
-
-beaconName1=$(cardano-swaps beacon-info asset-name \
-  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --ask-token-name 4f74686572546f6b656e0a \
-  --stdout)
-
-beacon1="${beaconPolicyId1}.${beaconName1}"
-```
-
-#### Create the swap transaction, sign it, and submit
-``` Bash
-cardano-cli query protocol-parameters \
-  --testnet-magic 1 \
-  --out-file protocol.json
-
-cardano-cli transaction build \
-  --tx-in <user_must_pay_transaction_fee_and_supply_ask_assets> \
-  --tx-in <first_desired_swap_utxo> \
-  --spending-tx-in-reference <swap_reference_script_tx_ix> \
-  --spending-plutus-script-v2 \
-  --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file swap.json \
-  --tx-in <second_desired_swap_utxo> \
-  --spending-tx-in-reference <swap_reference_script_tx_ix> \
-  --spending-plutus-script-v2 \
-  --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file swap.json \
-  --tx-out <change_to_swap_address_including_beacons_for_that_swap> \
-  --tx-out-inline-datum-file swapDatum1.json \
-  --tx-in-collateral <user_must_provide_collateral> \
-  --change-address $(cat user.addr) \
-  --protocol-params-file protocol.json \
-  --testnet-magic 1 \
-  --out-file tx.body
-
-cardano-cli transaction sign \
-  --tx-body-file tx.body \
-  --signing-key-file user.skey \
-  --testnet-magic 1 \
-  --out-file tx.signed
-
-cardano-cli transaction submit \
-  --testnet-magic 1 \
-  --tx-file tx.signed
-```
-
-The user is responsible for properly giving the change back to each swap address. Make sure to remember that only the offered asset is allowed to leave each swap address. Therefore, if the offered asset is a native token, make sure to include the ADA the native token was stored with in the change to each swap address.
-
-Any extra beacons can be grouped up into that address' swap change. Make sure that beacons for different trading pairs still get their own UTxOs at the address. Since all swaps require at least one beacon, the minimum UTxO value for all swaps is 1.823130 ADA.
-
-It is possible to create a swap transaction where nothing is actually removed from the swap address. This feature was added due to being useful for gradually building up composed swaps when testing.
-
-If the transaction successfully builds, then the swap should to work on-chain as long as the tx-in utxos still exist when it gets added to a block and the execution limits are not exceeded (if they are, no collateral will be lost). In the event that the utxos no longer exist, the transaction will fail without executing the scripts. This means the user's collateral is safe.
-
-All of the information necessary for generating this transaction can be easily aquired with the `cardano-swaps query` subcommand (shown later).
+The datum should be *exactly* the same as the target swap's datum except the new datum should point
+to the swap input: the `--tx-hash` and `--output-index` flags should specify the UTxO of the swap
+being consumed.
 
 
+##### Building the transaction
+To see how to build the transaction using a local node, refer 
+[here](scripts/local/one-way/swap-assets.sh).
 
-## Query swaps
-`cardano-swaps` now supports both Koios and Blockfrost. If you intend to use Blockfrost, you will need a Blockfrost ApiKey for this step. You can go [here](https://blockfrost.io/#pricing) to get one for free; only an email address is required.
-
-To see the possible queries, execute `cardano-swaps query --help`. 
-
-All queries will return the following format (when piped to `jq`):
-```JSON
-[
-  {
-    "assets": [
-      {
-        "asset": "lovelace",
-        "quantity": "10000000"
-      },
-      {
-        "asset": "04d0873d1fb3316c65f8a40dbd4571b48118e721d8993a6847d51f80.6f245d4be7333223d88e7211c4de116208b8a3898c9a196e0579391fd03c8860",
-        "quantity": "2"
-      },
-      {
-        "asset": "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a",
-        "quantity": "150"
-      }
-    ],
-    "datum": {
-      "ask_id": "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d",
-      "ask_name": "4f74686572546f6b656e0a",
-      "beacon_id": "04d0873d1fb3316c65f8a40dbd4571b48118e721d8993a6847d51f80",
-      "beacon_name": "6f245d4be7333223d88e7211c4de116208b8a3898c9a196e0579391fd03c8860",
-      "offer_id": "",
-      "offer_name": "",
-      "price": {
-        "denominator": 200000,
-        "numerator": 3
-      }
-    },
-    "swap_address": "addr_test1zqvkss4kwg5y0h5qxxw7fe7rf02fmcxs0x2knew3yzvzad3ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqykhv32",
-    "utxo_id": "6db024cde5401d4a8e58e10170f543da29a8534208277b83355dd538519ea550#0"
-  }
-]
-```
-
-When using Blockfrost, the `cardano-swaps query` commands will return the error of `"The requested component has not been found."` when that beacon has never been minted before. This is due to the beacon name being part of the Blockfrost api url like:
-
-``` Url
-https://cardano-preprod.blockfrost.io/api/v0/assets/{beacon_name}/addresses
-```
-
-A future version can address this.
-
-
-## Staking Credential Hash
-To get the staking pubkey hash from a staking verification key, you can use this command:
-
-``` Bash
-cardano-cli stake-address key-hash \
-  --stake-verification-key-file staking.vkey \
-  --out-file staking.pkh
-```
-
-To get the hash of a staking script, you can use this command:
-```Bash
-cardano-cli transaction policyid \
-  --script-file staking.plutus
-```
+To see how to build the transaction using a remote node, refer
+[here](scripts/remote/one-way/swap-assets.sh).

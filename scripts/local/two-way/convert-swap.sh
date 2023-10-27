@@ -1,18 +1,14 @@
 #!/bin/sh
 
-# Any beacons not re-output to the swap address must be burned.
-
-# The following example closes one swap and updates the asking price for another swap.
-
 # Variables
 dir="../../../ignored/swap-files/"
 tmpDir="../../../ignored/tmp/"
 
 ownerPubKeyFile="../../../ignored/wallets/01Stake.vkey"
 
-swapAddrFile="${dir}two_way_swap.addr"
+swapAddrFile="${dir}twoWaySwap.addr"
 
-swapDatumFile1="${dir}swapDatum1.json"
+swapDatumFile="${dir}swapDatum.json"
 
 swapRedeemerFile="${dir}closeOrUpdateTwoWaySwap.json"
 
@@ -34,16 +30,16 @@ echo "Creating the swap datum..."
 cardano-swaps datums two-way \
   --asset1-is-lovelace \
   --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 4f74686572546f6b656e0a \
-  --forward-price-numerator 10 \
-  --forward-price-denominator 1000000 \
-  --reverse-price-numerator 10 \
+  --asset2-token-name 54657374546f6b656e31 \
+  --forward-price-numerator 1000000 \
+  --forward-price-denominator 1 \
+  --reverse-price-numerator 1 \
   --reverse-price-denominator 1000000 \
-  --out-file $swapDatumFile1
+  --out-file $swapDatumFile
 
 # Helper beacon variables.
 echo "Calculating the beacon names..."
-beaconPolicyId1=$(cardano-swaps beacon-info two-way policy-id \
+beaconPolicyId=$(cardano-swaps beacon-info two-way policy-id \
   --stdout)
 
 pairBeaconName1=$(cardano-swaps beacon-info two-way pair-beacon \
@@ -61,44 +57,52 @@ asset2BeaconName1=$(cardano-swaps beacon-info two-way offer-beacon \
   --asset2-token-name 4f74686572546f6b656e0a \
   --stdout)
 
-pairBeacon1="${beaconPolicyId1}.${pairBeaconName1}"
-asset1Beacon1="${beaconPolicyId1}.${asset1BeaconName1}"
-asset2Beacon1="${beaconPolicyId1}.${asset2BeaconName1}"
+pairBeacon1="${beaconPolicyId}.${pairBeaconName1}"
+asset1Beacon1="${beaconPolicyId}.${asset1BeaconName1}"
+asset2Beacon1="${beaconPolicyId}.${asset2BeaconName1}"
 
-# Creating the beacon policy redeemer. If no beacons need to be minted, it is cheaper to use
-# the BurnBeacons redeemer. 
-echo "Creating the beacon policy redeemer..."
+pairBeaconName2=$(cardano-swaps beacon-info two-way pair-beacon \
+  --asset1-is-lovelace \
+  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --asset2-token-name 54657374546f6b656e31 \
+  --stdout)
+
+asset1BeaconName2=$(cardano-swaps beacon-info two-way offer-beacon \
+  --asset1-is-lovelace \
+  --stdout)
+
+asset2BeaconName2=$(cardano-swaps beacon-info two-way offer-beacon \
+  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --asset2-token-name 54657374546f6b656e31 \
+  --stdout)
+
+pairBeacon2="${beaconPolicyId}.${pairBeaconName2}"
+asset1Beacon2="${beaconPolicyId}.${asset1BeaconName2}"
+asset2Beacon2="${beaconPolicyId}.${asset2BeaconName2}"
+
+# Create the minting redeemer. This redeemer can also burn the old beacons.
+echo "Creating the minting redeemer..."
 cardano-swaps beacon-redeemers two-way \
-  --burn \
+  --create-swap \
   --out-file $beaconRedeemerFile
-
-# However, if even one beacon must be minted by that policy, the CreateSwap is required instead. In 
-# this scenario, the beacons actually being minted/burned must be included in the redeemer. All 
-# beacon policies must get their own redeemer. 
-#
-# cardano-swaps beacon-redeemers two-way \
-#   --create-swap \
-#   --out-file $beaconRedeemerFile
 
 # Create the transaction.
 cardano-cli transaction build \
-  --tx-in 93a46aff123477ec8684f4e1f2815f3314f36f9547d5b05cac990ea1d95bc211#0 \
-  --spending-tx-in-reference 4bc4daeec4044e3a022ac3bad9a19a0ac0d4ac9e3cabfc394716ffa17a8fc52f#0 \
+  --tx-in dcf68c0e283ef5a20e79b972e31f730641c6b1295920a5bd408aa5269b5d85f8#0 \
+  --tx-in 5d50f73f784da7c46178d72d4298381a9da44b487a97fb48e27d01a8156217b1#6 \
+  --tx-in 1ac70ea5f71a65add5e3440ca6085c1bd658a2fe3df26f761c32f3d7763bdb8d#0 \
+  --spending-tx-in-reference c1d7755d9089bc1a6b85561e1f3eb740935c6a887a15589395bfc36f8b64fa10#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
-  --tx-in 93a46aff123477ec8684f4e1f2815f3314f36f9547d5b05cac990ea1d95bc211#1 \
-  --spending-tx-in-reference 4bc4daeec4044e3a022ac3bad9a19a0ac0d4ac9e3cabfc394716ffa17a8fc52f#0 \
-  --spending-plutus-script-v2 \
-  --spending-reference-tx-in-inline-datum-present \
-  --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon1} + 1 ${asset1Beacon1} + 1 ${asset2Beacon1} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
-  --tx-out-inline-datum-file $swapDatumFile1 \
-  --mint "-1 ${pairBeacon1} + -1 ${asset1Beacon1} + -1 ${asset2Beacon1}" \
-  --mint-tx-in-reference 4bc4daeec4044e3a022ac3bad9a19a0ac0d4ac9e3cabfc394716ffa17a8fc52f#1 \
+  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon2} + 1 ${asset1Beacon2} + 1 ${asset2Beacon2} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 3000000 lovelace + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --mint "-1 ${pairBeacon1} + -1 ${asset1Beacon1} + -1 ${asset2Beacon1} + 1 ${pairBeacon2} + 1 ${asset1Beacon2} + 1 ${asset2Beacon2}" \
+  --mint-tx-in-reference c1d7755d9089bc1a6b85561e1f3eb740935c6a887a15589395bfc36f8b64fa10#1 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
-  --policy-id "$beaconPolicyId1" \
+  --policy-id "$beaconPolicyId" \
   --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
   --change-address "$(cat ../../../ignored/wallets/01.addr)" \
   --required-signer-hash "$ownerPubKeyHash" \

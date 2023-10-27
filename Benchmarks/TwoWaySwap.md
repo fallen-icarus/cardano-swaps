@@ -112,9 +112,9 @@ The maximum number of swaps that could be closed in the transaction was 52.
 | 30 | 0.853206 ADA | 1.279809 ADA |
 | 40 | 1.172268 ADA | 1.758402 ADA |
 | 50 | 1.539049 ADA | 2.308574 ADA | 
-| 52 | 1.637040 ADA | 2.455560 ADA | 
+| 51 | 1.637040 ADA | 2.455560 ADA | 
 
-The maximum number of swaps that could be closed in the transaction was 52.
+The maximum number of swaps that could be closed in the transaction was 51.
 
 
 

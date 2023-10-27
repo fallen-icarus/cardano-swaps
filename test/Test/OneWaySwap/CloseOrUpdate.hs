@@ -4177,7 +4177,7 @@ benchTest5 number = do
       }
 
 benchTrace :: Int -> IO ()
-benchTrace = runEmulatorTraceIO' def emConfig . benchTest5
+benchTrace = runEmulatorTraceIO' def emConfig . benchTest4
 
 -------------------------------------------------
 -- Test Function
@@ -4253,7 +4253,7 @@ tests = do
     , checkPredicateOptions opts "benchTest3"
         assertNoFailedTransactions $ benchTest3 6
     , checkPredicateOptions opts "benchTest4"
-        assertNoFailedTransactions $ benchTest4 6
+        assertNoFailedTransactions $ benchTest4 7
     , checkPredicateOptions opts "benchTest5"
         assertNoFailedTransactions $ benchTest5 6
 
@@ -4265,7 +4265,7 @@ tests = do
     , checkPredicateOptions opts "perfIncreaseTest3"
         (Test.not assertNoFailedTransactions) $ benchTest3 7
     , checkPredicateOptions opts "perfIncreaseTest4"
-        (Test.not assertNoFailedTransactions) $ benchTest4 7
+        (Test.not assertNoFailedTransactions) $ benchTest4 8
     , checkPredicateOptions opts "perfIncreaseTest5"
         (Test.not assertNoFailedTransactions) $ benchTest5 7
     ]

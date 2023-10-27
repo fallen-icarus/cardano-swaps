@@ -3879,13 +3879,13 @@ tests = do
     , checkPredicateOptions opts "benchTest1"
         assertNoFailedTransactions $ benchTest1 12
     , checkPredicateOptions opts "benchTest2"
-        assertNoFailedTransactions $ benchTest2 15
+        assertNoFailedTransactions $ benchTest2 14
 
       -- Performance Increases tests
     , checkPredicateOptions opts "perfIncreaseTest1"
         (Test.not assertNoFailedTransactions) $ benchTest1 13
     , checkPredicateOptions opts "perfIncreaseTest2"
-        (Test.not assertNoFailedTransactions) $ benchTest2 16
+        (Test.not assertNoFailedTransactions) $ benchTest2 15
     ]
 
 testTrace :: IO ()

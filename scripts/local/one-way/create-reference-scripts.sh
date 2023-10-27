@@ -1,13 +1,11 @@
 #!/bin/sh
 
-# A helper script for showing how to store the reference scripts on chain.
-
 ## Variables
 dir="../../../ignored/swap-files/"
 tmpDir="../../../ignored/tmp/"
 
-swapScriptFile="${dir}one_way_spend.plutus"
-beaconPolicyFile="${dir}one_way_beacon.plutus"
+swapScriptFile="${dir}oneWaySwap.plutus"
+beaconPolicyFile="${dir}oneWayBeacons.plutus"
 
 ## Export the swap validator script.
 echo "Exporting the swap validator script..."
@@ -22,9 +20,9 @@ cardano-swaps scripts one-way beacon-policy \
 ## Create and submit the transaction.
 echo "Building the transaction..."
 cardano-cli transaction build \
-  --tx-in 6ea0a8eb9d0ad061c816b1207c21dedddf3d3c1b438d5541fefbf200b87ba705#0 \
-  --tx-in 6ea0a8eb9d0ad061c816b1207c21dedddf3d3c1b438d5541fefbf200b87ba705#1 \
-  --tx-in 6ea0a8eb9d0ad061c816b1207c21dedddf3d3c1b438d5541fefbf200b87ba705#2 \
+  --tx-in 5ae04fb39873e137cfbffcdecedbad4908d8665d53994c8aa56837893be9341d#0 \
+  --tx-in 5ae04fb39873e137cfbffcdecedbad4908d8665d53994c8aa56837893be9341d#1 \
+  --tx-in 5739e05188623dd36933b5dfdccddcc975ea3964f7a0bd2265a283879530cb49#0 \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + 26000000 lovelace " \
   --tx-out-reference-script-file $swapScriptFile \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + 18000000 lovelace " \

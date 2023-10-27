@@ -4,13 +4,13 @@
 dir="../../../ignored/swap-files/"
 tmpDir="../../../ignored/tmp/"
 
-swapScriptFile="${dir}spend.plutus" # This is used to create the swap address.
+swapScriptFile="${dir}oneWaySwap.plutus" # This is used to create the swap address.
 
 ownerPubKeyFile="../../../ignored/wallets/01Stake.vkey"
 
 swapAddrFile="${dir}oneWaySwap.addr"
 
-swapDatumFile1="${dir}swapDatum1.json"
+swapDatumFile="${dir}swapDatum.json"
 
 beaconRedeemerFile="${dir}createSwap.json"
 
@@ -29,22 +29,22 @@ cardano-cli address build \
 
 # Helper beacon variables.
 echo "Calculating the beacon names..."
-beaconPolicyId1=$(cardano-swaps beacon-info one-way policy-id \
+beaconPolicyId=$(cardano-swaps beacon-info one-way policy-id \
   --stdout)
 
-pairBeaconName1=$(cardano-swaps beacon-info one-way pair-beacon \
+pairBeaconName=$(cardano-swaps beacon-info one-way pair-beacon \
   --ask-lovelace \
   --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --offer-token-name 4f74686572546f6b656e0a \
   --stdout)
 
-offerBeaconName1=$(cardano-swaps beacon-info one-way offer-beacon \
+offerBeaconName=$(cardano-swaps beacon-info one-way offer-beacon \
   --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --offer-token-name 4f74686572546f6b656e0a \
   --stdout)
 
-pairBeacon1="${beaconPolicyId1}.${pairBeaconName1}"
-offerBeacon1="${beaconPolicyId1}.${offerBeaconName1}"
+pairBeacon="${beaconPolicyId}.${pairBeaconName}"
+offerBeacon="${beaconPolicyId}.${offerBeaconName}"
 
 # Get the mint beacon redeemer.
 echo "Creating the minting redeemer..."
@@ -60,7 +60,7 @@ cardano-swaps datums one-way \
   --offer-token-name 4f74686572546f6b656e0a \
   --price-numerator 1000000 \
   --price-denominator 1 \
-  --out-file $swapDatumFile1
+  --out-file $swapDatumFile
 
 # Create the transaction.
 echo "Exporting the current protocol parameters..."
@@ -68,22 +68,22 @@ cardano-swaps protocol-params \
   --testnet \
   --out-file "${tmpDir}protocol.json"
 
-initial_change=$((62870786-3000000))
+initial_change=$((57588660-3000000))
 
 echo "Building the initial transaction..."
 cardano-cli transaction build-raw \
-  --tx-in 6db024cde5401d4a8e58e10170f543da29a8534208277b83355dd538519ea550#1 \
-  --tx-in 4bc4daeec4044e3a022ac3bad9a19a0ac0d4ac9e3cabfc394716ffa17a8fc52f#2 \
-  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon1} + 1 ${offerBeacon1} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
-  --tx-out-inline-datum-file $swapDatumFile1 \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 3000000 lovelace + 290 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-in 6def0fb5c759ef91cf0120616a5012a33adfedaa82f67d6b83279ad1d0ebda56#2 \
+  --tx-in 64092a335533a4c9b0b85ce6785afe64af2183c7538dfa2c48fe1ebef65b76e3#2 \
+  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${offerBeacon} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 2000000 lovelace + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + ${initial_change} lovelace " \
-  --mint "1 ${pairBeacon1} + 1 ${offerBeacon1}" \
-  --mint-tx-in-reference 5ae04fb39873e137cfbffcdecedbad4908d8665d53994c8aa56837893be9341d#1 \
+  --mint "1 ${pairBeacon} + 1 ${offerBeacon}" \
+  --mint-tx-in-reference 64092a335533a4c9b0b85ce6785afe64af2183c7538dfa2c48fe1ebef65b76e3#1 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-execution-units "(0,0)" \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
-  --policy-id "$beaconPolicyId1" \
+  --policy-id "$beaconPolicyId" \
   --protocol-params-file "${tmpDir}protocol.json" \
   --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
   --tx-total-collateral 21000000 \
@@ -100,18 +100,18 @@ mint_steps=$(echo $exec_units | jq '.result | .[] | select(.validator=="mint:0")
 
 echo "Rebuilding the transaction with proper executions budgets..."
 cardano-cli transaction build-raw \
-  --tx-in 6db024cde5401d4a8e58e10170f543da29a8534208277b83355dd538519ea550#1 \
-  --tx-in 4bc4daeec4044e3a022ac3bad9a19a0ac0d4ac9e3cabfc394716ffa17a8fc52f#2 \
-  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon1} + 1 ${offerBeacon1} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
-  --tx-out-inline-datum-file $swapDatumFile1 \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 3000000 lovelace + 290 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-in 6def0fb5c759ef91cf0120616a5012a33adfedaa82f67d6b83279ad1d0ebda56#2 \
+  --tx-in 64092a335533a4c9b0b85ce6785afe64af2183c7538dfa2c48fe1ebef65b76e3#2 \
+  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${offerBeacon} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 2000000 lovelace + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + ${initial_change} lovelace " \
-  --mint "1 ${pairBeacon1} + 1 ${offerBeacon1}" \
-  --mint-tx-in-reference 5ae04fb39873e137cfbffcdecedbad4908d8665d53994c8aa56837893be9341d#1 \
+  --mint "1 ${pairBeacon} + 1 ${offerBeacon}" \
+  --mint-tx-in-reference 64092a335533a4c9b0b85ce6785afe64af2183c7538dfa2c48fe1ebef65b76e3#1 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-execution-units "(${mint_steps},${mint_mem})" \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
-  --policy-id "$beaconPolicyId1" \
+  --policy-id "$beaconPolicyId" \
   --protocol-params-file "${tmpDir}protocol.json" \
   --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
   --tx-total-collateral 21000000 \
@@ -130,18 +130,18 @@ req_fee=$(($calculated_fee+50000)) # Add 0.05 ADA to be safe since the fee must 
 
 echo "Rebuilding the transaction with proper transaction fee..."
 cardano-cli transaction build-raw \
-  --tx-in 6db024cde5401d4a8e58e10170f543da29a8534208277b83355dd538519ea550#1 \
-  --tx-in 4bc4daeec4044e3a022ac3bad9a19a0ac0d4ac9e3cabfc394716ffa17a8fc52f#2 \
-  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon1} + 1 ${offerBeacon1} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
-  --tx-out-inline-datum-file $swapDatumFile1 \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 3000000 lovelace + 290 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-in 6def0fb5c759ef91cf0120616a5012a33adfedaa82f67d6b83279ad1d0ebda56#2 \
+  --tx-in 64092a335533a4c9b0b85ce6785afe64af2183c7538dfa2c48fe1ebef65b76e3#2 \
+  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${offerBeacon} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-out-inline-datum-file $swapDatumFile \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 2000000 lovelace + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + $(($initial_change-$req_fee)) lovelace " \
-  --mint "1 ${pairBeacon1} + 1 ${offerBeacon1}" \
-  --mint-tx-in-reference 5ae04fb39873e137cfbffcdecedbad4908d8665d53994c8aa56837893be9341d#1 \
+  --mint "1 ${pairBeacon} + 1 ${offerBeacon}" \
+  --mint-tx-in-reference 64092a335533a4c9b0b85ce6785afe64af2183c7538dfa2c48fe1ebef65b76e3#1 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-execution-units "(${mint_steps},${mint_mem})" \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
-  --policy-id "$beaconPolicyId1" \
+  --policy-id "$beaconPolicyId" \
   --protocol-params-file "${tmpDir}protocol.json" \
   --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
   --tx-total-collateral 21000000 \

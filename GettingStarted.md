@@ -11,14 +11,16 @@ must be balanced manually.
 ## Table of Contents
 - [Installing](#installing)
 - [Aiken For Developers](#aiken-for-developers)
-- [`cardano-cli`s Auto-Balancing](#cardano-clis-auto-balancing)
+- [`cardano-cli` Auto-Balancing](#cardano-cli-auto-balancing)
+- [Using Remote Nodes](#using-remote-nodes)
 - [Minting Test Tokens](#minting-test-tokens)
 - [One-Way Swaps](#one-way-swaps)
-  - [Creating Reference Scripts](#create-reference-scripts)
+  - [Creating Reference Scripts](#creating-reference-scripts)
   - [Creating A Swap](#creating-a-swap)
   - [Closing A Swap](#closing-a-swap)
   - [Updating A Swap](#updating-a-swap)
   - [Converting A Swap To A New Trading Pair](#converting-a-swap-to-a-new-trading-pair)
+  - [Executing A Swap](#executing-a-swap)
 
 
 

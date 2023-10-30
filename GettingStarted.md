@@ -22,12 +22,12 @@ must be balanced manually.
   - [Converting A Swap To A New Trading Pair](#converting-a-swap-to-a-new-trading-pair)
   - [Executing A Swap](#executing-a-swap)
 - [Two-Sway Swaps](#two-way-swaps)
-  - [Creating Reference Scripts](#creating-reference-scripts1)
-  - [Creating A Swap](#creating-a-swap1)
-  - [Closing A Swap](#closing-a-swap1)
-  - [Updating A Swap](#updating-a-swap1)
-  - [Converting A Swap To A New Trading Pair](#converting-a-swap-to-a-new-trading-pair1)
-  - [Executing A Swap](#executing-a-swap1)
+  - [Creating Reference Scripts](#creating-reference-scripts-1)
+  - [Creating A Swap](#creating-a-swap-1)
+  - [Closing A Swap](#closing-a-swap-1)
+  - [Updating A Swap](#updating-a-swap-1)
+  - [Converting A Swap To A New Trading Pair](#converting-a-swap-to-a-new-trading-pair-1)
+  - [Executing A Swap](#executing-a-swap-1)
 
 
 ## Installing

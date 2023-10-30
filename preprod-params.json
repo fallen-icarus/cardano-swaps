@@ -366,7 +366,7 @@
     },
     "maxTxSize": 16384,
     "maxValueSize": 5000,
-    "minPoolCost": 340000000,
+    "minPoolCost": 170000000,
     "minUTxOValue": null,
     "monetaryExpansion": 3.0e-3,
     "poolPledgeInfluence": 0.3,

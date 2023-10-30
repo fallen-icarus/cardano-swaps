@@ -1,5 +1,17 @@
 # Revision history for cardano-swaps
 
+## 1.0.0.0
+
+- Added two-way swaps to provide a mechanism to naturally incentivize liquidity providers.
+- Changed one-way swaps to use a single beacon policy for all swaps. The asset name now
+distinguishes the beacon.
+- Support for Blockfrost was dropped in the CLI because it does not allow server-side filtering of
+swaps like Koios does. For example, querying swaps by trading pair also needs to filter out all
+finished swaps. Koios can do this *before* returning the results. Blockfrost requires this filtering
+to be done locally.
+- Added CLI support for using Koios as a remote node.
+- Added template bash scripts for using a remote node.
+
 ## 0.4.0.0
 
 - Universal spending script used instead of one spending script for each trading pair.

@@ -28,6 +28,10 @@ must be balanced manually.
   - [Updating A Swap](#updating-a-swap-1)
   - [Converting A Swap To A New Trading Pair](#converting-a-swap-to-a-new-trading-pair-1)
   - [Executing A Swap](#executing-a-swap-1)
+- [Querying](#querying)
+  - [Personal Address](#personal-address)
+  - [Own Swaps](#own-swaps)
+  - [All Swaps](#all-swaps)
 
 
 ## Installing
@@ -183,6 +187,18 @@ This command requires the following steps:
    the fee from the change).
 6. Sign the transaction and submit to a remote node.
 
+##### Exporting protocol parameters
+Some of the above steps will require the current protocol parameters. The `cardano-swaps` CLI had
+the preproduction testnet and mainnet protocol parameters compiled into the executable when it was
+built with `cabal build exe:cardano-swaps`. The parameters are already formatted in the way
+`cardano-cli` requires. To export the parameters, you can use:
+```Bash
+cardano-swaps protocol-params \
+  --testnet \
+  --out-file protocolParams.json
+```
+
+##### Estimating execution budgets
 Submitting a transaction for execution budget estimations can be done with this command:
 ```Bash
 cardano-swaps evaluate-tx \
@@ -194,6 +210,7 @@ The returned budgets will be indexed by the input order. **This may not be the s
 specified when building the temporary transaction.** The node will reorder the inputs
 lexicographically based on the inputs' tx hashes and output indexes.
 
+##### Submitting the final transaction
 Submitting the final transaction for addition to the blockchain can be done with this command:
 ```Bash
 cardano-swaps submit \
@@ -1031,3 +1048,89 @@ To see how to build the transaction using a local node, refer
 To see how to build the transaction using a remote node, refer
 [here](scripts/remote/two-way/swap-assets.sh).
 
+
+## Querying
+
+- All queries use Koios.
+- All query commands are capable of saving results to a file or printing to stdout. 
+- Results can be formatted as JSON, pretty, or plain. The pretty and plain formats are meant for
+printing to the stdout but both can also be saved to a file. The only difference between the pretty
+format and the plain format is the pretty format uses ansii escape sequences to highlight certain
+items with color. The plain format is there as a fallback in case the ansii escape sequences are
+causing issues for a user.
+
+### Personal Address
+
+In order to facilitate the use of remote nodes, `cardano-swaps` is capable of querying personal
+addresses.
+
+The command is simply:
+```Bash
+cardano-swaps query personal-address \
+  --testnet \
+  --address $(cat personal.addr) \
+  --pretty \
+  --stdout
+```
+
+### Own Swaps
+
+The `cardano-swaps query own-swaps` command can be used to query your own swaps. The swaps can be
+filtered by offer asset or by trading pair if desired.
+
+##### Query One-Way Swaps By Offer
+```Bash
+cardano-swaps query own-swaps one-way offer \
+  --testnet \
+  --address $(cat oneWaySwap.addr) \
+  --offer-lovelace \
+  --pretty \
+  --stdout
+```
+
+##### Query Two-Way Swaps By Offer
+```Bash
+cardano-swaps query own-swaps two-way offer \
+  --testnet \
+  --address $(cat twoWaySwap.addr) \
+  --asset1-is-lovelace \
+  --pretty \
+  --stdout
+```
+
+Since both asset1 and asset2 can be the offer asset for two-way swaps depending on the swap's
+direction, this query requires you to choose one of the assets.
+
+##### Query One-Way Swaps By Trading Pair
+```Bash
+cardano-swaps query own-swaps one-way trading-pair \
+  --testnet \
+  --address $(cat oneWaySwap.addr) \
+  --offer-lovelace \
+  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --ask-token-name 4f74686572546f6b656e0a \
+  --pretty \
+  --stdout
+```
+
+##### Query Two-Way Swaps By Trading Pair
+```Bash
+cardano-swaps query own-swaps two-way trading-pair \
+  --testnet \
+  --address $(cat twoWaySwap.addr) \
+  --asset1-is-lovelace \
+  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --asset2-token-name 4f74686572546f6b656e0a \
+  --pretty \
+  --stdout
+```
+
+### All Swaps
+
+Querying all swaps will query both one-way swaps and two-ways swaps. The results will specify
+whether the swap is a one-way swap or a two-way swap. 
+
+The `cardano-swaps query all-swaps` command is used to query all swaps. Swaps can either be queried
+based on the offer asset or the trading pair. (It is technically also possible to query all swaps
+but that is not supported by `cardano-swaps` CLI since it does not seem like a useful query. If you
+think it would be useful, feel free to open an issue.)

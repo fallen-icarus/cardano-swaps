@@ -11,7 +11,7 @@ must be balanced manually.
 ## Table of Contents
 - [Installing](#installing)
 - [Aiken For Developers](#aiken-for-developers)
-- [`cardano-cli` Auto-Balancing](#cardano-cli-auto-balancing)
+- [Overspent Budget](#overspent-budget)
 - [Using Remote Nodes](#using-remote-nodes)
 - [Minting Test Tokens](#minting-test-tokens)
 - [One-Way Swaps](#one-way-swaps)
@@ -149,7 +149,7 @@ To see the documentation for the tests, you can build the haddocks for the tests
 haddock tests`. The documentation may be easier to read than the source code. You can view the
 documentation in any browser.
 
-## `cardano-cli` Auto-Balancing
+## Overspent Budget
 
 While `cardano-cli` is able to auto-balance transactions, the auto-balancer does not work when
 scripts are executed in a transaction where native tokens must go to the change address. It does not

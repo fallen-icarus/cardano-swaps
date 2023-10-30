@@ -780,15 +780,18 @@ updated to reflect it.
 
 Recall the composition example above. What would happen if another user simultaneously submits a
 transaction using *one* of the same "Swap" UTxOs as an input? Whichever transaction is processed by
-(most) nodes first will succeed, and the other will fail entirely. Arbitragers will be in constant
-competition with one another to query and execute the most profitable swaps at any point in time,
-and must strike a balance between simple swaps and complex swaps. There is a lot of stochasticity
-here; the higher the ratio of open swaps to arbitragers, the lower the overall chances of a
-collision, but the more attractive a particular swap is, the higher the chances of *that* particular
-collision. And "attractiveness" depends not only on the price of one swap, but how that price
-relates to all possible compositions involving that swap. The fact there there can potentially be an
-infinite number of paths through all open swaps means arbitragers can profit without having to rely
-on the same paths.
+(most) nodes first will succeed, and the other will fail entirely. If the first transaction is
+processed before the second (as in a normal scenario), the second transaction will fail due to the
+UTxO being spent already. Either way, the collateral from the arbitragers will be safe. 
+
+Arbitragers will be in constant competition with one another to query and execute the most
+profitable swaps at any point in time, and must strike a balance between simple swaps and complex
+swaps. There is a lot of stochasticity here; the higher the ratio of open swaps to arbitragers, the
+lower the overall chances of a collision, but the more attractive a particular swap is, the higher
+the chances of *that* particular collision. And "attractiveness" depends not only on the price of
+one swap, but how that price relates to all possible compositions involving that swap. The fact
+there there can potentially be an infinite number of paths through all open swaps means arbitragers
+can profit without having to rely on the same paths.
 
 ### Won't all swaps be executed at the *worst* possible price the swap will support?
 

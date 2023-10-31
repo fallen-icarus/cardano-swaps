@@ -16,6 +16,7 @@ be found [here](./Benchmarks/).
 - [Motivation](#motivation)
 - [Preliminary Discussion](#preliminary-discussion)
 - [Specification](#specification)
+- [Benchmarks and Fee Estimations](#benchmarks-and-fee-estimations-ymmv)
 - [Features Discussion](#features-discussion)
 - [FAQ](#faq)
 - [Conclusion](#conclusion)
@@ -36,41 +37,43 @@ natively composable with all other p2p protocols.
 
 ## Motivation
 
-Many DEXes on Cardano are currently implemented in ways that lock users' assets into a tightly
+Many DEXs on Cardano are currently implemented in ways that lock users' assets into a tightly
 fixed, and/or centrally maintained, set(s) of script addresses. Such design patterns are reminiscent
 of the EVM's accounts-based programming paradigm, and inherit many of the same downsides:
-scalability bottlenecks, expressiveness restrictions, and asset/stake centralization. DEXes that
+scalability bottlenecks, expressiveness restrictions, and asset/stake centralization. DEXs that
 hope to become the foundation for a healthy and fully trustless, decentralized economy must adhere
 to a radically different approach that takes full advantage of the composability and availability
 guarantees offered by the eUTxO model.
 
 ## Preliminary Discussion
 
-To appreciate the necessity of new DEX standards, it is first important to understand the
+To appreciate the necessity of new DEX architectures, it is first important to understand the
 deficiencies of the current status-quo:
 
 ### Current DEX Deficiencies  
 
-One consequence of centralized script addresses is the necessity for liquidity pools (LPs) and LP
-providers as discrete, (usually) permissioned entities. LPs are a common feature of many DEXes and
-have a number of downsides (discussed shortly). Additionally, current implementations of order-book
-style DEXes (which don't use LPs) suffer from the availability challenges of permissioned batchers.
+Pretty much every DEX uses liquidity pools and concentrated script addresses (ie, all users share a
+single or few dApp addresses). One consequence of liquidity pool based dApps is the necessity for LP
+providers (eg, batchers) as discrete, (usually) permissioned entities. Both concentrated addresses
+and LPs have a number of downsides (discussed shortly). Additionally, current implementations of
+order-book style DEXs (which don't use LPs) suffer from the availability challenges of permissioned
+batchers.
 
-##### Why LPs are not the right architecture for DEXs (in no particular order)
+##### Why the status-quo is not the right architecture for DEXs (in no particular order)
 
-- No matter how performant a system of batchers is, their resources do *not* scale in proportion
-to the number of users unless new batchers can join permissionlessly when demand is high. 
+- No matter how performant a system of batchers is, their resources do *not* scale in proportion to
+the number of users unless new batchers can permissionlessly join when demand is high. 
 - Since an economy's health is proportional to how easily and accurately price discovery can occur,
 DEXs that do not allow users to freely express their own desired prices can only result in an
-unhealthy blockchain economy. Furthermore, impermanent loss makes it impossible for users to properly
-manage risk.
-- Permissioned protocols lack trustless composability with other dApps; a critical feature for both
+unhealthy blockchain economy. Furthermore, impermanent loss makes it impossible for users to
+properly manage risk.
+- Batcher based protocols lack trustless composability with other dApps; a critical feature for both
 scaling eUTxO-based DeFi and building a fully featured, trustless blockchain economy.
-- The concentration of assets directly undermines the security assumptions of PoS blockchains. This
-ultimately means it is *impossible* for LPs to serve as the foundation of a trustless and
-decentralized economy.
+- The concentration of assets into a single or few addresses directly undermines the security
+assumptions of PoS blockchains. This ultimately means it is *impossible* for LPs to serve as the
+foundation of a trustless and decentralized economy.
 
-##### Why the workarounds for the issues of LPs are not sufficient
+##### Why the workarounds for the issues of the status-quo are not sufficient
 
 - Impermanent Loss - yield farming is ultimately printing a useless token to make Alice whole for
 being forced to sell at a price she otherwise would not have sold. To put it bluntly, Alice lost
@@ -78,7 +81,7 @@ $100 of a stablecoin and was given some economically useless token as compensati
 yield tokens are being minted, the value of the already useless token can only decrease over time.
 Without the yield tokens, there is literally no incentive to provide liquidity to LPs so if yield
 farming ever stopped, the DEX would collapse. Yield farming is a currency crisis waiting to happen.
-No professional institutions can comply with regulations and manage risk in this context. In short,
+Professional institutions cannot comply with regulations and manage risk in this context. In short,
 mass adoption of LP based DEXs by professional institutions is impossible.
 - No way for users to fully express their own desired prices - LPs base the exchange rates on supply
 and demand of the assets in the LP. But this is wholey insufficient to properly reflect the true
@@ -90,9 +93,9 @@ fundamentally no way for algorithms that are based soley on supply and demand to
 the true market sentiment. And when market sentiment cannot be accurately reflected, misallocation
 of resources is inevitable (ie, an unhealthy economy).
 - Batchers can always take advantage of their priviledged position as middle-men - miner extractible
-value (MEV) will always be an issue as long as using middle-men is required. Permissioned batchers
-exacerbate this issue since only the "chosen few" can even have this unique opportunity to rip off
-users.
+value (MEV) will always be an issue as long as the use of middle-men is required. Permissioned
+batchers exacerbate this issue since only the "chosen few" can even have this unique opportunity to
+rip off users.
 - Batcher based protocols cannot trustlessly compose - since LPs require going through middle-men,
 the ultimate transaction for Alice will likely not even be seen by Alice prior to submission to the
 blockchain. How can Alice express that she wants her swap composed with an options contract and
@@ -123,9 +126,11 @@ show since the DEX creators can still choose to go against the vote. There is no
 connection between the governance tokens and what actually happens with the stake/dApp. Finally,
 even if there was a trustless connection, there is no way to actually have all users express their
 own stake preferences when the stake is decided democratically. It is almost inevitable that the
-voting outcome will go against the wishes of some users. No matter how you look at it, LP based
-dApps are an existenstial problem for PoS blockchains. LPs can never be used as the foundation for a
-trustless and decentralized PoS blockchain economy.
+voting outcome will go against the wishes of some users. *This is in direct violation of the
+security assumptions of PoS.* No matter how you look at it, LP based dApps are an existenstial
+problem for PoS blockchains. As LP based dApps becomes more adopted, the underlying PoS blockchain
+will only become more centralized. LPs can never be used as the foundation for a trustless and
+decentralized PoS blockchain economy.
 
 
 ### Programmable Swaps
@@ -162,10 +167,11 @@ market rate for DJED <-> USDC is 1:1, Alice can set DJED -> USDC to 1.01 USDC pe
 DJED to 1.01 DJED per USDC. This means Alice makes a 1% return no matter what direction is used.
 
 Since the swaps are freely composable, arbitrarily complex swaps can be created. For example, Alice
-can chain ADA -> ERGO with ERGO -> DUST to create a transaction that converts ADA -> DUST. This
-opens up the possibility for arbitragers to find profitable arbitrage opportunities. This potential
-for profit naturally incentivizes liquidity to be spread across all trading pairs instead of it
-being siloed into one trading pair as in TradFi and LP based DEXs.
+can chain ADA -> ERGO with ERGO -> DUST to create a transaction that converts ADA -> DUST. Not only
+does this composition allow for one-to-many conversions in a single transaction (eq, ADA to ERGO and
+DJED), but it also opens up the possibility for arbitragers to find profitable arbitrage
+opportunities. This potential for profit naturally incentivizes liquidity to be spread across all
+trading pairs instead of it being siloed into one trading pair as in TradFi and LP based DEXs.
 
 Finally, through the use of beacon tokens, the protocol is fully p2p. No batchers are required
 although they can be used if desired.
@@ -642,6 +648,16 @@ single Tx as well as how easily the beacons can be queried.
 Custom error messages are included to help troubleshoot why a swap failed.
 
 
+## Benchmarks and Fee Estimations (YMMV)
+
+The protocol is capable of handling 11-14 swaps in a single transaction, regardless of the
+composition of one-way and two-way swaps in the transaction.
+
+**No CIPs or hard-forks are needed. This protocol works on the Cardano blockchain, as is.**
+
+Full benchmarking details can be found in the [Benchmarks](./Benchmarks/) folder.
+
+
 ## Features Discussion
 
 ### Full Delegation Control
@@ -659,23 +675,26 @@ which are Cardano protocol parameters.
 The swaps can even be trustlessly composed with other p2p protocols. For example, Alice can use a
 swap to convert DJED to USDC, use the USDC to buy an options contract on the secondary market, and
 then immediately execute that contract, all in the same transaction. The transaction will fail if
-any of the intermediate steps fail. As this example, this trustless composition allows for a healthy
-and complex economy to form on Cardano - one with absolutely no required middle-men.
+any of the intermediate steps fail. No meta-logic is required to enforce trustless composition. As
+this example shows, this trustless composition allows for a complex economy to form on Cardano - one
+with absolutely no required middle-men. And since this trustless composition across protocols is
+something even TradFi doesn't have (ie, only the Wall Streets of the world have access to these
+compositions), the blockchain economy can possibly allow for even greater economic flexibility.
 
 ### Naturally Incentivized Liquidity
 
-Liquidity in cardano-swaps is an *emergent* property; it arises from the (healthy) incentives for
-users to provide liquidity with two-way swaps and arbitragers to compose complex swaps. As long as
-the entry and exit swap pairs have enough liquidity, arbitragers can spread liquidity into less
-liquid swap pairs. As a bonus, **the very nature of *illiquidity* implies great arbitrage
-opportunities**. The more illiquid a swap pair, the greater the potential arbitrage profits.
-Providing liquidity and participating in arbitrage/market-making is permissionless, so anyone can
-create their own strategies/algorithms to provide liquidity or find the most profitable "path"
-through the sea of available swaps.
+Liquidity in Cardano-Swaps is a naturally *emergent* property; it arises from the (healthy)
+incentives for users to provide liquidity with two-way swaps and arbitragers to compose complex
+swaps. As long as the entry and exit swap pairs have enough liquidity, arbitragers can spread
+liquidity into less liquid swap pairs. As a bonus, **the very nature of *illiquidity* implies great
+arbitrage opportunities**. The more illiquid a swap pair, the greater the potential arbitrage
+profits. Providing liquidity and participating in arbitrage/market-making is permissionless, so
+anyone can create their own strategies/algorithms to provide liquidity or find the most profitable
+"path" through the sea of available swaps.
 
 Since stake pool operators are required to always be connected to the network, they are uniquely
 positioned to serve as arbitragers. It provides another potential source profit for all stake pools,
-including the small pool operator.
+including the small pool operator who rarely makes blocks.
 
 ##### The Contrived Example
 
@@ -689,8 +708,8 @@ In this example, Charlie can profitably arbitrage and fulfill both of these swap
 ``` Txt
 Charlie looks up all swap addresses willing to swap AGIX/ADA. Charlie finds Alice's address.
 Charlie looks up all swap addresses willing to swap ADA/AGIX. Charlie finds Bob's address.
-Using Bob's reference script, Charlie gives Bob 10 ADA and receives 10 AGIX.
-Using Alice's reference script, Charlie gives Alice 5 AGIX and receives 10 ADA.
+Charlie gives Bob 10 ADA and receives 10 AGIX.
+Charlie gives Alice 5 AGIX and receives 10 ADA.
 Charlie now has his original 10 ADA plus an additional 5 AGIX.
 This all occurs in one transaction where Charlie pays the transaction fee.
 ```
@@ -730,6 +749,11 @@ into less liquid swap pairs. And since two-way swaps naturally incentivize provi
 major trading pairs, this requirement for entry and exit liquidity is naturally incentivized to be
 satisfied.
 
+Since the current design is capable of handling 11-14 swaps in a single transaction, there is ample
+flexibility for finding arbitrage opportunities. For example, maybe the 3rd swap is at a slight loss
+but the 5th swap is such a good arbitrage that it more than makes up for it resulting in a net
+profit for the arbitrage.
+
 ### Expressive Beacon Queries
 
 Offer based queries allow another class of queries. For example, arbitragers can use them to find
@@ -751,7 +775,7 @@ Upgrades to Cardano-Swaps can propagate through the ecosystem of users in a simi
 fashion as SPOs upgrading their pools to a new version of `cardano-node`. Since users can close
 their swaps at any time, whenever there is a potential upgrade, users can choose to close their
 current swaps and recreate them with the new contracts. There is never a bifurcation of liquidity
-due to the composable nature of all swaps, regardless of the version.
+due to the composable nature of all swaps, regardless of the protocol version.
 
 ### Frontend Agnosticism
 
@@ -760,15 +784,6 @@ Cardano-Swaps. For example, any wallet can integrate `cardano-swaps` by adding s
 the beacon tokens. They can also add their own user friendly way to create and use swaps. The only
 requirement is that all frontends/users agree to use the same beacon token standard. There is no
 need for risky extensions or dedicated frontends.
-
-## Benchmarks and Fee Estimations (YMMV)
-
-The protocol is capable of handling up to 15 swaps in a single transaction, regardless of the
-composition of one-way and two-way swaps in the transaction.
-
-**No CIPs or hard-forks are needed. This protocol works on the Cardano blockchain, as is.**
-
-Full benchmarking details can be found in the [Benchmarks](./Benchmarks/) folder.
 
 ## FAQ
 
@@ -784,8 +799,8 @@ is that when market sentiment shifts, the market price can easily shift with it.
 what is possible by having most swaps concentrated just above or below the market price. If Alice
 suddenly finds herself really needing USDC, she will have ample swaps to choose from if she pays a
 little more than she originally would have. Her new circumstances may justify this higher price.
-This is literally what it means to say that market sentiment has shifted and the price needs to be
-updated to reflect it.
+This is literally what it means to say that market sentiment has shifted and the market price needs
+to be updated to reflect it.
 
 ### What about swap collisions?
 
@@ -854,24 +869,24 @@ capital.
 
 No, it will not. Cardano-Swaps and Axo are going after two very different use cases.
 
-Cardano-Swaps is trying to be the RSS feed for DeFi: uncensorable and equal access for all. This
-niche prioritizes availability over throughput. Meanwhile, Axo is trying to target the professional
-trader which prioritizes throughput over availability. They are both very legitimate, albiet very
-different niches.
+Cardano-Swaps is trying to be an unalienable financial utility: uncensorable and equal access for
+all. This niche prioritizes availability over throughput. Meanwhile, Axo is trying to target the
+professional trader which prioritizes throughput over availability. They are both very legitimate,
+albiet very different niches.
 
 Cardano-Swaps existence is not meant to compete with Axo. Instead, it is meant to keep Axo in check.
-If Axo knows that users cannot go anywhere else, it could treat its users as citizens instead of
-customers. By Cardano-Swaps being an unalienable alternative (even if it is less performant), Axo is
-forced to *always* treat its users as customers. The moment Axo starts abusing its users, the users
-can leave and use Cardano-Swaps. It is no different than transitioning from banking out of necessity
+If Axo knows that users cannot go anywhere else, it could potentially abuse its users without
+recourse. By Cardano-Swaps being an unalienable alternative (even if it is less performant), Axo is
+forced to *always* treat its users well. The moment Axo starts abusing its users, the users can
+leave and use Cardano-Swaps. It is no different than transitioning from banking out of necessity
 (where profits are privatized and losses are socialized) to banking only if it adds value to your
 life.
 
 ## Conclusion
 
 The Cardano-Swaps protocol has all of the desired properties of a highly composable p2p-DEX that can
-serve as the bedrock of a trustless, healthy, and complex blockchain economy. Thanks to the use of
-Beacon Tokens, decentralization is no longer limited by the design of DEXs. Instead, the limiting
-factor is now the off-chain querying. However, innovations in this space are still in the early
-days. The Koios API is an example of a more decentralized off-chain platform. As the technology
-improves, so too will the decentralization of the protocol.
+serve as the bedrock of a healthy, complex, trustless, and decentralized blockchain economy. Thanks
+to the use of Beacon Tokens, decentralization is no longer limited by the design of DEXs. Instead,
+the limiting factor is now the off-chain querying. However, innovations in this space are still in
+the early days. The Koios API is an example of a more decentralized off-chain platform. As the
+technology improves, so too will the decentralization of the protocol.

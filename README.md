@@ -38,7 +38,7 @@ natively composable with all other p2p protocols.
 
 Many DEXes on Cardano are currently implemented in ways that lock users' assets into a tightly
 fixed, and/or centrally maintained, set(s) of script addresses. Such design patterns are reminiscent
-of the EVM's accounts-based programming paradigm, and inherit many of the same downsides;
+of the EVM's accounts-based programming paradigm, and inherit many of the same downsides:
 scalability bottlenecks, expressiveness restrictions, and asset/stake centralization. DEXes that
 hope to become the foundation for a healthy and fully trustless, decentralized economy must adhere
 to a radically different approach that takes full advantage of the composability and availability
@@ -51,14 +51,14 @@ deficiencies of the current status-quo:
 
 ### Current DEX Deficiencies  
 
-One consequence of centralized script addresses is the necessity for liquidity pools and LP
+One consequence of centralized script addresses is the necessity for liquidity pools (LPs) and LP
 providers as discrete, (usually) permissioned entities. LPs are a common feature of many DEXes and
 have a number of downsides (discussed shortly). Additionally, current implementations of order-book
 style DEXes (which don't use LPs) suffer from the availability challenges of permissioned batchers.
 
 ##### Why LPs are not the right architecture for DEXs (in no particular order)
 
-- No matter how performant a system of batchers is, their resources do **not** scale in proportion
+- No matter how performant a system of batchers is, their resources do *not* scale in proportion
 to the number of users unless new batchers can join permissionlessly when demand is high. 
 - Since an economy's health is proportional to how easily and accurately price discovery can occur,
 DEXs that do not allow users to freely express their own desired prices can only result in an
@@ -67,14 +67,14 @@ manage risk.
 - Permissioned protocols lack trustless composability with other dApps; a critical feature for both
 scaling eUTxO-based DeFi and building a fully featured, trustless blockchain economy.
 - The concentration of assets directly undermines the security assumptions of PoS blockchains. This
-ultimately means it is **impossible** for LPs to serve as the foundation of a trustless and
+ultimately means it is *impossible* for LPs to serve as the foundation of a trustless and
 decentralized economy.
 
 ##### Why the workarounds for the issues of LPs are not sufficient
 
 - Impermanent Loss - yield farming is ultimately printing a useless token to make Alice whole for
 being forced to sell at a price she otherwise would not have sold. To put it bluntly, Alice lost
-$100 of a stablecoin and was given some economically useless token as compensation. Add since the
+$100 of a stablecoin and was given some economically useless token as compensation. And since the
 yield tokens are being minted, the value of the already useless token can only decrease over time.
 Without the yield tokens, there is literally no incentive to provide liquidity to LPs so if yield
 farming ever stopped, the DEX would collapse. Yield farming is a currency crisis waiting to happen.
@@ -89,22 +89,33 @@ Simply put, it is where a buyer and a seller agree on a price and a transaction 
 fundamentally no way for algorithms that are based soley on supply and demand to properly reflect
 the true market sentiment. And when market sentiment cannot be accurately reflected, misallocation
 of resources is inevitable (ie, an unhealthy economy).
-- Batchers can always take advantage of their priviledged position as middle-men - MEV will always
-be an issue as long as using middle-men is required. Permissioned batchers exacerbate this issue
-since only the "chosen few" can even have this opportunity.
+- Batchers can always take advantage of their priviledged position as middle-men - miner extractible
+value (MEV) will always be an issue as long as using middle-men is required. Permissioned batchers
+exacerbate this issue since only the "chosen few" can even have this unique opportunity to rip off
+users.
 - Batcher based protocols cannot trustlessly compose - since LPs require going through middle-men,
 the ultimate transaction for Alice will likely not even be seen by Alice prior to submission to the
 blockchain. How can Alice express that she wants her swap composed with an options contract and
-expect it to be trustlessly executed? This is not an issue of standards. The only way for the
-composition to be trustless is if the smart contract itself enforced it. This requires two things:
-the smart contract must support **arbitrary** compositions and the logic must be extremely cheap
-since the logic of the actual dApps must also be executed in the same transaction. These
-requirements are fundamentally impossible to satisfy. Smart contracts are effectively embedded
-systems that only have so much memory and steps available in a given transaction. The current limits
-are not even close to the required limits to satisfy the above two requirements. **P2P protocols do
-not have the same limitations since Alice personally creates and signs her own transaction.** The
-above two requirements are only requirements when middle-men are creating and executing transactions
-on the behalf of users.
+expect it to be trustlessly executed? How can Bob also do this? Finally, how can the smart contracts
+enforce that *both* Alice's and Bob's compositions are properly executed when their requests are
+batched together? This is not an issue of standards; this is an issue of whether or not the required
+composition logic can even fit in a transaction where other dApp logic is being executed. The only
+way for the composition to be trustless is if smart contracts enforced it. To put it concretely, in
+Alice's composition, the swap logic and the options logic must both be executed in the same
+transaction where the composition logic is executed. Given the very small amount of execution units
+available to scripts in a transaction, is there even room for this extra logic? The composition
+logic requires two things: it must support *arbitrary* compositions and it must be extremely cheap
+since the logic of the actual dApps being composed must also be executed in the same transaction.
+*P2P protocols do not have the same limitations since Alice personally creates and signs her own
+transaction.* The above two requirements are only requirements when middle-men are creating and
+executing transactions on the behalf of users. Even if some composition logic could fit in the
+transaction, would it actually support arbitrary composition (as opposed to only a few priviledged
+dApps being supported)? Even if the answer to this question is yes, that extra logic being executed
+means less space for other dApps to compose in the transaction. Therefore, protocols that require
+batchers will never be able to offer the the same level of trustless composition as fully P2P
+protocols. The only way to actually match the level of composition of P2P protocols is for the
+batcher based composition to *not be trustless* (without the composition logic, more dApps can fit
+in a transaction).
 - No delegation control or voting control while using the DEX - DEXs try to issue governance tokens
 to get around this but fair distribution of the governance tokens is rarely accomplished (it is a
 very hard problem). Even if the governance tokens were distributed fairly, they are largely just for
@@ -114,7 +125,7 @@ even if there was a trustless connection, there is no way to actually have all u
 own stake preferences when the stake is decided democratically. It is almost inevitable that the
 voting outcome will go against the wishes of some users. No matter how you look at it, LP based
 dApps are an existenstial problem for PoS blockchains. LPs can never be used as the foundation for a
-trustless and decentralized blockchain economy.
+trustless and decentralized PoS blockchain economy.
 
 
 ### Programmable Swaps
@@ -721,7 +732,7 @@ satisfied.
 
 ### Expressive Beacon Queries
 
-Offer based queries allow another class of queries. For example, arbitragers can use them find
+Offer based queries allow another class of queries. For example, arbitragers can use them to find
 profitable swap compositions based on current market demand. Without them, the arbitragers would be
 required to know what trading pairs to check in advance. But what if there was a token that they had
 never heard of? This opportunity would be missed. With offer based queries, these unheard of tokens
@@ -800,7 +811,7 @@ than the required swap ratio. This question is usually in the context of compari
 against LPs. So let's compare the two! 
 
 As already mentioned, there is no incentive for users to pay more than the required swap ratio.
-However, **it is impossible to ever get less than the swap ratio**. So while your profits are
+However, **it is impossible to ever get less than the specified amount**. So while your profits are
 bounded, so are your loses.
 
 For LPs, users will get whatever ratio the algorithm determines to be fair. When things are good,

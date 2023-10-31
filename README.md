@@ -14,7 +14,7 @@ be found [here](./Benchmarks/).
 ## Table of Contents 
 - [Abstract](#abstract)
 - [Motivation](#motivation)
-- [Preliminary Discussion](#preliminary-discussion)
+- [Cardano-Swaps](#cardano-swaps)
 - [Specification](#specification)
 - [Benchmarks and Fee Estimations](#benchmarks-and-fee-estimations-ymmv)
 - [Features Discussion](#features-discussion)
@@ -28,56 +28,57 @@ Cardano-Swaps is a p2p-DeFi protocol for swapping fungible tokens on the Cardano
 their own (and interact with each others') script addresses. This leads to the formation of an
 order-book style "distributed" DEX. The protocol supports two kinds of swaps, one-way swaps and
 two-way swaps. One-way swaps emulate the basic limit order. Meanwhile, two-way swaps provide a
-mechanism for users to profitably provide liquidity at prices specified by the user. Since liquidity
-providers directly profit from providing liquidity in the assets specified for that swap, the
-protocol naturally incentives its own liquidity without having to resort to the questionable
-economics of yield farming. Furthermore, since swaps can be freely composed, arbitragers are
-naturally incentivized to spread the available liquidity across all trading pairs. This protocol is
-natively composable with all other p2p protocols.
+mechanism for naturally incentiving users to provide liquidity to the DEX without having to rely on
+yield farming. Furthermore, since swaps can be freely composed, arbitragers are naturally
+incentivized to spread the available liquidity across all trading pairs. This protocol is natively
+composable with all other p2p protocols.
 
 ## Motivation
 
-Many DEXs on Cardano are currently implemented in ways that lock users' assets into a tightly
-fixed, and/or centrally maintained, set(s) of script addresses. Such design patterns are reminiscent
-of the EVM's accounts-based programming paradigm, and inherit many of the same downsides:
-scalability bottlenecks, expressiveness restrictions, and asset/stake centralization. DEXs that
-hope to become the foundation for a healthy and fully trustless, decentralized economy must adhere
-to a radically different approach that takes full advantage of the composability and availability
-guarantees offered by the eUTxO model.
+Many DEXs on Cardano are currently implemented in ways that lock users' assets into a tightly fixed,
+and/or centrally maintained, set(s) of script addresses and UTxOs. This *concentrated dApp* design
+pattern is reminiscent of Ethereum's accounts-based programming paradigm.
 
-## Preliminary Discussion
+However, the concentrated dApp design does not map well to eUTxO based blockchains. To be exact, a
+major consequence of pooling assets into a predefined set of UTxOs, which are typically referred to
+as liquidity pools (LPs), is that the DEX has a significant concurrency bottleneck since all users
+must share the one-time-use UTxOs. The ultimate result of this bottleneck is that users are not
+allowed to directly interact with the DEX. Instead, users are required to go through (usually
+permissioned) middle-men called batchers. 
 
-To appreciate the necessity of new DEX architectures, it is first important to understand the
-deficiencies of the current status-quo:
+As an alternative to LP based DEXs, order-book style DEXs give every user their own UTxO with their
+own terms. This approach lends itself much better to eUTxO based blockchains. However, this design
+currently suffers from similar availability challenges due to the difficulting of finding and
+matching open orders. In order to workaround this limitation, order-book style DEXs also tend to
+resort to the concentrated dApp design since it is easier to find orders if they are located at a
+single (or few) address than if they were scattered across addresses. Furthermore, and more
+importantly, current order-book style DEXs suffer from a lack of liquidity due to not having a way
+to incentive users to provide liquidity to the DEX. This lack of early liquidity is why most DEXs
+currently use the LP based DEX architecture. 
 
-### Current DEX Deficiencies  
+This result is unfortunate since LP based DEXs are entirely unsuitable to be used as the foundation
+of a trustless and decentralized economy, especially those built on Proof-of-Stake (PoS)
+blockchains.
 
-Pretty much every DEX uses liquidity pools and concentrated script addresses (ie, all users share a
-single or few dApp addresses). One consequence of liquidity pool based dApps is the necessity for LP
-providers (eg, batchers) as discrete, (usually) permissioned entities. Both concentrated addresses
-and LPs have a number of downsides (discussed shortly). Additionally, current implementations of
-order-book style DEXs (which don't use LPs) suffer from the availability challenges of permissioned
-batchers.
-
-##### Why the status-quo is not the right architecture for DEXs (in no particular order)
+##### Why the LP based architecture is not the right architecture for DEXs (in no particular order)
 
 - No matter how performant a system of batchers is, their resources do *not* scale in proportion to
 the number of users unless new batchers can permissionlessly join when demand is high. 
 - Since an economy's health is proportional to how easily and accurately price discovery can occur,
 DEXs that do not allow users to freely express their own desired prices can only result in an
-unhealthy blockchain economy. Furthermore, impermanent loss makes it impossible for users to
-properly manage risk.
+unhealthy blockchain economy. Furthermore, impermanent loss (a consequence of not being able to
+express desired prices) makes it impossible for users to properly manage risk.
 - Batcher based protocols lack trustless composability with other dApps; a critical feature for both
 scaling eUTxO-based DeFi and building a fully featured, trustless blockchain economy.
 - The concentration of assets into a single or few addresses directly undermines the security
 assumptions of PoS blockchains. This ultimately means it is *impossible* for LPs to serve as the
 foundation of a trustless and decentralized economy.
 
-##### Why the workarounds for the issues of the status-quo are not sufficient
+##### Why the workarounds for the issues of the LP based architecture are not sufficient
 
 - Impermanent Loss - yield farming is ultimately printing a useless token to make Alice whole for
 being forced to sell at a price she otherwise would not have sold. To put it bluntly, Alice lost
-$100 of a stablecoin and was given some economically useless token as compensation. And since the
+$100 of a stablecoin and was given some economically useless token as compensation. And while the
 yield tokens are being minted, the value of the already useless token can only decrease over time.
 Without the yield tokens, there is literally no incentive to provide liquidity to LPs so if yield
 farming ever stopped, the DEX would collapse. Yield farming is a currency crisis waiting to happen.
@@ -128,30 +129,22 @@ even if there was a trustless connection, there is no way to actually have all u
 own stake preferences when the stake is decided democratically. It is almost inevitable that the
 voting outcome will go against the wishes of some users. *This is in direct violation of the
 security assumptions of PoS.* No matter how you look at it, LP based dApps are an existenstial
-problem for PoS blockchains. As LP based dApps becomes more adopted, the underlying PoS blockchain
+problem for PoS blockchains. As LP based dApps become more adopted, the underlying PoS blockchain
 will only become more centralized. LPs can never be used as the foundation for a trustless and
 decentralized PoS blockchain economy.
 
+DEXs that hope to become the foundation for a healthy and fully trustless, decentralized economy
+must adhere to a radically different approach that takes full advantage of the composability and
+availability guarantees offered by the eUTxO model while not undermining the security of the very
+blockchain the economy is built on.
 
-### Programmable Swaps
+## The Cardano-Swaps Protocol
 
-First proposed by Axo in their original [whitepaper](https://www.axo.trade/whitepaper.pdf),
-programmable swaps are a more promising design choice than liquidity pools. Swaps are simply UTxOs
-that may be consumed if and only if the resulting TX outputs satisfy the input script's logic. Swaps
-can be fragmented across many user-controlled addresses, so delegation control and voting control is
-maintained. Users then execute swaps from each other's addresses. Since each swap is atomic and
-explicitly defined, in aggregate they are the optimal expression of (intra)market sentiment. This
-design pattern scales naturally, since there must be at *least* as many swaps as there are users. 
-
-### The Cardano-Swaps Protocol
-
-Cardano-Swaps takes inspiration from Axo's programmable swaps design, adds delegation control as a
-foundational feature, and, through the use of Beacon Tokens, removes the need for specialized
-indexers. The only remaining bottleneck is the querying capacity of existing off-chain APIs, such as
-Blockfrost or Koios. (This is not a limitation for users with powerful enough hardware, as they can
-run their own API database).
-
-## Specification
+Cardano-Swaps is an order-book based DEX that takes inspiration from Axo's programmable swaps
+[design](https://www.axo.trade/whitepaper.pdf), adds delegation control as a foundational feature,
+naturally incentives its own liquidity, and, through the use of Beacon Tokens, removes the need for
+specialized indexers. In short, it solves all of the pressing issues that made order-book DEXs
+inferior to LP based DEXs. 
 
 ### High-Level Overview
 
@@ -174,12 +167,14 @@ opportunities. This potential for profit naturally incentivizes liquidity to be 
 trading pairs instead of it being siloed into one trading pair as in TradFi and LP based DEXs.
 
 Finally, through the use of beacon tokens, the protocol is fully p2p. No batchers are required
-although they can be used if desired.
+although they can be used if desired. And thanks to beacon tokens, users can get their own addresses
+which guarantees users maintain full delegation and voting control of their assets at all times.
 
-All of this is achieved while still enabling users to maintain full spending custody, full
-delegation control, and full voting control of their assets.
+The only remaining challenge is the querying capacity of existing off-chain APIs, such as Blockfrost
+or Koios. (This is not a limitation for users with powerful enough hardware, as they can run their
+own API database).
 
-### Low-Level Overview
+## Specification
 
 Each type of swap is comprised of a validator / beacon policy pair. This means that each type of
 swap gets its own universal address. For example, all of Alice's one-way swaps, regardless of the
@@ -192,7 +187,7 @@ easily queryable by end users.
 two-way swap datums and redeemers *they are distinct data types*. Imagine they are in separate name
 spaces.
 
-#### One-Sway Swaps
+### One-Sway Swaps
 
 One-way swaps use one universal validator script for all swap pairs, and one universal minting
 policy for all one-way beacons. There are two beacons for one-way swaps: the trading pair beacon and
@@ -406,7 +401,7 @@ single Tx as well as how easily the beacons can be queried.
 Custom error messages are included to help troubleshoot why a swap failed.
 
 
-#### Two-Sway Swaps
+### Two-Sway Swaps
 
 Two-way swaps use one universal validator script for all swap pairs and one universal minting script
 for all trading pairs. Two-way swaps use three beacons: a trading pair beacon, an asset1 beacon, and

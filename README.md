@@ -870,8 +870,8 @@ life.
 ## Conclusion
 
 The Cardano-Swaps protocol has all of the desired properties of a highly composable p2p-DEX that can
-serve as the bedrock of a vibrant and complex blockchain economy. Thanks to the use of Beacon
-Tokens, decentralization is no longer limited by the design of DEXs. Instead, the limiting factor is
-now the off-chain querying. However, innovations in this space are still in the early days. The
-Koios API is an example of a more decentralized off-chain platform. As the technology improves, so
-too will the decentralization of the protocol.
+serve as the bedrock of a trustless, healthy, and complex blockchain economy. Thanks to the use of
+Beacon Tokens, decentralization is no longer limited by the design of DEXs. Instead, the limiting
+factor is now the off-chain querying. However, innovations in this space are still in the early
+days. The Koios API is an example of a more decentralized off-chain platform. As the technology
+improves, so too will the decentralization of the protocol.

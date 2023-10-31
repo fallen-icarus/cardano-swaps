@@ -280,20 +280,20 @@ In order to mint beacons with this redeemer, **all of the following must be true
 1) The beacons must go to an addres protected by the dApp validator script.
 2) The beacons must go to an address using a valid staking credential.
 3) The UTxOs with the beacons must have the proper value:
-    a) Exactly two kinds of beacons: pair beacon and offer beacon.
-    b) The beacons must correspond to the beacons in the datum.
-    c) There must be exactly 1 of each beacon.
-    d) No extraneous assets are in the UTxO. ADA is always allowed.
+    - Exactly two kinds of beacons: pair beacon and offer beacon.
+    - The beacons must correspond to the beacons in the datum.
+    - There must be exactly 1 of each beacon.
+    - No extraneous assets are in the UTxO. ADA is always allowed.
 4) The beacons must be stored with the proper inline `SwapDatum`:
-    a) `beaconId` == this policy id.
-    b) `pairBeacon` == sha2_256(offer_id ++ offer_name ++ ask_id ++ ask_name)
-    c) `offerId` == asset_id of the offer asset.
-    d) `offerName` == asset_name of the offer asset.
-    e) `offerBeacon` == sha2_256(offer_id ++ offer_name).
-    f) `askId` == asset_id of the ask asset.
-    g) `askName` == asset_name of the ask asset.
-    k) `swapPrice` denominator > 0
-    l) `swapPrice` > 0
+    - `beaconId` == this policy id.
+    - `pairBeacon` == sha2_256(offer_id ++ offer_name ++ ask_id ++ ask_name)
+    - `offerId` == asset_id of the offer asset.
+    - `offerName` == asset_name of the offer asset.
+    - `offerBeacon` == sha2_256(offer_id ++ offer_name).
+    - `askId` == asset_id of the ask asset.
+    - `askName` == asset_name of the ask asset.
+    - `swapPrice` denominator > 0
+    - `swapPrice` > 0
 5) The offer asset and ask assets must be different assets.
 
 Once the beacons are minted to the swap address, the spending script does not allow closing the swap
@@ -329,20 +329,20 @@ redeemer are:
 1) The beacons must go to an addres protected by the dApp validator script.
 2) The beacons must go to an address using a valid staking credential.
 3) The UTxOs with the beacons must have the proper value:
-    a) Exactly two kinds of beacons: pair beacon and offer beacon.
-    b) The beacons must correspond to the beacons in the datum.
-    c) There must be exactly 1 of each beacon.
-    d) No extraneous assets are in the UTxO. ADA is always allowed.
+    - Exactly two kinds of beacons: pair beacon and offer beacon.
+    - The beacons must correspond to the beacons in the datum.
+    - There must be exactly 1 of each beacon.
+    - No extraneous assets are in the UTxO. ADA is always allowed.
 4) The beacons must be stored with the proper inline `SwapDatum`:
-    a) `beaconId` == this policy id.
-    b) `pairBeacon` == sha2_256(offer_id ++ offer_name ++ ask_id ++ ask_name)
-    c) `offerId` == asset_id of the offer asset.
-    d) `offerName` == asset_name of the offer asset.
-    e) `offerBeacon` == sha2_256(offer_id ++ offer_name).
-    f) `askId` == asset_id of the ask asset.
-    g) `askName` == asset_name of the ask asset.
-    k) `swapPrice` denominator > 0
-    l) `swapPrice` > 0
+    - `beaconId` == this policy id.
+    - `pairBeacon` == sha2_256(offer_id ++ offer_name ++ ask_id ++ ask_name)
+    - `offerId` == asset_id of the offer asset.
+    - `offerName` == asset_name of the offer asset.
+    - `offerBeacon` == sha2_256(offer_id ++ offer_name).
+    - `askId` == asset_id of the ask asset.
+    - `askName` == asset_name of the ask asset.
+    - `swapPrice` denominator > 0
+    - `swapPrice` > 0
 5) The offer asset and ask assets must be different assets.
 6) The address' staking credential must signal approval.
 
@@ -511,25 +511,25 @@ In order to mint beacons with this redeemer, **all of the following must be true
 1) The beacons must go to an addres protected by the dApp validator script.
 2) The beacons must go to an address using a valid staking credential.
 3) The UTxOs with the beacons must have the proper value:
-    a) Exactly three kinds of beacons: pair beacon, asset1 beacon, and asset2 beacon.
-    b) The beacons must correspond to the beacons in the datum.
-    c) There must be exactly 1 of each beacon.
-    d) The UTxO must have asset1 and/or asset2.
-    e) No extraneous assets are in the UTxO. ADA is always allowed.
+    - Exactly three kinds of beacons: pair beacon, asset1 beacon, and asset2 beacon.
+    - The beacons must correspond to the beacons in the datum.
+    - There must be exactly 1 of each beacon.
+    - The UTxO must have asset1 and/or asset2.
+    - No extraneous assets are in the UTxO. ADA is always allowed.
 4) The beacons must be stored with the proper inline `SwapDatum`:
-    a) `beaconId` == this policy id.
-    b) `pairBeacon` == sha2_256(asset1_id ++ asset1_name ++ asset2_id ++ asset2_name)
-    c) `asset1Id` == asset_id of asset1 for that trading pair.
-    d) `asset1Name` == asset_name of asset1 for that trading pair.
-    e) `asset1Beacon` == sha2_256(asset1_id ++ asset1_name).
-    f) `asset2Id` == asset_id asset2 for that trading pair.
-    g) `asset2Name` == asset_name asset2 for that trading pair.
-    h) `asset2Beacon` == sha2_256(asset2_id ++ asset2_name).
-    i) `forwardPrice` denominator > 0
-    j) `forwardPrice` > 0
-    k) `reversePrice` denominator > 0
-    l) `reversePrice` > 0
-    m) asset1 < asset2
+    - `beaconId` == this policy id.
+    - `pairBeacon` == sha2_256(asset1_id ++ asset1_name ++ asset2_id ++ asset2_name)
+    - `asset1Id` == asset_id of asset1 for that trading pair.
+    - `asset1Name` == asset_name of asset1 for that trading pair.
+    - `asset1Beacon` == sha2_256(asset1_id ++ asset1_name).
+    - `asset2Id` == asset_id asset2 for that trading pair.
+    - `asset2Name` == asset_name asset2 for that trading pair.
+    - `asset2Beacon` == sha2_256(asset2_id ++ asset2_name).
+    - `forwardPrice` denominator > 0
+    - `forwardPrice` > 0
+    - `reversePrice` denominator > 0
+    - `reversePrice` > 0
+    - asset1 < asset2
 
 The validator will assume that the trading pairs are sorted which is why asset1 must be less than
 asset2. Asset1 and asset2 cannot be the same asset.
@@ -567,25 +567,25 @@ redeemer are:
 1) The beacons must go to an addres protected by the dApp validator script.
 2) The beacons must go to an address using a valid staking credential.
 3) The UTxOs with the beacons must have the proper value:
-    a) Exactly three kinds of beacons: pair beacon, asset1 beacon, and asset2 beacon.
-    b) The beacons must correspond to the beacons in the datum.
-    c) There must be exactly 1 of each beacon.
-    d) The UTxO must have asset1 and/or asset2.
-    e) No extraneous assets are in the UTxO. ADA is always allowed.
+    - Exactly three kinds of beacons: pair beacon, asset1 beacon, and asset2 beacon.
+    - The beacons must correspond to the beacons in the datum.
+    - There must be exactly 1 of each beacon.
+    - The UTxO must have asset1 and/or asset2.
+    - No extraneous assets are in the UTxO. ADA is always allowed.
 4) The beacons must be stored with the proper inline `SwapDatum`:
-    a) `beaconId` == this policy id.
-    b) `pairBeacon` == sha2_256(asset1_id ++ asset1_name ++ asset2_id ++ asset2_name)
-    c) `asset1Id` == asset_id of asset1 for that trading pair.
-    d) `asset1Name` == asset_name of asset1 for that trading pair.
-    e) `asset1Beacon` == sha2_256(asset1_id ++ asset1_name).
-    f) `asset2Id` == asset_id asset2 for that trading pair.
-    g) `asset2Name` == asset_name asset2 for that trading pair.
-    h) `asset2Beacon` == sha2_256(asset2_id ++ asset2_name).
-    i) `forwardPrice` denominator > 0
-    j) `forwardPrice` > 0
-    k) `reversePrice` denominator > 0
-    l) `reversePrice` > 0
-    m) asset1 < asset2
+    - `beaconId` == this policy id.
+    - `pairBeacon` == sha2_256(asset1_id ++ asset1_name ++ asset2_id ++ asset2_name)
+    - `asset1Id` == asset_id of asset1 for that trading pair.
+    - `asset1Name` == asset_name of asset1 for that trading pair.
+    - `asset1Beacon` == sha2_256(asset1_id ++ asset1_name).
+    - `asset2Id` == asset_id asset2 for that trading pair.
+    - `asset2Name` == asset_name asset2 for that trading pair.
+    - `asset2Beacon` == sha2_256(asset2_id ++ asset2_name).
+    - `forwardPrice` denominator > 0
+    - `forwardPrice` > 0
+    - `reversePrice` denominator > 0
+    - `reversePrice` > 0
+    - asset1 < asset2
 5) The address' staking credential must approve.
 
 This redeemer can be used with either beacon redeemer since both allow burning. If beacons only need

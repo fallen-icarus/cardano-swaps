@@ -36,7 +36,7 @@ composable with all other p2p protocols.
 ## Motivation
 
 Many DEXs on Cardano are currently implemented in ways that lock users' assets into a tightly fixed,
-and/or centrally maintained, set(s) of script addresses and UTxOs. This *concentrated dApp* design
+and/or centrally maintained, set of script addresses and UTxOs. This *concentrated dApp* design
 pattern is reminiscent of Ethereum's accounts-based programming paradigm.
 
 However, the concentrated dApp design does not map well to eUTxO based blockchains. To be exact, a
@@ -51,10 +51,10 @@ own terms. This approach lends itself much better to eUTxO based blockchains. Ho
 currently suffers from similar availability challenges due to the difficulting of finding and
 matching open orders. In order to workaround this limitation, order-book style DEXs also tend to
 resort to the concentrated dApp design since it is easier to find orders if they are located at a
-single (or few) address than if they were scattered across addresses. Furthermore, and more
-importantly, current order-book style DEXs suffer from a lack of liquidity due to not having a way
-to incentive users to provide liquidity to the DEX. This lack of early liquidity is why most DEXs
-currently use the LP based DEX architecture. 
+single address (or a few addresses) than if they were scattered across many addresses. Furthermore,
+and more importantly, current order-book style DEXs suffer from a lack of liquidity due to not
+having a way to incentive users to provide liquidity to the DEX. This lack of early liquidity is why
+most DEXs currently use the LP based DEX architecture. 
 
 This result is unfortunate since LP based DEXs are entirely unsuitable to be used as the foundation
 of a trustless and decentralized economy, especially those built on Proof-of-Stake (PoS)
@@ -70,9 +70,9 @@ unhealthy blockchain economy. Furthermore, impermanent loss (a consequence of no
 express desired prices) makes it impossible for users to properly manage risk.
 - Batcher based protocols lack trustless composability with other dApps; a critical feature for both
 scaling eUTxO-based DeFi and building a fully featured, trustless blockchain economy.
-- The concentration of assets into a single or few addresses directly undermines the security
-assumptions of PoS blockchains. This ultimately means it is *impossible* for LPs to serve as the
-foundation of a trustless and decentralized economy.
+- The concentration of assets into a single address or few addresses directly undermines the
+security assumptions of PoS blockchains. This ultimately means it is *impossible* for LPs to serve
+as the foundation of a trustless and decentralized economy.
 
 ##### Why the workarounds for the issues of the LP based architecture are not sufficient
 
@@ -92,9 +92,12 @@ supply and demand, investor risk attitudes, and the overall economic and geopoli
 Simply put, it is where a buyer and a seller agree on a price and a transaction occurs." There is
 fundamentally no way for algorithms that are based soley on supply and demand to properly reflect
 the true market sentiment. And when market sentiment cannot be accurately reflected, misallocation
-of resources is inevitable (ie, an unhealthy economy).
+of resources is inevitable (ie, an unhealthy economy). Fractionalizing LPs does not solve this issue
+because they can never be fractionalized enough to match the expressiveness of each user specifying
+their own prices - these wouldn't be LPs anymore. This level of expressiveness is only possible with
+order-book DEXs.
 - Batchers can always take advantage of their priviledged position as middle-men - miner extractible
-value (MEV) will always be an issue as long as the use of middle-men is required. Permissioned
+value (MEV) will always be an issue as long as the use of middle-men is *required*. Permissioned
 batchers exacerbate this issue since only the "chosen few" can even have this unique opportunity to
 rip off users.
 - Batcher based protocols cannot trustlessly compose - since LPs require going through middle-men,
@@ -183,6 +186,9 @@ trading pair, will be located at address Y. Address X is != address Y. Furthermo
 of swap has its own beacon policy, each type is easily distinguishable off-chain while still being
 easily queryable by end users.
 
+This modular approach of having a separate script pair for each swap makes it easy to add new kinds
+of swaps in the future.
+
 :exclamation: While the spec shows one-way swap datums and redeemers having the same names as the
 two-way swap datums and redeemers *they are distinct data types*. Imagine they are in separate name
 spaces.
@@ -240,7 +246,7 @@ Inline datums are used for all UTxOs. All UTxOs get the same type of datum:
 
 ``` Haskell
 data SwapDatum = SwapDatum
-  { beaconId :: CurrencySymbol -- ^ Beacon policy id for this swap.
+  { beaconId :: CurrencySymbol -- ^ Beacon policy id for one-way swaps.
   , pairBeacon :: TokenName -- ^ Trading pair beacon asset name for this swap.
   , offerId :: CurrencySymbol -- ^ Offer policy id for this swap.
   , offerName :: TokenName -- ^ Offer asset name for this swap.
@@ -262,7 +268,7 @@ The `Rational` type is a fraction (decimal types do not work on-chain). All pric
 are relative (similar to limit orders in an order-book exchange). Swaps are always priced in
 askedAsset/offeredAsset. For example, if ADA is being offered for DUST at a price of 1.5
 (converted to 3/2), the contract requires that 3 DUST are deposited for every 2 ADA removed from
-the swap address. Ratios of DUST:ADA >= 3/2 will pass, while ratios < 3/2 will pass. 
+the swap address. Ratios of DUST:ADA >= 3/2 will pass, while ratios < 3/2 will fail. 
 
 When engaging in swaps, it is only necessary that the desired swap ratio is met; **not all assets
 in the UTxO must be swapped.** For example, if there is 100 ADA in a swap address requesting 2:1 for
@@ -278,7 +284,7 @@ Swap "writers" must first create a swap by using the `CreateSwap` Redeemer in th
 
 In order to mint beacons with this redeemer, **all of the following must be true**:
 
-1) The beacons must go to an addres protected by the dApp validator script.
+1) The beacons must go to an addres protected by the one-way swap validator script.
 2) The beacons must go to an address using a valid staking credential.
 3) The UTxOs with the beacons must have the proper value:
     - Exactly two kinds of beacons: pair beacon and offer beacon.
@@ -287,10 +293,10 @@ In order to mint beacons with this redeemer, **all of the following must be true
     - No extraneous assets are in the UTxO. ADA is always allowed.
 4) The beacons must be stored with the proper inline `SwapDatum`:
     - `beaconId` == this policy id.
-    - `pairBeacon` == sha2_256(offer_id ++ offer_name ++ ask_id ++ ask_name)
+    - `pairBeacon` == pair beacon asset name for this swap.
     - `offerId` == asset_id of the offer asset.
     - `offerName` == asset_name of the offer asset.
-    - `offerBeacon` == sha2_256(offer_id ++ offer_name).
+    - `offerBeacon` == offer beacon asset name for this swap's offer asset.
     - `askId` == asset_id of the ask asset.
     - `askName` == asset_name of the ask asset.
     - `swapPrice` denominator > 0
@@ -327,7 +333,7 @@ order to reclaim the deposit, the beacons must be burned.** As the redeemer name
 can also be updated inplace instead. The requirements for successfully using the `CloseOrUpdate`
 redeemer are:
 
-1) The beacons must go to an addres protected by the dApp validator script.
+1) The beacons must go to an addres protected by the one-way swap validator script.
 2) The beacons must go to an address using a valid staking credential.
 3) The UTxOs with the beacons must have the proper value:
     - Exactly two kinds of beacons: pair beacon and offer beacon.
@@ -336,16 +342,17 @@ redeemer are:
     - No extraneous assets are in the UTxO. ADA is always allowed.
 4) The beacons must be stored with the proper inline `SwapDatum`:
     - `beaconId` == this policy id.
-    - `pairBeacon` == sha2_256(offer_id ++ offer_name ++ ask_id ++ ask_name)
+    - `pairBeacon` == pair beacon asset name for this swap.
     - `offerId` == asset_id of the offer asset.
     - `offerName` == asset_name of the offer asset.
-    - `offerBeacon` == sha2_256(offer_id ++ offer_name).
+    - `offerBeacon` == offer beacon asset name for this swap's offer asset.
     - `askId` == asset_id of the ask asset.
     - `askName` == asset_name of the ask asset.
     - `swapPrice` denominator > 0
     - `swapPrice` > 0
 5) The offer asset and ask assets must be different assets.
 6) The address' staking credential must signal approval.
+7) Any unused beacons must be burned.
 
 This redeemer can be used with either beacon redeemer since both allow burning. If beacons only need
 to be burned, it is cheaper to use the `BurnBeacons` redeemer. However, if even a single beacon must
@@ -368,7 +375,7 @@ corresponding swap output. The checks are essentially:
 4) If "Yes", this is the corresponding output.
 
 It then compares the value of that output to the input to determine the swap's asset flux. Since the
-validator first checks for the trading pair beacon, each execution is dedicated for a specific
+validator first checks for the trading pair beacon, each execution is dedicated to a specific
 trading pair. Any other outputs are ignored in this specific execution. This logic works because a
 script is executed once for every UTxO spent from the address. If input 1 is for beacon XYZ and
 input 2 is for beacon ABC, the first execution can be dedicated to beacon XYZ and the second
@@ -420,11 +427,12 @@ when ADA is part of a swap.
 
 Asset1 and asset2 are the **sorted** trading pair. Trading pairs are sorted lexicographically by
 name. For example, for the trading pair ADA <-> DJED, the empty bytestring (on-chain representation
-for ADA's `CurrencySymbol`) is less than DJED's `CurrencySymbol` which means, for this trading pair,
-asset1 is ADA and asset2 is DJED. This sorting is done for two reasons: 
+for ADA's policy id) is less than DJED's policy id which means, for this trading pair, asset1 is ADA
+and asset2 is DJED. This sorting is done for two reasons: 
 
-1) The trading pair beacon asset name does not depend on the order of the swap's direction.
+1) The trading pair beacon asset name does not depend on the swap's direction.
 2) The datum information can be standardized for each trading pair, regardless of swap direction.
+This makes processing the off-chain queries more efficient.
 
 These beacons allow for expressive queries since it makes it possible to query all swaps where XYZ
 is being offered, regardless of the asset being asked for. This is in addition to being able to
@@ -490,7 +498,7 @@ The `Rational` type is a fraction (decimal types do not work on-chain). All pric
 are relative (similar to limit orders in an order-book exchange). Swaps are always priced in
 askedAsset/offeredAsset. For example, if ADA is being offered for DUST at a price of
 1.5 (converted to 3/2), the contract requires that 3 DUST are deposited for every 2 ADA removed from
-the swap address. Ratios of DUST:ADA >= 3/2 will pass, while ratios < 3/2 will pass.
+the swap address. Ratios of DUST:ADA >= 3/2 will pass, while ratios < 3/2 will fail.
 
 Since all prices are askedAsset/offeredAsset, asset2 is being offered in `forwardPrice` and asset1
 is being offered in `reversePrice`.
@@ -509,7 +517,7 @@ Swap "writers" must first create a swap by using the `CreateSwap` Redeemer in th
 
 In order to mint beacons with this redeemer, **all of the following must be true**:
 
-1) The beacons must go to an addres protected by the dApp validator script.
+1) The beacons must go to an addres protected by the two-way swap validator script.
 2) The beacons must go to an address using a valid staking credential.
 3) The UTxOs with the beacons must have the proper value:
     - Exactly three kinds of beacons: pair beacon, asset1 beacon, and asset2 beacon.
@@ -519,13 +527,13 @@ In order to mint beacons with this redeemer, **all of the following must be true
     - No extraneous assets are in the UTxO. ADA is always allowed.
 4) The beacons must be stored with the proper inline `SwapDatum`:
     - `beaconId` == this policy id.
-    - `pairBeacon` == sha2_256(asset1_id ++ asset1_name ++ asset2_id ++ asset2_name)
+    - `pairBeacon` == trading pair beacon asset name for this swap.
     - `asset1Id` == asset_id of asset1 for that trading pair.
     - `asset1Name` == asset_name of asset1 for that trading pair.
-    - `asset1Beacon` == sha2_256(asset1_id ++ asset1_name).
+    - `asset1Beacon` == asset1 beacon asset name.
     - `asset2Id` == asset_id asset2 for that trading pair.
     - `asset2Name` == asset_name asset2 for that trading pair.
-    - `asset2Beacon` == sha2_256(asset2_id ++ asset2_name).
+    - `asset2Beacon` == asset2 beacon asset name.
     - `forwardPrice` denominator > 0
     - `forwardPrice` > 0
     - `reversePrice` denominator > 0
@@ -565,7 +573,7 @@ order to reclaim the deposit, the beacons must be burned.** As the redeemer name
 can also be updated inplace instead. The requirements for successfully using the `CloseOrUpdate`
 redeemer are:
 
-1) The beacons must go to an addres protected by the dApp validator script.
+1) The beacons must go to an addres protected by the two-way swap validator script.
 2) The beacons must go to an address using a valid staking credential.
 3) The UTxOs with the beacons must have the proper value:
     - Exactly three kinds of beacons: pair beacon, asset1 beacon, and asset2 beacon.
@@ -575,25 +583,28 @@ redeemer are:
     - No extraneous assets are in the UTxO. ADA is always allowed.
 4) The beacons must be stored with the proper inline `SwapDatum`:
     - `beaconId` == this policy id.
-    - `pairBeacon` == sha2_256(asset1_id ++ asset1_name ++ asset2_id ++ asset2_name)
+    - `pairBeacon` == trading pair beacon asset name for this swap.
     - `asset1Id` == asset_id of asset1 for that trading pair.
     - `asset1Name` == asset_name of asset1 for that trading pair.
-    - `asset1Beacon` == sha2_256(asset1_id ++ asset1_name).
+    - `asset1Beacon` == asset1 beacon asset name.
     - `asset2Id` == asset_id asset2 for that trading pair.
     - `asset2Name` == asset_name asset2 for that trading pair.
-    - `asset2Beacon` == sha2_256(asset2_id ++ asset2_name).
+    - `asset2Beacon` == asset2 beacon asset name.
     - `forwardPrice` denominator > 0
     - `forwardPrice` > 0
     - `reversePrice` denominator > 0
     - `reversePrice` > 0
     - asset1 < asset2
 5) The address' staking credential must approve.
+6) Any unused beacons must be burned.
 
 This redeemer can be used with either beacon redeemer since both allow burning. If beacons only need
 to be burned, it is cheaper to use the `BurnBeacons` redeemer. However, if even a single beacon must
 be minted, the `CreateSwap` redeemer must be used. This behavior enables the swap owner to change
 what trading pair a swap is for in a single transaction. This is instead of having to close the
 original swap in one transaction only to re-open it in another transaction. 
+
+Requirement 5 guarantees only the swap owner can close/update swaps.
 
 ##### Executing a Swap
 
@@ -674,7 +685,8 @@ any of the intermediate steps fail. No meta-logic is required to enforce trustle
 this example shows, this trustless composition allows for a complex economy to form on Cardano - one
 with absolutely no required middle-men. And since this trustless composition across protocols is
 something even TradFi doesn't have (ie, only the Wall Streets of the world have access to these
-compositions), the blockchain economy can possibly allow for even greater economic flexibility.
+compositions), the blockchain economy can possibly allow for even greater economic flexibility than
+what is currently possible in TradFi.
 
 ### Naturally Incentivized Liquidity
 
@@ -683,13 +695,13 @@ incentives for users to provide liquidity with two-way swaps and arbitragers to 
 swaps. As long as the entry and exit swap pairs have enough liquidity, arbitragers can spread
 liquidity into less liquid swap pairs. As a bonus, **the very nature of *illiquidity* implies great
 arbitrage opportunities**. The more illiquid a swap pair, the greater the potential arbitrage
-profits. Providing liquidity and participating in arbitrage/market-making is permissionless, so
-anyone can create their own strategies/algorithms to provide liquidity or find the most profitable
-"path" through the sea of available swaps.
+profits. Providing liquidity and participating in arbitrage is permissionless, so anyone can create
+their own strategies/algorithms to provide liquidity or find the most profitable "path" through the
+sea of available swaps.
 
 Since stake pool operators are required to always be connected to the network, they are uniquely
-positioned to serve as arbitragers. It provides another potential source profit for all stake pools,
-including the small pool operator who rarely makes blocks.
+positioned to serve as arbitragers. It can provide another potential source profit for all stake
+pools operators, including the small pool operator who rarely makes blocks.
 
 ##### The Contrived Example
 
@@ -737,7 +749,7 @@ This all occurs in one transaction where Sarah pays the transaction fee.
 ```
 
 On net, Sarah pays the transaction fees and receives 5 AGIX in return, while four swaps are
-fulfilled. As shown in the this example, Sarah fulfills *both* the AGIX/DUST swap and the HOSKY/AGIX
+fulfilled. As shown in this example, Sarah fulfills *both* the AGIX/DUST swap and the HOSKY/AGIX
 swap by "passing through" those pairs on her way back to ADA. As long as the entry and exit pairs
 (in this case ADA/HOSKY and DUST/ADA) have enough liquidity, arbitragers can spread that liquidity
 into less liquid swap pairs. And since two-way swaps naturally incentivize providing liquidity for
@@ -751,13 +763,13 @@ profit for the arbitrage.
 
 ### Expressive Beacon Queries
 
-Offer based queries allow another class of queries. For example, arbitragers can use them to find
-profitable swap compositions based on current market demand. Without them, the arbitragers would be
-required to know what trading pairs to check in advance. But what if there was a token that they had
-never heard of? This opportunity would be missed. With offer based queries, these unheard of tokens
-would be returned by the first query and the arbitrager algorithms can decide which other assets to
-query based on those results. In short, offer based queries allow for organic discovery of
-composition paths.
+Offer based queries allow another class of queries, in addition to querying by trading pair. For
+example, arbitragers can use offer queries to find profitable swap compositions based on current
+market demand. Without them, the arbitragers would be required to know what trading pairs to check
+in advance. But what if there was a token that they had never heard of? This opportunity would be
+missed. With offer based queries, these unheard of tokens would be returned by the first query and
+the arbitrager algorithms can decide which other assets to query based on those results. In short,
+offer based queries allow for organic discovery of arbitrage composition paths.
 
 ### Single Swap Addresses
 
@@ -778,7 +790,7 @@ Thanks to the query-ability of beacon tokens, it is trivial for any frontend to 
 Cardano-Swaps. For example, any wallet can integrate `cardano-swaps` by adding support for querying
 the beacon tokens. They can also add their own user friendly way to create and use swaps. The only
 requirement is that all frontends/users agree to use the same beacon token standard. There is no
-need for risky extensions or dedicated frontends.
+need for dedicated (censorable) frontends.
 
 ## FAQ
 

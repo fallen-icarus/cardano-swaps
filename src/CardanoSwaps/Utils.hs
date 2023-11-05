@@ -35,8 +35,6 @@ module CardanoSwaps.Utils
 
     -- * Misc
   , unsafeFromRight
-  , UtxoPriceInfo(..)
-  , calcWeightedPrice
   , showTokenName
 
   -- * Re-exports
@@ -69,7 +67,7 @@ import Data.String (fromString)
 import Ledger.Bytes (fromHex,bytes,encodeByteString)
 import Ledger.Tx.CardanoAPI.Internal
 import PlutusTx.Ratio (unsafeRatio,numerator,denominator)
-import Data.List (sort,foldl')
+import Data.List (sort)
 import Prettyprinter
 
 -------------------------------------------------
@@ -194,23 +192,6 @@ readTxId s = case fromHex $ fromString s of
 unsafeFromRight :: Either a b -> b
 unsafeFromRight (Right x) = x
 unsafeFromRight _ = error "unsafeFromRight used on Left"
-
-data UtxoPriceInfo = UtxoPriceInfo
-  { utxoAmount :: Integer -- ^ The amount of the offer asset in this UTxO.
-  , price :: PlutusRational -- ^ The price for this UTxO.
-  } deriving (Show)
-
--- | Helper function to calculate the weighted price.
--- Will match the weighted price calculation done by script.
-calcWeightedPrice :: [UtxoPriceInfo] -> PlutusRational
-calcWeightedPrice xs = snd $ foldl' foo (0,Plutus.fromInteger 0) xs
-  where 
-    foo :: (Integer,PlutusRational) -> UtxoPriceInfo -> (Integer,PlutusRational)
-    foo (runningTot,wp) UtxoPriceInfo{..} =
-      let newAmount = runningTot + utxoAmount
-          newWp = Plutus.unsafeRatio runningTot newAmount Plutus.* wp Plutus.+
-                  Plutus.unsafeRatio utxoAmount newAmount Plutus.* price
-      in (newAmount,newWp)
 
 -- | Show the token name in hexidecimal.
 showTokenName :: TokenName -> String

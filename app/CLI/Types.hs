@@ -13,7 +13,6 @@ import CardanoSwaps
 newtype OfferAsset = OfferAsset { unOfferAsset :: AssetConfig }
 newtype AskAsset = AskAsset { unAskAsset :: AssetConfig }
 newtype TwoWayPair = TwoWayPair { unTwoWayPair :: (AssetConfig,AssetConfig) }
-newtype ApiKey = ApiKey String
 
 data Command
   = ExportScript Script FilePath

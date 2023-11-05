@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RecordWildCards #-}
 
 {-# OPTIONS_GHC -Wno-orphans -Wno-missing-signatures #-}
 
@@ -23,7 +24,7 @@ import Servant.Client
 import Control.Monad
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.List (sortOn)
+import Data.List (sortOn,sort)
 
 import CLI.Types
 import CardanoSwaps
@@ -133,7 +134,7 @@ submitApi :<|> evaluateApi :<|> assetUTxOsApi :<|> addressUTxOsApi = client api
 -- Koios Query Functions
 -------------------------------------------------
 queryAllSwapsByTradingPair :: OfferAsset -> AskAsset -> ClientM [SwapUTxO]
-queryAllSwapsByTradingPair (OfferAsset offer@(currSym,_)) (AskAsset ask) = do
+queryAllSwapsByTradingPair o@(OfferAsset offer@(currSym,_)) a@(AskAsset ask) = do
   let oneWayBeacon = (oneWayBeaconCurrencySymbol, genUnsortedPairBeaconName offer ask)
       twoWayBeacon = (twoWayBeaconCurrencySymbol, genSortedPairBeaconName offer ask)
       offerFilter = if currSym == "" then Nothing else Just $ "cs." <> assetToQueryParam offer
@@ -149,7 +150,7 @@ queryAllSwapsByTradingPair (OfferAsset offer@(currSym,_)) (AskAsset ask) = do
       "eq.false"
       offerFilter
       (AssetList [twoWayBeacon])
-  return $ map convertToSwapUTxO $ oneWayUTxOs <> twoWayUTxOs
+  return $ sortOn (prices o a) $ map convertToSwapUTxO $ oneWayUTxOs <> twoWayUTxOs
 
 queryAllSwapsByOffer :: OfferAsset -> ClientM [SwapUTxO]
 queryAllSwapsByOffer (OfferAsset offer@(currSym,_))  = do
@@ -240,10 +241,21 @@ convertToSwapUTxO KoiosUTxO{..} =
       (Nothing,Nothing) -> Nothing
       (Just oneDatum,Nothing) -> Just $ OneWayDatum oneDatum
       (Nothing,Just twoDatum) -> Just $ TwoWayDatum twoDatum
-      _ -> Prelude.error "The impossible happened"
+      _ -> Prelude.error "The impossible happened" -- The UTxO can't have BOTH types of datums.
 
 assetToQueryParam :: AssetConfig -> Text
 assetToQueryParam (currSym,tokName) = 
   let policyId = T.pack $ show currSym
       assetName = T.pack $ showTokenName tokName
   in "[{\"policy_id\":\"" <> policyId <> "\",\"asset_name\":\"" <> assetName <> "\"}]"
+
+-- Get the prices from a SwapUTxO based on the swap direction. This should only be used on beacon
+-- query results since they are guaranteed to have a datum.
+prices :: OfferAsset -> AskAsset -> SwapUTxO -> PlutusRational
+prices _ _ SwapUTxO{swapDatum = Just (OneWayDatum OneWaySwapDatum{..})} = oneWaySwapPrice
+prices (OfferAsset offer) (AskAsset ask) SwapUTxO{swapDatum = Just (TwoWayDatum TwoWaySwapDatum{..})}
+  | offer == asset1 = twoWayReversePrice
+  | otherwise = twoWayForwardPrice
+  where
+    [asset1,_] = sort [offer,ask]
+prices _ _ _ = error "CLI.Query.Koios.prices used on swap without datum"

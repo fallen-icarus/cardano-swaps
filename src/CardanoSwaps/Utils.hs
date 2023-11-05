@@ -12,10 +12,15 @@ module CardanoSwaps.Utils
     -- * On-Chain Data Types
     PlutusRational
   , AssetConfig
+  , OfferAsset(..)
+  , AskAsset(..)
+  , TwoWayPair(..)
 
     -- * Generate Beacon Names
   , genSortedPairBeaconName
   , genUnsortedPairBeaconName
+  , genTwoWayPairBeaconName
+  , genOneWayPairBeaconName
   , genOfferBeaconName
   
     -- * Serialization
@@ -80,6 +85,13 @@ instance Pretty PlutusRational where
   pretty num = pretty (numerator num) <> " / " <> pretty (denominator num)
 
 -------------------------------------------------
+-- Off-Chain Data Types
+-------------------------------------------------
+newtype OfferAsset = OfferAsset { unOfferAsset :: AssetConfig }
+newtype AskAsset = AskAsset { unAskAsset :: AssetConfig }
+newtype TwoWayPair = TwoWayPair { unTwoWayPair :: (AssetConfig,AssetConfig) }
+
+-------------------------------------------------
 -- Generate Beacon Name
 -------------------------------------------------
 -- | Generate the beacon asset name by hashing asset1 ++ asset2. The trading pair is first
@@ -112,6 +124,12 @@ genUnsortedPairBeaconName assetX assetY =
         then unsafeToBuiltinByteString "00" 
         else sym2'
   in TokenName $ Plutus.sha2_256 $ sym1 <> name1 <> sym2 <> name2
+
+genTwoWayPairBeaconName :: TwoWayPair -> TokenName
+genTwoWayPairBeaconName (TwoWayPair (assetX,assetY)) = genSortedPairBeaconName assetX assetY
+
+genOneWayPairBeaconName :: OfferAsset -> AskAsset -> TokenName
+genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask) = genUnsortedPairBeaconName offer ask
 
 -- | Generate the beacon asset name by hashing the ask asset policy id and name.
 genOfferBeaconName :: CurrencySymbol -> TokenName -> TokenName

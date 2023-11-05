@@ -10,10 +10,6 @@ import Control.Monad (mzero)
 
 import CardanoSwaps
 
-newtype OfferAsset = OfferAsset { unOfferAsset :: AssetConfig }
-newtype AskAsset = AskAsset { unAskAsset :: AssetConfig }
-newtype TwoWayPair = TwoWayPair { unTwoWayPair :: (AssetConfig,AssetConfig) }
-
 data Command
   = ExportScript Script FilePath
   | CreateDatum InternalDatum FilePath

@@ -66,6 +66,9 @@ module CardanoSwaps
   , twoWayBeaconMintingPolicyHash
   , twoWayBeaconCurrencySymbol
 
+    -- * Helpers
+  , getRequiredSwapDirection
+
     -- * Re-Export
   , module CardanoSwaps.Utils
   ) where
@@ -77,6 +80,7 @@ import GHC.Generics (Generic)
 import Ledger (Script(..))
 import Plutus.Script.Utils.V2.Scripts
 import Data.Aeson
+import Data.List (sort)
 
 import qualified CardanoSwaps.OneWaySwap as OneWaySwap
 import qualified CardanoSwaps.TwoWaySwap as TwoWaySwap
@@ -213,3 +217,14 @@ twoWayBeaconMintingPolicyHash = mintingPolicyHash twoWayBeaconMintingPolicy
 
 twoWayBeaconCurrencySymbol :: CurrencySymbol
 twoWayBeaconCurrencySymbol = scriptCurrencySymbol twoWayBeaconMintingPolicy
+
+-------------------------------------------------
+-- Helpers
+-------------------------------------------------
+-- | Get the required two-way swap redeemer based on the swap direction.
+getRequiredSwapDirection :: OfferAsset -> AskAsset -> TwoWaySwapRedeemer
+getRequiredSwapDirection (OfferAsset offer) (AskAsset ask)
+  | offer == asset1 = TwoWayReverseSwap
+  | otherwise = TwoWayForwardSwap
+  where
+    [asset1,_] = sort [offer,ask]

@@ -42,7 +42,12 @@ data InternalDatum
 
 data SpendingRedeemer
   = OneWaySpendingRedeemer OneWaySwapRedeemer
-  | TwoWaySpendingRedeemer TwoWaySwapRedeemer
+  | TwoWaySpendingRedeemer InternalTwoWaySwapRedeemer
+
+data InternalTwoWaySwapRedeemer
+  = KnownTwoWaySwapRedeemer TwoWaySwapRedeemer
+  | UnknownTwoWaySwapRedeemer OfferAsset AskAsset 
+      -- ^ For when the swap direction is unknown (eg, ForwardSwap vs ReverseSwap)
 
 data MintingRedeemer
   = OneWayMintingRedeemer OneWayBeaconRedeemer

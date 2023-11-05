@@ -1016,10 +1016,26 @@ output still needs them.
 ```Bash
 cardano-swaps spending-redeemers two-way \
   --forward-swap \
-  --out-file forwardSwap.json
+  --out-file twoWaySwapRedeemer.json
 ```
 
 To execute a reverse swap, use the `--reverse-swap` flag instead.
+
+If you do not know what swap direction is required, you can tell the `cardano-swaps` CLI what the
+offer asset and ask asset are and it can create the proper swap redeemer for you:
+
+```Bash
+cardano-swaps spending-redeemers two-way \
+  --offer-lovelace \
+  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --ask-token-name 54657374546f6b656e31 \
+  --out-file twoWaySwapRedeemer.json
+```
+
+**The offer and ask are always from the perspective of the swap UTxO.** So if you are trying to take
+ADA from the swap and deposit a native token, the offer asset is ADA and the ask asset is the native
+token.
+
 
 ##### Create the corresponding swap datum for the target swap.
 ```Bash

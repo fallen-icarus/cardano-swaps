@@ -149,9 +149,19 @@ pCreateOneWaySpendingRedeemer =
 pCreateTwoWaySpendingRedeemer :: Parser Command
 pCreateTwoWaySpendingRedeemer = 
     CreateSpendingRedeemer 
-      <$> (TwoWaySpendingRedeemer <$> (pCloseOrUpdate <|> pForwardSwap <|> pReverseSwap))
+      <$> (TwoWaySpendingRedeemer <$> (pKnownTwoWayRedeemer <|> pUnknownTwoWaySwapRedeemer))
       <*> pOutputFile
   where
+    pKnownTwoWayRedeemer :: Parser InternalTwoWaySwapRedeemer
+    pKnownTwoWayRedeemer = 
+      KnownTwoWaySwapRedeemer <$> (pCloseOrUpdate <|> pForwardSwap <|> pReverseSwap)
+
+    pUnknownTwoWaySwapRedeemer :: Parser InternalTwoWaySwapRedeemer
+    pUnknownTwoWaySwapRedeemer = 
+      UnknownTwoWaySwapRedeemer 
+        <$> (OfferAsset <$> pOneWayAsset "offer") 
+        <*> (AskAsset <$> pOneWayAsset "ask")
+
     pCloseOrUpdate :: Parser TwoWaySwapRedeemer
     pCloseOrUpdate = flag' TwoWayCloseOrUpdate
       (  long "close-or-update"

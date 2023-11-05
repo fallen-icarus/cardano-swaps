@@ -82,7 +82,9 @@ runCreateDatum
 
 runCreateSpendingRedeemer :: SpendingRedeemer -> FilePath -> IO ()
 runCreateSpendingRedeemer (OneWaySpendingRedeemer r) file = writeData file r
-runCreateSpendingRedeemer (TwoWaySpendingRedeemer r) file = writeData file r
+runCreateSpendingRedeemer (TwoWaySpendingRedeemer r) file = case r of
+  KnownTwoWaySwapRedeemer r' -> writeData file r'
+  UnknownTwoWaySwapRedeemer offer ask -> writeData file $ getRequiredSwapDirection offer ask
 
 runCreateMintingRedeemer :: MintingRedeemer -> FilePath -> IO ()
 runCreateMintingRedeemer (OneWayMintingRedeemer r) file = writeData file r

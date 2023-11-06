@@ -1089,10 +1089,16 @@ cardano-swaps query personal-address \
   --stdout
 ```
 
+The UTxOs will be returned in lexicographical ordering based on the transaction hash.
+
+For the pretty and plain formats, UTxOs that contain a reference script and/or a datum will show the
+script hash or datum hash, respectively. For the pretty format, each type of hash will have a color
+associated with it: Blue for script hashes and Green for datum hashes. UTxO assets are always shown.
+
 ### Own Swaps
 
 The `cardano-swaps query own-swaps` command can be used to query your own swaps. The swaps can be
-filtered by offer asset or by trading pair if desired.
+filtered by offer asset or by trading pair if desired. The results are not sorted in any way.
 
 ##### Query One-Way Swaps By Offer
 ```Bash
@@ -1115,7 +1121,8 @@ cardano-swaps query own-swaps two-way offer \
 ```
 
 Since both asset1 and asset2 can be the offer asset for two-way swaps depending on the swap's
-direction, this query requires you to choose one of the assets.
+direction, this query requires you to choose one of the assets. Choosing both is not a valid
+command.
 
 ##### Query One-Way Swaps By Trading Pair
 ```Bash
@@ -1144,9 +1151,41 @@ cardano-swaps query own-swaps two-way trading-pair \
 ### All Swaps
 
 Querying all swaps will query both one-way swaps and two-ways swaps. The results will specify
-whether the swap is a one-way swap or a two-way swap. 
+whether the swap is a one-way swap or a two-way swap.
 
 The `cardano-swaps query all-swaps` command is used to query all swaps. Swaps can either be queried
 based on the offer asset or the trading pair. (It is technically also possible to query all swaps
 but that is not supported by `cardano-swaps` CLI since it does not seem like a useful query. If you
 think it would be useful, feel free to open an issue.)
+
+##### Swaps By Trading Pair 
+
+When querying all swaps by trading pair, a swap direction *must* be specified. The returned swaps
+are sorted based on the prices (taking into account whether that direction requires the
+`reversePrice` or `forwardPrice` for two-way swaps).
+
+When the pretty format is used, the relevant price is highlighted in Magenta.
+
+```Bash
+cardano-swaps query all-swaps trading-pair \
+  --testnet \
+  --ask-lovelace \
+  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --offer-token-name 4f74686572546f6b656e0a \
+  --pretty \
+  --stdout
+```
+
+##### Swaps By Offer
+
+The returned swaps are *not* sorted nor are the prices highlighted in the pretty format.
+
+```Bash
+cardano-swaps query all-swaps offer \
+  --testnet \
+  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
+  --offer-token-name 4f74686572546f6b656e0a \
+  --pretty \
+  --stdout
+```
+

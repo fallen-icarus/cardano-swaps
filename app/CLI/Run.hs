@@ -239,7 +239,9 @@ prettySwapUTxO target SwapUTxO{..} =
            , (annotate (color Green) "ask:") <+>
                (pretty $ toAssetName oneWayAskId oneWayAskName)
            , (annotate (color Green) "price:") <+> 
-               annotate (color Magenta) (pretty oneWaySwapPrice)
+               if target /= None then
+                 annotate (color Magenta) (pretty oneWaySwapPrice)
+               else pretty oneWaySwapPrice
            ]
     prettySwapDatum (TwoWayDatum TwoWaySwapDatum{..}) =
       vsep [ (annotate (color Green) "type:") <+> pretty @Text "two-way"

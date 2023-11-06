@@ -24,7 +24,7 @@ import Servant.Client
 import Control.Monad
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.List (sortOn,sort)
+import Data.List (sortOn)
 
 import CLI.Types
 import CardanoSwaps
@@ -254,8 +254,6 @@ assetToQueryParam (currSym,tokName) =
 prices :: OfferAsset -> AskAsset -> SwapUTxO -> PlutusRational
 prices _ _ SwapUTxO{swapDatum = Just (OneWayDatum OneWaySwapDatum{..})} = oneWaySwapPrice
 prices (OfferAsset offer) (AskAsset ask) SwapUTxO{swapDatum = Just (TwoWayDatum TwoWaySwapDatum{..})}
-  | offer == asset1 = twoWayReversePrice
+  | offer < ask = twoWayReversePrice
   | otherwise = twoWayForwardPrice
-  where
-    [asset1,_] = sort [offer,ask]
 prices _ _ _ = error "CLI.Query.Koios.prices used on swap without datum"

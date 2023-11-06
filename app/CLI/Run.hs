@@ -140,19 +140,22 @@ runQuery query = case query of
 runQueryAll :: QueryAll -> IO ()
 runQueryAll queryAll = case queryAll of
   QueryAllSwapsByTradingPair 
-    network api offer ask format output ->
-      runQueryAllSwapsByTradingPair network api offer ask >>= 
-        case format of
-          JSON -> toJSONOutput output
-          Pretty -> toPrettyOutput output . (<> hardline) . vsep . map prettySwapUTxO 
-          Plain -> toPlainOutput output . (<> hardline) . vsep . map prettySwapUTxO
+    network api offer@(OfferAsset o) ask@(AskAsset a) format output -> do
+      results <- runQueryAllSwapsByTradingPair network api offer ask
+      let reqDirection = if o < a then Reverse else Forward
+      case format of
+        JSON -> toJSONOutput output results
+        Pretty -> 
+          toPrettyOutput output $ (<> hardline) $ vsep $ map (prettySwapUTxO reqDirection) results
+        Plain -> 
+          toPlainOutput output $ (<> hardline) $ vsep $ map (prettySwapUTxO reqDirection) results
   QueryAllSwapsByOffer 
     network api offer format output ->
       runQueryAllSwapsByOffer network api offer >>= 
         case format of
           JSON -> toJSONOutput output
-          Pretty -> toPrettyOutput output . (<> hardline) . vsep . map prettySwapUTxO 
-          Plain -> toPlainOutput output . (<> hardline) . vsep . map prettySwapUTxO
+          Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None) 
+          Plain -> toPlainOutput output . (<> hardline) . vsep . map (prettySwapUTxO None)
 
 runQueryOwn :: QueryOwnSwaps -> IO ()
 runQueryOwn queryOwn = case queryOwn of
@@ -161,47 +164,47 @@ runQueryOwn queryOwn = case queryOwn of
       runQueryOwnSwaps network api addr >>= 
         case format of
           JSON -> toJSONOutput output
-          Pretty -> toPrettyOutput output . (<> hardline) . vsep . map prettySwapUTxO 
-          Plain -> toPlainOutput output . (<> hardline) . vsep . map prettySwapUTxO
+          Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None) 
+          Plain -> toPlainOutput output . (<> hardline) . vsep . map (prettySwapUTxO None)
   QueryOwnOneWaySwapsByOffer 
     network api addr (OfferAsset cfg) format output ->
       runQueryOwnSwapsByBeacon 
         network api addr oneWayBeaconCurrencySymbol (uncurry genOfferBeaconName cfg) >>= 
       case format of
         JSON -> toJSONOutput output
-        Pretty -> toPrettyOutput output . (<> hardline) . vsep . map prettySwapUTxO 
-        Plain -> toPlainOutput output . (<> hardline) . vsep . map prettySwapUTxO
+        Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None) 
+        Plain -> toPlainOutput output . (<> hardline) . vsep . map (prettySwapUTxO None)
   QueryOwnOneWaySwapsByTradingPair 
     network api addr (OfferAsset offerCfg) (AskAsset askCfg) format output ->
       runQueryOwnSwapsByBeacon 
         network api addr oneWayBeaconCurrencySymbol (genUnsortedPairBeaconName offerCfg askCfg) >>= 
       case format of
         JSON -> toJSONOutput output
-        Pretty -> toPrettyOutput output . (<> hardline) . vsep . map prettySwapUTxO 
-        Plain -> toPlainOutput output . (<> hardline) . vsep . map prettySwapUTxO
+        Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None) 
+        Plain -> toPlainOutput output . (<> hardline) . vsep . map (prettySwapUTxO None)
   QueryOwnTwoWaySwaps 
     network api addr format output -> 
       runQueryOwnSwaps network api addr >>= 
         case format of
           JSON -> toJSONOutput output
-          Pretty -> toPrettyOutput output . (<> hardline) . vsep . map prettySwapUTxO 
-          Plain -> toPlainOutput output . (<> hardline) . vsep . map prettySwapUTxO
+          Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None) 
+          Plain -> toPlainOutput output . (<> hardline) . vsep . map (prettySwapUTxO None)
   QueryOwnTwoWaySwapsByOffer 
     network api addr cfg format output ->
       runQueryOwnSwapsByBeacon 
         network api addr twoWayBeaconCurrencySymbol (uncurry genOfferBeaconName cfg) >>= 
       case format of
         JSON -> toJSONOutput output
-        Pretty -> toPrettyOutput output . (<> hardline) . vsep . map prettySwapUTxO 
-        Plain -> toPlainOutput output . (<> hardline) . vsep . map prettySwapUTxO
+        Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None) 
+        Plain -> toPlainOutput output . (<> hardline) . vsep . map (prettySwapUTxO None)
   QueryOwnTwoWaySwapsByTradingPair 
     network api addr (TwoWayPair (assetX,assetY)) format output ->
       runQueryOwnSwapsByBeacon 
         network api addr twoWayBeaconCurrencySymbol (genSortedPairBeaconName assetX assetY) >>= 
       case format of
         JSON -> toJSONOutput output
-        Pretty -> toPrettyOutput output . (<> hardline) . vsep . map prettySwapUTxO 
-        Plain -> toPlainOutput output . (<> hardline) . vsep . map prettySwapUTxO
+        Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None)
+        Plain -> toPlainOutput output . (<> hardline) . vsep . map (prettySwapUTxO None)
 
 -------------------------------------------------
 -- Helper Functions
@@ -215,8 +218,10 @@ toAssetName :: CurrencySymbol -> TokenName -> Text
 toAssetName "" _ = "lovelace"
 toAssetName cur tok = T.pack (show cur) <> "." <> T.pack (showTokenName tok)
 
-prettySwapUTxO :: SwapUTxO -> Doc AnsiStyle
-prettySwapUTxO SwapUTxO{..} = 
+data TargetDirection = None | Forward | Reverse deriving (Eq)
+
+prettySwapUTxO :: TargetDirection -> SwapUTxO -> Doc AnsiStyle
+prettySwapUTxO target SwapUTxO{..} = 
   vsep [ (annotate (color Blue) "swap_ref:") <+> 
            (pretty $ swapTxHash <> "#" <> T.pack (show swapOutputIndex))
        , indent 4 $ (annotate (color Green) "address:") <+> pretty swapAddress 
@@ -233,7 +238,8 @@ prettySwapUTxO SwapUTxO{..} =
                (pretty $ toAssetName oneWayOfferId oneWayOfferName)
            , (annotate (color Green) "ask:") <+>
                (pretty $ toAssetName oneWayAskId oneWayAskName)
-           , (annotate (color Green) "price:") <+> pretty oneWaySwapPrice
+           , (annotate (color Green) "price:") <+> 
+               annotate (color Magenta) (pretty oneWaySwapPrice)
            ]
     prettySwapDatum (TwoWayDatum TwoWaySwapDatum{..}) =
       vsep [ (annotate (color Green) "type:") <+> pretty @Text "two-way"
@@ -241,8 +247,14 @@ prettySwapUTxO SwapUTxO{..} =
                (pretty $ toAssetName twoWayAsset1Id twoWayAsset1Name)
            , (annotate (color Green) "asset2:") <+>
                (pretty $ toAssetName twoWayAsset2Id twoWayAsset2Name)
-           , (annotate (color Green) "forward_price:") <+> pretty twoWayForwardPrice
-           , (annotate (color Green) "reverse_price:") <+> pretty twoWayReversePrice
+           , (annotate (color Green) "forward_price:") <+> 
+               if target == Forward then
+                 annotate (color Magenta) (pretty twoWayForwardPrice)
+               else pretty twoWayForwardPrice
+           , (annotate (color Green) "reverse_price:") <+>
+               if target == Reverse then
+                 annotate (color Magenta) (pretty twoWayReversePrice)
+               else pretty twoWayReversePrice
            ]
 
 prettyPersonalUTxO :: PersonalUTxO -> Doc AnsiStyle

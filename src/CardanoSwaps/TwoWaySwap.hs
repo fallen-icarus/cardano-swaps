@@ -20,11 +20,16 @@ module CardanoSwaps.TwoWaySwap
   , beaconMintingPolicyHash
   , beaconCurrencySymbol
 
+    -- * Beacon Names
+  , genTwoWayPairBeaconName
+  , genAssetBeaconName
+
     -- * Helpers
   , getRequiredSwapDirection
   ) where
 
 import Plutus.V2.Ledger.Api as Api
+import qualified PlutusTx.Prelude as Plutus
 import qualified PlutusTx
 import GHC.Generics (Generic)
 import Ledger (Script(..))
@@ -110,6 +115,30 @@ beaconMintingPolicyHash = mintingPolicyHash beaconMintingPolicy
 
 beaconCurrencySymbol :: CurrencySymbol
 beaconCurrencySymbol = scriptCurrencySymbol beaconMintingPolicy
+
+-------------------------------------------------
+-- Beacon Names
+-------------------------------------------------
+-- | Generate the beacon asset name by hashing asset1 ++ asset2. The trading pair is first
+-- sorted so that the beacon name is independent of the ordering. This is used for two-way swaps.
+genTwoWayPairBeaconName :: AssetConfig -> AssetConfig -> TokenName
+genTwoWayPairBeaconName assetX assetY =
+  let (((CurrencySymbol sym1'),(TokenName name1)),((CurrencySymbol sym2'),(TokenName name2))) =
+       if assetY < assetX then (assetY,assetX) else (assetX,assetY) 
+      sym1 = 
+        if sym1' == "" 
+        then unsafeToBuiltinByteString "00" 
+        else sym1'
+      sym2 = 
+        if sym2' == "" 
+        then unsafeToBuiltinByteString "00" 
+        else sym2'
+  in TokenName $ Plutus.sha2_256 $ sym1 <> name1 <> sym2 <> name2
+
+-- | Generate the beacon asset name by hashing the ask asset policy id and name.
+genAssetBeaconName :: AssetConfig -> TokenName
+genAssetBeaconName ((CurrencySymbol sym),(TokenName name)) =
+  TokenName $ Plutus.sha2_256 $ sym <> name
 
 -------------------------------------------------
 -- Helpers

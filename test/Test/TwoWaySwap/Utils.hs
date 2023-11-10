@@ -13,7 +13,7 @@ import Plutus.V2.Ledger.Api (TxOutRef)
 minUTxOSpendRef :: Integer
 minUTxOSpendRef = 31_000_000
 
--- | 22 ADA is the default. This is what the cardano-loans minting policy requires.
+-- | 18 ADA is the default. This is what the cardano-swaps minting policy requires.
 minUTxOMintRef :: Integer
 minUTxOMintRef = 18_000_000
 

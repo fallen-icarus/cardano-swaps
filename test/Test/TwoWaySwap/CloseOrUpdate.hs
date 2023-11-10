@@ -18,6 +18,7 @@ module Test.TwoWaySwap.CloseOrUpdate
   , regressionTest6
   , regressionTest7
   , regressionTest8
+  , regressionTest9
 
     -- ** Scenarios that should fail
   , failureTest1
@@ -122,9 +123,9 @@ regressionTest1 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -241,9 +242,9 @@ regressionTest2 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -366,12 +367,12 @@ regressionTest3 = do
       [asset1',asset2'] = sort [assetY,assetZ]
       swapAddr1 = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred1)
       swapAddr2 = swapAddr1
-      pairBeacon1 = genSortedPairBeaconName assetX assetY
-      pairBeacon2 = genSortedPairBeaconName assetY assetZ
-      asset1Beacon1 = uncurry genOfferBeaconName asset1
-      asset1Beacon2 = uncurry genOfferBeaconName asset1'
-      asset2Beacon1 = uncurry genOfferBeaconName asset2
-      asset2Beacon2 = uncurry genOfferBeaconName asset2'
+      pairBeacon1 = genTwoWayPairBeaconName assetX assetY
+      pairBeacon2 = genTwoWayPairBeaconName assetY assetZ
+      asset1Beacon1 = genAssetBeaconName asset1
+      asset1Beacon2 = genAssetBeaconName asset1'
+      asset2Beacon1 = genAssetBeaconName asset2
+      asset2Beacon2 = genAssetBeaconName asset2'
       swapDatum1 = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon1
@@ -519,9 +520,9 @@ regressionTest4 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -643,9 +644,9 @@ regressionTest5 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -780,12 +781,12 @@ regressionTest6 = do
       [asset1',asset2'] = sort [assetY,assetZ]
       swapAddr1 = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred1)
       swapAddr2 = swapAddr1
-      pairBeacon1 = genSortedPairBeaconName assetX assetY
-      pairBeacon2 = genSortedPairBeaconName assetY assetZ
-      asset1Beacon1 = uncurry genOfferBeaconName asset1
-      asset1Beacon2 = uncurry genOfferBeaconName asset1'
-      asset2Beacon1 = uncurry genOfferBeaconName asset2
-      asset2Beacon2 = uncurry genOfferBeaconName asset2'
+      pairBeacon1 = genTwoWayPairBeaconName assetX assetY
+      pairBeacon2 = genTwoWayPairBeaconName assetY assetZ
+      asset1Beacon1 = genAssetBeaconName asset1
+      asset1Beacon2 = genAssetBeaconName asset1'
+      asset2Beacon1 = genAssetBeaconName asset2
+      asset2Beacon2 = genAssetBeaconName asset2'
       swapDatum1 = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon1
@@ -947,9 +948,9 @@ regressionTest7 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon1 = genSortedPairBeaconName assetX assetY
-      asset1Beacon1 = uncurry genOfferBeaconName asset1
-      asset2Beacon1 = uncurry genOfferBeaconName asset2
+      pairBeacon1 = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon1 = genAssetBeaconName asset1
+      asset2Beacon1 = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon1
@@ -1018,9 +1019,9 @@ regressionTest7 = do
 
   let assetZ = testToken2
       [asset1',asset2'] = sort [assetY,assetZ]
-      pairBeacon2 = genSortedPairBeaconName assetY assetZ
-      asset1Beacon2 = uncurry genOfferBeaconName asset1'
-      asset2Beacon2 = uncurry genOfferBeaconName asset2' 
+      pairBeacon2 = genTwoWayPairBeaconName assetY assetZ
+      asset1Beacon2 = genAssetBeaconName asset1'
+      asset2Beacon2 = genAssetBeaconName asset2' 
       swapDatum2 = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon2
@@ -1100,9 +1101,9 @@ regressionTest8 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon1 = genSortedPairBeaconName assetX assetY
-      asset1Beacon1 = uncurry genOfferBeaconName asset1
-      asset2Beacon1 = uncurry genOfferBeaconName asset2
+      pairBeacon1 = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon1 = genAssetBeaconName asset1
+      asset2Beacon1 = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon1
@@ -1171,9 +1172,9 @@ regressionTest8 = do
 
   let assetZ = testToken2
       [asset1',asset2'] = sort [assetY,assetZ]
-      pairBeacon2 = genSortedPairBeaconName assetY assetZ
-      asset1Beacon2 = uncurry genOfferBeaconName asset1'
-      asset2Beacon2 = uncurry genOfferBeaconName asset2' 
+      pairBeacon2 = genTwoWayPairBeaconName assetY assetZ
+      asset1Beacon2 = genAssetBeaconName asset1'
+      asset2Beacon2 = genAssetBeaconName asset2' 
       swapDatum2 = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon2
@@ -1238,6 +1239,133 @@ regressionTest8 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
+-- | When updating a swap, move it to another address.
+regressionTest9 :: EmulatorTrace ()
+regressionTest9 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      newCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+      assetX = testToken1
+      assetY = (adaSymbol,adaToken)
+      [asset1,asset2] = sort [assetX,assetY]
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      newAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash newCred)
+      beaconSym = beaconCurrencySymbol
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
+      swapDatum = SwapDatum
+        { beaconId = beaconCurrencySymbol
+        , pairBeacon = pairBeacon'
+        , asset1Id = fst asset1
+        , asset1Name = snd asset1
+        , asset1Beacon = asset1Beacon'
+        , asset2Id = fst asset2
+        , asset2Name = snd asset2
+        , asset2Beacon = asset2Beacon'
+        , forwardPrice = unsafeRatio 1_000_000 1
+        , reversePrice = unsafeRatio 2 1_000_000
+        , prevInput = Nothing
+        }
+
+  (mintRef,spendRef) <- initializeScripts
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer CreateSwap 
+              , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym pairBeacon' 1
+                    <> singleton beaconSym asset1Beacon' 1
+                    <> singleton beaconSym asset2Beacon' 1
+                    <> uncurry singleton assetX 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  swap <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconSym pairBeacon' 1
+            <> singleton beaconSym asset1Beacon' 1
+            <> singleton beaconSym asset2Beacon' 1
+            <> uncurry singleton assetX 10
+            )
+            swapDatum
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [
+            ScriptUtxoInput
+              { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer CloseOrUpdate
+              , spendFromAddress = swapAddr
+              , spendUtxos = [ swap ]
+              }
+          ]
+      , outputs = 
+          [ UtxoOutput
+              { toAddress = newAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum{forwardPrice = unsafeRatio 3 1}
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym pairBeacon' 1
+                    <> singleton beaconSym asset1Beacon' 1
+                    <> singleton beaconSym asset2Beacon' 1
+                    <> uncurry singleton assetX 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
 -------------------------------------------------
 -- Failure Tests
 -------------------------------------------------
@@ -1255,9 +1383,9 @@ failureTest1 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -1372,9 +1500,9 @@ failureTest2 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -1489,9 +1617,9 @@ failureTest3 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -1606,9 +1734,9 @@ failureTest4 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -1723,9 +1851,9 @@ failureTest5 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -1846,9 +1974,9 @@ failureTest6 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -1969,9 +2097,9 @@ failureTest7 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -2092,9 +2220,9 @@ failureTest8 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -2215,9 +2343,9 @@ failureTest9 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -2353,9 +2481,9 @@ failureTest10 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -2491,9 +2619,9 @@ failureTest11 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -2629,9 +2757,9 @@ failureTest12 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -2767,9 +2895,9 @@ failureTest13 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -2896,12 +3024,12 @@ failureTest14 = do
       [asset1',asset2'] = sort [assetY,assetZ]
       swapAddr1 = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred1)
       swapAddr2 = swapAddr1
-      pairBeacon1 = genSortedPairBeaconName assetX assetY
-      pairBeacon2 = genSortedPairBeaconName assetY assetZ
-      asset1Beacon1 = uncurry genOfferBeaconName asset1
-      asset1Beacon2 = uncurry genOfferBeaconName asset1'
-      asset2Beacon1 = uncurry genOfferBeaconName asset2
-      asset2Beacon2 = uncurry genOfferBeaconName asset2'
+      pairBeacon1 = genTwoWayPairBeaconName assetX assetY
+      pairBeacon2 = genTwoWayPairBeaconName assetY assetZ
+      asset1Beacon1 = genAssetBeaconName asset1
+      asset1Beacon2 = genAssetBeaconName asset1'
+      asset2Beacon1 = genAssetBeaconName asset2
+      asset2Beacon2 = genAssetBeaconName asset2'
       swapDatum1 = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon1
@@ -3071,12 +3199,12 @@ failureTest15 = do
       [asset1',asset2'] = sort [assetW,assetZ]
       swapAddr1 = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred1)
       swapAddr2 = swapAddr1
-      pairBeacon1 = genSortedPairBeaconName assetX assetY
-      pairBeacon2 = genSortedPairBeaconName assetW assetZ
-      asset1Beacon1 = uncurry genOfferBeaconName asset1
-      asset1Beacon2 = uncurry genOfferBeaconName asset1'
-      asset2Beacon1 = uncurry genOfferBeaconName asset2
-      asset2Beacon2 = uncurry genOfferBeaconName asset2'
+      pairBeacon1 = genTwoWayPairBeaconName assetX assetY
+      pairBeacon2 = genTwoWayPairBeaconName assetW assetZ
+      asset1Beacon1 = genAssetBeaconName asset1
+      asset1Beacon2 = genAssetBeaconName asset1'
+      asset2Beacon1 = genAssetBeaconName asset2
+      asset2Beacon2 = genAssetBeaconName asset2'
       swapDatum1 = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon1
@@ -3246,12 +3374,12 @@ failureTest16 = do
       [asset1',asset2'] = sort [assetW,assetZ]
       swapAddr1 = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred1)
       swapAddr2 = swapAddr1
-      pairBeacon1 = genSortedPairBeaconName assetX assetY
-      pairBeacon2 = genSortedPairBeaconName assetW assetZ
-      asset1Beacon1 = uncurry genOfferBeaconName asset1
-      asset1Beacon2 = uncurry genOfferBeaconName asset1'
-      asset2Beacon1 = uncurry genOfferBeaconName asset2
-      asset2Beacon2 = uncurry genOfferBeaconName asset2'
+      pairBeacon1 = genTwoWayPairBeaconName assetX assetY
+      pairBeacon2 = genTwoWayPairBeaconName assetW assetZ
+      asset1Beacon1 = genAssetBeaconName asset1
+      asset1Beacon2 = genAssetBeaconName asset1'
+      asset2Beacon1 = genAssetBeaconName asset2
+      asset2Beacon2 = genAssetBeaconName asset2'
       swapDatum1 = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon1
@@ -3413,9 +3541,9 @@ failureTest17 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -3538,9 +3666,9 @@ failureTest18 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -3663,9 +3791,9 @@ failureTest19 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -3788,9 +3916,9 @@ failureTest20 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -3913,9 +4041,9 @@ failureTest21 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -4038,9 +4166,9 @@ failureTest22 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -4163,9 +4291,9 @@ failureTest23 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -4287,9 +4415,9 @@ failureTest24 = do
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
       beaconSym = beaconCurrencySymbol
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -4395,6 +4523,133 @@ failureTest24 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
+-- | When updating a swap, move it to a non-DEX address.
+failureTest25 :: EmulatorTrace ()
+failureTest25 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      newCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 2
+      assetX = testToken1
+      assetY = (adaSymbol,adaToken)
+      [asset1,asset2] = sort [assetX,assetY]
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      newAddr = Address (ScriptCredential alwaysSucceedValidatorHash) (Just $ StakingHash newCred)
+      beaconSym = beaconCurrencySymbol
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
+      swapDatum = SwapDatum
+        { beaconId = beaconCurrencySymbol
+        , pairBeacon = pairBeacon'
+        , asset1Id = fst asset1
+        , asset1Name = snd asset1
+        , asset1Beacon = asset1Beacon'
+        , asset2Id = fst asset2
+        , asset2Name = snd asset2
+        , asset2Beacon = asset2Beacon'
+        , forwardPrice = unsafeRatio 1_000_000 1
+        , reversePrice = unsafeRatio 2 1_000_000
+        , prevInput = Nothing
+        }
+
+  (mintRef,spendRef) <- initializeScripts
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer CreateSwap 
+              , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym pairBeacon' 1
+                    <> singleton beaconSym asset1Beacon' 1
+                    <> singleton beaconSym asset2Beacon' 1
+                    <> uncurry singleton assetX 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  swap <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconSym pairBeacon' 1
+            <> singleton beaconSym asset1Beacon' 1
+            <> singleton beaconSym asset2Beacon' 1
+            <> uncurry singleton assetX 10
+            )
+            swapDatum
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [
+            ScriptUtxoInput
+              { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer CloseOrUpdate
+              , spendFromAddress = swapAddr
+              , spendUtxos = [ swap ]
+              }
+          ]
+      , outputs = 
+          [ UtxoOutput
+              { toAddress = newAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum{forwardPrice = unsafeRatio 3 1}
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym pairBeacon' 1
+                    <> singleton beaconSym asset1Beacon' 1
+                    <> singleton beaconSym asset2Beacon' 1
+                    <> uncurry singleton assetX 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
 -------------------------------------------------
 -- Benchmark Tests
 -------------------------------------------------
@@ -4412,9 +4667,9 @@ benchTest1 number = do
       assetY = (adaSymbol,adaToken)
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -4579,13 +4834,13 @@ benchTest2 number = do
         map (\(asset1,asset2) -> 
               SwapDatum 
                 { beaconId = beaconCurrencySymbol
-                , pairBeacon = genSortedPairBeaconName asset1 asset2
+                , pairBeacon = genTwoWayPairBeaconName asset1 asset2
                 , asset1Id = fst asset1
                 , asset1Name = snd asset1
-                , asset1Beacon = uncurry genOfferBeaconName asset1
+                , asset1Beacon = genAssetBeaconName asset1
                 , asset2Id = fst asset2
                 , asset2Name = snd asset2
-                , asset2Beacon = uncurry genOfferBeaconName asset2
+                , asset2Beacon = genAssetBeaconName asset2
                 , forwardPrice = unsafeRatio 1 1
                 , reversePrice = unsafeRatio 1 1
                 , prevInput = Nothing
@@ -4713,9 +4968,9 @@ benchTest3 number = do
       assetY = (adaSymbol,adaToken)
       [asset1,asset2] = sort [assetX,assetY]
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      pairBeacon' = genSortedPairBeaconName assetX assetY
-      asset1Beacon' = uncurry genOfferBeaconName asset1
-      asset2Beacon' = uncurry genOfferBeaconName asset2
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -4878,13 +5133,13 @@ benchTest4 number = do
         map (\(asset1,asset2) -> 
               SwapDatum 
                 { beaconId = beaconCurrencySymbol
-                , pairBeacon = genSortedPairBeaconName asset1 asset2
+                , pairBeacon = genTwoWayPairBeaconName asset1 asset2
                 , asset1Id = fst asset1
                 , asset1Name = snd asset1
-                , asset1Beacon = uncurry genOfferBeaconName asset1
+                , asset1Beacon = genAssetBeaconName asset1
                 , asset2Id = fst asset2
                 , asset2Name = snd asset2
-                , asset2Beacon = uncurry genOfferBeaconName asset2
+                , asset2Beacon = genAssetBeaconName asset2
                 , forwardPrice = unsafeRatio 1 1
                 , reversePrice = unsafeRatio 1 1
                 , prevInput = Nothing
@@ -5021,13 +5276,13 @@ benchTest5 number = do
         map (\(asset1,asset2) -> 
               SwapDatum 
                 { beaconId = beaconCurrencySymbol
-                , pairBeacon = genSortedPairBeaconName asset1 asset2
+                , pairBeacon = genTwoWayPairBeaconName asset1 asset2
                 , asset1Id = fst asset1
                 , asset1Name = snd asset1
-                , asset1Beacon = uncurry genOfferBeaconName asset1
+                , asset1Beacon = genAssetBeaconName asset1
                 , asset2Id = fst asset2
                 , asset2Name = snd asset2
-                , asset2Beacon = uncurry genOfferBeaconName asset2
+                , asset2Beacon = genAssetBeaconName asset2
                 , forwardPrice = unsafeRatio 1 1
                 , reversePrice = unsafeRatio 1 1
                 , prevInput = Nothing
@@ -5038,13 +5293,13 @@ benchTest5 number = do
         map (\(asset1,asset2) -> 
               SwapDatum 
                 { beaconId = beaconCurrencySymbol
-                , pairBeacon = genSortedPairBeaconName asset1 asset2
+                , pairBeacon = genTwoWayPairBeaconName asset1 asset2
                 , asset1Id = fst asset1
                 , asset1Name = snd asset1
-                , asset1Beacon = uncurry genOfferBeaconName asset1
+                , asset1Beacon = genAssetBeaconName asset1
                 , asset2Id = fst asset2
                 , asset2Name = snd asset2
-                , asset2Beacon = uncurry genOfferBeaconName asset2
+                , asset2Beacon = genAssetBeaconName asset2
                 , forwardPrice = unsafeRatio 1 1
                 , reversePrice = unsafeRatio 1 1
                 , prevInput = Nothing
@@ -5182,6 +5437,8 @@ tests = do
         assertNoFailedTransactions regressionTest7
     , checkPredicateOptions opts "regressionTest8"
         assertNoFailedTransactions regressionTest8
+    , checkPredicateOptions opts "regressionTest9"
+        assertNoFailedTransactions regressionTest9
 
       -- Failure Tests
     , checkPredicateOptions opts "failureTest1"
@@ -5232,6 +5489,8 @@ tests = do
         (assertEvaluationError "No extraneous assets can be stored in the swap UTxO") failureTest23
     , checkPredicateOptions opts "failureTest24"
         (assertEvaluationError "Staking credential did not approve") failureTest24
+    , checkPredicateOptions opts "failureTest25"
+        (assertEvaluationError "Validator returned false") failureTest25
 
       -- Benchmark tests
     , checkPredicateOptions opts "benchTest1"
@@ -5259,4 +5518,4 @@ tests = do
     ]
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig failureTest24
+testTrace = runEmulatorTraceIO' def emConfig failureTest25

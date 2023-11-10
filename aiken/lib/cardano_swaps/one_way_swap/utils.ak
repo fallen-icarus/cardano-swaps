@@ -1,3 +1,4 @@
+use aiken/bytearray
 use aiken/dict
 use aiken/hash.{Hash,Blake2b_224}
 use aiken/list
@@ -16,8 +17,6 @@ use cardano_swaps/common/types.{app_name,AssetConfig} as common_types
 use cardano_swaps/common/utils.{
   error_if_false,
   trace_if_false,
-  generate_pair_beacon,
-  generate_offer_beacon
   } as common_utils
 use cardano_swaps/one_way_swap/types.{
   SwapDatum
@@ -35,6 +34,48 @@ fn parse_datum(raw_datum: Datum) -> SwapDatum {
   }
 }
 
+// Create the asset name for the pair beacon by hashing the combination of asset1 and asset2. 
+// It uses the sha2_256 hash algorithm. It assumes the first asset is the offer asset.
+// When ADA is part of the pair, the empty bytestring is replaced so that the beacon is distinct 
+// from the offer beacon.
+pub fn generate_pair_beacon(asset1: AssetConfig, asset2: AssetConfig) -> AssetName {
+  let AssetConfig(asset1_id_,asset1_name) = asset1
+  let AssetConfig(asset2_id_,asset2_name) = asset2
+
+  let asset1_id = if asset1_id_ == #"" { #"00" } else { asset1_id_ }
+  let asset2_id = if asset2_id_ == #"" { #"00" } else { asset2_id_ }
+
+  hash.sha2_256(
+    bytearray.concat(asset1_id,asset1_name)
+    |> bytearray.concat(_,asset2_id)
+    |> bytearray.concat(_,asset2_name)
+  )
+}
+
+// Create the asset name for the beacon by hashing the combination of the policy id and asset name
+// for the asset. It uses the sha2_256 hash algorithm. The pre-hash is prefixed with "01" to keep
+// it distinct from the other beacons.
+pub fn generate_offer_beacon(policy_id: PolicyId, asset_name: AssetName) -> AssetName {
+  hash.sha2_256(
+    bytearray.concat( 
+      #"01",
+      bytearray.concat( policy_id, asset_name )
+    )
+  )
+}
+
+// Create the asset name for the beacon by hashing the combination of the policy id and asset name
+// for the asset. It uses the sha2_256 hash algorithm. The pre-hash is prefixed with "02" to keep
+// it distinct from the other beacons.
+pub fn generate_ask_beacon(policy_id: PolicyId, asset_name: AssetName) -> AssetName {
+  hash.sha2_256(
+    bytearray.concat( 
+      #"02",
+      bytearray.concat( policy_id, asset_name )
+    )
+  )
+}
+
 // This function is used for `CloseOrUpdate` and `CreateSwap`. This function should only be called
 // after the output has been checked for exactly two types of beacons.
 fn valid_swap_output(
@@ -50,7 +91,8 @@ fn valid_swap_output(
     offer_beacon_,
     ask_id_,
     ask_name_,
-    swap_price,
+    ask_beacon_,
+    swap_price_,
     _ // prev_input does not need to be check.
   ) = parse_datum(output_datum)
 
@@ -75,16 +117,22 @@ fn valid_swap_output(
     offer_beacon_ == generate_offer_beacon(offer_id_,offer_name_)
   ) &&
 
+  // The ask_beacon must be the sha2_256 hash of ask_id ++ ask_name.
+  trace_if_false( 
+    @"Wrong ask_beacon", 
+    ask_beacon_ == generate_ask_beacon(ask_id_,ask_name_)
+  ) &&
+
   // The swap_price denominator must be > 0.
   trace_if_false( 
     @"swap_price denominator not > 0", 
-    ratio.denominator(swap_price) > 0 
+    ratio.denominator(swap_price_) > 0 
   ) &&
 
   // The swap_price must be > 0.
   trace_if_false(
     @"swap_price not > 0", 
-    ratio.compare(swap_price,ratio.zero()) == Greater 
+    ratio.compare(swap_price_,ratio.zero()) == Greater 
   ) &&
 
   // The UTxO must have exactly 1 pair_beacon.
@@ -97,6 +145,12 @@ fn valid_swap_output(
   trace_if_false(
     @"UTxO does not have exactly 1 offer_beacon",
     value.quantity_of( output_value, beacon_id, offer_beacon_ ) == 1
+  ) &&
+
+  // The UTxO must have exactly 1 ask_beacon.
+  trace_if_false(
+    @"UTxO does not have exactly 1 ask_beacon",
+    value.quantity_of( output_value, beacon_id, ask_beacon_ ) == 1
   ) &&
 
   // No extraneous assets can be stored in the UTxO.
@@ -129,7 +183,7 @@ pub fn beacon_destination_check(
   outputs: List<Output>
 ) -> Bool {
   // Checks:
-  // 1) The beacons must go to an addres protected by the dApp validator script.
+  // 1) The beacons must go to an addres protected by the DApp validator script.
   // 2) The beacons must go to an address using a valid staking credential.
   // 3) The UTxOs with the beacons must have the proper value:
   //      a) Exactly two kinds of beacons: pair beacon and offer beacon.
@@ -139,13 +193,14 @@ pub fn beacon_destination_check(
   // 4) The beacons must be stored with the proper inline `SwapDatum`:
   //      a) `beacon_id` == this policy id.
   //      b) `pair_beacon` == sha2_256(offer_id ++ offer_name ++ ask_id ++ ask_name)
-  //      c) `offer_id` == asset_id of the offer asset.
-  //      d) `offer_name` == asset_name of the offer asset.
-  //      e) `offer_beacon` == sha2_256(offer_id ++ offer_name).
-  //      f) `ask_id` == asset_id of the ask asset.
-  //      g) `ask_name` == asset_name of the ask asset.
-  //      k) `swap_price` denominator > 0
-  //      l) `swap_price` > 0
+  //      c) `offer_id` == asset id of the offer asset.
+  //      d) `offer_name` == asset name of the offer asset.
+  //      e) `offer_beacon` == sha2_256("01" ++ offer_id ++ offer_name).
+  //      f) `ask_id` == asset id of the ask asset.
+  //      g) `ask_name` == asset name of the ask asset.
+  //      h) `ask_beacon` == sha2_256("02" ++ ask_id ++ ask_name)
+  //      i) `swap_price` denominator > 0
+  //      j) `swap_price` > 0
   // 5) The offer asset and the ask asset must be different assets.
 
   // A function to map over the list of outputs.
@@ -160,15 +215,15 @@ pub fn beacon_destination_check(
       // If beacons are not present, this output can be ignored.
       [] -> acc
 
-      // The UTxO has two types of beacon.
-      [(_,_),(_,_)] -> {
+      // The UTxO has three types of beacon.
+      [(_,_),(_,_),(_,_)] -> {
         // All previous outputs must be valid.
         acc &&
 
-        // The output must be at a dApp address with staking. Uses `app_name` in 
+        // The output must be at a DApp address with staking. Uses `app_name` in 
         // the error message.
         trace_if_false( 
-          concat(@"Beacon must go to a ", app_name) |> concat(_,@" dApp address with staking"),
+          concat(@"Beacon must go to a ", app_name) |> concat(_,@" DApp address with staking"),
           pay == ScriptCredential(dapp_hash) && is_some(stake)
         ) &&
 
@@ -178,7 +233,7 @@ pub fn beacon_destination_check(
 
       // This path can only be taken if the above two matches failed which means the UTxO
       // has the wrong number of beacons.
-      _ -> error @"One-way swaps must have exactly two kinds of beacons"
+      _ -> error @"One-way swaps must have exactly three kinds of beacons"
     }
   }
 
@@ -203,6 +258,7 @@ fn swap_value_diff(
   offer_beacon: AssetName,
   ask_id: PolicyId,
   ask_name: AssetName,
+  ask_beacon: AssetName,
   swap_price: Rational,
   outputs: List<Output>
 ) -> Value {
@@ -227,6 +283,7 @@ fn swap_value_diff(
             offer_beacon_,
             ask_id_,
             ask_name_,
+            ask_beacon_,
             swap_price_,
             prev_input
           ) = parse_datum(d)
@@ -275,6 +332,12 @@ fn swap_value_diff(
               ask_name == ask_name_
             )
 
+            // The ask_beacon must be the ask_beacon from the input.
+            expect True = error_if_false( 
+              @"Wrong ask_beacon", 
+              ask_beacon == ask_beacon_
+            )
+
             // The swap_price must be the swap_price from the input.
             expect True = error_if_false( 
               @"Wrong swap_price", 
@@ -298,6 +361,7 @@ fn swap_value_diff(
               offer_beacon,
               ask_id,
               ask_name,
+              ask_beacon,
               swap_price,
               rest
             )
@@ -317,6 +381,7 @@ fn swap_value_diff(
             offer_beacon,
             ask_id,
             ask_name,
+            ask_beacon,
             swap_price,
             rest
           )
@@ -336,6 +401,7 @@ fn swap_value_diff(
           offer_beacon,
           ask_id,
           ask_name,
+          ask_beacon,
           swap_price,
           rest
         )
@@ -346,7 +412,7 @@ fn swap_value_diff(
 
 // Check that only the offered asset leaves during the swap. It also checks that a swap only
 // gained the ask asset. This helps optimize the beacon querying by contraining UTxO
-// assets to just the relevant assets.
+// assets to just the relevant assets. 
 fn only_proper_assets_swapped(
   flux: Value, 
   offer_id: PolicyId, 
@@ -398,6 +464,7 @@ pub fn valid_swap(
   offer_beacon: AssetName,
   ask_id: PolicyId,
   ask_name: AssetName,
+  ask_beacon: AssetName,
   swap_price: Rational,
   outputs: List<Output>,
 ) -> Bool {
@@ -413,6 +480,7 @@ pub fn valid_swap(
     offer_beacon,
     ask_id,
     ask_name,
+    ask_beacon,
     swap_price,
     outputs
   )

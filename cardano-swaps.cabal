@@ -69,11 +69,13 @@ test-suite cardano-swaps-tests
       Test.Internal
     , Test.Config
     , Test.OneWaySwap
+    , Test.OneWaySwap.BeaconNames
     , Test.OneWaySwap.CloseOrUpdate
     , Test.OneWaySwap.CreateSwap
     , Test.OneWaySwap.Swap
     , Test.OneWaySwap.Utils
     , Test.TwoWaySwap
+    , Test.TwoWaySwap.BeaconNames
     , Test.TwoWaySwap.CloseOrUpdate
     , Test.TwoWaySwap.CreateSwap
     , Test.TwoWaySwap.Swap

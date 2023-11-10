@@ -13,7 +13,7 @@ import Plutus.Script.Utils.Value
 minUTxOSpendRef :: Integer
 minUTxOSpendRef = 26_000_000
 
--- | 19 ADA is the default. This is what the cardano-loans minting policy requires.
+-- | 16 ADA is the default. This is what the cardano-swaps minting policy requires.
 minUTxOMintRef :: Integer
 minUTxOMintRef = 16_000_000
 
@@ -25,6 +25,7 @@ data UnsafeDatum = UnsafeDatum
   , unsafeOfferBeacon :: TokenName
   , unsafeAskId :: CurrencySymbol
   , unsafeAskName :: TokenName
+  , unsafeAskBeacon :: TokenName
   , unsafeSwapPrice :: (Integer,Integer)
   , unsafePrevInput :: Maybe TxOutRef
   }
@@ -39,6 +40,7 @@ instance PlutusTx.ToData UnsafeDatum where
       , PlutusTx.toData unsafeOfferBeacon
       , PlutusTx.toData unsafeAskId
       , PlutusTx.toData unsafeAskName
+      , PlutusTx.toData unsafeAskBeacon
       , PlutusTx.toData unsafeSwapPrice
       , PlutusTx.toData unsafePrevInput
       ]

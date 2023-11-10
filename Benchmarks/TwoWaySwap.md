@@ -83,9 +83,8 @@ The maximum number of swaps that could fit in the transaction was 11.
 | 11 | 1.331820 ADA | 1.997730 ADA |
 | 12 | 1.457631 ADA | 2.186447 ADA |
 | 13 | 1.588599 ADA | 2.382899 ADA |
-| 14 | 1.722955 ADA | 2.584433 ADA |
 
-The maximum number of swaps that could fit in the transaction was 14.
+The maximum number of swaps that could fit in the transaction was 13.
 
 
 

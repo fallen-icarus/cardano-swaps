@@ -19,6 +19,11 @@ module CardanoSwaps.OneWaySwap
   , beaconMintingPolicy
   , beaconMintingPolicyHash
   , beaconCurrencySymbol
+    
+    -- * Beacon Names
+  , genOneWayPairBeaconName
+  , genOfferBeaconName
+  , genAskBeaconName
   ) where
 
 import Plutus.V2.Ledger.Api as Api
@@ -28,6 +33,7 @@ import Ledger (Script(..))
 import qualified Data.Map as Map
 import Plutus.Script.Utils.V2.Scripts
 import Data.Aeson
+import qualified PlutusTx.Prelude as Plutus
 
 import CardanoSwaps.Utils
 import CardanoSwaps.Blueprints
@@ -43,6 +49,7 @@ data SwapDatum = SwapDatum
   , offerBeacon :: TokenName
   , askId :: CurrencySymbol
   , askName :: TokenName
+  , askBeacon :: TokenName
   , swapPrice :: PlutusRational
   , prevInput :: Maybe TxOutRef
   }
@@ -57,6 +64,7 @@ instance ToJSON SwapDatum where
            , "offer_beacon" .= showTokenName offerBeacon
            , "ask_id" .= show askId
            , "ask_name" .= showTokenName askName
+           , "ask_beacon" .= showTokenName askBeacon
            , "price" .= swapPrice 
            , "prev_input" .= prevInput
            ]
@@ -101,3 +109,31 @@ beaconMintingPolicyHash = mintingPolicyHash beaconMintingPolicy
 
 beaconCurrencySymbol :: CurrencySymbol
 beaconCurrencySymbol = scriptCurrencySymbol beaconMintingPolicy
+
+-------------------------------------------------
+-- Beacon Names
+-------------------------------------------------
+-- | Generate the beacon asset name by hashing offer ++ ask.
+genOneWayPairBeaconName :: OfferAsset -> AskAsset -> TokenName
+genOneWayPairBeaconName (OfferAsset assetX) (AskAsset assetY) =
+  let [((CurrencySymbol sym1'),(TokenName name1)),((CurrencySymbol sym2'),(TokenName name2))] =
+        [assetX,assetY]
+      sym1 = 
+        if sym1' == "" 
+        then unsafeToBuiltinByteString "00" 
+        else sym1'
+      sym2 = 
+        if sym2' == "" 
+        then unsafeToBuiltinByteString "00" 
+        else sym2'
+  in TokenName $ Plutus.sha2_256 $ sym1 <> name1 <> sym2 <> name2
+
+-- | Generate the beacon asset name by hashing the offer asset policy id and name.
+genOfferBeaconName :: OfferAsset -> TokenName
+genOfferBeaconName (OfferAsset (CurrencySymbol sym,TokenName name)) =
+  TokenName $ Plutus.sha2_256 $ unsafeToBuiltinByteString "01" <> sym <> name
+
+-- | Generate the beacon asset name by hashing the ask asset policy id and name.
+genAskBeaconName :: AskAsset -> TokenName
+genAskBeaconName (AskAsset (CurrencySymbol sym,TokenName name)) =
+  TokenName $ Plutus.sha2_256 $ unsafeToBuiltinByteString "02" <> sym <> name

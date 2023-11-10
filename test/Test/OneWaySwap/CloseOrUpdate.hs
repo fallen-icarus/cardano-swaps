@@ -18,6 +18,7 @@ module Test.OneWaySwap.CloseOrUpdate
   , regressionTest6
   , regressionTest7
   , regressionTest8
+  , regressionTest9
 
     -- ** Scenarios that should fail
   , failureTest1
@@ -39,6 +40,10 @@ module Test.OneWaySwap.CloseOrUpdate
   , failureTest17
   , failureTest18
   , failureTest19
+  , failureTest20
+  , failureTest21
+  , failureTest22
+  , failureTest23
 
     -- ** Benchmark Tests
   , benchTest1
@@ -114,9 +119,9 @@ regressionTest1 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -125,6 +130,7 @@ regressionTest1 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -141,7 +147,7 @@ regressionTest1 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',1),(offerBeacon',1)]
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
               { mintWitness =
@@ -159,8 +165,9 @@ regressionTest1 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -173,8 +180,9 @@ regressionTest1 = do
 
   swap <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
-            <> singleton beaconSym pairBeacon' 1
-            <> singleton beaconSym offerBeacon' 1
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
             <> uncurry singleton offer 10
             )
             swapDatum
@@ -197,7 +205,7 @@ regressionTest1 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = [(pairBeacon',-1),(offerBeacon',-1)]
+              , mintTokens = [(pairBeacon',-1),(offerBeacon',-1),(askBeacon',-1)]
               }
           ]
       , inputs = 
@@ -227,9 +235,9 @@ regressionTest2 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -238,6 +246,7 @@ regressionTest2 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -254,7 +263,7 @@ regressionTest2 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',2),(offerBeacon',2)]
+              , mintTokens = [(pairBeacon',2),(offerBeacon',2),(askBeacon',2)]
               }
           , TokenMint 
               { mintWitness =
@@ -272,14 +281,16 @@ regressionTest2 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   , ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -310,7 +321,7 @@ regressionTest2 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = [(pairBeacon',-2),(offerBeacon',-2)]
+              , mintTokens = [(pairBeacon',-2),(offerBeacon',-2),(askBeacon',-2)]
               }
           ]
       , inputs = 
@@ -346,10 +357,12 @@ regressionTest3 = do
       assetZ = testToken2
       swapAddr1 = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred1)
       swapAddr2 = swapAddr1
-      pairBeacon1 = genUnsortedPairBeaconName offer ask
-      pairBeacon2 = genUnsortedPairBeaconName ask assetZ
-      offerBeacon1 = uncurry genOfferBeaconName offer
-      offerBeacon2 = uncurry genOfferBeaconName ask
+      pairBeacon1 = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      pairBeacon2 = genOneWayPairBeaconName (OfferAsset ask) (AskAsset assetZ)
+      offerBeacon1 = genOfferBeaconName $ OfferAsset offer
+      offerBeacon2 = genOfferBeaconName $ OfferAsset ask
+      askBeacon1 = genAskBeaconName $ AskAsset ask
+      askBeacon2 = genAskBeaconName $ AskAsset assetZ
       swapDatum1 = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon1
@@ -358,6 +371,7 @@ regressionTest3 = do
         , offerBeacon = offerBeacon1
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon1
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -369,6 +383,7 @@ regressionTest3 = do
         , offerBeacon = offerBeacon2
         , askId = fst assetZ
         , askName = snd assetZ
+        , askBeacon = askBeacon2
         , swapPrice = unsafeRatio 1 1
         , prevInput = Nothing
         }
@@ -386,8 +401,8 @@ regressionTest3 = do
                   )
               , mintRedeemer = toRedeemer CreateSwap 
               , mintTokens = 
-                  [ (pairBeacon1,1),(offerBeacon1,1)
-                  , (pairBeacon2,1),(offerBeacon2,1)
+                  [ (pairBeacon1,1),(offerBeacon1,1),(askBeacon1,1)
+                  , (pairBeacon2,1),(offerBeacon2,1),(askBeacon2,1)
                   ]
               }
           ]
@@ -401,6 +416,7 @@ regressionTest3 = do
                     , lovelaceValueOf 3_000_000 
                     <> singleton beaconCurrencySymbol pairBeacon1 1
                     <> singleton beaconCurrencySymbol offerBeacon1 1
+                    <> singleton beaconCurrencySymbol askBeacon1 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -412,6 +428,7 @@ regressionTest3 = do
                     , lovelaceValueOf 3_000_000 
                     <> singleton beaconCurrencySymbol pairBeacon2 1
                     <> singleton beaconCurrencySymbol offerBeacon2 1
+                    <> singleton beaconCurrencySymbol askBeacon2 1
                     <> uncurry singleton ask 10
                     ) 
                   ]
@@ -425,10 +442,12 @@ regressionTest3 = do
   swap1 <- txOutRefWithValue $ lovelaceValueOf 3_000_000 
                             <> singleton beaconCurrencySymbol pairBeacon1 1
                             <> singleton beaconCurrencySymbol offerBeacon1 1
+                            <> singleton beaconCurrencySymbol askBeacon1 1
                             <> uncurry singleton offer 10
   swap2 <- txOutRefWithValue $ lovelaceValueOf 3_000_000 
                             <> singleton beaconCurrencySymbol pairBeacon2 1
                             <> singleton beaconCurrencySymbol offerBeacon2 1
+                            <> singleton beaconCurrencySymbol askBeacon2 1
                             <> uncurry singleton ask 10
 
   callEndpoint @"create-transaction" h1 $
@@ -450,8 +469,8 @@ regressionTest3 = do
                   )
               , mintRedeemer = toRedeemer BurnBeacons
               , mintTokens = 
-                  [ (pairBeacon1,-1),(offerBeacon1,-1)
-                  , (pairBeacon2,-1),(offerBeacon2,-1)
+                  [ (pairBeacon1,-1),(offerBeacon1,-1),(askBeacon1,-1)
+                  , (pairBeacon2,-1),(offerBeacon2,-1),(askBeacon2,-1)
                   ]
               }
           ]
@@ -487,9 +506,9 @@ regressionTest4 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -498,6 +517,7 @@ regressionTest4 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -514,7 +534,7 @@ regressionTest4 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',1),(offerBeacon',1)]
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
               { mintWitness =
@@ -532,8 +552,9 @@ regressionTest4 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -546,8 +567,9 @@ regressionTest4 = do
 
   swap <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
-            <> singleton beaconSym pairBeacon' 1
-            <> singleton beaconSym offerBeacon' 1
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
             <> uncurry singleton offer 10
             )
             swapDatum
@@ -580,8 +602,9 @@ regressionTest4 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum{swapPrice = unsafeRatio 3 1}
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -604,9 +627,9 @@ regressionTest5 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -615,6 +638,7 @@ regressionTest5 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -631,7 +655,7 @@ regressionTest5 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',2),(offerBeacon',2)]
+              , mintTokens = [(pairBeacon',2),(offerBeacon',2),(askBeacon',2)]
               }
           , TokenMint 
               { mintWitness =
@@ -649,14 +673,16 @@ regressionTest5 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   , ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -697,14 +723,16 @@ regressionTest5 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum{swapPrice = unsafeRatio 3 1}
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   , ( Just $ TxOutDatumInline $ toDatum swapDatum{swapPrice = unsafeRatio 3 1}
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -733,10 +761,12 @@ regressionTest6 = do
       assetZ = testToken2
       swapAddr1 = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred1)
       swapAddr2 = swapAddr1
-      pairBeacon1 = genUnsortedPairBeaconName assetX assetY
-      pairBeacon2 = genUnsortedPairBeaconName assetY assetZ
-      offerBeacon1 = uncurry genOfferBeaconName assetX
-      offerBeacon2 = uncurry genOfferBeaconName assetY
+      pairBeacon1 = genOneWayPairBeaconName (OfferAsset assetX) (AskAsset assetY)
+      pairBeacon2 = genOneWayPairBeaconName (OfferAsset assetY) (AskAsset assetZ)
+      offerBeacon1 = genOfferBeaconName $ OfferAsset assetX
+      offerBeacon2 = genOfferBeaconName $ OfferAsset assetY
+      askBeacon1 = genAskBeaconName $ AskAsset assetY
+      askBeacon2 = genAskBeaconName $ AskAsset assetZ
       swapDatum1 = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon1
@@ -745,6 +775,7 @@ regressionTest6 = do
         , offerBeacon = offerBeacon1
         , askId = fst assetY
         , askName = snd assetY
+        , askBeacon = askBeacon1
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -756,6 +787,7 @@ regressionTest6 = do
         , offerBeacon = offerBeacon2
         , askId = fst assetZ
         , askName = snd assetZ
+        , askBeacon = askBeacon2
         , swapPrice = unsafeRatio 1 1
         , prevInput = Nothing
         }
@@ -773,8 +805,8 @@ regressionTest6 = do
                   )
               , mintRedeemer = toRedeemer CreateSwap 
               , mintTokens = 
-                  [ (pairBeacon1,1),(offerBeacon1,1)
-                  , (pairBeacon2,1),(offerBeacon2,1)
+                  [ (pairBeacon1,1),(offerBeacon1,1),(askBeacon1,1)
+                  , (pairBeacon2,1),(offerBeacon2,1),(askBeacon2,1)
                   ]
               }
           ]
@@ -788,6 +820,7 @@ regressionTest6 = do
                     , lovelaceValueOf 3_000_000 
                     <> singleton beaconCurrencySymbol pairBeacon1 1
                     <> singleton beaconCurrencySymbol offerBeacon1 1
+                    <> singleton beaconCurrencySymbol askBeacon1 1
                     <> uncurry singleton assetX 10
                     )
                   ]
@@ -799,6 +832,7 @@ regressionTest6 = do
                     , lovelaceValueOf 3_000_000 
                     <> singleton beaconCurrencySymbol pairBeacon2 1
                     <> singleton beaconCurrencySymbol offerBeacon2 1
+                    <> singleton beaconCurrencySymbol askBeacon2 1
                     <> uncurry singleton assetY 10
                     ) 
                   ]
@@ -812,10 +846,12 @@ regressionTest6 = do
   swap1 <- txOutRefWithValue $ lovelaceValueOf 3_000_000 
                             <> singleton beaconCurrencySymbol pairBeacon1 1
                             <> singleton beaconCurrencySymbol offerBeacon1 1
+                            <> singleton beaconCurrencySymbol askBeacon1 1
                             <> uncurry singleton assetX 10
   swap2 <- txOutRefWithValue $ lovelaceValueOf 3_000_000 
                             <> singleton beaconCurrencySymbol pairBeacon2 1
                             <> singleton beaconCurrencySymbol offerBeacon2 1
+                            <> singleton beaconCurrencySymbol askBeacon2 1
                             <> uncurry singleton assetY 10
 
   callEndpoint @"create-transaction" h1 $
@@ -855,6 +891,7 @@ regressionTest6 = do
                     , lovelaceValueOf 3_000_000 
                     <> singleton beaconCurrencySymbol pairBeacon1 1
                     <> singleton beaconCurrencySymbol offerBeacon1 1
+                    <> singleton beaconCurrencySymbol askBeacon1 1
                     <> uncurry singleton assetX 10
                     )
                   ]
@@ -866,6 +903,7 @@ regressionTest6 = do
                     , lovelaceValueOf 3_000_000 
                     <> singleton beaconCurrencySymbol pairBeacon2 1
                     <> singleton beaconCurrencySymbol offerBeacon2 1
+                    <> singleton beaconCurrencySymbol askBeacon2 1
                     <> uncurry singleton assetY 10
                     ) 
                   ]
@@ -886,9 +924,9 @@ regressionTest7 = do
       assetX = testToken1
       assetY = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon1 = genUnsortedPairBeaconName assetX assetY
-      offerBeacon1 = uncurry genOfferBeaconName assetX
+      pairBeacon1 = genOneWayPairBeaconName (OfferAsset assetX) (AskAsset assetY)
+      offerBeacon1 = genOfferBeaconName $ OfferAsset assetX
+      askBeacon1 = genAskBeaconName $ AskAsset assetY
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon1
@@ -897,6 +935,7 @@ regressionTest7 = do
         , offerBeacon = offerBeacon1
         , askId = fst assetY
         , askName = snd assetY
+        , askBeacon = askBeacon1
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -913,7 +952,7 @@ regressionTest7 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon1,1),(offerBeacon1,1)]
+              , mintTokens = [(pairBeacon1,1),(offerBeacon1,1),(askBeacon1,1)]
               }
           , TokenMint 
               { mintWitness =
@@ -931,8 +970,9 @@ regressionTest7 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon1 1
-                    <> singleton beaconSym offerBeacon1 1
+                    <> singleton beaconCurrencySymbol pairBeacon1 1
+                    <> singleton beaconCurrencySymbol offerBeacon1 1
+                    <> singleton beaconCurrencySymbol askBeacon1 1
                     <> uncurry singleton assetX 10
                     )
                   ]
@@ -945,15 +985,17 @@ regressionTest7 = do
 
   swap <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
-            <> singleton beaconSym pairBeacon1 1
-            <> singleton beaconSym offerBeacon1 1
+            <> singleton beaconCurrencySymbol pairBeacon1 1
+            <> singleton beaconCurrencySymbol offerBeacon1 1
+            <> singleton beaconCurrencySymbol askBeacon1 1
             <> uncurry singleton assetX 10
             )
             swapDatum
 
   let assetZ = testToken2
-      pairBeacon2 = genUnsortedPairBeaconName assetY assetZ
-      offerBeacon2 = uncurry genOfferBeaconName assetY
+      pairBeacon2 = genOneWayPairBeaconName (OfferAsset assetY) (AskAsset assetZ)
+      offerBeacon2 = genOfferBeaconName $ OfferAsset assetY
+      askBeacon2 = genAskBeaconName $ AskAsset assetZ
       swapDatum2 = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon2
@@ -962,6 +1004,7 @@ regressionTest7 = do
         , offerBeacon = offerBeacon2
         , askId = fst assetZ
         , askName = snd assetZ
+        , askBeacon = askBeacon2
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -985,8 +1028,8 @@ regressionTest7 = do
                   )
               , mintRedeemer = toRedeemer CreateSwap 
               , mintTokens = 
-                  [ (pairBeacon1,-1),(offerBeacon1,-1)
-                  , (pairBeacon2,1),(offerBeacon2,1)
+                  [ (pairBeacon1,-1),(offerBeacon1,-1),(askBeacon1,-1)
+                  , (pairBeacon2,1),(offerBeacon2,1),(askBeacon2,1)
                   ]
               }
           ]
@@ -1005,8 +1048,9 @@ regressionTest7 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum2
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon2 1
-                    <> singleton beaconSym offerBeacon2 1
+                    <> singleton beaconCurrencySymbol pairBeacon2 1
+                    <> singleton beaconCurrencySymbol offerBeacon2 1
+                    <> singleton beaconCurrencySymbol askBeacon2 1
                     <> uncurry singleton assetY 10
                     )
                   ]
@@ -1028,9 +1072,9 @@ regressionTest8 = do
       assetX = testToken1
       assetY = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon1 = genUnsortedPairBeaconName assetX assetY
-      offerBeacon1 = uncurry genOfferBeaconName assetX
+      pairBeacon1 = genOneWayPairBeaconName (OfferAsset assetX) (AskAsset assetY)
+      offerBeacon1 = genOfferBeaconName $ OfferAsset assetX
+      askBeacon1 = genAskBeaconName $ AskAsset assetY
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon1
@@ -1039,6 +1083,7 @@ regressionTest8 = do
         , offerBeacon = offerBeacon1
         , askId = fst assetY
         , askName = snd assetY
+        , askBeacon = askBeacon1
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -1055,7 +1100,7 @@ regressionTest8 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon1,2),(offerBeacon1,2)]
+              , mintTokens = [(pairBeacon1,2),(offerBeacon1,2),(askBeacon1,2)]
               }
           , TokenMint 
               { mintWitness =
@@ -1073,14 +1118,16 @@ regressionTest8 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon1 1
-                    <> singleton beaconSym offerBeacon1 1
+                    <> singleton beaconCurrencySymbol pairBeacon1 1
+                    <> singleton beaconCurrencySymbol offerBeacon1 1
+                    <> singleton beaconCurrencySymbol askBeacon1 1
                     <> uncurry singleton assetX 10
                     )
                   , ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon1 1
-                    <> singleton beaconSym offerBeacon1 1
+                    <> singleton beaconCurrencySymbol pairBeacon1 1
+                    <> singleton beaconCurrencySymbol offerBeacon1 1
+                    <> singleton beaconCurrencySymbol askBeacon1 1
                     <> uncurry singleton assetX 10
                     )
                   ]
@@ -1094,8 +1141,9 @@ regressionTest8 = do
   swaps <- txOutRefsAndDatumsAtAddress @SwapDatum swapAddr 
 
   let assetZ = testToken2
-      pairBeacon2 = genSortedPairBeaconName assetY assetZ
-      offerBeacon2 = uncurry genOfferBeaconName assetY
+      pairBeacon2 = genOneWayPairBeaconName (OfferAsset assetY) (AskAsset assetZ)
+      offerBeacon2 = genOfferBeaconName $ OfferAsset assetY
+      askBeacon2 = genAskBeaconName $ AskAsset assetZ
       swapDatum2 = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon2
@@ -1104,6 +1152,7 @@ regressionTest8 = do
         , offerBeacon = offerBeacon2
         , askId = fst assetZ
         , askName = snd assetZ
+        , askBeacon = askBeacon2
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -1127,8 +1176,8 @@ regressionTest8 = do
                   )
               , mintRedeemer = toRedeemer CreateSwap 
               , mintTokens = 
-                  [ (pairBeacon1,-2),(offerBeacon1,-2)
-                  , (pairBeacon2,1),(offerBeacon2,1)
+                  [ (pairBeacon1,-2),(offerBeacon1,-2),(askBeacon1,-2)
+                  , (pairBeacon2,1),(offerBeacon2,1),(askBeacon2,1)
                   ]
               }
           ]
@@ -1147,12 +1196,137 @@ regressionTest8 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum2
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon2 1
-                    <> singleton beaconSym offerBeacon2 1
+                    <> singleton beaconCurrencySymbol pairBeacon2 1
+                    <> singleton beaconCurrencySymbol offerBeacon2 1
+                    <> singleton beaconCurrencySymbol askBeacon2 1
                     <> uncurry singleton assetY 10
                     )
                   ]
               } 
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | Update a single Swap UTxO and move it to a different swap address.
+regressionTest9 :: EmulatorTrace ()
+regressionTest9 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      newCred = PubKeyCredential
+              $ unPaymentPubKeyHash
+              $ mockWalletPaymentPubKeyHash
+              $ knownWallet 2
+      offer = testToken1
+      ask = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      newAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash newCred)
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
+      swapDatum = SwapDatum
+        { beaconId = beaconCurrencySymbol
+        , pairBeacon = pairBeacon'
+        , offerId = fst offer
+        , offerName = snd offer
+        , offerBeacon = offerBeacon'
+        , askId = fst ask
+        , askName = snd ask
+        , askBeacon = askBeacon'
+        , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
+        }
+
+  (mintRef,spendRef) <- initializeScripts
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer CreateSwap 
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
+                    <> uncurry singleton offer 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  swap <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
+            <> uncurry singleton offer 10
+            )
+            swapDatum
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [
+            ScriptUtxoInput
+              { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer CloseOrUpdate
+              , spendFromAddress = swapAddr
+              , spendUtxos = [ swap ]
+              }
+          ]
+      , outputs = 
+          [ UtxoOutput
+              { toAddress = newAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum{swapPrice = unsafeRatio 3 1}
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
+                    <> uncurry singleton offer 10
+                    )
+                  ]
+              }
           ]
       , validityRange = ValidityInterval Nothing Nothing
       }
@@ -1172,9 +1346,9 @@ failureTest1 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -1183,6 +1357,7 @@ failureTest1 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -1199,7 +1374,7 @@ failureTest1 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',1),(offerBeacon',1)]
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
               { mintWitness =
@@ -1217,8 +1392,9 @@ failureTest1 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -1231,8 +1407,9 @@ failureTest1 = do
 
   swap <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
-            <> singleton beaconSym pairBeacon' 1
-            <> singleton beaconSym offerBeacon' 1
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
             <> uncurry singleton offer 10
             )
             swapDatum
@@ -1255,7 +1432,7 @@ failureTest1 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = [(pairBeacon',0),(offerBeacon',-1)]
+              , mintTokens = [(pairBeacon',0),(offerBeacon',-1),(askBeacon',-1)]
               }
           ]
       , inputs = 
@@ -1283,9 +1460,9 @@ failureTest2 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -1294,6 +1471,7 @@ failureTest2 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -1310,7 +1488,7 @@ failureTest2 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',1),(offerBeacon',1)]
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
               { mintWitness =
@@ -1328,8 +1506,9 @@ failureTest2 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -1342,8 +1521,9 @@ failureTest2 = do
 
   swap <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
-            <> singleton beaconSym pairBeacon' 1
-            <> singleton beaconSym offerBeacon' 1
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
             <> uncurry singleton offer 10
             )
             swapDatum
@@ -1366,7 +1546,121 @@ failureTest2 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = [(pairBeacon',-1),(offerBeacon',0)]
+              , mintTokens = [(pairBeacon',-1),(offerBeacon',0),(askBeacon',-1)]
+              }
+          ]
+      , inputs = 
+          [
+            ScriptUtxoInput
+              { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer CloseOrUpdate
+              , spendFromAddress = swapAddr
+              , spendUtxos = [ swap ]
+              }
+          ]
+      , outputs = [ ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | When closing a single swap UTxO, withdraw the ask beacon.
+failureTest3 :: EmulatorTrace ()
+failureTest3 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offer = testToken1
+      ask = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
+      swapDatum = SwapDatum
+        { beaconId = beaconCurrencySymbol
+        , pairBeacon = pairBeacon'
+        , offerId = fst offer
+        , offerName = snd offer
+        , offerBeacon = offerBeacon'
+        , askId = fst ask
+        , askName = snd ask
+        , askBeacon = askBeacon'
+        , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
+        }
+
+  (mintRef,spendRef) <- initializeScripts
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer CreateSwap 
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
+                    <> uncurry singleton offer 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  swap <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
+            <> uncurry singleton offer 10
+            )
+            swapDatum
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          , TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer BurnBeacons
+              , mintTokens = [(pairBeacon',-1),(offerBeacon',-1),(askBeacon',0)]
               }
           ]
       , inputs = 
@@ -1383,8 +1677,8 @@ failureTest2 = do
       }
 
 -- | When closing a single swap UTxO, mint a non-beacon asset with the minting policy.
-failureTest3 :: EmulatorTrace ()
-failureTest3 = do
+failureTest4 :: EmulatorTrace ()
+failureTest4 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let sellerCred = PubKeyCredential
@@ -1394,9 +1688,9 @@ failureTest3 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -1405,6 +1699,7 @@ failureTest3 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -1421,7 +1716,7 @@ failureTest3 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',1),(offerBeacon',1)]
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
               { mintWitness =
@@ -1439,8 +1734,9 @@ failureTest3 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -1453,8 +1749,9 @@ failureTest3 = do
 
   swap <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
-            <> singleton beaconSym pairBeacon' 1
-            <> singleton beaconSym offerBeacon' 1
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
             <> uncurry singleton offer 10
             )
             swapDatum
@@ -1477,7 +1774,7 @@ failureTest3 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = [(pairBeacon',-1),(offerBeacon',-1),("other",1)]
+              , mintTokens = [(pairBeacon',-1),(offerBeacon',-1),(askBeacon',-1),("other",1)]
               }
           ]
       , inputs = 
@@ -1494,8 +1791,8 @@ failureTest3 = do
       }
 
 -- | When updating a single swap, the new price is negative.
-failureTest4 :: EmulatorTrace ()
-failureTest4 = do
+failureTest5 :: EmulatorTrace ()
+failureTest5 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let sellerCred = PubKeyCredential
@@ -1505,9 +1802,9 @@ failureTest4 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -1516,6 +1813,7 @@ failureTest4 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -1532,7 +1830,7 @@ failureTest4 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',1),(offerBeacon',1)]
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
               { mintWitness =
@@ -1550,8 +1848,9 @@ failureTest4 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -1564,8 +1863,9 @@ failureTest4 = do
 
   swap <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
-            <> singleton beaconSym pairBeacon' 1
-            <> singleton beaconSym offerBeacon' 1
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
             <> uncurry singleton offer 10
             )
             swapDatum
@@ -1598,8 +1898,9 @@ failureTest4 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum{swapPrice = unsafeRatio (-1) 1}
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -1609,8 +1910,8 @@ failureTest4 = do
       }
 
 -- | When updating a single swap, the new price is zero.
-failureTest5 :: EmulatorTrace ()
-failureTest5 = do
+failureTest6 :: EmulatorTrace ()
+failureTest6 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let sellerCred = PubKeyCredential
@@ -1620,9 +1921,9 @@ failureTest5 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -1631,6 +1932,7 @@ failureTest5 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -1647,7 +1949,7 @@ failureTest5 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',1),(offerBeacon',1)]
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
               { mintWitness =
@@ -1665,8 +1967,9 @@ failureTest5 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -1679,8 +1982,9 @@ failureTest5 = do
 
   swap <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
-            <> singleton beaconSym pairBeacon' 1
-            <> singleton beaconSym offerBeacon' 1
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
             <> uncurry singleton offer 10
             )
             swapDatum
@@ -1713,8 +2017,9 @@ failureTest5 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum{swapPrice = unsafeRatio 0 1}
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -1724,8 +2029,8 @@ failureTest5 = do
       }
 
 -- | When updating a single swap, the new price has a zero denominator.
-failureTest6 :: EmulatorTrace ()
-failureTest6 = do
+failureTest7 :: EmulatorTrace ()
+failureTest7 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let sellerCred = PubKeyCredential
@@ -1735,9 +2040,9 @@ failureTest6 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -1746,6 +2051,7 @@ failureTest6 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -1762,7 +2068,7 @@ failureTest6 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',1),(offerBeacon',1)]
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
               { mintWitness =
@@ -1780,8 +2086,9 @@ failureTest6 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -1794,8 +2101,9 @@ failureTest6 = do
 
   swap <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
-            <> singleton beaconSym pairBeacon' 1
-            <> singleton beaconSym offerBeacon' 1
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
             <> uncurry singleton offer 10
             )
             swapDatum
@@ -1808,6 +2116,7 @@ failureTest6 = do
         , unsafeOfferBeacon = offerBeacon'
         , unsafeAskId = fst ask
         , unsafeAskName = snd ask
+        , unsafeAskBeacon = askBeacon'
         , unsafeSwapPrice = (1,0)
         , unsafePrevInput = Nothing
         }
@@ -1840,8 +2149,9 @@ failureTest6 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum newDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -1851,8 +2161,8 @@ failureTest6 = do
       }
 
 -- | When updating a single swap, the new price has a negative denominator.
-failureTest7 :: EmulatorTrace ()
-failureTest7 = do
+failureTest8 :: EmulatorTrace ()
+failureTest8 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let sellerCred = PubKeyCredential
@@ -1862,9 +2172,9 @@ failureTest7 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -1873,6 +2183,7 @@ failureTest7 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -1889,7 +2200,7 @@ failureTest7 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',1),(offerBeacon',1)]
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
               { mintWitness =
@@ -1907,8 +2218,9 @@ failureTest7 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -1921,8 +2233,9 @@ failureTest7 = do
 
   swap <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
-            <> singleton beaconSym pairBeacon' 1
-            <> singleton beaconSym offerBeacon' 1
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
             <> uncurry singleton offer 10
             )
             swapDatum
@@ -1935,6 +2248,7 @@ failureTest7 = do
         , unsafeOfferBeacon = offerBeacon'
         , unsafeAskId = fst ask
         , unsafeAskName = snd ask
+        , unsafeAskBeacon = askBeacon'
         , unsafeSwapPrice = (1,-1)
         , unsafePrevInput = Nothing
         }
@@ -1967,8 +2281,9 @@ failureTest7 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum newDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -1978,8 +2293,8 @@ failureTest7 = do
       }
 
 -- | When updating mulitple swaps for the same trading pair, group the beacons into a single UTxO.
-failureTest8 :: EmulatorTrace ()
-failureTest8 = do
+failureTest9 :: EmulatorTrace ()
+failureTest9 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let sellerCred = PubKeyCredential
@@ -1989,9 +2304,9 @@ failureTest8 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -2000,6 +2315,7 @@ failureTest8 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -2016,7 +2332,7 @@ failureTest8 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',2),(offerBeacon',2)]
+              , mintTokens = [(pairBeacon',2),(offerBeacon',2),(askBeacon',2)]
               }
           , TokenMint 
               { mintWitness =
@@ -2034,14 +2350,16 @@ failureTest8 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   , ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -2082,8 +2400,9 @@ failureTest8 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum{swapPrice = unsafeRatio 3 1}
                     , lovelaceValueOf 6_000_000 
-                    <> singleton beaconSym pairBeacon' 2
-                    <> singleton beaconSym offerBeacon' 2
+                    <> singleton beaconCurrencySymbol pairBeacon' 2
+                    <> singleton beaconCurrencySymbol offerBeacon' 2
+                    <> singleton beaconCurrencySymbol askBeacon' 2
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -2093,165 +2412,6 @@ failureTest8 = do
       }
 
 -- | When updating mulitple swaps for different trading pairs, mix up the pair beacons.
-failureTest9 :: EmulatorTrace ()
-failureTest9 = do
-  h1 <- activateContractWallet (knownWallet 1) endpoints
-
-  let sellerCred1 = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 1
-      sellerCred2 = PubKeyCredential
-                 $ unPaymentPubKeyHash 
-                 $ mockWalletPaymentPubKeyHash 
-                 $ knownWallet 3
-      assetX = (adaSymbol,adaToken)
-      assetY = testToken1
-      assetZ = testToken2
-      swapAddr1 = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred1)
-      swapAddr2 = swapAddr1
-      pairBeacon1 = genUnsortedPairBeaconName assetX assetY
-      pairBeacon2 = genUnsortedPairBeaconName assetY assetZ
-      offerBeacon1 = uncurry genOfferBeaconName assetX
-      offerBeacon2 = uncurry genOfferBeaconName assetY
-      swapDatum1 = SwapDatum
-        { beaconId = beaconCurrencySymbol
-        , pairBeacon = pairBeacon1
-        , offerId = fst assetX
-        , offerName = snd assetX
-        , offerBeacon = offerBeacon1
-        , askId = fst assetY
-        , askName = snd assetY
-        , swapPrice = unsafeRatio 1_000_000 1
-        , prevInput = Nothing
-        }
-      swapDatum2 = SwapDatum
-        { beaconId = beaconCurrencySymbol
-        , pairBeacon = pairBeacon2
-        , offerId = fst assetY
-        , offerName = snd assetY
-        , offerBeacon = offerBeacon2
-        , askId = fst assetZ
-        , askName = snd assetZ
-        , swapPrice = unsafeRatio 1 1
-        , prevInput = Nothing
-        }
-  
-  ( mintRef, spendRef ) <- initializeScripts
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness = 
-                  ( beaconMintingPolicy
-                  , Just (refScriptAddress, mintRef)
-                  )
-              , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = 
-                  [ (pairBeacon1,1),(offerBeacon1,1)
-                  , (pairBeacon2,1),(offerBeacon2,1)
-                  ]
-              }
-          ]
-      , inputs = []
-      , outputs =
-          [ 
-            UtxoOutput
-              { toAddress = swapAddr1
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum1
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol pairBeacon1 1
-                    <> singleton beaconCurrencySymbol offerBeacon1 1
-                    <> uncurry singleton assetX 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = swapAddr2
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum2
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol pairBeacon2 1
-                    <> singleton beaconCurrencySymbol offerBeacon2 1
-                    <> uncurry singleton assetY 10
-                    ) 
-                  ]
-              }
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
-  void $ waitNSlots 2
-
-  swap1 <- txOutRefWithValue $ lovelaceValueOf 3_000_000 
-                            <> singleton beaconCurrencySymbol pairBeacon1 1
-                            <> singleton beaconCurrencySymbol offerBeacon1 1
-                            <> uncurry singleton assetX 10
-  swap2 <- txOutRefWithValue $ lovelaceValueOf 3_000_000 
-                            <> singleton beaconCurrencySymbol pairBeacon2 1
-                            <> singleton beaconCurrencySymbol offerBeacon2 1
-                            <> uncurry singleton assetY 10
-
-  callEndpoint @"create-transaction" h1 $
-    CreateTransactionParams
-      { tokens = 
-          [ 
-            TokenMint 
-              { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
-                  )
-              , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
-              }
-          ]
-      , inputs = 
-          [
-            ScriptUtxoInput
-              { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer CloseOrUpdate
-              , spendFromAddress = swapAddr1
-              , spendUtxos = [ swap1 ]
-              }
-          , ScriptUtxoInput
-              { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer CloseOrUpdate
-              , spendFromAddress = swapAddr2
-              , spendUtxos = [ swap2 ]
-              }
-          ]
-      , outputs = 
-          [ 
-            UtxoOutput
-              { toAddress = swapAddr1
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum1{swapPrice = unsafeRatio 3 1}
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol pairBeacon2 1
-                    <> singleton beaconCurrencySymbol offerBeacon1 1
-                    <> uncurry singleton assetX 10
-                    )
-                  ]
-              }
-          , UtxoOutput
-              { toAddress = swapAddr2
-              , outputUtxos =
-                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum2{swapPrice = unsafeRatio 3 1}
-                    , lovelaceValueOf 3_000_000 
-                    <> singleton beaconCurrencySymbol pairBeacon1 1
-                    <> singleton beaconCurrencySymbol offerBeacon2 1
-                    <> uncurry singleton assetY 10
-                    ) 
-                  ]
-              } 
-          ]
-      , validityRange = ValidityInterval Nothing Nothing
-      }
-
--- | When updating mulitple swaps for different trading pairs, mix up the offer beacons.
 failureTest10 :: EmulatorTrace ()
 failureTest10 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -2269,10 +2429,12 @@ failureTest10 = do
       assetZ = testToken2
       swapAddr1 = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred1)
       swapAddr2 = swapAddr1
-      pairBeacon1 = genUnsortedPairBeaconName assetX assetY
-      pairBeacon2 = genUnsortedPairBeaconName assetY assetZ
-      offerBeacon1 = uncurry genOfferBeaconName assetX
-      offerBeacon2 = uncurry genOfferBeaconName assetY
+      pairBeacon1 = genOneWayPairBeaconName (OfferAsset assetX) (AskAsset assetY)
+      pairBeacon2 = genOneWayPairBeaconName (OfferAsset assetY) (AskAsset assetZ)
+      offerBeacon1 = genOfferBeaconName $ OfferAsset assetX
+      offerBeacon2 = genOfferBeaconName $ OfferAsset assetY
+      askBeacon1 = genAskBeaconName $ AskAsset assetY
+      askBeacon2 = genAskBeaconName $ AskAsset assetZ
       swapDatum1 = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon1
@@ -2281,6 +2443,7 @@ failureTest10 = do
         , offerBeacon = offerBeacon1
         , askId = fst assetY
         , askName = snd assetY
+        , askBeacon = askBeacon1
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -2292,6 +2455,7 @@ failureTest10 = do
         , offerBeacon = offerBeacon2
         , askId = fst assetZ
         , askName = snd assetZ
+        , askBeacon = askBeacon2
         , swapPrice = unsafeRatio 1 1
         , prevInput = Nothing
         }
@@ -2309,8 +2473,8 @@ failureTest10 = do
                   )
               , mintRedeemer = toRedeemer CreateSwap 
               , mintTokens = 
-                  [ (pairBeacon1,1),(offerBeacon1,1)
-                  , (pairBeacon2,1),(offerBeacon2,1)
+                  [ (pairBeacon1,1),(offerBeacon1,1),(askBeacon1,1)
+                  , (pairBeacon2,1),(offerBeacon2,1),(askBeacon2,1)
                   ]
               }
           ]
@@ -2324,6 +2488,7 @@ failureTest10 = do
                     , lovelaceValueOf 3_000_000 
                     <> singleton beaconCurrencySymbol pairBeacon1 1
                     <> singleton beaconCurrencySymbol offerBeacon1 1
+                    <> singleton beaconCurrencySymbol askBeacon1 1
                     <> uncurry singleton assetX 10
                     )
                   ]
@@ -2335,6 +2500,7 @@ failureTest10 = do
                     , lovelaceValueOf 3_000_000 
                     <> singleton beaconCurrencySymbol pairBeacon2 1
                     <> singleton beaconCurrencySymbol offerBeacon2 1
+                    <> singleton beaconCurrencySymbol askBeacon2 1
                     <> uncurry singleton assetY 10
                     ) 
                   ]
@@ -2348,10 +2514,181 @@ failureTest10 = do
   swap1 <- txOutRefWithValue $ lovelaceValueOf 3_000_000 
                             <> singleton beaconCurrencySymbol pairBeacon1 1
                             <> singleton beaconCurrencySymbol offerBeacon1 1
+                            <> singleton beaconCurrencySymbol askBeacon1 1
                             <> uncurry singleton assetX 10
   swap2 <- txOutRefWithValue $ lovelaceValueOf 3_000_000 
                             <> singleton beaconCurrencySymbol pairBeacon2 1
                             <> singleton beaconCurrencySymbol offerBeacon2 1
+                            <> singleton beaconCurrencySymbol askBeacon2 1
+                            <> uncurry singleton assetY 10
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [
+            ScriptUtxoInput
+              { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer CloseOrUpdate
+              , spendFromAddress = swapAddr1
+              , spendUtxos = [ swap1 ]
+              }
+          , ScriptUtxoInput
+              { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer CloseOrUpdate
+              , spendFromAddress = swapAddr2
+              , spendUtxos = [ swap2 ]
+              }
+          ]
+      , outputs = 
+          [ 
+            UtxoOutput
+              { toAddress = swapAddr1
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum1{swapPrice = unsafeRatio 3 1}
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol pairBeacon2 1
+                    <> singleton beaconCurrencySymbol offerBeacon1 1
+                    <> singleton beaconCurrencySymbol askBeacon1 1
+                    <> uncurry singleton assetX 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = swapAddr2
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum2{swapPrice = unsafeRatio 3 1}
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol pairBeacon1 1
+                    <> singleton beaconCurrencySymbol offerBeacon2 1
+                    <> singleton beaconCurrencySymbol askBeacon2 1
+                    <> uncurry singleton assetY 10
+                    ) 
+                  ]
+              } 
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | When updating mulitple swaps for different trading pairs, mix up the offer beacons.
+failureTest11 :: EmulatorTrace ()
+failureTest11 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred1 = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      sellerCred2 = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 3
+      assetX = (adaSymbol,adaToken)
+      assetY = testToken1
+      assetZ = testToken2
+      swapAddr1 = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred1)
+      swapAddr2 = swapAddr1
+      pairBeacon1 = genOneWayPairBeaconName (OfferAsset assetX) (AskAsset assetY)
+      pairBeacon2 = genOneWayPairBeaconName (OfferAsset assetY) (AskAsset assetZ)
+      offerBeacon1 = genOfferBeaconName $ OfferAsset assetX
+      offerBeacon2 = genOfferBeaconName $ OfferAsset assetY
+      askBeacon1 = genAskBeaconName $ AskAsset assetY
+      askBeacon2 = genAskBeaconName $ AskAsset assetZ
+      swapDatum1 = SwapDatum
+        { beaconId = beaconCurrencySymbol
+        , pairBeacon = pairBeacon1
+        , offerId = fst assetX
+        , offerName = snd assetX
+        , offerBeacon = offerBeacon1
+        , askId = fst assetY
+        , askName = snd assetY
+        , askBeacon = askBeacon1
+        , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
+        }
+      swapDatum2 = SwapDatum
+        { beaconId = beaconCurrencySymbol
+        , pairBeacon = pairBeacon2
+        , offerId = fst assetY
+        , offerName = snd assetY
+        , offerBeacon = offerBeacon2
+        , askId = fst assetZ
+        , askName = snd assetZ
+        , askBeacon = askBeacon2
+        , swapPrice = unsafeRatio 1 1
+        , prevInput = Nothing
+        }
+  
+  ( mintRef, spendRef ) <- initializeScripts
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer CreateSwap 
+              , mintTokens = 
+                  [ (pairBeacon1,1),(offerBeacon1,1),(askBeacon1,1)
+                  , (pairBeacon2,1),(offerBeacon2,1),(askBeacon2,1)
+                  ]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ 
+            UtxoOutput
+              { toAddress = swapAddr1
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum1
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol pairBeacon1 1
+                    <> singleton beaconCurrencySymbol offerBeacon1 1
+                    <> singleton beaconCurrencySymbol askBeacon1 1
+                    <> uncurry singleton assetX 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = swapAddr2
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum2
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol pairBeacon2 1
+                    <> singleton beaconCurrencySymbol offerBeacon2 1
+                    <> singleton beaconCurrencySymbol askBeacon2 1
+                    <> uncurry singleton assetY 10
+                    ) 
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  swap1 <- txOutRefWithValue $ lovelaceValueOf 3_000_000 
+                            <> singleton beaconCurrencySymbol pairBeacon1 1
+                            <> singleton beaconCurrencySymbol offerBeacon1 1
+                            <> singleton beaconCurrencySymbol askBeacon1 1
+                            <> uncurry singleton assetX 10
+  swap2 <- txOutRefWithValue $ lovelaceValueOf 3_000_000 
+                            <> singleton beaconCurrencySymbol pairBeacon2 1
+                            <> singleton beaconCurrencySymbol offerBeacon2 1
+                            <> singleton beaconCurrencySymbol askBeacon2 1
                             <> uncurry singleton assetY 10
 
   callEndpoint @"create-transaction" h1 $
@@ -2391,6 +2728,7 @@ failureTest10 = do
                     , lovelaceValueOf 3_000_000 
                     <> singleton beaconCurrencySymbol pairBeacon1 1
                     <> singleton beaconCurrencySymbol offerBeacon2 1
+                    <> singleton beaconCurrencySymbol askBeacon1 1
                     <> uncurry singleton assetX 10
                     )
                   ]
@@ -2402,6 +2740,176 @@ failureTest10 = do
                     , lovelaceValueOf 3_000_000 
                     <> singleton beaconCurrencySymbol pairBeacon2 1
                     <> singleton beaconCurrencySymbol offerBeacon1 1
+                    <> singleton beaconCurrencySymbol askBeacon2 1
+                    <> uncurry singleton assetY 10
+                    ) 
+                  ]
+              } 
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | When updating mulitple swaps for different trading pairs, mix up the ask beacons.
+failureTest12 :: EmulatorTrace ()
+failureTest12 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred1 = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      sellerCred2 = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 3
+      assetX = (adaSymbol,adaToken)
+      assetY = testToken1
+      assetZ = testToken2
+      swapAddr1 = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred1)
+      swapAddr2 = swapAddr1
+      pairBeacon1 = genOneWayPairBeaconName (OfferAsset assetX) (AskAsset assetY)
+      pairBeacon2 = genOneWayPairBeaconName (OfferAsset assetY) (AskAsset assetZ)
+      offerBeacon1 = genOfferBeaconName $ OfferAsset assetX
+      offerBeacon2 = genOfferBeaconName $ OfferAsset assetY
+      askBeacon1 = genAskBeaconName $ AskAsset assetY
+      askBeacon2 = genAskBeaconName $ AskAsset assetZ
+      swapDatum1 = SwapDatum
+        { beaconId = beaconCurrencySymbol
+        , pairBeacon = pairBeacon1
+        , offerId = fst assetX
+        , offerName = snd assetX
+        , offerBeacon = offerBeacon1
+        , askId = fst assetY
+        , askName = snd assetY
+        , askBeacon = askBeacon1
+        , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
+        }
+      swapDatum2 = SwapDatum
+        { beaconId = beaconCurrencySymbol
+        , pairBeacon = pairBeacon2
+        , offerId = fst assetY
+        , offerName = snd assetY
+        , offerBeacon = offerBeacon2
+        , askId = fst assetZ
+        , askName = snd assetZ
+        , askBeacon = askBeacon2
+        , swapPrice = unsafeRatio 1 1
+        , prevInput = Nothing
+        }
+  
+  ( mintRef, spendRef ) <- initializeScripts
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer CreateSwap 
+              , mintTokens = 
+                  [ (pairBeacon1,1),(offerBeacon1,1),(askBeacon1,1)
+                  , (pairBeacon2,1),(offerBeacon2,1),(askBeacon2,1)
+                  ]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ 
+            UtxoOutput
+              { toAddress = swapAddr1
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum1
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol pairBeacon1 1
+                    <> singleton beaconCurrencySymbol offerBeacon1 1
+                    <> singleton beaconCurrencySymbol askBeacon1 1
+                    <> uncurry singleton assetX 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = swapAddr2
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum2
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol pairBeacon2 1
+                    <> singleton beaconCurrencySymbol offerBeacon2 1
+                    <> singleton beaconCurrencySymbol askBeacon2 1
+                    <> uncurry singleton assetY 10
+                    ) 
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  swap1 <- txOutRefWithValue $ lovelaceValueOf 3_000_000 
+                            <> singleton beaconCurrencySymbol pairBeacon1 1
+                            <> singleton beaconCurrencySymbol offerBeacon1 1
+                            <> singleton beaconCurrencySymbol askBeacon1 1
+                            <> uncurry singleton assetX 10
+  swap2 <- txOutRefWithValue $ lovelaceValueOf 3_000_000 
+                            <> singleton beaconCurrencySymbol pairBeacon2 1
+                            <> singleton beaconCurrencySymbol offerBeacon2 1
+                            <> singleton beaconCurrencySymbol askBeacon2 1
+                            <> uncurry singleton assetY 10
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [
+            ScriptUtxoInput
+              { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer CloseOrUpdate
+              , spendFromAddress = swapAddr1
+              , spendUtxos = [ swap1 ]
+              }
+          , ScriptUtxoInput
+              { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer CloseOrUpdate
+              , spendFromAddress = swapAddr2
+              , spendUtxos = [ swap2 ]
+              }
+          ]
+      , outputs = 
+          [ 
+            UtxoOutput
+              { toAddress = swapAddr1
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum1{swapPrice = unsafeRatio 3 1}
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol pairBeacon1 1
+                    <> singleton beaconCurrencySymbol offerBeacon1 1
+                    <> singleton beaconCurrencySymbol askBeacon2 1
+                    <> uncurry singleton assetX 10
+                    )
+                  ]
+              }
+          , UtxoOutput
+              { toAddress = swapAddr2
+              , outputUtxos =
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum2{swapPrice = unsafeRatio 3 1}
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol pairBeacon2 1
+                    <> singleton beaconCurrencySymbol offerBeacon2 1
+                    <> singleton beaconCurrencySymbol askBeacon1 1
                     <> uncurry singleton assetY 10
                     ) 
                   ]
@@ -2411,8 +2919,8 @@ failureTest10 = do
       }
 
 -- | When updating a single swap, the beaconId is changed.
-failureTest11 :: EmulatorTrace ()
-failureTest11 = do
+failureTest13 :: EmulatorTrace ()
+failureTest13 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let sellerCred = PubKeyCredential
@@ -2422,9 +2930,9 @@ failureTest11 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -2433,6 +2941,7 @@ failureTest11 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -2449,7 +2958,7 @@ failureTest11 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',1),(offerBeacon',1)]
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
               { mintWitness =
@@ -2467,8 +2976,9 @@ failureTest11 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -2481,8 +2991,9 @@ failureTest11 = do
 
   swap <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
-            <> singleton beaconSym pairBeacon' 1
-            <> singleton beaconSym offerBeacon' 1
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
             <> uncurry singleton offer 10
             )
             swapDatum
@@ -2518,8 +3029,9 @@ failureTest11 = do
                                               , beaconId = ""
                                               }
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -2529,8 +3041,8 @@ failureTest11 = do
       }
 
 -- | When updating a single swap, the pairBeacon is changed.
-failureTest12 :: EmulatorTrace ()
-failureTest12 = do
+failureTest14 :: EmulatorTrace ()
+failureTest14 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let sellerCred = PubKeyCredential
@@ -2540,9 +3052,9 @@ failureTest12 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -2551,6 +3063,7 @@ failureTest12 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -2567,7 +3080,7 @@ failureTest12 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',1),(offerBeacon',1)]
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
               { mintWitness =
@@ -2585,8 +3098,9 @@ failureTest12 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -2599,8 +3113,9 @@ failureTest12 = do
 
   swap <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
-            <> singleton beaconSym pairBeacon' 1
-            <> singleton beaconSym offerBeacon' 1
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
             <> uncurry singleton offer 10
             )
             swapDatum
@@ -2636,8 +3151,9 @@ failureTest12 = do
                                               , pairBeacon = ""
                                               }
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -2647,8 +3163,8 @@ failureTest12 = do
       }
 
 -- | When updating a single swap, the offerId is changed.
-failureTest13 :: EmulatorTrace ()
-failureTest13 = do
+failureTest15 :: EmulatorTrace ()
+failureTest15 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let sellerCred = PubKeyCredential
@@ -2658,9 +3174,9 @@ failureTest13 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -2669,6 +3185,7 @@ failureTest13 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -2685,7 +3202,7 @@ failureTest13 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',1),(offerBeacon',1)]
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
               { mintWitness =
@@ -2703,8 +3220,9 @@ failureTest13 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -2717,8 +3235,9 @@ failureTest13 = do
 
   swap <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
-            <> singleton beaconSym pairBeacon' 1
-            <> singleton beaconSym offerBeacon' 1
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
             <> uncurry singleton offer 10
             )
             swapDatum
@@ -2754,8 +3273,9 @@ failureTest13 = do
                                               , offerId = ""
                                               }
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -2765,8 +3285,8 @@ failureTest13 = do
       }
 
 -- | When updating a single swap, the offerName is changed.
-failureTest14 :: EmulatorTrace ()
-failureTest14 = do
+failureTest16 :: EmulatorTrace ()
+failureTest16 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let sellerCred = PubKeyCredential
@@ -2776,9 +3296,9 @@ failureTest14 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -2787,6 +3307,7 @@ failureTest14 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -2803,7 +3324,7 @@ failureTest14 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',1),(offerBeacon',1)]
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
               { mintWitness =
@@ -2821,8 +3342,9 @@ failureTest14 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -2835,8 +3357,9 @@ failureTest14 = do
 
   swap <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
-            <> singleton beaconSym pairBeacon' 1
-            <> singleton beaconSym offerBeacon' 1
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
             <> uncurry singleton offer 10
             )
             swapDatum
@@ -2872,8 +3395,9 @@ failureTest14 = do
                                               , offerName = ""
                                               }
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -2883,8 +3407,8 @@ failureTest14 = do
       }
 
 -- | When updating a single swap, the offerBeacon is changed.
-failureTest15 :: EmulatorTrace ()
-failureTest15 = do
+failureTest17 :: EmulatorTrace ()
+failureTest17 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let sellerCred = PubKeyCredential
@@ -2894,9 +3418,9 @@ failureTest15 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -2905,6 +3429,7 @@ failureTest15 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -2921,7 +3446,7 @@ failureTest15 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',1),(offerBeacon',1)]
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
               { mintWitness =
@@ -2939,8 +3464,9 @@ failureTest15 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -2953,8 +3479,9 @@ failureTest15 = do
 
   swap <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
-            <> singleton beaconSym pairBeacon' 1
-            <> singleton beaconSym offerBeacon' 1
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
             <> uncurry singleton offer 10
             )
             swapDatum
@@ -2990,8 +3517,9 @@ failureTest15 = do
                                               , offerBeacon = ""
                                               }
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -3001,8 +3529,8 @@ failureTest15 = do
       }
 
 -- | When updating a single swap, the askId is changed.
-failureTest16 :: EmulatorTrace ()
-failureTest16 = do
+failureTest18 :: EmulatorTrace ()
+failureTest18 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let sellerCred = PubKeyCredential
@@ -3012,9 +3540,9 @@ failureTest16 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -3023,6 +3551,7 @@ failureTest16 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -3039,7 +3568,7 @@ failureTest16 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',1),(offerBeacon',1)]
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
               { mintWitness =
@@ -3057,8 +3586,9 @@ failureTest16 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -3071,8 +3601,9 @@ failureTest16 = do
 
   swap <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
-            <> singleton beaconSym pairBeacon' 1
-            <> singleton beaconSym offerBeacon' 1
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
             <> uncurry singleton offer 10
             )
             swapDatum
@@ -3108,8 +3639,9 @@ failureTest16 = do
                                               , askId = fst offer
                                               }
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -3119,8 +3651,8 @@ failureTest16 = do
       }
 
 -- | When updating a single swap, the askName is changed.
-failureTest17 :: EmulatorTrace ()
-failureTest17 = do
+failureTest19 :: EmulatorTrace ()
+failureTest19 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let sellerCred = PubKeyCredential
@@ -3130,9 +3662,9 @@ failureTest17 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -3141,6 +3673,7 @@ failureTest17 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -3157,7 +3690,7 @@ failureTest17 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',1),(offerBeacon',1)]
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
               { mintWitness =
@@ -3175,8 +3708,9 @@ failureTest17 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -3189,8 +3723,9 @@ failureTest17 = do
 
   swap <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
-            <> singleton beaconSym pairBeacon' 1
-            <> singleton beaconSym offerBeacon' 1
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
             <> uncurry singleton offer 10
             )
             swapDatum
@@ -3226,8 +3761,9 @@ failureTest17 = do
                                               , askName = snd offer
                                               }
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -3236,9 +3772,9 @@ failureTest17 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
--- | When updating a single swap, store an extraneous asset in the swap.
-failureTest18 :: EmulatorTrace ()
-failureTest18 = do
+-- | When updating a single swap, the askBeacon is changed.
+failureTest20 :: EmulatorTrace ()
+failureTest20 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
 
   let sellerCred = PubKeyCredential
@@ -3248,9 +3784,9 @@ failureTest18 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -3259,6 +3795,7 @@ failureTest18 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -3275,7 +3812,7 @@ failureTest18 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',1),(offerBeacon',1)]
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
               { mintWitness =
@@ -3293,8 +3830,9 @@ failureTest18 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -3307,8 +3845,131 @@ failureTest18 = do
 
   swap <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
-            <> singleton beaconSym pairBeacon' 1
-            <> singleton beaconSym offerBeacon' 1
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
+            <> uncurry singleton offer 10
+            )
+            swapDatum
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [
+            ScriptUtxoInput
+              { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer CloseOrUpdate
+              , spendFromAddress = swapAddr
+              , spendUtxos = [ swap ]
+              }
+          ]
+      , outputs = 
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline 
+                           $ toDatum swapDatum{ swapPrice = unsafeRatio 3 1
+                                              , askBeacon = ""
+                                              }
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
+                    <> uncurry singleton offer 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | When updating a single swap, store an extraneous asset in the swap.
+failureTest21 :: EmulatorTrace ()
+failureTest21 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offer = testToken1
+      ask = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
+      swapDatum = SwapDatum
+        { beaconId = beaconCurrencySymbol
+        , pairBeacon = pairBeacon'
+        , offerId = fst offer
+        , offerName = snd offer
+        , offerBeacon = offerBeacon'
+        , askId = fst ask
+        , askName = snd ask
+        , askBeacon = askBeacon'
+        , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
+        }
+
+  (mintRef,spendRef) <- initializeScripts
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer CreateSwap 
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
+                    <> uncurry singleton offer 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  swap <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
             <> uncurry singleton offer 10
             )
             swapDatum
@@ -3341,8 +4002,9 @@ failureTest18 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum{swapPrice = unsafeRatio 3 1}
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     <> uncurry singleton testToken3 10
                     )
@@ -3353,8 +4015,8 @@ failureTest18 = do
       }
 
 -- | The address' staking credential did not approve.
-failureTest19 :: EmulatorTrace ()
-failureTest19 = do
+failureTest22 :: EmulatorTrace ()
+failureTest22 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
   h2 <- activateContractWallet (knownWallet 2) endpoints
 
@@ -3365,9 +4027,9 @@ failureTest19 = do
       offer = testToken1
       ask = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      beaconSym = beaconCurrencySymbol
-      pairBeacon' = genUnsortedPairBeaconName offer ask
-      offerBeacon' = uncurry genOfferBeaconName offer
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -3376,6 +4038,7 @@ failureTest19 = do
         , offerBeacon = offerBeacon'
         , askId = fst ask
         , askName = snd ask
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -3392,7 +4055,7 @@ failureTest19 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',1),(offerBeacon',1)]
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
               { mintWitness =
@@ -3410,8 +4073,9 @@ failureTest19 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline $ toDatum swapDatum
                     , lovelaceValueOf 3_000_000 
-                    <> singleton beaconSym pairBeacon' 1
-                    <> singleton beaconSym offerBeacon' 1
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
                     <> uncurry singleton offer 10
                     )
                   ]
@@ -3424,8 +4088,9 @@ failureTest19 = do
 
   swap <- txOutRefWithValueAndDatum 
             (lovelaceValueOf 3_000_000 
-            <> singleton beaconSym pairBeacon' 1
-            <> singleton beaconSym offerBeacon' 1
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
             <> uncurry singleton offer 10
             )
             swapDatum
@@ -3448,7 +4113,7 @@ failureTest19 = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer BurnBeacons
-              , mintTokens = [(pairBeacon',-1),(offerBeacon',-1)]
+              , mintTokens = [(pairBeacon',-1),(offerBeacon',-1),(askBeacon',-1)]
               }
           ]
       , inputs = 
@@ -3461,6 +4126,125 @@ failureTest19 = do
               }
           ]
       , outputs = [ ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | When updating a single swap, move the swap to a non-DEX address.
+failureTest23 :: EmulatorTrace ()
+failureTest23 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      offer = testToken1
+      ask = (adaSymbol,adaToken)
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
+      offerBeacon' = genOfferBeaconName $ OfferAsset offer
+      askBeacon' = genAskBeaconName $ AskAsset ask
+      swapDatum = SwapDatum
+        { beaconId = beaconCurrencySymbol
+        , pairBeacon = pairBeacon'
+        , offerId = fst offer
+        , offerName = snd offer
+        , offerBeacon = offerBeacon'
+        , askId = fst ask
+        , askName = snd ask
+        , askBeacon = askBeacon'
+        , swapPrice = unsafeRatio 1_000_000 1
+        , prevInput = Nothing
+        }
+
+  (mintRef,spendRef) <- initializeScripts
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer CreateSwap 
+              , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
+                    <> uncurry singleton offer 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  swap <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconCurrencySymbol pairBeacon' 1
+            <> singleton beaconCurrencySymbol offerBeacon' 1
+            <> singleton beaconCurrencySymbol askBeacon' 1
+            <> uncurry singleton offer 10
+            )
+            swapDatum
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [
+            ScriptUtxoInput
+              { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer CloseOrUpdate
+              , spendFromAddress = swapAddr
+              , spendUtxos = [ swap ]
+              }
+          ]
+      , outputs = 
+          [ UtxoOutput
+              { toAddress = refScriptAddress
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum{swapPrice = unsafeRatio 3 1}
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconCurrencySymbol pairBeacon' 1
+                    <> singleton beaconCurrencySymbol offerBeacon' 1
+                    <> singleton beaconCurrencySymbol askBeacon' 1
+                    <> uncurry singleton offer 10
+                    )
+                  ]
+              }
+          ]
       , validityRange = ValidityInterval Nothing Nothing
       }
 
@@ -3480,8 +4264,9 @@ benchTest1 number = do
       assetX = testToken1
       assetY = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      pairBeacon' = genUnsortedPairBeaconName assetX assetY
-      offerBeacon' = uncurry genOfferBeaconName assetX
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset assetX) (AskAsset assetY)
+      offerBeacon' = genOfferBeaconName $ OfferAsset assetX
+      askBeacon' = genAskBeaconName $ AskAsset assetY
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -3490,6 +4275,7 @@ benchTest1 number = do
         , offerBeacon = offerBeacon'
         , askId = fst assetY
         , askName = snd assetY
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -3506,7 +4292,7 @@ benchTest1 number = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',25),(offerBeacon',25)]
+              , mintTokens = [(pairBeacon',25),(offerBeacon',25),(askBeacon',25)]
               }
           ]
       , inputs = []
@@ -3518,6 +4304,7 @@ benchTest1 number = do
                   , lovelaceValueOf 3_000_000 
                   <> singleton beaconCurrencySymbol pairBeacon' 1
                   <> singleton beaconCurrencySymbol offerBeacon' 1
+                  <> singleton beaconCurrencySymbol askBeacon' 1
                   <> uncurry singleton assetX 10
                   )
               }
@@ -3537,7 +4324,7 @@ benchTest1 number = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',25),(offerBeacon',25)]
+              , mintTokens = [(pairBeacon',25),(offerBeacon',25),(askBeacon',25)]
               }
           ]
       , inputs = []
@@ -3549,6 +4336,7 @@ benchTest1 number = do
                   , lovelaceValueOf 3_000_000 
                   <> singleton beaconCurrencySymbol pairBeacon' 1
                   <> singleton beaconCurrencySymbol offerBeacon' 1
+                  <> singleton beaconCurrencySymbol askBeacon' 1
                   <> uncurry singleton assetX 10
                   )
               }
@@ -3568,7 +4356,7 @@ benchTest1 number = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',25),(offerBeacon',25)]
+              , mintTokens = [(pairBeacon',25),(offerBeacon',25),(askBeacon',25)]
               }
           ]
       , inputs = []
@@ -3580,6 +4368,7 @@ benchTest1 number = do
                   , lovelaceValueOf 3_000_000 
                   <> singleton beaconCurrencySymbol pairBeacon' 1
                   <> singleton beaconCurrencySymbol offerBeacon' 1
+                  <> singleton beaconCurrencySymbol askBeacon' 1
                   <> uncurry singleton assetX 10
                   )
               }
@@ -3604,6 +4393,7 @@ benchTest1 number = do
               , mintTokens = 
                   [ (pairBeacon',fromIntegral (-number))
                   , (offerBeacon',fromIntegral (-number))
+                  , (askBeacon',fromIntegral (-number))
                   ]
               } 
           ]
@@ -3640,12 +4430,13 @@ benchTest2 number = do
         zipWith (\offer ask -> 
               SwapDatum 
                 { beaconId = beaconCurrencySymbol
-                , pairBeacon = genUnsortedPairBeaconName offer ask
+                , pairBeacon = genOneWayPairBeaconName (OfferAsset offer) (AskAsset ask)
                 , offerId = fst offer
                 , offerName = snd offer
-                , offerBeacon = uncurry genOfferBeaconName offer
+                , offerBeacon = genOfferBeaconName $ OfferAsset offer
                 , askId = fst ask
                 , askName = snd ask
+                , askBeacon = genAskBeaconName $ AskAsset ask
                 , swapPrice = unsafeRatio 1 1
                 , prevInput = Nothing
                 }
@@ -3662,6 +4453,7 @@ benchTest2 number = do
             , lovelaceValueOf 3_000_000
             <> singleton beaconCurrencySymbol pairBeacon 1
             <> singleton beaconCurrencySymbol offerBeacon 1
+            <> singleton beaconCurrencySymbol askBeacon 1
             <> singleton offerId offerName 10
             )
           )
@@ -3675,7 +4467,7 @@ benchTest2 number = do
                     , Just (refScriptAddress, mintRef)
                     )
                 , mintRedeemer = toRedeemer CreateSwap 
-                , mintTokens = [(pairBeacon,1),(offerBeacon,1)]
+                , mintTokens = [(pairBeacon,1),(offerBeacon,1),(askBeacon,1)]
                 }
             )
             datums
@@ -3737,7 +4529,7 @@ benchTest2 number = do
           , mintTokens = 
               concatMap 
                 (\(_,Just d) -> 
-                  [ (pairBeacon d,-1),(offerBeacon d,-1)]
+                  [ (pairBeacon d,-1),(offerBeacon d,-1),(askBeacon d,-1)]
                 )
                 swaps
           }
@@ -3771,8 +4563,9 @@ benchTest3 number = do
       assetX = testToken1
       assetY = (adaSymbol,adaToken)
       swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
-      pairBeacon' = genUnsortedPairBeaconName assetX assetY
-      offerBeacon' = uncurry genOfferBeaconName assetX
+      pairBeacon' = genOneWayPairBeaconName (OfferAsset assetX) (AskAsset assetY)
+      offerBeacon' = genOfferBeaconName $ OfferAsset assetX
+      askBeacon' = genAskBeaconName $ AskAsset assetY
       swapDatum = SwapDatum
         { beaconId = beaconCurrencySymbol
         , pairBeacon = pairBeacon'
@@ -3781,6 +4574,7 @@ benchTest3 number = do
         , offerBeacon = offerBeacon'
         , askId = fst assetY
         , askName = snd assetY
+        , askBeacon = askBeacon'
         , swapPrice = unsafeRatio 1_000_000 1
         , prevInput = Nothing
         }
@@ -3797,7 +4591,7 @@ benchTest3 number = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',25),(offerBeacon',25)]
+              , mintTokens = [(pairBeacon',25),(offerBeacon',25),(askBeacon',25)]
               }
           ]
       , inputs = []
@@ -3809,6 +4603,7 @@ benchTest3 number = do
                   , lovelaceValueOf 3_000_000 
                   <> singleton beaconCurrencySymbol pairBeacon' 1
                   <> singleton beaconCurrencySymbol offerBeacon' 1
+                  <> singleton beaconCurrencySymbol askBeacon' 1
                   <> uncurry singleton assetX 10
                   )
               }
@@ -3828,7 +4623,7 @@ benchTest3 number = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',25),(offerBeacon',25)]
+              , mintTokens = [(pairBeacon',25),(offerBeacon',25),(askBeacon',25)]
               }
           ]
       , inputs = []
@@ -3840,6 +4635,7 @@ benchTest3 number = do
                   , lovelaceValueOf 3_000_000 
                   <> singleton beaconCurrencySymbol pairBeacon' 1
                   <> singleton beaconCurrencySymbol offerBeacon' 1
+                  <> singleton beaconCurrencySymbol askBeacon' 1
                   <> uncurry singleton assetX 10
                   )
               }
@@ -3859,7 +4655,7 @@ benchTest3 number = do
                   , Just (refScriptAddress, mintRef)
                   )
               , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',25),(offerBeacon',25)]
+              , mintTokens = [(pairBeacon',25),(offerBeacon',25),(askBeacon',25)]
               }
           ]
       , inputs = []
@@ -3871,6 +4667,7 @@ benchTest3 number = do
                   , lovelaceValueOf 3_000_000 
                   <> singleton beaconCurrencySymbol pairBeacon' 1
                   <> singleton beaconCurrencySymbol offerBeacon' 1
+                  <> singleton beaconCurrencySymbol askBeacon' 1
                   <> uncurry singleton assetX 10
                   )
               }
@@ -3902,6 +4699,7 @@ benchTest3 number = do
                   , lovelaceValueOf 3_000_000 
                   <> singleton beaconCurrencySymbol pairBeacon' 1
                   <> singleton beaconCurrencySymbol offerBeacon' 1
+                  <> singleton beaconCurrencySymbol askBeacon' 1
                   <> uncurry singleton assetX 10
                   )
               } 
@@ -3927,12 +4725,13 @@ benchTest4 number = do
         zipWith (\asset1 asset2 -> 
               SwapDatum 
                 { beaconId = beaconCurrencySymbol
-                , pairBeacon = genUnsortedPairBeaconName asset1 asset2
+                , pairBeacon = genOneWayPairBeaconName (OfferAsset asset1) (AskAsset asset2)
                 , offerId = fst asset1
                 , offerName = snd asset1
-                , offerBeacon = uncurry genOfferBeaconName asset1
+                , offerBeacon = genOfferBeaconName $ OfferAsset asset1
                 , askId = fst asset2
                 , askName = snd asset2
+                , askBeacon = genAskBeaconName (AskAsset asset2)
                 , swapPrice = unsafeRatio 1 1
                 , prevInput = Nothing
                 }
@@ -3949,6 +4748,7 @@ benchTest4 number = do
             , lovelaceValueOf 3_000_000
             <> singleton beaconCurrencySymbol pairBeacon 1
             <> singleton beaconCurrencySymbol offerBeacon 1
+            <> singleton beaconCurrencySymbol askBeacon 1
             <> singleton offerId offerName 10
             )
           )
@@ -3962,7 +4762,7 @@ benchTest4 number = do
                     , Just (refScriptAddress, mintRef)
                     )
                 , mintRedeemer = toRedeemer CreateSwap 
-                , mintTokens = [(pairBeacon,1),(offerBeacon,1)]
+                , mintTokens = [(pairBeacon,1),(offerBeacon,1),(askBeacon,1)]
                 }
             )
             datums
@@ -4035,6 +4835,7 @@ benchTest4 number = do
                         , lovelaceValueOf 3_000_000
                         <> singleton beaconCurrencySymbol (pairBeacon d) 1
                         <> singleton beaconCurrencySymbol (offerBeacon d) 1
+                        <> singleton beaconCurrencySymbol (askBeacon d) 1
                         <> singleton (offerId d) (offerName d) 10
                         )
                       )
@@ -4063,12 +4864,13 @@ benchTest5 number = do
         zipWith (\asset1 asset2 -> 
               SwapDatum 
                 { beaconId = beaconCurrencySymbol
-                , pairBeacon = genSortedPairBeaconName asset1 asset2
+                , pairBeacon = genOneWayPairBeaconName (OfferAsset asset1) (AskAsset asset2)
                 , offerId = fst asset1
                 , offerName = snd asset1
-                , offerBeacon = uncurry genOfferBeaconName asset1
+                , offerBeacon = genOfferBeaconName $ OfferAsset asset1
                 , askId = fst asset2
                 , askName = snd asset2
+                , askBeacon = genAskBeaconName $ AskAsset asset2
                 , swapPrice = unsafeRatio 1 1
                 , prevInput = Nothing
                 }
@@ -4087,6 +4889,7 @@ benchTest5 number = do
             , lovelaceValueOf 3_000_000
             <> singleton beaconCurrencySymbol pairBeacon 1
             <> singleton beaconCurrencySymbol offerBeacon 1
+            <> singleton beaconCurrencySymbol askBeacon 1
             <> singleton offerId offerName 10
             )
           )
@@ -4100,7 +4903,7 @@ benchTest5 number = do
                     , Just (refScriptAddress, mintRef)
                     )
                 , mintRedeemer = toRedeemer CreateSwap 
-                , mintTokens = [(pairBeacon,1),(offerBeacon,1)]
+                , mintTokens = [(pairBeacon,1),(offerBeacon,1),(askBeacon,1)]
                 }
             )
             beforeDatums
@@ -4134,8 +4937,10 @@ benchTest5 number = do
                 , mintTokens = 
                     [ (pairBeacon beforeDatum,-1)
                     , (offerBeacon beforeDatum,-1)
+                    , (askBeacon beforeDatum,-1)
                     , (pairBeacon afterDatum,1)
                     , (offerBeacon afterDatum,1)
+                    , (askBeacon afterDatum,1)
                     ]
                 }
             )
@@ -4149,6 +4954,7 @@ benchTest5 number = do
             , lovelaceValueOf 3_000_000
             <> singleton beaconCurrencySymbol pairBeacon 1
             <> singleton beaconCurrencySymbol offerBeacon 1
+            <> singleton beaconCurrencySymbol askBeacon 1
             <> singleton offerId offerName 10
             )
           )
@@ -4176,8 +4982,8 @@ benchTest5 number = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
-benchTrace :: Int -> IO ()
-benchTrace = runEmulatorTraceIO' def emConfig . benchTest4
+benchTrace :: (Int -> EmulatorTrace ()) -> Int -> IO ()
+benchTrace f i = runEmulatorTraceIO' def emConfig $ f i
 
 -------------------------------------------------
 -- Test Function
@@ -4204,71 +5010,82 @@ tests = do
         assertNoFailedTransactions regressionTest7
     , checkPredicateOptions opts "regressionTest8"
         assertNoFailedTransactions regressionTest8
+    , checkPredicateOptions opts "regressionTest9"
+        assertNoFailedTransactions regressionTest9
 
-      -- Failure Tests
+    --   -- Failure Tests
     , checkPredicateOptions opts "failureTest1"
-        (assertEvaluationError "One-way swaps must have exactly two kinds of beacons") failureTest1
+        (assertEvaluationError "One-way swaps must have exactly three kinds of beacons") failureTest1
     , checkPredicateOptions opts "failureTest2"
-        (assertEvaluationError "One-way swaps must have exactly two kinds of beacons") failureTest2
+        (assertEvaluationError "One-way swaps must have exactly three kinds of beacons") failureTest2
     , checkPredicateOptions opts "failureTest3"
-        (assertEvaluationError "One-way swaps must have exactly two kinds of beacons") failureTest3
+        (assertEvaluationError "One-way swaps must have exactly three kinds of beacons") failureTest3
     , checkPredicateOptions opts "failureTest4"
-        (assertEvaluationError "swap_price not > 0") failureTest4
+        (assertEvaluationError "One-way swaps must have exactly three kinds of beacons") failureTest4
     , checkPredicateOptions opts "failureTest5"
         (assertEvaluationError "swap_price not > 0") failureTest5
     , checkPredicateOptions opts "failureTest6"
-        (assertEvaluationError "swap_price denominator not > 0") failureTest6
+        (assertEvaluationError "swap_price not > 0") failureTest6
     , checkPredicateOptions opts "failureTest7"
         (assertEvaluationError "swap_price denominator not > 0") failureTest7
     , checkPredicateOptions opts "failureTest8"
-        (assertEvaluationError "UTxO does not have exactly 1 pair_beacon") failureTest8
+        (assertEvaluationError "swap_price denominator not > 0") failureTest8
     , checkPredicateOptions opts "failureTest9"
         (assertEvaluationError "UTxO does not have exactly 1 pair_beacon") failureTest9
     , checkPredicateOptions opts "failureTest10"
-        (assertEvaluationError "UTxO does not have exactly 1 offer_beacon") failureTest10
+        (assertEvaluationError "UTxO does not have exactly 1 pair_beacon") failureTest10
     , checkPredicateOptions opts "failureTest11"
-        (assertEvaluationError "Wrong beacon_id") failureTest11
+        (assertEvaluationError "UTxO does not have exactly 1 offer_beacon") failureTest11
     , checkPredicateOptions opts "failureTest12"
-        (assertEvaluationError "Wrong pair_beacon") failureTest12
+        (assertEvaluationError "UTxO does not have exactly 1 ask_beacon") failureTest12
     , checkPredicateOptions opts "failureTest13"
-        (assertEvaluationError "Wrong pair_beacon") failureTest13
+        (assertEvaluationError "Wrong beacon_id") failureTest13
     , checkPredicateOptions opts "failureTest14"
         (assertEvaluationError "Wrong pair_beacon") failureTest14
     , checkPredicateOptions opts "failureTest15"
-        (assertEvaluationError "Wrong offer_beacon") failureTest15
+        (assertEvaluationError "Wrong pair_beacon") failureTest15
     , checkPredicateOptions opts "failureTest16"
         (assertEvaluationError "Wrong pair_beacon") failureTest16
     , checkPredicateOptions opts "failureTest17"
-        (assertEvaluationError "Wrong pair_beacon") failureTest17
+        (assertEvaluationError "Wrong offer_beacon") failureTest17
     , checkPredicateOptions opts "failureTest18"
-        (assertEvaluationError "No extraneous assets can be stored in the swap UTxO") failureTest18
+        (assertEvaluationError "Wrong pair_beacon") failureTest18
     , checkPredicateOptions opts "failureTest19"
-        (assertEvaluationError "Staking credential did not approve") failureTest19
+        (assertEvaluationError "Wrong pair_beacon") failureTest19
+    , checkPredicateOptions opts "failureTest20"
+        (assertEvaluationError "Wrong ask_beacon") failureTest20
+    , checkPredicateOptions opts "failureTest21"
+        (assertEvaluationError "No extraneous assets can be stored in the swap UTxO") failureTest21
+    , checkPredicateOptions opts "failureTest22"
+        (assertEvaluationError "Staking credential did not approve") failureTest22
+    , checkPredicateOptions opts "failureTest23"
+        (assertEvaluationError "Validator returned false") failureTest23
 
       -- Benchmark tests
     , checkPredicateOptions opts "benchTest1"
         assertNoFailedTransactions $ benchTest1 54
     , checkPredicateOptions opts "benchTest2"
-        assertNoFailedTransactions $ benchTest2 54
+        assertNoFailedTransactions $ benchTest2 53
     , checkPredicateOptions opts "benchTest3"
         assertNoFailedTransactions $ benchTest3 6
     , checkPredicateOptions opts "benchTest4"
-        assertNoFailedTransactions $ benchTest4 7
+        assertNoFailedTransactions $ benchTest4 6
     , checkPredicateOptions opts "benchTest5"
-        assertNoFailedTransactions $ benchTest5 6
+        assertNoFailedTransactions $ benchTest5 5
 
       -- Performance Increases tests
     , checkPredicateOptions opts "perfIncreaseTest1"
         (Test.not assertNoFailedTransactions) $ benchTest1 55
     , checkPredicateOptions opts "perfIncreaseTest2"
-        (Test.not assertNoFailedTransactions) $ benchTest2 55
+        (Test.not assertNoFailedTransactions) $ benchTest2 54
     , checkPredicateOptions opts "perfIncreaseTest3"
         (Test.not assertNoFailedTransactions) $ benchTest3 7
     , checkPredicateOptions opts "perfIncreaseTest4"
-        (Test.not assertNoFailedTransactions) $ benchTest4 8
+        (Test.not assertNoFailedTransactions) $ benchTest4 7
     , checkPredicateOptions opts "perfIncreaseTest5"
-        (Test.not assertNoFailedTransactions) $ benchTest5 7
+        (Test.not assertNoFailedTransactions) $ benchTest5 6
+
     ]
 
-testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig failureTest19
+testTrace :: EmulatorTrace () -> IO ()
+testTrace = runEmulatorTraceIO' def emConfig

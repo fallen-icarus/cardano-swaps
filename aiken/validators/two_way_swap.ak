@@ -29,14 +29,13 @@ validator() {
       // Close or update open swap positions.
       CloseOrUpdate -> {
         // Requirements:
-        // 1) The beacons must go to an addres protected by the dApp validator script.
+        // 1) The beacons must go to an addres protected by the DApp validator script.
         // 2) The beacons must go to an address using a valid staking credential.
         // 3) The UTxOs with the beacons must have the proper value:
         //      a) Exactly three kinds of beacons: pair beacon, asset1 beacon, and asset2 beacon.
         //      b) The beacons must correspond to the beacons in the datum.
         //      c) There must be exactly 1 of each beacon.
-        //      d) The UTxO must have asset1 and/or asset2.
-        //      e) No extraneous assets are in the UTxO.
+        //      d) No extraneous assets are in the UTxO.
         // 4) The beacons must be stored with the proper inline `SwapDatum`:
         //      a) `beacon_id` == this policy id.
         //      b) `pair_beacon` == sha2_256(asset1_id ++ asset1_name ++ asset2_id ++ asset2_name)
@@ -213,14 +212,13 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
     when redeemer is {
       CreateSwap -> {
         // Requirements:
-        // 1) The beacons must go to an addres protected by the dApp validator script.
+        // 1) The beacons must go to an addres protected by the DApp validator script.
         // 2) The beacons must go to an address using a valid staking credential.
         // 3) The UTxOs with the beacons must have the proper value:
         //      a) Exactly three kinds of beacons: pair beacon, asset1 beacon, and asset2 beacon.
         //      b) The beacons must correspond to the beacons in the datum.
         //      c) There must be exactly 1 of each beacon.
-        //      d) The UTxO must have asset1 and/or asset2.
-        //      e) No extraneous assets are in the UTxO.
+        //      d) No extraneous assets are in the UTxO.
         // 4) The beacons must be stored with the proper inline `SwapDatum`:
         //      a) `beacon_id` == this policy id.
         //      b) `pair_beacon` == sha2_256(asset1_id ++ asset1_name ++ asset2_id ++ asset2_name)

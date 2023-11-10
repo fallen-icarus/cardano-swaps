@@ -71,6 +71,11 @@ module CardanoSwaps
 
     -- * Re-Export
   , module CardanoSwaps.Utils
+  , OneWaySwap.genOneWayPairBeaconName
+  , OneWaySwap.genOfferBeaconName
+  , OneWaySwap.genAskBeaconName
+  , TwoWaySwap.genTwoWayPairBeaconName
+  , TwoWaySwap.genAssetBeaconName
   ) where
 
 import Prelude hiding (fromInteger)
@@ -97,6 +102,7 @@ data OneWaySwapDatum = OneWaySwapDatum
   , oneWayOfferBeacon :: TokenName
   , oneWayAskId :: CurrencySymbol
   , oneWayAskName :: TokenName
+  , oneWayAskBeacon :: TokenName
   , oneWaySwapPrice :: PlutusRational
   , oneWayPrevInput :: Maybe TxOutRef
   }
@@ -111,6 +117,7 @@ instance ToJSON OneWaySwapDatum where
            , "offer_beacon" .= showTokenName oneWayOfferBeacon
            , "ask_id" .= show oneWayAskId
            , "ask_name" .= showTokenName oneWayAskName
+           , "ask_beacon" .= showTokenName oneWayAskBeacon
            , "price" .= oneWaySwapPrice 
            , "prev_input" .= oneWayPrevInput
            ]

@@ -1,3 +1,4 @@
+use aiken/bytearray
 use aiken/dict
 use aiken/hash.{Hash,Blake2b_224}
 use aiken/list
@@ -17,8 +18,6 @@ use cardano_swaps/common/utils.{
   compare_asset_config,
   error_if_false,
   trace_if_false,
-  generate_pair_beacon,
-  generate_offer_beacon
   } as common_utils
 use cardano_swaps/two_way_swap/types.{
   SwapDatum
@@ -34,6 +33,32 @@ fn parse_datum(raw_datum: Datum) -> SwapDatum {
     }
     _ -> error @"All swap datums must be inline datums"
   }
+}
+
+// Create the asset name for the pair beacon by hashing the combination of asset1 and asset2. 
+// It uses the sha2_256 hash algorithm. It assumes the pair is already sorted. 
+// When ADA is part of the pair, the empty bytestring is replaced so that the beacon is distinct 
+// from the offer beacon.
+pub fn generate_pair_beacon(asset1: AssetConfig, asset2: AssetConfig) -> AssetName {
+  let AssetConfig(asset1_id_,asset1_name) = asset1
+  let AssetConfig(asset2_id_,asset2_name) = asset2
+
+  let asset1_id = if asset1_id_ == #"" { #"00" } else { asset1_id_ }
+  let asset2_id = if asset2_id_ == #"" { #"00" } else { asset2_id_ }
+
+  hash.sha2_256(
+    bytearray.concat(asset1_id,asset1_name)
+    |> bytearray.concat(_,asset2_id)
+    |> bytearray.concat(_,asset2_name)
+  )
+}
+
+// Create the asset name for the beacon by hashing the combination of the policy id and asset name
+// for the asset. It uses the sha2_256 hash algorithm.
+pub fn generate_asset_beacon(policy_id: PolicyId, asset_name: AssetName) -> AssetName {
+  hash.sha2_256(
+    bytearray.concat( policy_id, asset_name )
+  )
 }
 
 // This function is used for `CloseOrUpdate` and `CreateSwap`. This function should only be called
@@ -78,13 +103,13 @@ fn valid_swap_output(
   // The asset1_beacon must be the sha2_256 hash of assetId ++ assetName.
   trace_if_false( 
     @"Wrong asset1_beacon", 
-    asset1_beacon_ == generate_offer_beacon(asset1_id_,asset1_name_)
+    asset1_beacon_ == generate_asset_beacon(asset1_id_,asset1_name_)
   ) &&
 
   // The asset2_beacon must be the sha2_256 hash of assetId ++ assetName.
   trace_if_false( 
     @"Wrong asset2_beacon", 
-    asset2_beacon_ == generate_offer_beacon(asset2_id_,asset2_name_)
+    asset2_beacon_ == generate_asset_beacon(asset2_id_,asset2_name_)
   ) &&
 
   // The forward_price denominator must be > 0.
@@ -129,13 +154,6 @@ fn valid_swap_output(
     value.quantity_of( output_value, beacon_id, asset2_beacon_ ) == 1
   ) &&
 
-  // The beacons must be stored with asset1 and/or asset2.
-  trace_if_false(
-    @"Beacons must be stored with asset1 and/or asset2",
-    value.quantity_of( output_value, asset1_id_, asset1_name_ ) > 0 ||
-    value.quantity_of( output_value, asset2_id_, asset2_name_ ) > 0
-  ) &&
-
   // No extraneous assets can be stored in the UTxO.
   trace_if_false(
     @"No extraneous assets can be stored in the swap UTxO",
@@ -167,13 +185,12 @@ pub fn beacon_destination_check(
   outputs: List<Output>
 ) -> Bool {
   // Checks:
-  // 1) The beacons must go to an addres protected by the dApp validator script.
+  // 1) The beacons must go to an addres protected by the DApp validator script.
   // 2) The beacons must go to an address using a valid staking credential.
   // 3) The UTxOs with the beacons must have the proper value:
   //      a) Exactly three kinds of beacons: pair beacon, asset1 beacon, and asset2 beacon.
   //      b) The beacons must correspond to the beacons in the datum.
   //      c) There must be exactly 1 of each beacon.
-  //      d) The UTxO must have asset1 and/or asset2.
   //      e) No extraneous assets are in the UTxO.
   // 4) The beacons must be stored with the proper inline `SwapDatum`:
   //      a) `beacon_id` == this policy id.
@@ -210,10 +227,10 @@ pub fn beacon_destination_check(
         // All previous outputs must be valid.
         acc &&
 
-        // The output must be at a dApp address with staking. Uses `app_name` in 
+        // The output must be at a DApp address with staking. Uses `app_name` in 
         // the error message.
         trace_if_false( 
-          concat(@"Beacon must go to a ", app_name) |> concat(_,@" dApp address with staking"),
+          concat(@"Beacon must go to a ", app_name) |> concat(_,@" DApp address with staking"),
           pay == ScriptCredential(dapp_hash) && is_some(stake)
         ) &&
 

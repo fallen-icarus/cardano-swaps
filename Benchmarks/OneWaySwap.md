@@ -16,24 +16,23 @@ beacon queries.
 #### All swaps are for the same trading pair. The trading pair was (native asset,ADA).
 | Number of Swaps Created | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
-| 1 | 0.274569 ADA | 0.434975 ADA |
-| 10 | 0.670750 ADA | 1.005125 ADA |
-| 20 | 1.110952 ADA | 1.666428 ADA |
-| 30 | 1.551285 ADA | 2.326928 ADA |
-| 39 | 1.953715 ADA | 2.930573 ADA |
+| 1 | 0.282218 ADA | 0.423327 ADA |
+| 10 | 0.732779 ADA | 1.099169 ADA |
+| 20 | 1.233402 ADA | 1.850103 ADA |
+| 30 | 1.734201 ADA | 2.601302 ADA |
+| 33 | 1.890636 ADA | 2.835954 ADA |
 
-The maximum number of swaps that could be created was 39.
+The maximum number of swaps that could be created was 33.
 
 #### All swaps are for different trading pairs.
 | Number of Swaps Created | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
-| 1 | 0.276170 ADA | 0.414255 ADA |
-| 10 | 0.714793 ADA | 1.072190 ADA |
-| 20 | 1.202733 ADA | 1.804100 ADA |
-| 30 | 1.690673 ADA | 2.536010 ADA |
-| 31 | 1.739462 ADA | 2.609193 ADA |
+| 1 | 0.283829 ADA | 0.425744 ADA |
+| 10 | 0.790601 ADA | 1.185902 ADA |
+| 20 | 1.254414 ADA | 2.031621 ADA |
+| 25 | 1.636365 ADA | 2.454548 ADA |
 
-The maximum number of swaps that could be created was 31.
+The maximum number of swaps that could be created was 25.
 
 
 
@@ -112,9 +111,9 @@ The maximum number of swaps that could be closed in the transaction was 54.
 | 30 | 0.853206 ADA | 1.279809 ADA |
 | 40 | 1.172268 ADA | 1.758402 ADA |
 | 50 | 1.539049 ADA | 2.308574 ADA | 
-| 54 | 1.637040 ADA | 2.455560 ADA | 
+| 53 | 1.729972 ADA | 2.594958 ADA | 
 
-The maximum number of swaps that could be closed in the transaction was 54.
+The maximum number of swaps that could be closed in the transaction was 53.
 
 
 
@@ -140,9 +139,8 @@ The maximum number of swaps that could be updated in the transaction was 6.
 | 4 | 0.654152 ADA | 0.981228 ADA |
 | 5 | 0.886320 ADA | 1.329480 ADA |
 | 6 | 1.164061 ADA | 1.746092 ADA |
-| 7 | 1.482679 ADA | 2.224019 ADA |
 
-The maximum number of swaps that could be updated in the transaction was 7.
+The maximum number of swaps that could be updated in the transaction was 6.
 
 
 
@@ -163,6 +161,5 @@ you are aware of a an even worse scenario, please open an issue so its benchmark
 | 3 | 0.552130 ADA | 0.828195 ADA |
 | 4 | 0.764286 ADA | 1.146429 ADA |
 | 5 | 1.022015 ADA | 1.533023 ADA |
-| 6 | 1.325316 ADA | 2.987974 ADA |
 
-The maximum number of swaps that could be updated in the transaction was 6.
+The maximum number of swaps that could be updated in the transaction was 5.

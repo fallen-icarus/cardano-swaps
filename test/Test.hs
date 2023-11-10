@@ -15,9 +15,9 @@ import Test.TwoWaySwap as TwoWaySwap
 
 (3) Edge Case Tests - tests of unusual usages that should or should not fail.
 
-(4) Benchmark Tests - tests that will fail if the performance of the dApp decreases.
+(4) Benchmark Tests - tests that will fail if the performance of the protocol decreases.
 
-(5) Performance Increase Tests - tests that will fail if the performance of the dApp increases.
+(5) Performance Increase Tests - tests that will fail if the performance of the protocol increases.
 
 -}
 main :: IO ()

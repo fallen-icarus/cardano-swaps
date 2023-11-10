@@ -11,6 +11,7 @@ pub type SwapDatum {
     offer_beacon: AssetName, // The asset name for the offer beacon.
     ask_id: PolicyId, // The policy id for the ask asset.
     ask_name: AssetName, // The asset name for the ask asset.
+    ask_beacon: AssetName, // The asset name for the ask beacon.
     swap_price: Rational, // The swap price as a fraction: Ask/Offer.
     prev_input: Option<OutputReference>
   }

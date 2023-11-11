@@ -625,8 +625,9 @@ regressionTest4 = do
       }
 
 -- | Execute multiple swaps. The swaps are for different pairs that are composed together. Each swap
--- is located at different addresses. Mints an unrelated token to an unrelated output in the same 
--- transaction to also check if the beacon policy can correctly ignore unrelated tokens and UTxOs. 
+-- is located at different addresses. The swaps are chained linearly. Mints an unrelated token to 
+-- an unrelated output in the same transaction to also check if the beacon policy can correctly 
+-- ignore unrelated tokens and UTxOs. 
 regressionTest5 :: EmulatorTrace ()
 regressionTest5 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -797,8 +798,9 @@ regressionTest5 = do
       }
 
 -- | Execute multiple swaps. The swaps are for different pairs that are composed together. Each swap
--- is located at the same address. Mints an unrelated token to an unrelated output in the same 
--- transaction to also check if the beacon policy can correctly ignore unrelated tokens and UTxOs. 
+-- is located at the same address. The swaps are chained linearly. Mints an unrelated token to an 
+-- unrelated output in the same transaction to also check if the beacon policy can correctly ignore
+-- unrelated tokens and UTxOs. 
 regressionTest6 :: EmulatorTrace ()
 regressionTest6 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints

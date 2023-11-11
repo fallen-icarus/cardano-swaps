@@ -36,8 +36,8 @@ fn parse_datum(raw_datum: Datum) -> SwapDatum {
 
 // Create the asset name for the pair beacon by hashing the combination of asset1 and asset2. 
 // It uses the sha2_256 hash algorithm. It assumes the first asset is the offer asset.
-// When ADA is part of the pair, the empty bytestring is replaced so that the beacon is distinct 
-// from the offer beacon.
+// When ada is part of the pair, the empty bytestring is replaced so that the beacon is distinct 
+// for each direction when ada is part of the pair.
 pub fn generate_pair_beacon(asset1: AssetConfig, asset2: AssetConfig) -> AssetName {
   let AssetConfig(asset1_id_,asset1_name) = asset1
   let AssetConfig(asset2_id_,asset2_name) = asset2

@@ -167,7 +167,7 @@ fn valid_swap_output(
         acc && 
           ( cn == beacon_id  // It is a beacon.
          || (cn == offer_id_ && tn == offer_name_) // It is the offer asset.
-         || cn == value.ada_policy_id // It is ADA.
+         || cn == value.ada_policy_id // It is ada.
           )
       }
     )

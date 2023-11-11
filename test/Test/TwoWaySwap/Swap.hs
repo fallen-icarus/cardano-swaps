@@ -5468,15 +5468,15 @@ tests = do
     , checkPredicateOptions opts "failureTest17"
         (assertEvaluationError "Corresponding swap output not found") failureTest17
     , checkPredicateOptions opts "failureTest18"
-        (assertEvaluationError "Only the asked asset or ADA can be deposited into the swap") failureTest18
+        (assertEvaluationError "Only the asked asset or ada can be deposited into the swap") failureTest18
     , checkPredicateOptions opts "failureTest19"
         (assertEvaluationError "Corresponding swap output not found") failureTest19
     , checkPredicateOptions opts "failureTest20"
-        (assertEvaluationError "Only the asked asset or ADA can be deposited into the swap") failureTest20
+        (assertEvaluationError "Only the asked asset or ada can be deposited into the swap") failureTest20
     , checkPredicateOptions opts "failureTest21"
-        (assertEvaluationError "Only the asked asset or ADA can be deposited into the swap") failureTest21
+        (assertEvaluationError "Only the asked asset or ada can be deposited into the swap") failureTest21
     , checkPredicateOptions opts "failureTest22"
-        (assertEvaluationError "Only the asked asset or ADA can be deposited into the swap") failureTest22
+        (assertEvaluationError "Only the asked asset or ada can be deposited into the swap") failureTest22
     , checkPredicateOptions opts "failureTest23"
         (assertEvaluationError "All swap datums must be inline datums") failureTest23
     , checkPredicateOptions opts "failureTest24"
@@ -5488,13 +5488,13 @@ tests = do
     , checkPredicateOptions opts "benchTest1"
         assertNoFailedTransactions $ benchTest1 11
     , checkPredicateOptions opts "benchTest2"
-        assertNoFailedTransactions $ benchTest2 13
+        assertNoFailedTransactions $ benchTest2 14
 
       -- Performance Increases tests
     , checkPredicateOptions opts "perfIncreaseTest1"
         (Test.not assertNoFailedTransactions) $ benchTest1 12
     , checkPredicateOptions opts "perfIncreaseTest2"
-        (Test.not assertNoFailedTransactions) $ benchTest2 14
+        (Test.not assertNoFailedTransactions) $ benchTest2 15
     ]
 
 testTrace :: IO ()

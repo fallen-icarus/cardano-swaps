@@ -37,8 +37,8 @@ fn parse_datum(raw_datum: Datum) -> SwapDatum {
 
 // Create the asset name for the pair beacon by hashing the combination of asset1 and asset2. 
 // It uses the sha2_256 hash algorithm. It assumes the pair is already sorted. 
-// When ADA is part of the pair, the empty bytestring is replaced so that the beacon is distinct 
-// from the offer beacon.
+// When ada is part of the pair, the empty bytestring is replaced so that the beacon is distinct 
+// from the asset beacons.
 pub fn generate_pair_beacon(asset1: AssetConfig, asset2: AssetConfig) -> AssetName {
   let AssetConfig(asset1_id_,asset1_name) = asset1
   let AssetConfig(asset2_id_,asset2_name) = asset2
@@ -61,8 +61,9 @@ pub fn generate_asset_beacon(policy_id: PolicyId, asset_name: AssetName) -> Asse
   )
 }
 
-// This function is used for `CloseOrUpdate` and `CreateSwap`. This function should only be called
-// after the output has been checked for exactly three types of beacons.
+// This function is used for creating swaps with either `CloseOrUpdate` or `CreateSwap`. This 
+// function should only be called after the output has been checked for exactly three types of 
+// beacons.
 fn valid_swap_output(
   beacon_id: PolicyId,
   output_value: Value,
@@ -168,7 +169,7 @@ fn valid_swap_output(
           ( cn == beacon_id  // It is a beacon.
          || (cn == asset1_id_ && tn == asset1_name_) // It is asset1.
          || (cn == asset2_id_ && tn == asset2_name_) // It is asset2.
-         || cn == value.ada_policy_id // It is ADA.
+         || cn == value.ada_policy_id // It is ada.
           )
       }
     )
@@ -275,7 +276,7 @@ fn swap_value_diff(
     [Output(addr,oval,d,_), ..rest] -> {
       // Requirements for a valid corresponding output:
       // 1) The output is to the same swap address where the input originates.
-      // 2) The output has exactly one of the proper beacon.
+      // 2) The output has exactly one of the proper trading pair beacon.
       // 3) The output's datum is exactly the same accept the `prev_input` == `Some(input_ref)`.
 
       // Check if the output has the beacon for this trading pair. It must have exactly one.
@@ -328,7 +329,6 @@ fn swap_value_diff(
               @"Wrong asset1_beacon", 
               asset1_beacon == asset1_beacon_ 
             )
-
 
             // The asset2_id must be the asset2_id from the input.
             expect True = error_if_false( 
@@ -456,10 +456,10 @@ fn only_proper_assets_swapped(
       )
     } 
     
-    // If n <= 0, then the asset must be the asked asset or ADA (if the minUTxO value increased).
+    // If n <= 0, then the asset must be the asked asset or ada (if the minUTxO value increased).
     else {
       acc && trace_if_false(
-        @"Only the asked asset or ADA can be deposited into the swap",
+        @"Only the asked asset or ada can be deposited into the swap",
         (cn == ask_id && tn == ask_name) || cn == value.ada_policy_id
       )
     }

@@ -78,11 +78,11 @@ validator() {
         // 1) The input must contain the beacon for that trading pair.
         // 2) There must must be an output to this address with the proper value and inline
         //    SwapDatum:
-        //      a) Must contain exactly 1 beacon.
+        //      a) Must contain exactly 1 trading pair beacon.
         //      b) The swap datum must be exactly the same as the input's except the prev_input
         //         must be == Some(input_ref).
         // 3) Asset2 taken * price <= Asset1 given
-        // 4) Only Asset2 leaves and only Asset1 is deposited. ADA can always be deposited.
+        // 4) Only Asset2 leaves and only Asset1 is deposited. Ada can always be deposited.
         //
         // Requirement 1 guarantees that all invalid UTxOs belong to the address owner and that
         // swap inputs have a valid price:
@@ -143,11 +143,11 @@ validator() {
         // 1) The input must contain the beacon for that trading pair.
         // 2) There must must be an output to this address with the proper value and inline
         //    SwapDatum:
-        //      a) Must contain exactly 1 beacon.
+        //      a) Must contain exactly 1 trading pair beacon.
         //      b) The swap datum must be exactly the same as the input's except the prev_input
         //         must be == Some(input_ref).
         // 3) Asset1 taken * price <= Asset2 given
-        // 4) Only Asset1 leaves and only Asset2 is deposited. ADA can always be deposited.
+        // 4) Only Asset1 leaves and only Asset2 is deposited. Ada can always be deposited.
         //
         // Requirement 1 guarantees that all invalid UTxOs belong to the address owner and that
         // swap inputs have a valid price:

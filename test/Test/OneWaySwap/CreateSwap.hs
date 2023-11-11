@@ -3082,17 +3082,14 @@ tests = do
         (assertEvaluationError "UTxO does not have exactly 1 ask_beacon") failureTest10
     , checkPredicateOptions opts "failureTest11"
         (assertEvaluationError "One-way swaps must have exactly three kinds of beacons") failureTest11
-      -- Uses app_name in the error message so result cannot be hardcoded.
     , checkPredicateOptions opts "failureTest12"
-        (Test.not assertNoFailedTransactions) failureTest12
+        (assertEvaluationError "Validator returned false") failureTest12
     , checkPredicateOptions opts "failureTest13"
         (assertEvaluationError "All swap datums must be inline datums") failureTest13
-      -- Uses app_name in the error message so result cannot be hardcoded.
     , checkPredicateOptions opts "failureTest14"
-        (Test.not assertNoFailedTransactions) failureTest14
-      -- Uses app_name in the error message so result cannot be hardcoded.
+        (assertEvaluationError "Validator returned false") failureTest14
     , checkPredicateOptions opts "failureTest15"
-        (Test.not assertNoFailedTransactions) failureTest15
+        (assertEvaluationError "Validator returned false") failureTest15
     , checkPredicateOptions opts "failureTest16"
         (assertEvaluationError "Wrong beacon_id") failureTest16
     , checkPredicateOptions opts "failureTest17"

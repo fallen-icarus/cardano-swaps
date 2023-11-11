@@ -31,19 +31,19 @@ validator() {
         // 1) The beacons must go to an addres protected by the DApp validator script.
         // 2) The beacons must go to an address using a valid staking credential.
         // 3) The UTxOs with the beacons must have the proper value:
-        //      a) Exactly two kinds of beacons: pair beacon and offer beacon.
+        //      a) Exactly three kinds of beacons: pair beacon, offer beacon, and ask beacon.
         //      b) The beacons must correspond to the beacons in the datum.
         //      c) There must be exactly 1 of each beacon.
         //      d) No extraneous assets are in the UTxO.
         // 4) The beacons must be stored with the proper inline `SwapDatum`:
         //      a) `beacon_id` == this policy id.
-        //      b) `pair_beacon` == sha2_256(offer_id ++ offer_name ++ ask_id ++ ask_name)
+        //      b) `pair_beacon` == `sha2_256(offer_id ++ offer_name ++ ask_id ++ ask_name)`
         //      c) `offer_id` == asset id of the offer asset.
         //      d) `offer_name` == asset name of the offer asset.
-        //      e) `offer_beacon` == sha2_256("01" ++ offer_id ++ offer_name).
+        //      e) `offer_beacon` == `sha2_256("01" ++ offer_id ++ offer_name)`.
         //      f) `ask_id` == asset id of the ask asset.
         //      g) `ask_name` == asset name of the ask asset.
-        //      h) `ask_beacon` == sha2_256("02" ++ ask_id ++ ask_name)
+        //      h) `ask_beacon` == `sha2_256("02" ++ ask_id ++ ask_name)`
         //      i) `swap_price` denominator > 0
         //      j) `swap_price` > 0
         // 5) The offer asset and ask assets must be different assets.
@@ -70,16 +70,16 @@ validator() {
         // 1) The input must contain the beacon for that trading pair.
         // 2) There must must be an output to this address with the proper value and inline
         //    SwapDatum:
-        //      a) Must contain exactly 1 beacon.
+        //      a) Must contain exactly 1 of that trading pair beacon.
         //      b) The swap datum must be exactly the same as the input's except the prev_input
         //         must be == Some(input_ref).
         // 3) Offer taken * price <= Ask given
-        // 4) Only the offer asset leaves and only the ask asset is deposited. ADA can always be 
+        // 4) Only the offer asset leaves and only the ask asset is deposited. Ada can always be 
         //    deposited.
         //
         // Requirement 1 guarantees that all invalid UTxOs belong to the address owner and that
         // swap inputs have a valid price:
-        //      a) swap_price denominator > 0
+        //      a) `swap_price` denominator > 0
         //      b) `swap_price` > 0
         //
         // Requirement 2 guarantees that beacons from other trading pairs cannot be combined into
@@ -140,19 +140,19 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
         // 1) The beacons must go to an addres protected by the DApp validator script.
         // 2) The beacons must go to an address using a valid staking credential.
         // 3) The UTxOs with the beacons must have the proper value:
-        //      a) Exactly two kinds of beacons: pair beacon offer beacon.
+        //      a) Exactly three kinds of beacons: pair beacon, offer beacon, and ask beacon.
         //      b) The beacons must correspond to the beacons in the datum.
         //      c) There must be exactly 1 of each beacon.
         //      d) No extraneous assets are in the UTxO.
         // 4) The beacons must be stored with the proper inline `SwapDatum`:
         //      a) `beacon_id` == this policy id.
-        //      b) `pair_beacon` == sha2_256(offer_id ++ offer_name ++ ask_id ++ ask_name)
+        //      b) `pair_beacon` == `sha2_256(offer_id ++ offer_name ++ ask_id ++ ask_name)`
         //      c) `offer_id` == asset id of the offer asset.
         //      d) `offer_name` == asset name of the offer asset.
-        //      e) `offer_beacon` == sha2_256("01" ++ offer_id ++ offer_name).
+        //      e) `offer_beacon` == `sha2_256("01" ++ offer_id ++ offer_name)`.
         //      f) `ask_id` == asset id of the ask asset.
         //      g) `ask_name` == asset name of the ask asset.
-        //      h) `ask_beacon` == sha2_256("02" ++ ask_id ++ ask_name)
+        //      h) `ask_beacon` == `sha2_256("02" ++ ask_id ++ ask_name)`
         //      i) `swap_price` denominator > 0
         //      j) `swap_price` > 0
         // 5) The offer asset and the ask asset must be different assets.

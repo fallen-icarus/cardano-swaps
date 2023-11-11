@@ -76,8 +76,9 @@ pub fn generate_ask_beacon(policy_id: PolicyId, asset_name: AssetName) -> AssetN
   )
 }
 
-// This function is used for `CloseOrUpdate` and `CreateSwap`. This function should only be called
-// after the output has been checked for exactly two types of beacons.
+// This function is used for creating swaps with either `CloseOrUpdate` or `CreateSwap`. This 
+// function should only be called after the output has been checked for exactly three types of 
+// beacons.
 fn valid_swap_output(
   beacon_id: PolicyId,
   output_value: Value,
@@ -186,19 +187,19 @@ pub fn beacon_destination_check(
   // 1) The beacons must go to an addres protected by the DApp validator script.
   // 2) The beacons must go to an address using a valid staking credential.
   // 3) The UTxOs with the beacons must have the proper value:
-  //      a) Exactly two kinds of beacons: pair beacon and offer beacon.
+  //      a) Exactly three kinds of beacons: pair beacon, offer beacon, and ask beacon.
   //      b) The beacons must correspond to the beacons in the datum.
   //      c) There must be exactly 1 of each beacon.
   //      d) No extraneous assets are in the UTxO.
   // 4) The beacons must be stored with the proper inline `SwapDatum`:
   //      a) `beacon_id` == this policy id.
-  //      b) `pair_beacon` == sha2_256(offer_id ++ offer_name ++ ask_id ++ ask_name)
+  //      b) `pair_beacon` == `sha2_256(offer_id ++ offer_name ++ ask_id ++ ask_name)`
   //      c) `offer_id` == asset id of the offer asset.
   //      d) `offer_name` == asset name of the offer asset.
-  //      e) `offer_beacon` == sha2_256("01" ++ offer_id ++ offer_name).
+  //      e) `offer_beacon` == `sha2_256("01" ++ offer_id ++ offer_name)`.
   //      f) `ask_id` == asset id of the ask asset.
   //      g) `ask_name` == asset name of the ask asset.
-  //      h) `ask_beacon` == sha2_256("02" ++ ask_id ++ ask_name)
+  //      h) `ask_beacon` == `sha2_256("02" ++ ask_id ++ ask_name)`
   //      i) `swap_price` denominator > 0
   //      j) `swap_price` > 0
   // 5) The offer asset and the ask asset must be different assets.
@@ -267,7 +268,7 @@ fn swap_value_diff(
     [Output(addr,oval,d,_), ..rest] -> {
       // Requirements for a valid corresponding output:
       // 1) The output is to the same swap address where the input originates.
-      // 2) The output has exactly one of the proper beacon.
+      // 2) The output has exactly one of the proper trading pair beacon.
       // 3) The output's datum is exactly the same accept the `prev_input` == `Some(input_ref)`.
 
       // Check if the output has the beacon for this trading pair. It must have exactly one.
@@ -411,7 +412,7 @@ fn swap_value_diff(
 }
 
 // Check that only the offered asset leaves during the swap. It also checks that a swap only
-// gained the ask asset. This helps optimize the beacon querying by contraining UTxO
+// gained the ask asset or ada. This helps optimize the beacon querying by contraining UTxO
 // assets to just the relevant assets. 
 fn only_proper_assets_swapped(
   flux: Value, 
@@ -435,10 +436,10 @@ fn only_proper_assets_swapped(
       )
     } 
     
-    // If n <= 0, then the asset must be the asked asset or ADA (if the minUTxO value increased).
+    // If n <= 0, then the asset must be the asked asset or ada (if the minUTxO value increased).
     else {
       acc && trace_if_false(
-        @"Only the asked asset or ADA can be deposited into the swap",
+        @"Only the asked asset or ada can be deposited into the swap",
         (cn == ask_id && tn == ask_name) || cn == value.ada_policy_id
       )
     }

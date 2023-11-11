@@ -4758,7 +4758,7 @@ tests = do
     , checkPredicateOptions opts "failureTest15"
         (assertEvaluationError "Corresponding swap output not found") failureTest15
     , checkPredicateOptions opts "failureTest16"
-        (assertEvaluationError "Only the asked asset or ADA can be deposited into the swap") failureTest16
+        (assertEvaluationError "Only the asked asset or ada can be deposited into the swap") failureTest16
     , checkPredicateOptions opts "failureTest17"
         (assertEvaluationError "Corresponding swap output not found") failureTest17
     , checkPredicateOptions opts "failureTest18"
@@ -4766,7 +4766,7 @@ tests = do
     , checkPredicateOptions opts "failureTest19"
         (assertEvaluationError "Only the offered asset can leave the swap") failureTest19
     , checkPredicateOptions opts "failureTest20"
-        (assertEvaluationError "Only the asked asset or ADA can be deposited into the swap") failureTest20
+        (assertEvaluationError "Only the asked asset or ada can be deposited into the swap") failureTest20
     , checkPredicateOptions opts "failureTest21"
         (assertEvaluationError "All swap datums must be inline datums") failureTest21
     , checkPredicateOptions opts "failureTest22"

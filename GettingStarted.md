@@ -206,9 +206,10 @@ cardano-swaps evaluate-tx \
   --tx-file tx.body
 ```
 
-The returned budgets will be indexed by the input order. **This may not be the same order you
-specified when building the temporary transaction.** The node will reorder the inputs
-lexicographically based on the inputs' tx hashes and output indexes.
+The returned budgets will be indexed by the input order and policy id order. **This may not be the
+same order you specified when building the temporary transaction.** The node will reorder them
+lexicographically based on the tx hashes and output indexes for inputs, and the policy ids for
+minting policies.
 
 ##### Submitting the final transaction
 Submitting the final transaction for addition to the blockchain can be done with this command:
@@ -307,9 +308,15 @@ offerBeaconName=$(cardano-swaps beacon-info one-way offer-beacon \
   --offer-token-name 4f74686572546f6b656e0a \
   --stdout)
 
+# Get the required ask beacon name.
+askBeaconName=$(cardano-swaps beacon-info one-way ask-beacon \
+  --ask-lovelace \
+  --stdout)
+
 # Create the required full beacon names.
 pairBeacon="${beaconPolicyId}.${pairBeaconName}"
 offerBeacon="${beaconPolicyId}.${offerBeaconName}"
+askBeacon="${beaconPolicyId}.${askBeaconName}"
 ```
 
 The above beacons are for a swap that is offering a native token in exchange for ADA.
@@ -389,8 +396,13 @@ offerBeaconName=$(cardano-swaps beacon-info one-way offer-beacon \
   --offer-token-name 4f74686572546f6b656e0a \
   --stdout)
 
+askBeaconName=$(cardano-swaps beacon-info one-way ask-beacon \
+  --ask-lovelace \
+  --stdout)
+
 pairBeacon="${beaconPolicyId}.${pairBeaconName}"
 offerBeacon="${beaconPolicyId}.${offerBeaconName}"
+askBeacon="${beaconPolicyId}.${askBeaconName}"
 ```
 
 ##### Create the required burning redeemer
@@ -518,9 +530,15 @@ newOfferBeaconName=$(cardano-swaps beacon-info one-way offer-beacon \
   --offer-token-name 54657374546f6b656e31 \
   --stdout)
 
+# Get the required ask beacon name.
+newAskBeaconName=$(cardano-swaps beacon-info one-way ask-beacon \
+  --ask-lovelace \
+  --stdout)
+
 # Create the required full beacon names.
 newPairBeacon="${beaconPolicyId}.${newPairBeaconName}"
 newOfferBeacon="${beaconPolicyId}.${newOfferBeaconName}"
+newAskBeacon="${beaconPolicyId}.${newAskBeaconName}"
 ```
 
 The above beacons are for a swap that is offering a native token in exchange for ADA.
@@ -545,10 +563,19 @@ oldOfferBeacon=$(cardano-swaps beacon-info one-way offer-beacon \
   --offer-token-name 4f74686572546f6b656e0a \
   --stdout)
 
+# Get the required ask beacon name.
+oldAskBeaconName=$(cardano-swaps beacon-info one-way ask-beacon \
+  --ask-lovelace \
+  --stdout)
+
 # Create the required full beacon names.
 oldPairBeacon="${beaconPolicyId}.${oldPairBeaconName}"
 oldOfferBeacon="${beaconPolicyId}.${oldOfferBeacon}"
+oldAskBeacon="${beaconPolicyId}.${oldAskBeaconName}"
 ```
+
+Since the `oldAskBeacon` is the same as the `newAskBeacon`, the old one does not actually need to be
+burned. This example is just for completeness.
 
 ##### Creating the new swap datum
 ```Bash

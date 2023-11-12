@@ -20,7 +20,6 @@ import Network.HTTP.Client.TLS
 import Control.Exception
 import qualified Data.ByteString.Lazy as LBS
 import Data.Aeson (decode,Value)
-import Data.Maybe (fromJust)
 
 import CLI.Query.Koios as Koios
 import CLI.Types
@@ -142,14 +141,16 @@ runSubmit network api txFile = do
       manager' <- newManager tlsManagerSettings
       res <- case (network,api) of
         (PreProdTestnet,Koios) -> do
-          let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1/ogmios/?SubmitTransaction")
+          let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1/ogmios")
           runClientM (Koios.submitTx tx) env
         (Mainnet,Koios) -> do
-          let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1/ogmios/?SubmitTransaction")
+          let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1/ogmios")
           runClientM (Koios.submitTx tx) env
       case res of
         Right r -> return r
-        Left (FailureResponse _ err) -> return $ fromJust $ decode $ responseBody err
+        Left e@(FailureResponse _ err) -> case decode $ responseBody err of
+          Just response -> return response
+          Nothing -> throw e
         Left err -> throw err
 
 runEvaluateTx :: Network -> Endpoint -> FilePath -> IO Value
@@ -161,12 +162,14 @@ runEvaluateTx network api txFile = do
       manager' <- newManager tlsManagerSettings
       res <- case (network,api) of
         (PreProdTestnet,Koios) -> do
-          let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1/ogmios/?EvaluateTransaction")
+          let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1/ogmios")
           runClientM (Koios.evaluateTx tx) env
         (Mainnet,Koios) -> do
-          let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1/ogmios/?EvaluateTransaction")
+          let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1/ogmios")
           runClientM (Koios.evaluateTx tx) env
       case res of
         Right r -> return r
-        Left (FailureResponse _ err) -> return $ fromJust $ decode $ responseBody err
+        Left e@(FailureResponse _ err) -> case decode $ responseBody err of
+          Just response -> return response
+          Nothing -> throw e
         Left err -> throw err

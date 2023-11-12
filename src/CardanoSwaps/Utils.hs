@@ -14,7 +14,7 @@ module CardanoSwaps.Utils
   , AssetConfig
   , OfferAsset(..)
   , AskAsset(..)
-  , TwoWayPair(..)
+  , TwoWayPair
 
     -- * Serialization
   , writeData
@@ -82,7 +82,7 @@ instance Pretty PlutusRational where
 -------------------------------------------------
 newtype OfferAsset = OfferAsset { unOfferAsset :: AssetConfig }
 newtype AskAsset = AskAsset { unAskAsset :: AssetConfig }
-newtype TwoWayPair = TwoWayPair { unTwoWayPair :: (AssetConfig,AssetConfig) }
+type TwoWayPair = (AssetConfig,AssetConfig)
 
 -------------------------------------------------
 -- Serialization

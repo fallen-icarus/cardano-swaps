@@ -14,9 +14,9 @@ import CLI.Types
 parseCommand :: Parser Command
 parseCommand = hsubparser $ mconcat
   [ command "scripts" $
-      info parseExportScript $ progDesc "Export a dApp plutus script."
+      info parseExportScript $ progDesc "Export a DApp plutus script."
   , command "datums" $
-      info parseCreateDatum $ progDesc "Create a datum for the dApp."
+      info parseCreateDatum $ progDesc "Create a datum for the DApp."
   , command "spending-redeemers" $
       info  parseCreateSpendingRedeemer $ progDesc "Create a spending redeemer."
   , command "beacon-redeemers" $
@@ -112,7 +112,7 @@ pCreateTwoWayDatum = CreateDatum <$> pInternalTwoWaySwapDatum <*> pOutputFile
     pInternalTwoWaySwapDatum :: Parser InternalDatum
     pInternalTwoWaySwapDatum = 
       InternalTwoWaySwapDatum 
-        <$> (fmap TwoWayPair . (,) <$> pTwoWayAsset "asset1" <*> pTwoWayAsset "asset2")
+        <$> ((,) <$> pTwoWayAsset "asset1" <*> pTwoWayAsset "asset2")
         <*> pPrice "forward-price"
         <*> pPrice "reverse-price"
         <*> pPrevInput
@@ -243,9 +243,11 @@ pOneWayBeaconInfo = hsubparser $ mconcat
     [ command "policy-id" $
         info pPolicyId $ progDesc "Calculate the one-way beacon policy id."
     , command "offer-beacon" $
-        info pOfferName $ progDesc "Calculate the one-way offer beacon asset name."
+        info pOfferName $ progDesc "Calculate the one-way offer beacon token name."
+    , command "ask-beacon" $
+        info pAskName $ progDesc "Calculate the one-way ask beacon token name."
     , command "pair-beacon" $
-        info pPairName $ progDesc "Calculate the one-way trading pair beacon asset name."
+        info pPairName $ progDesc "Calculate the one-way trading pair beacon token name."
     ]
   where
     pPolicyId :: Parser Command
@@ -254,13 +256,19 @@ pOneWayBeaconInfo = hsubparser $ mconcat
     pOfferName :: Parser Command
     pOfferName = 
       BeaconInfo
-        <$> (OneWayOfferBeaconAssetName <$> (OfferAsset <$> pOneWayAsset "offer"))
+        <$> (OneWayOfferBeaconName <$> (OfferAsset <$> pOneWayAsset "offer"))
+        <*> pOutput
+
+    pAskName :: Parser Command
+    pAskName = 
+      BeaconInfo
+        <$> (OneWayAskBeaconName <$> (AskAsset <$> pOneWayAsset "ask"))
         <*> pOutput
 
     pPairName :: Parser Command
     pPairName = 
       BeaconInfo
-        <$> ( fmap OneWayPairBeaconAssetName . (,) 
+        <$> ( fmap OneWayPairBeaconName . (,) 
                 <$> (OfferAsset <$> pOneWayAsset "offer") <*> (AskAsset <$> pOneWayAsset "ask")
             )
         <*> pOutput
@@ -269,19 +277,19 @@ pTwoWayBeaconInfo :: Parser Command
 pTwoWayBeaconInfo = hsubparser $ mconcat
     [ command "policy-id" $
         info pPolicyId $ progDesc "Calculate the two-way beacon policy id."
-    , command "offer-beacon" $
-        info pOfferName $ progDesc "Calculate the two-way offer beacon asset name."
+    , command "asset-beacon" $
+        info pAssetName $ progDesc "Calculate the two-way asset beacon token name."
     , command "pair-beacon" $
-        info pPairName $ progDesc "Calculate the two-way trading pair beacon asset name."
+        info pPairName $ progDesc "Calculate the two-way trading pair beacon token name."
     ]
   where
     pPolicyId :: Parser Command
     pPolicyId = BeaconInfo <$> pure TwoWayPolicyId <*> pOutput
 
-    pOfferName :: Parser Command
-    pOfferName = 
+    pAssetName :: Parser Command
+    pAssetName = 
       BeaconInfo
-        <$> ( TwoWayOfferBeaconAssetName 
+        <$> ( TwoWayAssetBeaconName 
                 <$> (pTwoWayAsset "asset1" <|> pTwoWayAsset "asset2")
             )
         <*> pOutput
@@ -289,7 +297,7 @@ pTwoWayBeaconInfo = hsubparser $ mconcat
     pPairName :: Parser Command
     pPairName = 
       BeaconInfo
-        <$> ( fmap TwoWayPairBeaconAssetName . fmap TwoWayPair . (,) 
+        <$> ( fmap TwoWayPairBeaconName . (,) 
                 <$> (pTwoWayAsset "asset1") <*> (pTwoWayAsset "asset2")
             )
         <*> pOutput
@@ -359,6 +367,8 @@ parseQueryOwnOneWaySwaps = fmap QueryOwnSwaps . hsubparser $ mconcat
       (info pQueryAll $ progDesc "Query all of your own swaps.")
   , command "offer"
       (info pQueryOffer $ progDesc "Query swaps by offer asset.")
+  , command "ask"
+      (info pQueryAsk $ progDesc "Query swaps by ask asset.")
   , command "trading-pair"
       (info pQueryTradingPair $ progDesc "Query swaps by trading pair.")
   ]
@@ -382,6 +392,17 @@ parseQueryOwnOneWaySwaps = fmap QueryOwnSwaps . hsubparser $ mconcat
         <*> pFormat
         <*> pOutput
 
+    pQueryAsk :: Parser QueryOwnSwaps
+    pQueryAsk =
+      QueryOwnOneWaySwapsByAsk
+        <$> pNetwork
+        <*> pEndpoint
+        <*> pUserAddress
+        <*> (AskAsset <$> pOneWayAsset "ask")
+        <*> pFormat
+        <*> pOutput
+
+
     pQueryTradingPair :: Parser QueryOwnSwaps
     pQueryTradingPair =
       QueryOwnOneWaySwapsByTradingPair
@@ -399,6 +420,8 @@ parseQueryOwnTwoWaySwaps = fmap QueryOwnSwaps . hsubparser $ mconcat
       (info pQueryAll $ progDesc "Query all of your own swaps.")
   , command "offer"
       (info pQueryOffer $ progDesc "Query swaps by offer asset.")
+  , command "ask"
+      (info pQueryAsk $ progDesc "Query swaps by ask asset.")
   , command "trading-pair"
       (info pQueryTradingPair $ progDesc "Query swaps by trading pair.")
   ]
@@ -422,13 +445,23 @@ parseQueryOwnTwoWaySwaps = fmap QueryOwnSwaps . hsubparser $ mconcat
         <*> pFormat
         <*> pOutput
 
+    pQueryAsk :: Parser QueryOwnSwaps
+    pQueryAsk =
+      QueryOwnTwoWaySwapsByAsk
+        <$> pNetwork
+        <*> pEndpoint
+        <*> pUserAddress
+        <*> (pTwoWayAsset "asset1" <|> pTwoWayAsset "asset2")
+        <*> pFormat
+        <*> pOutput
+
     pQueryTradingPair :: Parser QueryOwnSwaps
     pQueryTradingPair =
       QueryOwnTwoWaySwapsByTradingPair
         <$> pNetwork
         <*> pEndpoint
         <*> pUserAddress
-        <*> (fmap TwoWayPair . (,) <$> pTwoWayAsset "asset1" <*> pTwoWayAsset "asset2")
+        <*> ((,) <$> pTwoWayAsset "asset1" <*> pTwoWayAsset "asset2")
         <*> pFormat
         <*> pOutput
 
@@ -436,6 +469,8 @@ parseQueryAll :: Parser Query
 parseQueryAll = fmap QueryAllSwaps . hsubparser $ mconcat
   [ command "offer"
       (info pQueryOffer $ progDesc "Query swaps by offer asset.")
+  , command "ask"
+      (info pQueryAsk $ progDesc "Query swaps by ask asset.")
   , command "trading-pair"
       (info pQueryTradingPair $ progDesc "Query swaps by trading pair.")
   ]
@@ -446,6 +481,15 @@ parseQueryAll = fmap QueryAllSwaps . hsubparser $ mconcat
         <$> pNetwork
         <*> pEndpoint
         <*> (OfferAsset <$> pOneWayAsset "offer")
+        <*> pFormat
+        <*> pOutput
+
+    pQueryAsk :: Parser QueryAll
+    pQueryAsk =
+      QueryAllSwapsByAsk
+        <$> pNetwork
+        <*> pEndpoint
+        <*> (AskAsset <$> pOneWayAsset "ask")
         <*> pFormat
         <*> pOutput
 

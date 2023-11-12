@@ -55,11 +55,12 @@ data MintingRedeemer
 
 data BeaconInfo 
   = OneWayPolicyId
-  | OneWayOfferBeaconAssetName OfferAsset
-  | OneWayPairBeaconAssetName (OfferAsset,AskAsset)
+  | OneWayOfferBeaconName OfferAsset
+  | OneWayAskBeaconName AskAsset
+  | OneWayPairBeaconName (OfferAsset,AskAsset)
   | TwoWayPolicyId
-  | TwoWayOfferBeaconAssetName AssetConfig
-  | TwoWayPairBeaconAssetName TwoWayPair
+  | TwoWayAssetBeaconName AssetConfig
+  | TwoWayPairBeaconName TwoWayPair
 
 -- | For when saving to file is optional
 data Output = Stdout | File FilePath
@@ -93,13 +94,16 @@ data Query
 data QueryOwnSwaps
   = QueryOwnOneWaySwaps Network Endpoint UserAddress Format Output
   | QueryOwnOneWaySwapsByOffer Network Endpoint UserAddress OfferAsset Format Output
+  | QueryOwnOneWaySwapsByAsk Network Endpoint UserAddress AskAsset Format Output
   | QueryOwnOneWaySwapsByTradingPair Network Endpoint UserAddress OfferAsset AskAsset Format Output
   | QueryOwnTwoWaySwaps Network Endpoint UserAddress Format Output
   | QueryOwnTwoWaySwapsByOffer Network Endpoint UserAddress AssetConfig Format Output
+  | QueryOwnTwoWaySwapsByAsk Network Endpoint UserAddress AssetConfig Format Output
   | QueryOwnTwoWaySwapsByTradingPair Network Endpoint UserAddress TwoWayPair Format Output
 
 data QueryAll
   = QueryAllSwapsByOffer Network Endpoint OfferAsset Format Output
+  | QueryAllSwapsByAsk Network Endpoint AskAsset Format Output
   | QueryAllSwapsByTradingPair Network Endpoint OfferAsset AskAsset Format Output
 
 data Asset = Asset

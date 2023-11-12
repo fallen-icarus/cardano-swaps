@@ -52,29 +52,30 @@ runExportScriptCmd script file = do
 
 runCreateDatum :: InternalDatum -> FilePath -> IO ()
 runCreateDatum 
-  (InternalOneWaySwapDatum (OfferAsset offerCfg) (AskAsset askCfg) swapPrice' mPrev) file = do
+  (InternalOneWaySwapDatum o@(OfferAsset offerCfg) a@(AskAsset askCfg) swapPrice' mPrev) file = do
     writeData file $ OneWaySwapDatum 
       { oneWayBeaconId = oneWayBeaconCurrencySymbol
-      , oneWayPairBeacon = genUnsortedPairBeaconName offerCfg askCfg
+      , oneWayPairBeacon = genOneWayPairBeaconName o a
       , oneWayOfferId = fst offerCfg
       , oneWayOfferName = snd offerCfg
-      , oneWayOfferBeacon = uncurry genOfferBeaconName offerCfg
+      , oneWayOfferBeacon = genOfferBeaconName o
       , oneWayAskId = fst askCfg
       , oneWayAskName = snd askCfg
+      , oneWayAskBeacon = genAskBeaconName a
       , oneWaySwapPrice = swapPrice'
       , oneWayPrevInput = mPrev
       }
 runCreateDatum 
-  (InternalTwoWaySwapDatum (TwoWayPair (asset1,asset2)) forwardPrice' reversePrice' mPrev) file = do
+  (InternalTwoWaySwapDatum (asset1,asset2) forwardPrice' reversePrice' mPrev) file = do
     writeData file $ TwoWaySwapDatum 
         { twoWayBeaconId = twoWayBeaconCurrencySymbol
-        , twoWayPairBeacon = genUnsortedPairBeaconName asset1 asset2
+        , twoWayPairBeacon = genTwoWayPairBeaconName asset1 asset2
         , twoWayAsset1Id = fst asset1
         , twoWayAsset1Name = snd asset1
-        , twoWayAsset1Beacon = uncurry genOfferBeaconName asset1
+        , twoWayAsset1Beacon = genAssetBeaconName asset1
         , twoWayAsset2Id = fst asset2
         , twoWayAsset2Name = snd asset2
-        , twoWayAsset2Beacon = uncurry genOfferBeaconName asset2
+        , twoWayAsset2Beacon = genAssetBeaconName asset2
         , twoWayForwardPrice = forwardPrice'
         , twoWayReversePrice = reversePrice'
         , twoWayPrevInput = mPrev
@@ -100,16 +101,18 @@ runBeaconInfo info output = case output of
       case info of
         OneWayPolicyId -> 
           show oneWayBeaconCurrencySymbol
-        OneWayOfferBeaconAssetName (OfferAsset cfg) -> 
-          drop 2 $ show $ uncurry genOfferBeaconName cfg
-        OneWayPairBeaconAssetName (OfferAsset offerCfg, AskAsset askCfg) ->
-          drop 2 $ show $ genUnsortedPairBeaconName offerCfg askCfg
+        OneWayOfferBeaconName offer -> 
+          drop 2 $ show $ genOfferBeaconName offer
+        OneWayAskBeaconName ask -> 
+          drop 2 $ show $ genAskBeaconName ask
+        OneWayPairBeaconName (offer, ask) ->
+          drop 2 $ show $ genOneWayPairBeaconName offer ask
         TwoWayPolicyId -> 
           show twoWayBeaconCurrencySymbol
-        TwoWayOfferBeaconAssetName cfg -> 
-          drop 2 $ show $ uncurry genOfferBeaconName cfg
-        TwoWayPairBeaconAssetName (TwoWayPair (assetX,assetY)) ->
-          drop 2 $ show $ genSortedPairBeaconName assetX assetY
+        TwoWayAssetBeaconName cfg -> 
+          drop 2 $ show $ genAssetBeaconName cfg
+        TwoWayPairBeaconName (assetX,assetY) ->
+          drop 2 $ show $ genTwoWayPairBeaconName assetX assetY
 
 runExportParams :: Network -> Output -> IO ()
 runExportParams network output = case (network,output) of
@@ -156,6 +159,13 @@ runQueryAll queryAll = case queryAll of
           JSON -> toJSONOutput output
           Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None) 
           Plain -> toPlainOutput output . (<> hardline) . vsep . map (prettySwapUTxO None)
+  QueryAllSwapsByAsk
+    network api offer format output ->
+      runQueryAllSwapsByAsk network api offer >>= 
+        case format of
+          JSON -> toJSONOutput output
+          Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None) 
+          Plain -> toPlainOutput output . (<> hardline) . vsep . map (prettySwapUTxO None)
 
 runQueryOwn :: QueryOwnSwaps -> IO ()
 runQueryOwn queryOwn = case queryOwn of
@@ -167,17 +177,25 @@ runQueryOwn queryOwn = case queryOwn of
           Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None) 
           Plain -> toPlainOutput output . (<> hardline) . vsep . map (prettySwapUTxO None)
   QueryOwnOneWaySwapsByOffer 
-    network api addr (OfferAsset cfg) format output ->
+    network api addr cfg format output ->
       runQueryOwnSwapsByBeacon 
-        network api addr oneWayBeaconCurrencySymbol (uncurry genOfferBeaconName cfg) >>= 
+        network api addr oneWayBeaconCurrencySymbol (genOfferBeaconName cfg) >>= 
+      case format of
+        JSON -> toJSONOutput output
+        Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None) 
+        Plain -> toPlainOutput output . (<> hardline) . vsep . map (prettySwapUTxO None)
+  QueryOwnOneWaySwapsByAsk
+    network api addr cfg format output ->
+      runQueryOwnSwapsByBeacon 
+        network api addr oneWayBeaconCurrencySymbol (genAskBeaconName cfg) >>= 
       case format of
         JSON -> toJSONOutput output
         Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None) 
         Plain -> toPlainOutput output . (<> hardline) . vsep . map (prettySwapUTxO None)
   QueryOwnOneWaySwapsByTradingPair 
-    network api addr (OfferAsset offerCfg) (AskAsset askCfg) format output ->
+    network api addr offer ask format output ->
       runQueryOwnSwapsByBeacon 
-        network api addr oneWayBeaconCurrencySymbol (genUnsortedPairBeaconName offerCfg askCfg) >>= 
+        network api addr oneWayBeaconCurrencySymbol (genOneWayPairBeaconName offer ask) >>= 
       case format of
         JSON -> toJSONOutput output
         Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None) 
@@ -192,15 +210,23 @@ runQueryOwn queryOwn = case queryOwn of
   QueryOwnTwoWaySwapsByOffer 
     network api addr cfg format output ->
       runQueryOwnSwapsByBeacon 
-        network api addr twoWayBeaconCurrencySymbol (uncurry genOfferBeaconName cfg) >>= 
+        network api addr twoWayBeaconCurrencySymbol (genAssetBeaconName cfg) >>= 
+      case format of
+        JSON -> toJSONOutput output
+        Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None) 
+        Plain -> toPlainOutput output . (<> hardline) . vsep . map (prettySwapUTxO None)
+  QueryOwnTwoWaySwapsByAsk
+    network api addr cfg format output ->
+      runQueryOwnSwapsByBeacon 
+        network api addr twoWayBeaconCurrencySymbol (genAssetBeaconName cfg) >>= 
       case format of
         JSON -> toJSONOutput output
         Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None) 
         Plain -> toPlainOutput output . (<> hardline) . vsep . map (prettySwapUTxO None)
   QueryOwnTwoWaySwapsByTradingPair 
-    network api addr (TwoWayPair (assetX,assetY)) format output ->
+    network api addr (assetX,assetY) format output ->
       runQueryOwnSwapsByBeacon 
-        network api addr twoWayBeaconCurrencySymbol (genSortedPairBeaconName assetX assetY) >>= 
+        network api addr twoWayBeaconCurrencySymbol (genTwoWayPairBeaconName assetX assetY) >>= 
       case format of
         JSON -> toJSONOutput output
         Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None)

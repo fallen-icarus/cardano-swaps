@@ -5,6 +5,7 @@
 module CLI.Query
   (
     runQueryAllSwapsByOffer
+  , runQueryAllSwapsByAsk
   , runQueryAllSwapsByTradingPair
   , runQueryOwnSwaps
   , runQueryOwnSwapsByBeacon
@@ -58,6 +59,24 @@ runQueryAllSwapsByOffer network api offer = do
     (Mainnet,Koios) -> do
       let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1")
       runClientM (Koios.queryAllSwapsByOffer offer) env
+  case res of
+    Right r -> return r
+    Left err -> throw err
+
+runQueryAllSwapsByAsk
+  :: Network 
+  -> Endpoint 
+  -> AskAsset
+  -> IO [SwapUTxO]
+runQueryAllSwapsByAsk network api ask = do
+  manager' <- newManager tlsManagerSettings
+  res <- case (network,api) of
+    (PreProdTestnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1")
+      runClientM (Koios.queryAllSwapsByAsk ask) env
+    (Mainnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1")
+      runClientM (Koios.queryAllSwapsByAsk ask) env
   case res of
     Right r -> return r
     Left err -> throw err

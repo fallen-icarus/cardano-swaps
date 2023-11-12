@@ -10,6 +10,7 @@ module CLI.Query.Koios
   (
     queryAllSwapsByTradingPair
   , queryAllSwapsByOffer
+  , queryAllSwapsByAsk
   , queryOwnSwaps
   , queryOwnSwapsByBeacon
   , submitTx
@@ -135,8 +136,8 @@ submitApi :<|> evaluateApi :<|> assetUTxOsApi :<|> addressUTxOsApi = client api
 -------------------------------------------------
 queryAllSwapsByTradingPair :: OfferAsset -> AskAsset -> ClientM [SwapUTxO]
 queryAllSwapsByTradingPair o@(OfferAsset offer@(currSym,_)) a@(AskAsset ask) = do
-  let oneWayBeacon = (oneWayBeaconCurrencySymbol, genUnsortedPairBeaconName offer ask)
-      twoWayBeacon = (twoWayBeaconCurrencySymbol, genSortedPairBeaconName offer ask)
+  let oneWayBeacon = (oneWayBeaconCurrencySymbol, genOneWayPairBeaconName o a)
+      twoWayBeacon = (twoWayBeaconCurrencySymbol, genTwoWayPairBeaconName offer ask)
       offerFilter = if currSym == "" then Nothing else Just $ "cs." <> assetToQueryParam offer
   oneWayUTxOs <- 
     assetUTxOsApi 
@@ -153,11 +154,12 @@ queryAllSwapsByTradingPair o@(OfferAsset offer@(currSym,_)) a@(AskAsset ask) = d
   return $ sortOn (prices o a) $ map convertToSwapUTxO $ oneWayUTxOs <> twoWayUTxOs
 
 queryAllSwapsByOffer :: OfferAsset -> ClientM [SwapUTxO]
-queryAllSwapsByOffer (OfferAsset offer@(currSym,_))  = do
-  let offerBeaconName = uncurry genOfferBeaconName offer
-      oneWayBeacon = (oneWayBeaconCurrencySymbol, offerBeaconName)
-      twoWayBeacon = (twoWayBeaconCurrencySymbol, offerBeaconName)
-      offerFilter = if currSym == "" then Nothing else Just $ "cs." <> assetToQueryParam offer
+queryAllSwapsByOffer offer@(OfferAsset asset@(currSym,_))  = do
+  let oneWayOfferBeaconName = genOfferBeaconName offer
+      twoWayOfferBeaconName = genAssetBeaconName asset
+      oneWayBeacon = (oneWayBeaconCurrencySymbol, oneWayOfferBeaconName)
+      twoWayBeacon = (twoWayBeaconCurrencySymbol, twoWayOfferBeaconName)
+      offerFilter = if currSym == "" then Nothing else Just $ "cs." <> assetToQueryParam asset
   oneWayUTxOs <- 
     assetUTxOsApi 
       "is_spent,tx_hash,tx_index,address,value,datum_hash,inline_datum,asset_list,reference_script"
@@ -169,6 +171,26 @@ queryAllSwapsByOffer (OfferAsset offer@(currSym,_))  = do
       "is_spent,tx_hash,tx_index,address,value,datum_hash,inline_datum,asset_list,reference_script"
       "eq.false"
       offerFilter
+      (AssetList [twoWayBeacon])
+  return $ map convertToSwapUTxO $ oneWayUTxOs <> twoWayUTxOs
+
+queryAllSwapsByAsk :: AskAsset -> ClientM [SwapUTxO]
+queryAllSwapsByAsk ask@(AskAsset asset)  = do
+  let oneWayAskBeaconName = genAskBeaconName ask
+      twoWayAskBeaconName = genAssetBeaconName asset
+      oneWayBeacon = (oneWayBeaconCurrencySymbol, oneWayAskBeaconName)
+      twoWayBeacon = (twoWayBeaconCurrencySymbol, twoWayAskBeaconName)
+  oneWayUTxOs <- 
+    assetUTxOsApi 
+      "is_spent,tx_hash,tx_index,address,value,datum_hash,inline_datum,asset_list,reference_script"
+      "eq.false"
+      Nothing
+      (AssetList [oneWayBeacon])
+  twoWayUTxOs <- 
+    assetUTxOsApi 
+      "is_spent,tx_hash,tx_index,address,value,datum_hash,inline_datum,asset_list,reference_script"
+      "eq.false"
+      Nothing
       (AssetList [twoWayBeacon])
   return $ map convertToSwapUTxO $ oneWayUTxOs <> twoWayUTxOs
 

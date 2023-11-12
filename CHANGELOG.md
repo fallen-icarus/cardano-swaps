@@ -12,6 +12,7 @@ finished swaps. Koios can do this *before* returning the results. Blockfrost req
 to be done locally.
 - Added CLI support for using Koios as a remote node.
 - Added template bash scripts for using a remote node.
+- Added CLI support for querying personal addresses using Koios.
 
 ## 0.4.0.0
 

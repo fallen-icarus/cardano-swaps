@@ -128,7 +128,7 @@ Make sure you instal verison 1.0.20-alpha. Newer versions may change some things
 code may not compile or may result in a different script. As aiken stabilizes, the code will be
 updated to the latest version.
 
-When building the dApp's blueprints, make sure to use
+When building the protocol's blueprints, make sure to use
 
 ``` Bash
 aiken build --keep-traces
@@ -137,10 +137,10 @@ aiken build --keep-traces
 or else the user friendly error messages will be stripped from the smart contracts and the resulting
 beacons will be different.
 
-For integration testing, you can create your own custom beacons without changing the dApp's logic by
-changing the string passed [here](aiken/lib/cardano_swaps/common/types.ak#L4). Currently, it is set
-to "". You can change this to any string personal to you so that you can get custom beacons
-to play with for testing.
+For integration testing, you can create your own custom beacons without changing the protocol's
+logic by changing the string passed [here](aiken/lib/cardano_swaps/common/types.ak#L4). Currently,
+it is set to "". You can change this to any string personal to you so that you can get custom
+beacons to play with for testing.
 
 If you would like to use the `cardano-swaps` CLI after making your changes, you will need to
 rebuild it with `cabal bulid exe:cardano-swaps`. As long as you did not make any breaking changes,
@@ -1074,6 +1074,10 @@ printing to the stdout but both can also be saved to a file. The only difference
 format and the plain format is the pretty format uses ansii escape sequences to highlight certain
 items with color. The plain format is there as a fallback in case the ansii escape sequences are
 causing issues for a user.
+
+> Note: Currently, `cardano-swaps` CLI will only get the first 1000 UTxOs that satisfy a query. This
+> could be 1000 personal UTxOs or 1000 swap UTxOs, depending on the query. For the beta release,
+> 1000 should be plenty. The CLI will be expanded in the future to remove this cap.
 
 ### Personal Address
 

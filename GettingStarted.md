@@ -1146,14 +1146,36 @@ cardano-swaps query own-swaps one-way offer \
 cardano-swaps query own-swaps two-way offer \
   --testnet \
   --address $(cat twoWaySwap.addr) \
-  --asset1-is-lovelace \
+  --offer-lovelace \
   --pretty \
   --stdout
 ```
 
 Since both asset1 and asset2 can be the offer asset for two-way swaps depending on the swap's
-direction, this query requires you to choose one of the assets. Choosing both is not a valid
-command.
+direction, this query requires you to choose one of the assets. 
+
+##### Query One-Way Swaps By Ask
+```Bash
+cardano-swaps query own-swaps one-way offer \
+  --testnet \
+  --address $(cat oneWaySwap.addr) \
+  --ask-lovelace \
+  --pretty \
+  --stdout
+```
+
+##### Query Two-Way Swaps By Ask
+```Bash
+cardano-swaps query own-swaps two-way ask \
+  --testnet \
+  --address $(cat twoWaySwap.addr) \
+  --ask-is-lovelace \
+  --pretty \
+  --stdout
+```
+
+Since both asset1 and asset2 can be the ask asset for two-way swaps depending on the swap's
+direction, this query requires you to choose one of the assets.  
 
 ##### Query One-Way Swaps By Trading Pair
 ```Bash
@@ -1178,6 +1200,10 @@ cardano-swaps query own-swaps two-way trading-pair \
   --pretty \
   --stdout
 ```
+
+The assets do not need to be properly sorted for this query to work. For example, even though
+ada should always be asset1, this query will still work if ada is set for asset2. The CLI will
+properly query the swaps regardless of the order.
 
 ### All Swaps
 
@@ -1220,3 +1246,14 @@ cardano-swaps query all-swaps offer \
   --stdout
 ```
 
+##### Swaps By Ask
+
+The returned swaps are *not* sorted nor are the prices highlighted in the pretty format.
+
+```Bash
+cardano-swaps query all-swaps ask \
+  --testnet \
+  --ask-lovelace \
+  --pretty \
+  --stdout
+```

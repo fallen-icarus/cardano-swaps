@@ -441,7 +441,7 @@ parseQueryOwnTwoWaySwaps = fmap QueryOwnSwaps . hsubparser $ mconcat
         <$> pNetwork
         <*> pEndpoint
         <*> pUserAddress
-        <*> (pTwoWayAsset "asset1" <|> pTwoWayAsset "asset2")
+        <*> pOneWayAsset "offer"
         <*> pFormat
         <*> pOutput
 
@@ -451,7 +451,7 @@ parseQueryOwnTwoWaySwaps = fmap QueryOwnSwaps . hsubparser $ mconcat
         <$> pNetwork
         <*> pEndpoint
         <*> pUserAddress
-        <*> (pTwoWayAsset "asset1" <|> pTwoWayAsset "asset2")
+        <*> pOneWayAsset "ask" 
         <*> pFormat
         <*> pOutput
 

@@ -30,11 +30,11 @@ cardano-cli transaction build-raw \
   --tx-in d52bf2621cd5ed984e529685e3a1088db81e4fa431769bec77f3374421b20fd7#0 \
   --tx-in d52bf2621cd5ed984e529685e3a1088db81e4fa431769bec77f3374421b20fd7#1 \
   --tx-in dfc9b1a97010efae5f0489ab8485ae4fe1482f438769c44b7460d15fcb9d110b#1 \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 26000000 lovelace " \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 26000000 lovelace" \
   --tx-out-reference-script-file $swapScriptFile \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 18000000 lovelace " \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 18000000 lovelace" \
   --tx-out-reference-script-file $beaconPolicyFile \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + ${initial_change} lovelace " \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + ${initial_change} lovelace" \
   --fee 0 \
   --out-file "${tmpDir}tx.body"
 
@@ -56,8 +56,8 @@ cardano-cli transaction build-raw \
   --tx-out-reference-script-file $swapScriptFile \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + 18000000 lovelace " \
   --tx-out-reference-script-file $beaconPolicyFile \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + $(($initial_change-$req_fee)) lovelace " \
-  --fee $req_fee \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + $((initial_change-req_fee)) lovelace " \
+  --fee "$req_fee" \
   --out-file "${tmpDir}tx.body"
 
 echo "Signing the transaction..."

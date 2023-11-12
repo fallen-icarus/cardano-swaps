@@ -59,8 +59,8 @@ cardano-cli transaction build-raw \
   --tx-out-reference-script-file $swapScriptFile \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + 19000000 lovelace " \
   --tx-out-reference-script-file $beaconPolicyFile \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + $(($initial_change-$req_fee)) lovelace " \
-  --fee $req_fee \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + $((initial_change-req_fee)) lovelace " \
+  --fee "$req_fee" \
   --out-file "${tmpDir}tx.body"
 
 echo "Signing the transaction..."

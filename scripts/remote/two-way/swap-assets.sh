@@ -86,8 +86,9 @@ exec_units=$(cardano-swaps evaluate-tx \
   --testnet \
   --tx-file "${tmpDir}tx.body")
 
-spend_0_mem=$(echo $exec_units | jq '.result | .[] | select(.validator=="spend:0") | .budget.memory' )
-spend_0_steps=$(echo $exec_units | jq '.result | .[] | select(.validator=="spend:0") | .budget.cpu' )
+# MAKE SURE THE INDEXES MATCH THE LEXICOGRAPHICAL ORDERING FOR INPUTS AND POLICY IDS.
+spend_0_mem=$(echo "$exec_units" | jq '.result | .[] | select(.validator=="spend:0") | .budget.memory' )
+spend_0_steps=$(echo "$exec_units" | jq '.result | .[] | select(.validator=="spend:0") | .budget.cpu' )
 
 echo "Rebuilding the transaction with proper execution budgets..."
 cardano-cli transaction build-raw \
@@ -116,7 +117,7 @@ calculated_fee=$(cardano-cli transaction calculate-min-fee \
   --tx-in-count 2 \
   --tx-out-count 2 \
   --witness-count 1 | cut -d' ' -f1)
-req_fee=$(($calculated_fee+50000)) # Add 0.05 ADA to be safe since the fee must still be updated.
+req_fee=$((calculated_fee+50000)) # Add 0.05 ADA to be safe since the fee must still be updated.
 
 echo "Rebuilding the transaction with the required fee..."
 cardano-cli transaction build-raw \
@@ -130,11 +131,11 @@ cardano-cli transaction build-raw \
   --tx-out "$(cat ../../../ignored/wallets/02.addr) + 3000000 lovelace + 2 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out "$swapAddr1 + 5000000 lovelace + 1 ${pairBeacon1} + 1 ${asset1Beacon1} + 1 ${asset2Beacon1} + 6 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out-inline-datum-file $swapDatumFile1 \
-  --tx-out "$(cat ../../../ignored/wallets/02.addr) + $(($initial_change-$req_fee)) lovelace" \
+  --tx-out "$(cat ../../../ignored/wallets/02.addr) + $((initial_change-req_fee)) lovelace" \
   --tx-in-collateral 11ed603b92e6164c6bb0c83e0f4d54a954976db7c39e2a82d3cbf70f098da1e0#0 \
   --tx-total-collateral 21000000 \
   --protocol-params-file "${tmpDir}protocol.json" \
-  --fee $req_fee \
+  --fee "$req_fee" \
   --out-file "${tmpDir}tx.body"
 
 echo "Signing the transaction..."

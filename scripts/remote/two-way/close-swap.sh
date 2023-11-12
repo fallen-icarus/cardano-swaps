@@ -6,8 +6,6 @@ tmpDir="../../../ignored/tmp/"
 
 ownerPubKeyFile="../../../ignored/wallets/01Stake.vkey"
 
-swapAddrFile="${dir}twoWaySwap.addr"
-
 swapRedeemerFile="${dir}closeOrUpdateTwoWaySwap.json"
 
 beaconRedeemerFile="${dir}twoWayBeaconRedeemer.json"
@@ -90,10 +88,11 @@ exec_units=$(cardano-swaps evaluate-tx \
   --testnet \
   --tx-file "${tmpDir}tx.body")
 
-spend_0_mem=$(echo $exec_units | jq '.result | .[] | select(.validator=="spend:0") | .budget.memory' )
-spend_0_steps=$(echo $exec_units | jq '.result | .[] | select(.validator=="spend:0") | .budget.cpu' )
-mint_mem=$(echo $exec_units | jq '.result | .[] | select(.validator=="mint:0") | .budget.memory' )
-mint_steps=$(echo $exec_units | jq '.result | .[] | select(.validator=="mint:0") | .budget.cpu' )
+# MAKE SURE THE INDEXES MATCH THE LEXICOGRAPHICAL ORDERING FOR INPUTS AND POLICY IDS.
+spend_0_mem=$(echo "$exec_units" | jq '.result | .[] | select(.validator=="spend:0") | .budget.memory' )
+spend_0_steps=$(echo "$exec_units" | jq '.result | .[] | select(.validator=="spend:0") | .budget.cpu' )
+mint_mem=$(echo "$exec_units" | jq '.result | .[] | select(.validator=="mint:0") | .budget.memory' )
+mint_steps=$(echo "$exec_units" | jq '.result | .[] | select(.validator=="mint:0") | .budget.cpu' )
 
 echo "Rebuilding the transaction with proper execution budgets..."
 cardano-cli transaction build-raw \
@@ -127,7 +126,7 @@ calculated_fee=$(cardano-cli transaction calculate-min-fee \
   --tx-in-count 2 \
   --tx-out-count 2 \
   --witness-count 2 | cut -d' ' -f1)
-req_fee=$(($calculated_fee+50000)) # Add 0.05 ADA to be safe since the fee must still be updated.
+req_fee=$((calculated_fee+50000)) # Add 0.05 ADA to be safe since the fee must still be updated.
 
 echo "Rebuilding the transaction with the required fee..."
 cardano-cli transaction build-raw \
@@ -139,7 +138,7 @@ cardano-cli transaction build-raw \
   --spending-reference-tx-in-execution-units "(${spend_0_steps},${spend_0_mem})" \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + 3000000 lovelace + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + $(($initial_change-$req_fee)) lovelace " \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + $((initial_change-req_fee)) lovelace " \
   --mint "-1 ${pairBeacon} + -1 ${asset1Beacon} + -1 ${asset2Beacon}" \
   --mint-tx-in-reference c1d7755d9089bc1a6b85561e1f3eb740935c6a887a15589395bfc36f8b64fa10#1 \
   --mint-plutus-script-v2 \
@@ -150,7 +149,7 @@ cardano-cli transaction build-raw \
   --tx-total-collateral 21000000 \
   --required-signer-hash "$ownerPubKeyHash" \
   --protocol-params-file "${tmpDir}protocol.json" \
-  --fee $req_fee \
+  --fee "$req_fee" \
   --out-file "${tmpDir}tx.body"
 
 echo "Signing the transaction..."

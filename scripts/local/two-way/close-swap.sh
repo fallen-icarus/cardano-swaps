@@ -6,8 +6,6 @@ tmpDir="../../../ignored/tmp/"
 
 ownerPubKeyFile="../../../ignored/wallets/01Stake.vkey"
 
-swapAddrFile="${dir}twoWaySwap.addr"
-
 swapRedeemerFile="${dir}closeOrUpdateTwoWaySwap.json"
 
 beaconRedeemerFile="${dir}twoWayBeaconRedeemer.json"

@@ -4,7 +4,7 @@
 dir="../../../ignored/swap-files/"
 tmpDir="../../../ignored/tmp/"
 
-swapAddr1="addr_test1zpfv68lfgr8n76kpztvcu260uq46p6l7k52kcppsf36k6geualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqrfyllh"
+swapAddr1="addr_test1zzje7ushtlzmyu62qtpsf02dlge0ddkeutlu6avln3vqgx3ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq5ajzkh"
 
 swapDatumFile1="${dir}swapDatum1.json"
 
@@ -22,9 +22,9 @@ cardano-swaps datums one-way \
   --ask-lovelace \
   --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --offer-token-name 4f74686572546f6b656e0a \
-  --price-numerator 1 \
-  --price-denominator 50000 \
-  --tx-hash 71ae3f66eead7198a79232ff8f2c032d845d0070d3f066f1b5dec3c2abe99788 \
+  --price-numerator 2000000 \
+  --price-denominator 1 \
+  --tx-hash 278d7c43175cc27b89962ce80d23851ad6353f79239e9df3b51213afa5aa9204 \
   --output-index 0 \
   --out-file $swapDatumFile1
 
@@ -44,18 +44,23 @@ offerBeaconName1=$(cardano-swaps beacon-info one-way offer-beacon \
   --offer-token-name 4f74686572546f6b656e0a \
   --stdout)
 
+askBeaconName1=$(cardano-swaps beacon-info one-way ask-beacon \
+  --ask-lovelace \
+  --stdout)
+
 pairBeacon1="${beaconPolicyId1}.${pairBeaconName1}"
 offerBeacon1="${beaconPolicyId1}.${offerBeaconName1}"
+askBeacon1="${beaconPolicyId1}.${askBeaconName1}"
 
 # Create the transaction.
 cardano-cli transaction build \
-  --tx-in 8648bd78bc4e63f5a105eff2e3a82e78538d0cf107ef5f4a00e414d818f55286#0 \
-  --tx-in 71ae3f66eead7198a79232ff8f2c032d845d0070d3f066f1b5dec3c2abe99788#0 \
-  --spending-tx-in-reference 9645ceffb6da33ff86b050de6050f734841cf160e01de4019fcce3371ca97a5d#0 \
+  --tx-in 8498f8e46ed2d1edef10ed90be4adf2a3d1620e6164ce6a5ca513d983c430c16#1 \
+  --tx-in 278d7c43175cc27b89962ce80d23851ad6353f79239e9df3b51213afa5aa9204#0 \
+  --spending-tx-in-reference 3d91a6c59c4065c8b9882a7e232824d2064e92024d0db318f09b6ad815f1ccd4#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "${swapAddr1} + 3000000 lovelace + 1 ${pairBeacon1} + 1 ${offerBeacon1} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-out "${swapAddr1} + 7000000 lovelace + 1 ${pairBeacon1} + 1 ${offerBeacon1} + 1 ${askBeacon1} + 8 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out-inline-datum-file $swapDatumFile1 \
   --tx-in-collateral 11ed603b92e6164c6bb0c83e0f4d54a954976db7c39e2a82d3cbf70f098da1e0#0 \
   --change-address "$(cat ../../../ignored/wallets/02.addr)" \

@@ -6,8 +6,6 @@ tmpDir="../../../ignored/tmp/"
 
 ownerPubKeyFile="../../../ignored/wallets/01Stake.vkey"
 
-swapAddrFile="${dir}oneWaySwap.addr"
-
 swapRedeemerFile="${dir}closeOrUpdateOneWaySwap.json"
 
 beaconRedeemerFile="${dir}oneWayBeaconRedeemer.json"
@@ -39,8 +37,13 @@ offerBeaconName=$(cardano-swaps beacon-info one-way offer-beacon \
   --offer-token-name 54657374546f6b656e31 \
   --stdout)
 
+askBeaconName=$(cardano-swaps beacon-info one-way ask-beacon \
+  --ask-lovelace \
+  --stdout)
+
 pairBeacon="${beaconPolicyId}.${pairBeaconName}"
 offerBeacon="${beaconPolicyId}.${offerBeaconName}"
+askBeacon="${beaconPolicyId}.${askBeaconName}"
 
 # Creating the beacon policy redeemer. 
 echo "Creating the beacon policy redeemer..."
@@ -50,15 +53,15 @@ cardano-swaps beacon-redeemers one-way \
 
 # Create the transaction.
 cardano-cli transaction build \
-  --tx-in dfd8a4e30dd218da5909043e7e7389173269cf43def41c8994d2e0587531a764#2 \
-  --tx-in dfd8a4e30dd218da5909043e7e7389173269cf43def41c8994d2e0587531a764#0 \
-  --spending-tx-in-reference d52bf2621cd5ed984e529685e3a1088db81e4fa431769bec77f3374421b20fd7#0 \
+  --tx-in b083b27212fe1b43941d143be56d9294b78130cf95fb8338518c059039dc1a9f#0 \
+  --tx-in 371ca6b75d66a40a490c812b704a8e9a34126a44c7a92e2633567f86987d77ca#0 \
+  --spending-tx-in-reference 3d91a6c59c4065c8b9882a7e232824d2064e92024d0db318f09b6ad815f1ccd4#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + 3000000 lovelace + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
-  --mint "-1 ${pairBeacon} + -1 ${offerBeacon}" \
-  --mint-tx-in-reference d52bf2621cd5ed984e529685e3a1088db81e4fa431769bec77f3374421b20fd7#1 \
+  --mint "-1 ${pairBeacon} + -1 ${offerBeacon} + -1 ${askBeacon}" \
+  --mint-tx-in-reference 3d91a6c59c4065c8b9882a7e232824d2064e92024d0db318f09b6ad815f1ccd4#1 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id "$beaconPolicyId" \

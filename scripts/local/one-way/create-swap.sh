@@ -43,8 +43,13 @@ offerBeaconName=$(cardano-swaps beacon-info one-way offer-beacon \
   --offer-token-name 4f74686572546f6b656e0a \
   --stdout)
 
+askBeaconName=$(cardano-swaps beacon-info one-way ask-beacon \
+  --ask-lovelace \
+  --stdout)
+
 pairBeacon="${beaconPolicyId}.${pairBeaconName}"
 offerBeacon="${beaconPolicyId}.${offerBeaconName}"
+askBeacon="${beaconPolicyId}.${askBeaconName}"
 
 # Get the mint beacon redeemer.
 echo "Creating the minting redeemer..."
@@ -65,13 +70,12 @@ cardano-swaps datums one-way \
 # Create the transaction.
 echo "Building the transaction..."
 cardano-cli transaction build \
-  --tx-in cc80373fb61073ced33042f378c2ce5ea3125e6dcc4f4a05f9c74f148b5c6284#1 \
-  --tx-in e81920b63c8123093fb1245a033fec2ad0743c7c794ea57c257014f0a85b0ec3#2 \
-  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${offerBeacon} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-in 31c5603bb70974aad4ef47e48e6f83ff6e931bcdbc6093b40500524db941bf67#1 \
+  --tx-in 3528a53aff6dfbf132d33fc6309d49d2fdbc13258befaca6b3144d785dc14b01#1 \
+  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${offerBeacon} + 1 ${askBeacon} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out-inline-datum-file $swapDatumFile \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 3000000 lovelace + 270 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
-  --mint "1 ${pairBeacon} + 1 ${offerBeacon}" \
-  --mint-tx-in-reference d52bf2621cd5ed984e529685e3a1088db81e4fa431769bec77f3374421b20fd7#1 \
+  --mint "1 ${pairBeacon} + 1 ${offerBeacon} + 1 ${askBeacon}" \
+  --mint-tx-in-reference 3d91a6c59c4065c8b9882a7e232824d2064e92024d0db318f09b6ad815f1ccd4#1 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id "$beaconPolicyId" \

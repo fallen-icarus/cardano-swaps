@@ -12,8 +12,6 @@ swapDatumFile="${dir}swapDatum.json"
 
 swapRedeemerFile="${dir}closeOrUpdateOneWaySwap.json"
 
-beaconRedeemerFile="${dir}oneWayBeaconRedeemer.json"
-
 # Generate the hash for the staking verification key.
 echo "Calculating the staking pubkey hash for the borrower..."
 ownerPubKeyHash=$(cardano-cli stake-address key-hash \
@@ -51,18 +49,23 @@ offerBeaconName=$(cardano-swaps beacon-info one-way offer-beacon \
   --offer-token-name 4f74686572546f6b656e0a \
   --stdout)
 
+askBeaconName=$(cardano-swaps beacon-info one-way ask-beacon \
+  --ask-lovelace \
+  --stdout)
+
 pairBeacon="${beaconPolicyId}.${pairBeaconName}"
 offerBeacon="${beaconPolicyId}.${offerBeaconName}"
+askBeacon="${beaconPolicyId}.${askBeaconName}"
 
 # Create the transaction.
 cardano-cli transaction build \
-  --tx-in d52bf2621cd5ed984e529685e3a1088db81e4fa431769bec77f3374421b20fd7#2 \
-  --tx-in 520d3be49b112f99bddbcb9a006b05ae23d463837aa4b777c4bec57f088798d5#0 \
-  --spending-tx-in-reference d52bf2621cd5ed984e529685e3a1088db81e4fa431769bec77f3374421b20fd7#0 \
+  --tx-in 35ace8d34752c6eb686ab6f5622baa9494d7d1ada024d31f591814ed7b465def#1 \
+  --tx-in ad6a838d8139291661bd130d98253e233a617adb866a138fe4d28afe67617f48#0 \
+  --spending-tx-in-reference 3d91a6c59c4065c8b9882a7e232824d2064e92024d0db318f09b6ad815f1ccd4#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${offerBeacon} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${offerBeacon} + 1 ${askBeacon} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out-inline-datum-file $swapDatumFile \
   --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
   --change-address "$(cat ../../../ignored/wallets/01.addr)" \

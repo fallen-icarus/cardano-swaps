@@ -6,7 +6,7 @@ that require access to a node.
 
 Template bash scripts that follow these steps are available [here](scripts/). There are examples
 using a local node and a remote node. Using a remote node requires extra steps since the transaction
-must be balanced manually.
+must be manually balanced.
 
 ## Table of Contents
 - [Installing](#installing)
@@ -112,7 +112,7 @@ All `cardano-swaps` subcommands have an associated `--help` option. The function
 feel like `cardano-cli`.
 
 The smart contracts are compiled *into* the created `cardano-swaps` CLI. The executable has
-everything you need for using the DEX.
+everything you need for using the DEX. It is a batteries included CLI.
 
 ## Aiken For Developers
 
@@ -167,11 +167,12 @@ properly add the change *before* estimating the execution budgets for the transa
 results in it under-estimating the required execution units needed by the scripts. There are open
 issues about this [here](https://github.com/input-output-hk/cardano-node/issues/5386) and
 [here](https://github.com/input-output-hk/cardano-api/issues/302). If you ever see a very long and
-confusing error message about overspending budgets, this is probably the issue.
+confusing error message about overspending budgets while using `cardano-cli transaction build`, this
+is probably the issue.
 
 As a work around, whenever you build a transaction using `cardano-cli transaction build` where
 scripts are being executed, you must manually create an output that has all of the native tokens
-that would normally go into the change output. You can let the auto-balancer balance the ADA.
+that would normally go into the change output. You can let the auto-balancer balance the ada.
 
 ## Using Remote Nodes
 
@@ -188,6 +189,7 @@ This command requires the following steps:
 6. Sign the transaction and submit to a remote node.
 
 ##### Exporting protocol parameters
+
 Some of the above steps will require the current protocol parameters. The `cardano-swaps` CLI had
 the preproduction testnet and mainnet protocol parameters compiled into the executable when it was
 built with `cabal build exe:cardano-swaps`. The parameters are already formatted in the way
@@ -199,6 +201,7 @@ cardano-swaps protocol-params \
 ```
 
 ##### Estimating execution budgets
+
 Submitting a transaction for execution budget estimations can be done with this command:
 ```Bash
 cardano-swaps evaluate-tx \
@@ -208,10 +211,10 @@ cardano-swaps evaluate-tx \
 
 The returned budgets will be indexed by the input order and policy id order. **This may not be the
 same order you specified when building the temporary transaction.** The node will reorder them
-lexicographically based on the tx hashes and output indexes for inputs, and the policy ids for
-minting policies.
+base on lexicographical ordering.
 
 ##### Submitting the final transaction
+
 Submitting the final transaction for addition to the blockchain can be done with this command:
 ```Bash
 cardano-swaps submit \
@@ -288,7 +291,7 @@ For a mainnet address, just use the `--mainnet` flag instead of `--testnet-magic
 the address.
 
 ##### Calculate the required beacon names to mint
-One-way swaps require two beacons: the trading pair beacon and the offer beacon.
+One-way swaps require three beacons: the trading pair beacon, the offer beacon, and the ask beacon.
 
 ```Bash
 # Get the policy id for the one-way swap beacons.
@@ -340,7 +343,8 @@ cardano-swaps datums one-way \
 ```
 
 **The price is always Ask/Offer.** In the above example, the swap wants 1 ADA per 1 native token
-taken.
+taken. The `--tx-hash` and `--output-index` flags are only needed when executing a swap; you can
+leave them out here.
 
 ##### Building the transaction
 To see how to build the transaction using a local node, refer 
@@ -460,6 +464,10 @@ cardano-swaps datums one-way \
   --out-file oneWaySwapDatum.json
 ```
 
+**The price is always Ask/Offer.** In the above example, the swap wants 1 ADA per 2 native token
+taken. The `--tx-hash` and `--output-index` flags are only needed when executing a swap; you can
+leave them out here.
+
 ##### Building the transaction
 To see how to build the transaction using a local node, refer 
 [here](scripts/local/one-way/update-price.sh).
@@ -510,7 +518,7 @@ cardano-swaps beacon-redeemers one-way \
 This redeemer can be used to both burn the old beacons and mint the new ones.
 
 ##### Calculate the required beacon names to mint
-One-way swaps require two beacons: the trading pair beacon and the offer beacon.
+One-way swaps require three beacons: the trading pair beacon, the offer beacon, and the ask beacon.
 
 ```Bash
 # Get the policy id for the one-way swap beacons.
@@ -541,7 +549,7 @@ newOfferBeacon="${beaconPolicyId}.${newOfferBeaconName}"
 newAskBeacon="${beaconPolicyId}.${newAskBeaconName}"
 ```
 
-The above beacons are for a swap that is offering a native token in exchange for ADA.
+The above beacons are for a swap that is offering a native token in exchange for ADA. 
 
 ##### Calculate the required beacon names to burn
 
@@ -587,6 +595,10 @@ cardano-swaps datums one-way \
   --price-denominator 2 \
   --out-file oneWaySwapDatum.json
 ```
+
+**The price is always Ask/Offer.** In the above example, the swap wants 1 ADA per 2 native token
+taken (a different native token than before). The `--tx-hash` and `--output-index` flags are only
+needed when executing a swap; you can leave them out here.
 
 ##### Building the transaction
 To see how to build the transaction using a local node, refer 
@@ -676,9 +688,10 @@ Creating a swap involves the following steps:
 5. Submit a transaction that creates the swaps.
 
 :exlamation: Asset1 and asset2 are determined lexicographically: asset1 < asset2. The creation will
-fail if the assets are in the wrong order (you will see the appropriate error message). ADA is
-represented on-chain as the empty string which is always the smallest. Therefore, whenever ADA
-is part of a two-way swap, asset1 will always be ADA.
+fail if the assets are in the wrong order (you will see the appropriate error message). Ada is
+represented on-chain as the empty string which is always the smallest. Therefore, whenever ada
+is part of a two-way swap, asset1 will always be ada. **If you need to change the order of the
+assets, make sure to also change the prices!**
 
 ##### Creating your swap address
 ```Bash
@@ -763,7 +776,11 @@ for every 1 native asset taken.
 - `reverse-price` = Asset2 / Asset1. Therefore, the above example's `reverse-price` is 2 native
 assets given for every 1 ADA taken.
 
-**If you mix up the ratios, your swaps will have unexpected behaviors.**
+**If you need to change the order of the assets, make sure to also change the prices!** The script
+will tell you if the assets need to be flipped.
+
+The `--tx-hash` and `--output-index` flags are only needed when executing a swap; you can
+leave them out here.
 
 ##### Building the transaction
 To see how to build the transaction using a local node, refer 
@@ -893,7 +910,11 @@ for every 1 native asset taken.
 - `reverse-price` = Asset2 / Asset1. Therefore, the above example's `reverse-price` is 2 native
 assets given for every 1 ADA taken.
 
-**If you mix up the ratios, your swaps will have unexpected behaviors.**
+**If you need to change the order of the assets, make sure to also change the prices!** The script
+will tell you if the assets need to be flipped.
+
+The `--tx-hash` and `--output-index` flags are only needed when executing a swap; you can
+leave them out here.
 
 ##### Building the transaction
 To see how to build the transaction using a local node, refer 
@@ -939,7 +960,7 @@ cardano-swaps spending-redeemers two-way \
 ```Bash
 cardano-swaps beacon-redeemers two-way \
   --create-swap \
-  --out-file createOneWaySwap.json
+  --out-file createTwoWaySwap.json
 ```
 
 This redeemer can be used to both burn the old beacons and mint the new ones.
@@ -1016,7 +1037,12 @@ for every 1 native asset taken.
 - `reverse-price` = Asset2 / Asset1. Therefore, the above example's `reverse-price` is 2 native
 assets given for every 1 ADA taken.
 
-**If you mix up the ratios, your swaps will have unexpected behaviors.**
+**If you need to change the order of the assets, make sure to also change the prices!** The script
+will tell you if the assets need to be flipped.
+
+The `--tx-hash` and `--output-index` flags are only needed when executing a swap; you can
+leave them out here.
+
 
 ##### Building the transaction
 To see how to build the transaction using a local node, refer 
@@ -1060,7 +1086,7 @@ cardano-swaps spending-redeemers two-way \
 ```
 
 **The offer and ask are always from the perspective of the swap UTxO.** So if you are trying to take
-ADA from the swap and deposit a native token, the offer asset is ADA and the ask asset is the native
+ada from the swap and deposit a native token, the offer asset is ada and the ask asset is the native
 token.
 
 
@@ -1129,7 +1155,11 @@ associated with it: Blue for script hashes and Green for datum hashes. UTxO asse
 ### Own Swaps
 
 The `cardano-swaps query own-swaps` command can be used to query your own swaps. The swaps can be
-filtered by offer asset or by trading pair if desired. The results are not sorted in any way.
+filtered by offer asset, ask asset, or by trading pair if desired. The results are not sorted in any
+way.
+
+*Make sure to specify the right address with the command; if you specify the two-way swap address
+when using the one-way query, you may get unexpected results.*
 
 ##### Query One-Way Swaps By Offer
 ```Bash
@@ -1152,7 +1182,7 @@ cardano-swaps query own-swaps two-way offer \
 ```
 
 Since both asset1 and asset2 can be the offer asset for two-way swaps depending on the swap's
-direction, this query requires you to choose one of the assets. 
+direction, this query requires you to choose one of the assets to be the offer asset.
 
 ##### Query One-Way Swaps By Ask
 ```Bash
@@ -1169,13 +1199,13 @@ cardano-swaps query own-swaps one-way offer \
 cardano-swaps query own-swaps two-way ask \
   --testnet \
   --address $(cat twoWaySwap.addr) \
-  --ask-is-lovelace \
+  --ask-lovelace \
   --pretty \
   --stdout
 ```
 
 Since both asset1 and asset2 can be the ask asset for two-way swaps depending on the swap's
-direction, this query requires you to choose one of the assets.  
+direction, this query requires you to choose one of the assets to be the ask asset.
 
 ##### Query One-Way Swaps By Trading Pair
 ```Bash
@@ -1210,10 +1240,10 @@ properly query the swaps regardless of the order.
 Querying all swaps will query both one-way swaps and two-ways swaps. The results will specify
 whether the swap is a one-way swap or a two-way swap.
 
-The `cardano-swaps query all-swaps` command is used to query all swaps. Swaps can either be queried
-based on the offer asset or the trading pair. (It is technically also possible to query all swaps
-but that is not supported by `cardano-swaps` CLI since it does not seem like a useful query. If you
-think it would be useful, feel free to open an issue.)
+The `cardano-swaps query all-swaps` command is used to query all swaps. Swaps can be queried based
+on the offer asset, the ask asset, or the trading pair. (It is technically also possible to query
+all swaps but that is not supported by `cardano-swaps` CLI since it does not seem like a useful
+query. If you think it would be useful, feel free to open an issue.)
 
 ##### Swaps By Trading Pair 
 

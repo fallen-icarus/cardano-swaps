@@ -41,11 +41,11 @@ pairBeaconName1=$(cardano-swaps beacon-info two-way pair-beacon \
   --asset2-token-name 4f74686572546f6b656e0a \
   --stdout)
 
-asset1BeaconName1=$(cardano-swaps beacon-info two-way offer-beacon \
+asset1BeaconName1=$(cardano-swaps beacon-info two-way asset-beacon \
   --asset1-is-lovelace \
   --stdout)
 
-asset2BeaconName1=$(cardano-swaps beacon-info two-way offer-beacon \
+asset2BeaconName1=$(cardano-swaps beacon-info two-way asset-beacon \
   --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --asset2-token-name 4f74686572546f6b656e0a \
   --stdout)

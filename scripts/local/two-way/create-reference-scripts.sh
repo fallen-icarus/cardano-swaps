@@ -22,9 +22,9 @@ cardano-swaps scripts two-way beacon-policy \
 ## Create and submit the transaction.
 echo "Building the transaction..."
 cardano-cli transaction build \
-  --tx-in fc587cc261a5ec23062746bec54aa1ce7ce8155b65fd133e725479f4a0072fe9#0 \
-  --tx-in fc587cc261a5ec23062746bec54aa1ce7ce8155b65fd133e725479f4a0072fe9#1 \
-  --tx-in fc587cc261a5ec23062746bec54aa1ce7ce8155b65fd133e725479f4a0072fe9#2 \
+  --tx-in c1d7755d9089bc1a6b85561e1f3eb740935c6a887a15589395bfc36f8b64fa10#0 \
+  --tx-in c1d7755d9089bc1a6b85561e1f3eb740935c6a887a15589395bfc36f8b64fa10#1 \
+  --tx-in 652ee7042b5dec846d16082168ff88fddf0ee1f7cdd3fa94397eccbbbf835f66#2 \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + 31000000 lovelace " \
   --tx-out-reference-script-file $swapScriptFile \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + 19000000 lovelace " \

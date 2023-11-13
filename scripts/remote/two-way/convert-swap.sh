@@ -42,43 +42,43 @@ echo "Calculating the beacon names..."
 beaconPolicyId=$(cardano-swaps beacon-info two-way policy-id \
   --stdout)
 
-pairBeaconName1=$(cardano-swaps beacon-info two-way pair-beacon \
+oldPairBeaconName=$(cardano-swaps beacon-info two-way pair-beacon \
   --asset1-is-lovelace \
   --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --asset2-token-name 4f74686572546f6b656e0a \
   --stdout)
 
-asset1BeaconName1=$(cardano-swaps beacon-info two-way offer-beacon \
+oldAsset1BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
   --asset1-is-lovelace \
   --stdout)
 
-asset2BeaconName1=$(cardano-swaps beacon-info two-way offer-beacon \
+oldAsset2BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
   --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --asset2-token-name 4f74686572546f6b656e0a \
   --stdout)
 
-pairBeacon1="${beaconPolicyId}.${pairBeaconName1}"
-asset1Beacon1="${beaconPolicyId}.${asset1BeaconName1}"
-asset2Beacon1="${beaconPolicyId}.${asset2BeaconName1}"
+oldPairBeacon="${beaconPolicyId}.${oldPairBeaconName}"
+oldAsset1Beacon="${beaconPolicyId}.${oldAsset1BeaconName}"
+oldAsset2Beacon="${beaconPolicyId}.${oldAsset2BeaconName}"
 
-pairBeaconName2=$(cardano-swaps beacon-info two-way pair-beacon \
+newPairBeaconName=$(cardano-swaps beacon-info two-way pair-beacon \
   --asset1-is-lovelace \
   --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --asset2-token-name 54657374546f6b656e31 \
   --stdout)
 
-asset1BeaconName2=$(cardano-swaps beacon-info two-way offer-beacon \
+newAsset1BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
   --asset1-is-lovelace \
   --stdout)
 
-asset2BeaconName2=$(cardano-swaps beacon-info two-way offer-beacon \
+newAsset2BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
   --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --asset2-token-name 54657374546f6b656e31 \
   --stdout)
 
-pairBeacon2="${beaconPolicyId}.${pairBeaconName2}"
-asset1Beacon2="${beaconPolicyId}.${asset1BeaconName2}"
-asset2Beacon2="${beaconPolicyId}.${asset2BeaconName2}"
+newPairBeacon="${beaconPolicyId}.${newPairBeaconName}"
+newAsset1Beacon="${beaconPolicyId}.${newAsset1BeaconName}"
+newAsset2Beacon="${beaconPolicyId}.${newAsset2BeaconName}"
 
 # Create the minting redeemer. This redeemer can also burn the old beacons.
 echo "Creating the minting redeemer..."
@@ -104,11 +104,11 @@ cardano-cli transaction build-raw \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-execution-units "(0,0)" \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon2} + 1 ${asset1Beacon2} + 1 ${asset2Beacon2} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
+  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${newPairBeacon} + 1 ${newAsset1Beacon} + 1 ${newAsset2Beacon} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
   --tx-out-inline-datum-file $swapDatumFile \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + 3000000 lovelace + 11 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + ${initial_change} lovelace" \
-  --mint "-1 ${pairBeacon1} + -1 ${asset1Beacon1} + -1 ${asset2Beacon1} + 1 ${pairBeacon2} + 1 ${asset1Beacon2} + 1 ${asset2Beacon2}" \
+  --mint "-1 ${oldPairBeacon} + -1 ${oldAsset1Beacon} + -1 ${oldAsset2Beacon} + 1 ${newPairBeacon} + 1 ${newAsset1Beacon} + 1 ${newAsset2Beacon}" \
   --mint-tx-in-reference c1d7755d9089bc1a6b85561e1f3eb740935c6a887a15589395bfc36f8b64fa10#1 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-execution-units "(0,0)" \
@@ -142,11 +142,11 @@ cardano-cli transaction build-raw \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-execution-units "(${spend_0_steps},${spend_0_mem})" \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon2} + 1 ${asset1Beacon2} + 1 ${asset2Beacon2} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
+  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${newPairBeacon} + 1 ${newAsset1Beacon} + 1 ${newAsset2Beacon} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
   --tx-out-inline-datum-file $swapDatumFile \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + 3000000 lovelace + 11 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + ${initial_change} lovelace" \
-  --mint "-1 ${pairBeacon1} + -1 ${asset1Beacon1} + -1 ${asset2Beacon1} + 1 ${pairBeacon2} + 1 ${asset1Beacon2} + 1 ${asset2Beacon2}" \
+  --mint "-1 ${oldPairBeacon} + -1 ${oldAsset1Beacon} + -1 ${oldAsset2Beacon} + 1 ${newPairBeacon} + 1 ${newAsset1Beacon} + 1 ${newAsset2Beacon}" \
   --mint-tx-in-reference c1d7755d9089bc1a6b85561e1f3eb740935c6a887a15589395bfc36f8b64fa10#1 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-execution-units "(${mint_steps},${mint_mem})" \
@@ -179,11 +179,11 @@ cardano-cli transaction build-raw \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-execution-units "(${spend_0_steps},${spend_0_mem})" \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon2} + 1 ${asset1Beacon2} + 1 ${asset2Beacon2} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
+  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${newPairBeacon} + 1 ${newAsset1Beacon} + 1 ${newAsset2Beacon} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
   --tx-out-inline-datum-file $swapDatumFile \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + 3000000 lovelace + 11 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + $((initial_change-req_fee)) lovelace " \
-  --mint "-1 ${pairBeacon1} + -1 ${asset1Beacon1} + -1 ${asset2Beacon1} + 1 ${pairBeacon2} + 1 ${asset1Beacon2} + 1 ${asset2Beacon2}" \
+  --mint "-1 ${oldPairBeacon} + -1 ${oldAsset1Beacon} + -1 ${oldAsset2Beacon} + 1 ${newPairBeacon} + 1 ${newAsset1Beacon} + 1 ${newAsset2Beacon}" \
   --mint-tx-in-reference c1d7755d9089bc1a6b85561e1f3eb740935c6a887a15589395bfc36f8b64fa10#1 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-execution-units "(${mint_steps},${mint_mem})" \

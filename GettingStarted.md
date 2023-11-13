@@ -80,22 +80,21 @@ export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
 cd
 curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
 ```
-Make sure to install the required packages it mentions before hitting ENTER.
 
-Prepend or append the required PATH variable.
+- Prepend or append the required PATH variable.
+- You do not need to install the haskell-langauge-server.
+- You do not need to install stack.
+- Install the required packages. You can keep this terminal window open and install from another
+window.
+- Press ENTER to proceed.
 
-You do not need to install the haskell-langauge-server.
-
-You do not need to install stack.
-
-Press ENTER to proceed.
 ```
 source .bashrc
 ghcup install ghc 8.10.7
 ghcup set ghc 8.10.7
 ```
 
-### Build the executable
+### Build the executable - this may take about 1 hour
 ```
 git clone https://github.com/fallen-icarus/cardano-swaps
 cd cardano-swaps
@@ -730,12 +729,12 @@ pairBeaconName=$(cardano-swaps beacon-info two-way pair-beacon \
   --stdout)
 
 # Get the required asset1 beacon name.
-asset1BeaconName=$(cardano-swaps beacon-info two-way offer-beacon \
+asset1BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
   --asset1-is-lovelace \
   --stdout)
 
 # Get the required asset2 beacon name.
-asset2BeaconName=$(cardano-swaps beacon-info two-way offer-beacon \
+asset2BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
   --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --asset2-token-name 4f74686572546f6b656e0a \
   --stdout)
@@ -831,11 +830,11 @@ pairBeaconName=$(cardano-swaps beacon-info two-way pair-beacon \
   --asset2-token-name 4f74686572546f6b656e0a \
   --stdout)
 
-asset1BeaconName=$(cardano-swaps beacon-info two-way offer-beacon \
+asset1BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
   --asset1-is-lovelace \
   --stdout)
 
-asset2BeaconName=$(cardano-swaps beacon-info two-way offer-beacon \
+asset2BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
   --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --asset2-token-name 4f74686572546f6b656e0a \
   --stdout)
@@ -976,11 +975,11 @@ newPairBeaconName=$(cardano-swaps beacon-info two-way pair-beacon \
   --asset2-token-name 54657374546f6b656e31 \
   --stdout)
 
-newAsset1BeaconName=$(cardano-swaps beacon-info two-way offer-beacon \
+newAsset1BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
   --asset1-is-lovelace \
   --stdout)
 
-newAsset2BeaconName=$(cardano-swaps beacon-info two-way offer-beacon \
+newAsset2BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
   --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --asset2-token-name 54657374546f6b656e31 \
   --stdout)
@@ -1002,11 +1001,11 @@ oldPairBeaconName=$(cardano-swaps beacon-info two-way pair-beacon \
   --asset2-token-name 4f74686572546f6b656e0a \
   --stdout)
 
-oldAsset1BeaconName=$(cardano-swaps beacon-info two-way offer-beacon \
+oldAsset1BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
   --asset1-is-lovelace \
   --stdout)
 
-oldAsset2BeaconName=$(cardano-swaps beacon-info two-way offer-beacon \
+oldAsset2BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
   --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
   --asset2-token-name 4f74686572546f6b656e0a \
   --stdout)

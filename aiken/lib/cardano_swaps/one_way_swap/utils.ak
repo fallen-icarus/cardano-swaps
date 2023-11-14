@@ -167,6 +167,7 @@ fn valid_swap_output(
         acc && 
           ( cn == beacon_id  // It is a beacon.
          || (cn == offer_id_ && tn == offer_name_) // It is the offer asset.
+         || (cn == ask_id_ && tn == ask_name_) // It is the ask asset.
          || cn == value.ada_policy_id // It is ada.
           )
       }
@@ -297,7 +298,7 @@ fn swap_value_diff(
               beacon_id == beacon_id_ 
             )
 
-            // The beacon_name must be the beacon_name from the input.
+            // The pair_beacon must be the pair_beacon from the input.
             expect True = error_if_false( 
               @"Wrong pair_beacon", 
               pair_beacon == pair_beacon_ 

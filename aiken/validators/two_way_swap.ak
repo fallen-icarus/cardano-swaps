@@ -39,11 +39,11 @@ validator() {
         // 4) The beacons must be stored with the proper inline `SwapDatum`:
         //      a) `beacon_id` == this policy id.
         //      b) `pair_beacon` == sha2_256(asset1_id ++ asset1_name ++ asset2_id ++ asset2_name)
-        //      c) `asset1_id` == asset_id of asset1 for that trading pair.
-        //      d) `asset1_name` == asset_name of asset1 for that trading_pair.
+        //      c) `asset1_id` == policy id of asset1 for that trading pair.
+        //      d) `asset1_name` == asset name of asset1 for that trading_pair.
         //      e) `asset1_beacon` == sha2_256(asset1_id ++ asset1_name).
-        //      f) `asset2_id` == asset_id asset2 for that trading_pair.
-        //      g) `asset2_name` == asset_name asset2 for that trading_pair.
+        //      f) `asset2_id` == policy id of asset2 for that trading_pair.
+        //      g) `asset2_name` == asset name of asset2 for that trading_pair.
         //      h) `asset2_beacon` == sha2_256(asset2_id ++ asset2_name).
         //      i) `forward_price` denominator > 0
         //      j) `forward_price` > 0
@@ -222,11 +222,11 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
         // 4) The beacons must be stored with the proper inline `SwapDatum`:
         //      a) `beacon_id` == this policy id.
         //      b) `pair_beacon` == sha2_256(asset1_id ++ asset1_name ++ asset2_id ++ asset2_name)
-        //      c) `asset1_id` == asset_id of asset1 for that trading pair.
-        //      d) `asset1_name` == asset_name of asset1 for that trading_pair.
+        //      c) `asset1_id` == policy id of asset1 for that trading pair.
+        //      d) `asset1_name` == asset name of asset1 for that trading_pair.
         //      e) `asset1_beacon` == sha2_256(asset1_id ++ asset1_name).
-        //      f) `asset2_id` == asset_id asset2 for that trading_pair.
-        //      g) `asset2_name` == asset_name asset2 for that trading_pair.
+        //      f) `asset2_id` == policy id of asset2 for that trading_pair.
+        //      g) `asset2_name` == asset name of asset2 for that trading_pair.
         //      h) `asset2_beacon` == sha2_256(asset2_id ++ asset2_name).
         //      i) `forward_price` denominator > 0
         //      j) `forward_price` > 0

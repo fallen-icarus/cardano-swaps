@@ -196,11 +196,11 @@ pub fn beacon_destination_check(
   // 4) The beacons must be stored with the proper inline `SwapDatum`:
   //      a) `beacon_id` == this policy id.
   //      b) `pair_beacon` == sha2_256(asset1_id ++ asset1_name ++ asset2_id ++ asset2_name)
-  //      c) `asset1_id` == asset_id of asset1 for that trading pair.
-  //      d) `asset1_name` == asset_name of asset1 for that trading_pair.
+  //      c) `asset1_id` == policy id of asset1 for that trading pair.
+  //      d) `asset1_name` == asset name of asset1 for that trading_pair.
   //      e) `asset1_beacon` == sha2_256(asset1_id ++ asset1_name).
-  //      f) `asset2_id` == asset_id asset2 for that trading_pair.
-  //      g) `asset2_name` == asset_name asset2 for that trading_pair.
+  //      f) `asset2_id` == policy id of asset2 for that trading_pair.
+  //      g) `asset2_name` == asset name of asset2 for that trading_pair.
   //      h) `asset2_beacon` == sha2_256(asset2_id ++ asset2_name).
   //      i) `forward_price` denominator > 0
   //      j) `forward_price` > 0
@@ -306,7 +306,7 @@ fn swap_value_diff(
               beacon_id == beacon_id_ 
             )
 
-            // The beacon_name must be the beacon_name from the input.
+            // The pair_beacon must be the pair_beacon from the input.
             expect True = error_if_false( 
               @"Wrong pair_beacon", 
               pair_beacon == pair_beacon_ 

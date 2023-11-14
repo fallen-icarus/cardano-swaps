@@ -38,10 +38,10 @@ validator() {
         // 4) The beacons must be stored with the proper inline `SwapDatum`:
         //      a) `beacon_id` == this policy id.
         //      b) `pair_beacon` == `sha2_256(offer_id ++ offer_name ++ ask_id ++ ask_name)`
-        //      c) `offer_id` == asset id of the offer asset.
+        //      c) `offer_id` == policy id of the offer asset.
         //      d) `offer_name` == asset name of the offer asset.
         //      e) `offer_beacon` == `sha2_256("01" ++ offer_id ++ offer_name)`.
-        //      f) `ask_id` == asset id of the ask asset.
+        //      f) `ask_id` == policy id of the ask asset.
         //      g) `ask_name` == asset name of the ask asset.
         //      h) `ask_beacon` == `sha2_256("02" ++ ask_id ++ ask_name)`
         //      i) `swap_price` denominator > 0
@@ -147,10 +147,10 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
         // 4) The beacons must be stored with the proper inline `SwapDatum`:
         //      a) `beacon_id` == this policy id.
         //      b) `pair_beacon` == `sha2_256(offer_id ++ offer_name ++ ask_id ++ ask_name)`
-        //      c) `offer_id` == asset id of the offer asset.
+        //      c) `offer_id` == policy id of the offer asset.
         //      d) `offer_name` == asset name of the offer asset.
         //      e) `offer_beacon` == `sha2_256("01" ++ offer_id ++ offer_name)`.
-        //      f) `ask_id` == asset id of the ask asset.
+        //      f) `ask_id` == policy id of the ask asset.
         //      g) `ask_name` == asset name of the ask asset.
         //      h) `ask_beacon` == `sha2_256("02" ++ ask_id ++ ask_name)`
         //      i) `swap_price` denominator > 0

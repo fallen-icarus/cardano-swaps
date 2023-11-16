@@ -60,7 +60,7 @@ window.
 - Press ENTER to proceed.
 
 ```
-source .bashrc
+source $HOME/.bashrc
 ghcup install ghc 8.10.7
 ghcup set ghc 8.10.7
 ```

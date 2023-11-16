@@ -24,10 +24,7 @@ common internals
     , plutus-ledger
     , plutus-ledger-api
     , plutus-tx
-    , plutus-tx-plugin
     , plutus-script-utils
-    , plutus-core
-    , cardano-node-emulator
     , containers
 
 library
@@ -83,6 +80,7 @@ test-suite cardano-swaps-tests
   build-depends:
       cardano-swaps
     , plutus-contract
+    , cardano-node-emulator
     , plutus-tx-constraints
     , aeson
     , text

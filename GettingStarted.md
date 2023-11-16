@@ -47,37 +47,8 @@ sudo apt upgrade
 sudo apt-get install autoconf automake build-essential curl g++ git jq libffi-dev libgmp-dev libncursesw5 libssl-dev libsystemd-dev libtinfo-dev libtool make pkg-config wget zlib1g-dev liblzma-dev libpq-dev
 ```
 
-### Install libsodium and scep256k1
-```
-git clone https://github.com/input-output-hk/libsodium
-cd libsodium
-git checkout dbb48cc
-./autogen.sh
-./configure
-make
-sudo make install
-
-cd ../
-git clone https://github.com/bitcoin-core/secp256k1
-cd secp256k1
-git checkout ac83be33
-./autogen.sh
-./configure --enable-module-schnorrsig --enable-experimental
-make
-make check
-sudo make install
-sudo ldconfig
-```
-
-Add the following lines to your `$HOME/.bashrc` file:
-```
-export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
-export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
-```
-
 ### Install GHC 8.10.7 and cabal
 ```
-cd
 curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
 ```
 
@@ -94,8 +65,39 @@ ghcup install ghc 8.10.7
 ghcup set ghc 8.10.7
 ```
 
-### Build the executable - this may take about 1 hour
+### Install libsodium and scep256k1
 ```
+git clone https://github.com/input-output-hk/libsodium
+cd libsodium
+git checkout dbb48cc
+./autogen.sh
+./configure
+make
+sudo make install
+
+cd ../ # Leave the libsodium directory.
+git clone https://github.com/bitcoin-core/secp256k1
+cd secp256k1
+git checkout ac83be33
+./autogen.sh
+./configure --enable-module-schnorrsig --enable-experimental
+make
+make check
+sudo make install
+sudo ldconfig
+```
+
+You need to execute the following to make the new packages usable:
+```
+echo '' >> $HOME/.bashrc # Add a newline to your .bashrc file.
+echo 'export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"' >> $HOME/.bashrc
+echo 'export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"' >> $HOME/.bashrc
+source $HOME/.bashrc
+```
+
+### Build the executable - this may take about 30 minutes
+```
+cd ../ # Leave the secp256k1 directory.
 git clone https://github.com/fallen-icarus/cardano-swaps
 cd cardano-swaps
 cabal clean

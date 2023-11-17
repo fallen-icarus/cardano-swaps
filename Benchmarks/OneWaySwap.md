@@ -13,7 +13,7 @@ Each swap requires a mininum UTxO value of about 2 ADA. This is due to the curre
 parameters, however, this is desired since it helps prevent denial-of-service attacks for the 
 beacon queries.
 
-#### All swaps are for the same trading pair. The trading pair was (native asset,ADA).
+#### Here, all swaps are for the same trading pair (native asset,ADA).
 | Number of Swaps Created | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
 | 1 | 0.282218 ADA | 0.423327 ADA |
@@ -24,7 +24,7 @@ beacon queries.
 
 The maximum number of swaps that could be created was 33.
 
-#### All swaps are for different trading pairs.
+#### Here, all swaps are for different trading pairs.
 | Number of Swaps Created | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
 | 1 | 0.283829 ADA | 0.425744 ADA |

@@ -13,7 +13,7 @@ Each swap requires a mininum UTxO value of about 2 ADA. This is due to the curre
 parameters, however, this is desired since it helps prevent denial-of-service attacks for the 
 beacon queries.
 
-#### All swaps are for the same trading pair. The trading pair was (native asset,ADA).
+#### Here, all swaps are for the same trading pair (native asset,ADA).
 | Number of Swaps Created | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
 | 1 | 0.289983 ADA | 0.434975 ADA |
@@ -24,7 +24,7 @@ beacon queries.
 
 The maximum number of swaps that could be created was 32.
 
-#### All swaps are for different trading pairs.
+#### Here, all swaps are for different trading pairs.
 | Number of Swaps Created | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
 | 1 | 0.292235 ADA | 0.438353 ADA |
@@ -144,13 +144,10 @@ The maximum number of swaps that could be updated in the transaction was 5.
 
 
 ## Changing Swap Trading Pair
-By composing both the `CreateSwap` minting redeemer and the `CloseOrUpdate` spending redeemer, it
-is possible change what trading pair a swap is for in a single transaction (ie, you do not need to
-first close the swap in one tx and then open the new swap in another tx).
+By composing both the `CreateSwap` minting redeemer and the `CloseOrUpdate` spending redeemer, it is possible to change a swap's trading pair in a single transaction (ie, you do not need to first close the swap in one tx and then open the new swap in another tx).
 
-Since there are many different scenarios that are possible, instead of testing all of them only the
-worst possible scenario was benchmarked. All other scenarios should have better performance. If 
-you are aware of a an even worse scenario, please open an issue so its benchmarks can be added.
+Since there are too many scenarios to test all of them, only the
+worst possible scenarios for each action were benchmarked. All other scenarios should have better performance. If you are aware of an even worse scenario, please open an issue so its benchmarks can be added.
 
 #### All swaps start as different trading pairs and end as different trading pairs.
 | Number Updated | Tx Fee | Collateral Required |

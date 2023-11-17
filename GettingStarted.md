@@ -62,7 +62,6 @@ window.
 ```
 source $HOME/.bashrc
 ghcup install ghc 8.10.7
-ghcup set ghc 8.10.7
 ```
 
 ### Install libsodium and scep256k1

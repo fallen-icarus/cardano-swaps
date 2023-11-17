@@ -185,7 +185,7 @@ pub fn beacon_destination_check(
   outputs: List<Output>
 ) -> Bool {
   // Checks:
-  // 1) The beacons must go to an addres protected by the DApp validator script.
+  // 1) The beacons must go to an address protected by the DApp validator script.
   // 2) The beacons must go to an address using a valid staking credential.
   // 3) The UTxOs with the beacons must have the proper value:
   //      a) Exactly three kinds of beacons: pair beacon, offer beacon, and ask beacon.

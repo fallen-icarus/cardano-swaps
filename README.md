@@ -25,13 +25,8 @@ be found [here](./Benchmarks/).
 
 Cardano-Swaps is a p2p-DeFi protocol for swapping fungible tokens on the Cardano Settlement Layer
 (CSL). It solves many of the pitfalls of current DEX implementations by empowering users to deploy
-their own (and interact with each others') script addresses. This leads to the formation of an
-order-book style "distributed" DEX. The protocol supports two kinds of swaps: one-way swaps and
-two-way swaps. One-way swaps emulate the basic limit order. Meanwhile, two-way swaps provide a
-mechanism for naturally incentivizing users to provide liquidity to the DEX without having to rely
-on yield farming. Furthermore, since swaps can be freely composed, arbitragers are naturally
-incentivized to spread the available liquidity across all trading pairs. This protocol is natively
-composable with all DApps.
+their own (and interact with each others') script addresses. This enables the formation of an
+order-book that is *distributed* across the CSL. The protocol supports one-way and two-way swaps. The former emulates a basic limit order, while the latter provides a mechanism for market makers to provide liquidity without relying on yield farming. Furthermore, since swaps can be freely composed, arbitragers are naturally incentivized to spread the available liquidity across all trading pairs. This protocol is natively composable with all DApps.
 
 ## Motivation
 
@@ -39,7 +34,7 @@ Many DEXs on Cardano are currently implemented in ways that lock users' assets i
 and/or centrally maintained, set of script addresses and UTxOs. This *concentrated DApp* design
 pattern is reminiscent of Ethereum's accounts-based programming paradigm.
 
-However, the concentrated DApp design does not map well to eUTxO based blockchains. To be exact, a
+However, the concentrated DApp design does not map well to eUTxO based blockchains. To be precise, a
 major consequence of pooling assets into a predefined set of UTxOs, which are typically referred to
 as liquidity pools (LPs), is that the DEX has a significant concurrency bottleneck since all users
 must share the one-time-use UTxOs. The ultimate result of this bottleneck is that users are not
@@ -71,13 +66,10 @@ express desired prices) makes it impossible for users to properly manage risk.
 - Batcher based protocols lack trustless composability with other DApps; a critical feature for both
 scaling eUTxO-based DeFi and building a fully featured, trustless blockchain economy.
 - The concentration of assets into a single address or few addresses directly undermines the
-security assumptions of PoS blockchains. 
-- The concentration of assets forces users to give up voting rights over their assets. In essence,
-users are forced to pick between participating in DeFi and participating in decentralized
-governance. Furthermore, whichever entity controls the voting power of the concentrated assets has
-tremendous influence over the decentralized government.
+security assumptions of PoS blockchains, especially Ouroboros.
+- The concentration of assets forces users to give up voting rights over their assets; users are forced to pick between participating in DeFi and participating in decentralized governance. Furthermore, whichever entity controls the voting power of the concentrated assets has tremendous influence over the decentralized government.
 
-The last two bullets especially mean it is *impossible* for LPs to serve as the foundation of a
+The last two bullets mean that it is *impossible* for LPs to serve as the foundation of a
 trustless and decentralized economy.
 
 ##### Why the workarounds for the issues of the LP based architecture are not sufficient
@@ -122,16 +114,16 @@ logic requires two things: it must support *arbitrary* compositions and it must 
 since the logic of the actual DApps being composed must also be executed in the same transaction.
 *p2p protocols do not have the same limitations since Alice personally creates and signs her own
 transaction.* The above two requirements are only requirements when middle-men are creating and
-executing transactions on the behalf of users. Even if some composition logic could fit in the
+executing transactions on behalf of users. Even if some composition logic could fit in the
 transaction, would it actually support arbitrary composition (as opposed to only a few priviledged
-DApps being supported)? Even if the answer to this question is yes, that extra logic being executed
+DApps being supported)? Even if the answer to this question is yes, the extra logic being executed
 means less space for other DApps to compose in the transaction. Therefore, protocols that require
 batchers will never be able to offer the the same level of trustless composition as fully p2p
 protocols. The only way to actually match the level of composition of p2p protocols is for the
 batcher based composition to *not be trustless* (without the composition logic, more DApps can fit
 in a transaction).
 - No delegation control or voting control while using the DEX - DEXs try to issue governance tokens
-to get around this but fair distribution of the governance tokens is rarely accomplished (it is a
+to get around this, but fair distribution of the governance tokens is rarely accomplished (it is a
 very hard problem). Even if the governance tokens were distributed fairly, they are largely just for
 show since the DEX creators can still choose to go against the vote. There is no trustless
 connection between the governance tokens and what actually happens with the stake/DApp. Finally,
@@ -168,7 +160,7 @@ swap can go ADA -> ERGO or ERGO -> ADA). By allowing the liquidity provider to s
 prices for each direction, they can profit from either direction of the swap. For example, if the
 market rate for DJED <-> USDC is 1:1, Alice can set DJED -> USDC to 1.01 USDC per DJED and USDC ->
 DJED to 1.01 DJED per USDC. This means Alice makes a 1% return no matter what direction is used.
-This has major implications that will be discussed in the Features Discussion section.
+This has major implications that will be discussed in the [Features Discussion](#features-discussion) section.
 
 Since the swaps are freely composable, arbitrarily complex swaps can be created. For example, Alice
 can chain ADA -> ERGO with ERGO -> DUST to create a transaction that converts ADA -> DUST. Not only
@@ -788,13 +780,11 @@ profit for the arbitrage.
 ##### The Stablecoin <-> Stablecoin Two-Way Swap
 
 Currently, DApps treat stablecoins individually (ie, you may be able to buy an options contract
-using DJED but not USDC). This means, even though all stablecoins are practically the US dollar, the
-liquidity is fractured across all stablecoins. Two-way swaps change this.
+using DJED but not USDC). This means, even though almost all stablecoins are pegged to the US dollar, liquidity is fractured across all stablecoins. Two-way swaps change this.
 
 Imagine if Charlie has a swap for DJED <-> USDC where converting assets in either direction requires
 paying a 1% premium. The very existence of this swap, combined with the fact that Cardano-Swaps is
-freely composable with all DApps, means users can freely convert between stablecoins as needed. The
-liquidity would no longer be fractured. Alice can convert her DJED to USDC in the same transaction
+freely composable with all DApps, means users can freely convert between stablecoins as needed, and liquidity would no longer be fractured. Alice can convert her DJED to USDC in the same transaction
 where she is buying an options contract that is asking for USDC. She just has to pay Charlie the 1%
 fee for the conversion.
 
@@ -802,7 +792,7 @@ Since two-way swaps can go in either direction, these swaps do not need to be re
 For example, after Alice deposits DJED into the swap to claim USDC, Bob can now use the swap to
 convert his USDC to DJED by paying a 1% fee. Either way, Charlie makes 1% per swap and *is paid
 directly in the stablecoin being deposited*. And since the stablecoins are supposed to be 1:1 with
-the US dollar, the only risk is a peg-break. Anyone can be a liquidity provider and profit like
+the US dollar, the only risk is depegging. Anyone can be a liquidity provider and profit like
 Charlie does in this example.
 
 Being able to treat all stablecoins as a single stablecoin will be a game changer for DeFi. 
@@ -831,7 +821,7 @@ more than 15%, Alice's ada will likely be entirely converted to DUST. Alice must
 exchange rates to protect herself. Higher potential profit also carries with it higher potential
 risk. 
 
-This use case is meant more for professional traders but anyone can provide liquidity like this.
+This use case is meant more so for professional traders, but anyone can provide liquidity like this.
 
 
 ### Expressive Beacon Queries

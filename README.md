@@ -188,8 +188,8 @@ own API database).
 
 ## Specification
 
-(If you are only interested in the high-level aspects of the protocol, feel free to skip to
-[Features Discussion](#features-discussion).)
+(If you are only interested in the high-level aspects of the protocol, feel free to skip to the next
+[section](#benchmarks-and-fee-estimations-ymmv).)
 
 Each type of swap is comprised of a validator / beacon policy pair. This means that each type of
 swap gets its own universal address. For example, all of Alice's one-way swaps, regardless of the

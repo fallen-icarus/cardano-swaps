@@ -14,7 +14,7 @@ be found [here](./Benchmarks/).
 ## Table of Contents 
 - [Abstract](#abstract)
 - [Motivation](#motivation)
-- [Cardano-Swaps](#cardano-swaps)
+- [Cardano-Swaps](#the-cardano-swaps-protocol)
 - [Specification](#specification)
 - [Benchmarks and Fee Estimations](#benchmarks-and-fee-estimations-ymmv)
 - [Features Discussion](#features-discussion)
@@ -188,6 +188,9 @@ own API database).
 
 ## Specification
 
+(If you are only interested in the high-level aspects of the protocol, feel free to skip to
+[Features Discussion](#features-discussion).)
+
 Each type of swap is comprised of a validator / beacon policy pair. This means that each type of
 swap gets its own universal address. For example, all of Alice's one-way swaps, regardless of the
 trading pair, will be located at address X and all all of Alice's two-way swaps, regardless of the
@@ -210,7 +213,7 @@ the offer beacon, and the ask beacon.
 
 The offer beacon asset name is `sha2_256( "01" ++ offer_policy_id ++ offer_asset_name )`.
 
-The ask beacon asset name is `sha2_256( "02" ++ offer_policy_id ++ offer_asset_name )`.
+The ask beacon asset name is `sha2_256( "02" ++ ask_policy_id ++ ask_asset_name )`.
 
 The trading pair beacon asset name is `sha2_256( offer_id ++ offer_name ++ ask_id ++ ask_name )`.
 However, in the case where one of the assets is ada (which is just the empty bytestring), the ada
@@ -280,15 +283,15 @@ be locked forever.** (See the FAQ for more information on this.)
 
 The `Rational` type is a fraction (decimal types do not work on-chain). All prices in Cardano-Swaps
 are relative (similar to limit orders in an order-book exchange). Swaps are always priced in
-askedAsset/offeredAsset. For example, if ada is being offered for dust at a price of 1.5
-(converted to 3/2), the contract requires that 3 dust are deposited for every 2 ada removed from
+askedAsset/offeredAsset. For example, if ADA is being offered for DUST at a price of 1.5
+(converted to 3/2), the contract requires that 3 DUST are deposited for every 2 ADA removed from
 the swap address. Ratios of DUST:ADA >= 3/2 will pass, while ratios < 3/2 will fail. 
 
 When engaging in swaps, it is only necessary that the desired swap ratio is met; **not all assets in
-the Swap UTxO must be swapped.** For example, if there is 100 ada in a swap address requesting 2:1
-for dust, a user may swap 20 ada, as long as they return 80 ada and 10 dust in the same Tx. Since
-every user explicitly defines their desired swap ratios, oracles are not required. The "global"
-price naturally emerges where the local bids and asks meet - just like an order-book. 
+the Swap UTxO must be swapped.** For example, if there is 100 ADA in a swap requesting 2:1 for DUST,
+a user may swap 20 ADA, as long as they return 80 ADA and 10 DUST in the same Tx. Since every user
+explicitly defines their desired swap ratios, oracles are not required. The "global" price naturally
+emerges where the local bids and asks meet - just like an order-book. 
 
 **All prices for ADA must be in units of lovelace.**
 
@@ -298,13 +301,13 @@ Swap "writers" must first create a swap by using the `CreateSwap` redeemer in th
 
 In order to mint beacons with this redeemer, **all of the following must be true**:
 
-1) The beacons must go to an addres protected by the one-way swap validator script.
+1) The beacons must go to an address protected by the one-way swap validator script.
 2) The beacons must go to an address using a valid staking credential.
 3) The UTxOs with the beacons must have the proper value:
     - Exactly three kinds of beacons: pair beacon, offer beacon, and ask beacon.
     - The beacons must correspond to the beacons in the datum.
     - There must be exactly 1 of each beacon.
-    - No extraneous assets are in the UTxO. ADA is always allowed.
+    - No extraneous assets are in the UTxO. Ada is always allowed.
 4) The beacons must be stored with the proper inline `SwapDatum`:
     - `beaconId` == this policy id.
     - `pairBeacon` == pair beacon asset name for this swap.
@@ -323,9 +326,9 @@ Once the beacons are minted to the swap address, the spending script does not al
 and guarantees the integrity of the off-chain queries. 
 
 All swaps must be stored with the proper beacons. Due to this requirement, the absolute minimum
-possible value for a swap UTxO to have is about 2 ada. This minimum value can be reclaimed upon
+possible value for a swap UTxO to have is about 2 ADA. This minimum value can be reclaimed upon
 closing the swap so it should be thought of as a deposit. **All open swaps require a deposit of at
-least 2 ada.** 
+least 2 ADA.** 
 
 It is possible to open swaps for multiple different trading pairs in a single transaction. The
 minting policy is capable of still ensuring that all beacons are stored properly (with the proper
@@ -336,7 +339,7 @@ The `CreateSwap` allows also burning any beacons to enable composition with the 
 redeemer. More on this later.
 
 
-##### Closing or Updating a Swap
+##### Closing or Updating a One-Way Swap
 
 Open Swap UTxOs can be closed or updated by the address owner (signified by the address' staking
 credential).
@@ -346,13 +349,13 @@ order to reclaim the deposit, the beacons must be burned.** As the redeemer name
 can also be updated inplace instead. The requirements for successfully using the `CloseOrUpdate`
 redeemer are:
 
-1) The beacons must go to an addres protected by the one-way swap validator script.
+1) The beacons must go to an address protected by the one-way swap validator script.
 2) The beacons must go to an address using a valid staking credential.
 3) The UTxOs with the beacons must have the proper value:
     - Exactly three kinds of beacons: pair beacon, offer beacon, and ask beacon.
     - The beacons must correspond to the beacons in the datum.
     - There must be exactly 1 of each beacon.
-    - No extraneous assets are in the UTxO. ADA is always allowed.
+    - No extraneous assets are in the UTxO. Ada is always allowed.
 4) The beacons must be stored with the proper inline `SwapDatum`:
     - `beaconId` == this policy id.
     - `pairBeacon` == pair beacon asset name for this swap.
@@ -368,15 +371,15 @@ redeemer are:
 6) The address' staking credential must signal approval.
 7) Any unused beacons must be burned.
 
-This redeemer can be used with either beacon redeemer since both allow burning. If beacons only need
-to be burned, it is cheaper to use the `BurnBeacons` redeemer. However, if even a single beacon must
-be minted, the `CreateSwap` redeemer must be used. This behavior enables the swap owner to change
-what trading pair a swap is for in a single transaction. This is instead of having to close the
-original swap in one transaction only to re-open it in another transaction.
+The `CloseOrUpdate` redeemer can be used with either beacon redeemer since both allow burning. If
+beacons only need to be burned, it is cheaper to use the `BurnBeacons` redeemer. However, if even a
+single beacon must be minted, the `CreateSwap` redeemer must be used. This behavior enables the swap
+owner to change what trading pair a swap is for in a single transaction. This is instead of having
+to close the original swap in one transaction only to re-open it in another transaction.
 
 Requirement 6 guarantees that only the owner can close/update a swap and claim the assets.
 
-##### Executing a Swap
+##### Executing a One-Way Swap
 
 Any Cardano user can execute an available swap using the `Swap` redeemer as long as the swap
 conditions are met.
@@ -441,8 +444,8 @@ between the trading pair and asset beacons whenever ada is part of the pair.
 
 Asset1 and asset2 are the **sorted** trading pair. Trading pairs are sorted lexicographically by
 name. As in the previous example, for the trading pair ADA <-> DJED, the empty bytestring (on-chain
-representation for ada's policy id) is less than djed's policy id which means, for this trading
-pair, asset1 is ada and asset2 is djed. This sorting is done for two reasons: 
+representation for ada's policy id) is less than DJED's policy id which means, for this trading
+pair, asset1 is ada and asset2 is DJED. This sorting is done for two reasons: 
 
 1) The trading pair beacon asset name does not depend on the swap's direction.
 2) The datum information can be standardized for each trading pair, regardless of swap direction.
@@ -495,10 +498,10 @@ data SwapDatum = SwapDatum
   , pairBeacon :: TokenName -- ^ The asset name for the beacon for this trading pair.
   , asset1Id :: CurrencySymbol -- ^ The policy id for the first asset in the sorted pair.
   , asset1Name :: TokenName -- ^ The asset name for the first asset in the sorted pair.
-  , asset1Beacon :: TokenName --^ The asset name for the asset1 beacon.
+  , asset1Beacon :: TokenName -- ^ The asset name for the asset1 beacon.
   , asset2Id :: CurrencySymbol -- ^ The policy id for the second asset in the sorted pair.
   , asset2Name :: TokenName -- ^ The asset name for the second asset in the sorted pair.
-  , asset2Beacon :: TokenName --^ The asset name for the asset2 beacon.
+  , asset2Beacon :: TokenName -- ^ The asset name for the asset2 beacon.
   , forwardPrice :: Rational -- ^ The swap price as a fraction: Asset1/Asset2.
   , reversePrice :: Rational -- ^ The swap price as a fraction: Asset2/Asset1.
   , prevInput :: Maybe TxOutRef -- ^ The output reference for the corresponding swap input.
@@ -512,18 +515,18 @@ be locked forever.** (See the FAQ for more information on this.)
 
 The `Rational` type is a fraction (decimal types do not work on-chain). All prices in Cardano-Swaps
 are relative (similar to limit orders in an order-book exchange). Swaps are always priced in
-askedAsset/offeredAsset. For example, if ada is being offered for dust at a price of 1.5 (converted
-to 3/2), the contract requires that 3 dust are deposited for every 2 ada removed from the swap
+askedAsset/offeredAsset. For example, if ADA is being offered for DUST at a price of 1.5 (converted
+to 3/2), the contract requires that 3 DUST are deposited for every 2 ADA removed from the swap
 address. Ratios of DUST:ADA >= 3/2 will pass, while ratios < 3/2 will fail.
 
 Since all prices are askedAsset/offeredAsset, asset2 is being offered in `forwardPrice` and asset1
 is being offered in `reversePrice`.
 
-When engaging in swaps, it is only necessary that the desired swap ratio is met; **not all assets
-in the UTxO must be swapped.** For example, if there is 100 ada in a swap address requesting 2:1 for
-dust, a user may swap 20 ada, as long as they return 80 ada and 10 dust in the same Tx. Since every
-user explicitly defines their desired swap ratios, oracles are not required. The "global" price
-naturally emerges where the local bids and asks meet - just like an order-book. 
+When engaging in swaps, it is only necessary that the desired swap ratio is met; **not all assets in
+the UTxO must be swapped.** For example, if there is 100 ADA in a swap requesting 2:1 for DUST, a
+user may swap 20 ADA, as long as they return 80 ADA and 10 DUST in the same Tx. Since every user
+explicitly defines their desired swap ratios, oracles are not required. The "global" price naturally
+emerges where the local bids and asks meet - just like an order-book. 
 
 **All prices for ADA must be in units of lovelace.**
 
@@ -533,13 +536,13 @@ Swap "writers" must first create a swap by using the `CreateSwap` redeemer in th
 
 In order to mint beacons with this redeemer, **all of the following must be true**:
 
-1) The beacons must go to an addres protected by the two-way swap validator script.
+1) The beacons must go to an address protected by the two-way swap validator script.
 2) The beacons must go to an address using a valid staking credential.
 3) The UTxOs with the beacons must have the proper value:
     - Exactly three kinds of beacons: pair beacon, asset1 beacon, and asset2 beacon.
     - The beacons must correspond to the beacons in the datum.
     - There must be exactly 1 of each beacon.
-    - No extraneous assets are in the UTxO. ADA is always allowed.
+    - No extraneous assets are in the UTxO. Ada is always allowed.
 4) The beacons must be stored with the proper inline `SwapDatum`:
     - `beaconId` == this policy id.
     - `pairBeacon` == trading pair beacon asset name for this swap.
@@ -563,9 +566,9 @@ Once the beacons are minted to the swap address, the spending script does not al
 and guarantees the integrity of the off-chain queries. 
 
 All swaps must be stored with the proper beacons. Due to this requirement, the absolute minimum
-possible value for a swap UTxO to have is about 2 ada. This minimum value can be reclaimed upon
+possible value for a swap UTxO to have is about 2 ADA. This minimum value can be reclaimed upon
 closing the swap so it should be thought of as a deposit. **All open swaps require a deposit of at
-least 2 ada.** 
+least 2 ADA.** 
 
 It is possible to open swaps for multiple different trading pairs in a single transaction. The
 minting policy is capable of still ensuring that all beacons are stored properly (with the proper
@@ -576,7 +579,7 @@ The `CreateSwap` redeemer allows burning any beacons to enable composition with 
 redeemer. More on this later.
 
 
-##### Closing or Updating a Swap
+##### Closing or Updating a Two-Way Swap
 
 Open Swap UTxOs can be closed or updated by the address owner (signified by the address' staking
 credential).
@@ -586,13 +589,13 @@ order to reclaim the deposit, the beacons must be burned.** As the redeemer name
 can also be updated inplace instead. The requirements for successfully using the `CloseOrUpdate`
 redeemer are:
 
-1) The beacons must go to an addres protected by the two-way swap validator script.
+1) The beacons must go to an address protected by the two-way swap validator script.
 2) The beacons must go to an address using a valid staking credential.
 3) The UTxOs with the beacons must have the proper value:
     - Exactly three kinds of beacons: pair beacon, asset1 beacon, and asset2 beacon.
     - The beacons must correspond to the beacons in the datum.
     - There must be exactly 1 of each beacon.
-    - No extraneous assets are in the UTxO. ADA is always allowed.
+    - No extraneous assets are in the UTxO. Ada is always allowed.
 4) The beacons must be stored with the proper inline `SwapDatum`:
     - `beaconId` == this policy id.
     - `pairBeacon` == trading pair beacon asset name for this swap.
@@ -610,15 +613,15 @@ redeemer are:
 5) The address' staking credential must approve.
 6) Any unused beacons must be burned.
 
-This redeemer can be used with either beacon redeemer since both allow burning. If beacons only need
-to be burned, it is cheaper to use the `BurnBeacons` redeemer. However, if even a single beacon must
-be minted, the `CreateSwap` redeemer must be used. This behavior enables the swap owner to change
-what trading pair a swap is for in a single transaction. This is instead of having to close the
-original swap in one transaction only to re-open it in another transaction. 
+The `CloseOrUpdate` redeemer can be used with either beacon redeemer since both allow burning. If
+beacons only need to be burned, it is cheaper to use the `BurnBeacons` redeemer. However, if even a
+single beacon must be minted, the `CreateSwap` redeemer must be used. This behavior enables the swap
+owner to change what trading pair a swap is for in a single transaction. This is instead of having
+to close the original swap in one transaction only to re-open it in another transaction. 
 
 Requirement 5 guarantees only the swap owner can close/update swaps.
 
-##### Executing a Swap
+##### Executing a Two-Way Swap
 
 Any Cardano user can execute an available swap using either the `ForwardSwap` or `ReverseSwap`
 redeemer as long as the swap conditions are met. When `ForwardSwap` is used, the `forwardPrice` is
@@ -698,7 +701,7 @@ transaction can be created. The only limits are the size and execution budgets o
 which are Cardano protocol parameters.
 
 The swaps can be trustlessly composed with any DApp (not just the p2p protocols), including those
-that use batchers. For example, Alice can use a swap to convert djed to usdc, use the usdc to buy an
+that use batchers. For example, Alice can use a swap to convert DJED to USDC, use the USDC to buy an
 options contract on the secondary market, and then immediately execute that contract, all in the
 same transaction. The transaction will fail if any of the intermediate steps fail. No meta-logic is
 required to enforce trustless composition. As this example shows, this trustless composition allows
@@ -727,18 +730,18 @@ To fully appreciate the implications of the two-way swaps, it helps to consider 
 ##### The Contrived Arbitrage Example
 
 ``` Txt
-Alice has 10 ada in her swap address and is willing to swap them for 0.5 AGIX/ADA.
-Bob has 10 agix in his swap address and is willing to swap them for 1 ADA/AGIX.
+Alice has 10 ADA in her swap and is willing to swap them for 0.5 AGIX/ADA.
+Bob has 10 AGIX in his swap and is willing to swap them for 1 ADA/AGIX.
 ```
 
 In this example, Charlie can profitably arbitrage and fulfill both of these swaps like this:
 
 ``` Txt
-Charlie looks up all swap addresses willing to swap AGIX/ADA. Charlie finds Alice's address.
-Charlie looks up all swap addresses willing to swap ADA/AGIX. Charlie finds Bob's address.
-Charlie gives Bob 10 ada and receives 10 agix.
-Charlie gives Alice 5 agix and receives 10 ada.
-Charlie now has his original 10 ada plus an additional 5 agix.
+Charlie looks up all swaps willing to swap AGIX/ADA. Charlie finds Alice's swap.
+Charlie looks up all swaps willing to swap ADA/AGIX. Charlie finds Bob's swap.
+Charlie gives Bob 10 ADA and receives 10 AGIX.
+Charlie gives Alice 5 AGIX and receives 10 ADA.
+Charlie now has his original 10 ADA plus an additional 5 AGIX.
 This all occurs in one transaction where Charlie pays the transaction fee.
 ```
 
@@ -748,34 +751,34 @@ Bob's swaps are fulfilled.
 ##### The Realistic Arbitrage Example
 
 ``` Txt
-Alice has 10 ada in her swap address and is willing to swap them for 1 DUST/ADA.
-Bob has 10 dust in his swap address and is willing to swap them for 0.5 AGIX/DUST.
-Charlie has 10 agix in his swap address and is willing to swap them for 1 HOSKY/AGIX.
-Mike has 10 hosky in his swap address and is willing to swap them for 1 ADA/HOSKY.
+Alice has 10 ADA in her swap and is willing to swap them for 1 DUST/ADA.
+Bob has 10 DUST in his swap and is willing to swap them for 0.5 AGIX/DUST.
+Charlie has 10 AGIX in his swap and is willing to swap them for 1 HOSKY/AGIX.
+Mike has 10 HOSKY in his swap and is willing to swap them for 1 ADA/HOSKY.
 ```
 
 In this example, Sarah can profitably arbitrage and fulfill all of these swaps like this:
 
 ``` Txt
-Sarah looks up all swap addresses willing to swap DUST/ADA. Sarah finds Alice's address.
-Sarah looks up all swap addresses willing to swap AGIX/DUST. Sarah finds Bob's address.
-Sarah looks up all swap addresses willing to swap HOSKY/AGIX. Sarah finds Charlie's address.
-Sarah looks up all swap addresses willing to swap ADA/HOSKY. Sarah finds Mike's address.
-Sarah gives Mike 10 ada and receives 10 hosky.
-Sarah gives Charlie 10 hosky and receives 10 agix.
-Sarah gives Bob 5 agix and receives 10 dust.
-Sarah gives Alice 10 dust and receives 10 ada.
-Sarah now has her original 10 ada plus an additional 5 agix.
+Sarah looks up all swaps willing to swap DUST/ADA. Sarah finds Alice's swap.
+Sarah looks up all swaps willing to swap AGIX/DUST. Sarah finds Bob's swap.
+Sarah looks up all swaps willing to swap HOSKY/AGIX. Sarah finds Charlie's swap.
+Sarah looks up all swaps willing to swap ADA/HOSKY. Sarah finds Mike's swap.
+Sarah gives Mike 10 ADA and receives 10 HOSKY.
+Sarah gives Charlie 10 HOSKY and receives 10 AGIX.
+Sarah gives Bob 5 AGIX and receives 10 DUST.
+Sarah gives Alice 10 DUST and receives 10 ADA.
+Sarah now has her original 10 ADA plus an additional 5 AGIX.
 This all occurs in one transaction where Sarah pays the transaction fee.
 ```
 
-On net, Sarah pays the transaction fee and receives 5 agix in return, while four swaps are
+On net, Sarah pays the transaction fee and receives 5 AGIX in return, while four swaps are
 fulfilled. As shown in this example, Sarah fulfills *both* the AGIX/DUST swap and the HOSKY/AGIX
 swap by "passing through" those pairs on her way back to ada. As long as the entry and exit pairs
 (in this case ADA/HOSKY and DUST/ADA) have enough liquidity, arbitragers can spread that liquidity
 into less liquid swap pairs. And since two-way swaps naturally incentivize providing liquidity for
-major trading pairs, this requirement for entry and exit liquidity is naturally incentivized to be
-satisfied.
+major trading pairs (see the next two sub-sections), this requirement for entry and exit liquidity
+is naturally incentivized to be satisfied.
 
 Since the current design is capable of handling 11-14 swaps in a single transaction, there is ample
 flexibility for finding arbitrage opportunities. For example, maybe the 3rd swap is at a slight loss
@@ -784,15 +787,16 @@ profit for the arbitrage.
 
 ##### The Stablecoin <-> Stablecoin Two-Way Swap
 
-Currently, DApps treat stablecoins individually (ie, you may be able to borrow a loan in DJED but
-not USDC). This means, even though all stablecoins are practically the US dollar, the liquidity is
-fractured across all stablecoins. Two-way swaps change this.
+Currently, DApps treat stablecoins individually (ie, you may be able to buy an options contract
+using DJED but not USDC). This means, even though all stablecoins are practically the US dollar, the
+liquidity is fractured across all stablecoins. Two-way swaps change this.
 
 Imagine if Charlie has a swap for DJED <-> USDC where converting assets in either direction requires
 paying a 1% premium. The very existence of this swap, combined with the fact that Cardano-Swaps is
 freely composable with all DApps, means users can freely convert between stablecoins as needed. The
-liquidity would no longer be fractured. Alice could convert her DJED to USDC to buy an options
-contract that is asking for USDC. She just has to pay Charlie the 1% fee for the conversion.
+liquidity would no longer be fractured. Alice can convert her DJED to USDC in the same transaction
+where she is buying an options contract that is asking for USDC. She just has to pay Charlie the 1%
+fee for the conversion.
 
 Since two-way swaps can go in either direction, these swaps do not need to be reset after each swap.
 For example, after Alice deposits DJED into the swap to claim USDC, Bob can now use the swap to
@@ -801,36 +805,29 @@ directly in the stablecoin being deposited*. And since the stablecoins are suppo
 the US dollar, the only risk is a peg-break. Anyone can be a liquidity provider and profit like
 Charlie does in this example.
 
-Being able to treat all stablecoins as a single stablecoin will be a game changer for DeFi.
+Being able to treat all stablecoins as a single stablecoin will be a game changer for DeFi. 
 
 ##### The Volatile Two-Way Swap
 
 While the stablecoin <-> stablecoin two-way swaps are the least risky, there is also an incentive to
-provide liquidity for volatile pairs. Consider two assets like ada and dust. Imagine if Alice thinks
-ada is going to appreciate against dust; therefore, she would rather have ada. Her prices can
+provide liquidity for volatile pairs. Consider two assets like ada and DUST. Imagine if Alice thinks
+ada is going to appreciate against DUST; therefore, she would rather have ada. Her prices can
 reflect this: converting ADA -> DUST could require a 15% premium while converting DUST -> ADA could
 require only a 5% premium. Would anyone pay the 15% premium?
 
 Yes, arbitragers would. Imagine if an arbitrager found a really good opportunity but they needed the
 ada. As long as the overall profit from the arbitrage can cover the 15% premium (and then some), the
-arbitrager may be more than willing to pay this high premium. Considering that the protocol supports
-chaining up to 14 swaps and illiquidity implies great arbitrage opportunities, it is actually likely
-that arbitragers will be able to find opportunities that justify paying this high premium. For
-example, let's say a single arbitrage yields a 5% profit and, since 14 swaps can fit in a single
-transaction, 5 of these arbitrages can fit in a single transaction. That means this transaction
-would yield 25% in revenue for the arbitrager. What if the arbitrager could not execute this
-transaction without the two-way ADA -> DUST swap? Should the arbitrager skip the opportunity?
-Definitely not! Even after paying the 15% premium, the arbitrager would have a 10% profit on this
-single transaction. It is definitely worth it for the arbitrager to pay the premium.
-
-Consider the realistic arbitrage example where Sarah paid the transaction fee and got 5 agix from
-the arbitrage. According to the benchmarks, composing 4 swaps requires about a 0.5 ada transaction
-fee. This is practically equivalent to Sarah paying 0.5 ada for 5 agix. What if the current market
-rate is 0.66 ADA/AGIX? If Sarah immediately sold her new agix, she would get 3.3 ada. That is a 560%
-yield! Sarah has plenty of income to cover a 15% premium if needed. 
+arbitrager may be more than willing to pay this high premium. Consider the realistic arbitrage
+example where Sarah paid the transaction fee and got 5 AGIX from the arbitrage. According to the
+benchmarks, composing 4 swaps requires about a 0.5 ADA transaction fee. This is practically
+equivalent to Sarah paying 0.5 ADA for 5 AGIX. What if the current market rate is 0.66 ADA/AGIX? If
+Sarah immediately sold her new AGIX, she would get 3.3 ADA. That is a 560% yield! Sarah has plenty
+of income to cover a 15% premium if needed. Since the protocol supports chaining up to 14 swaps, it
+is actually likely that arbitragers will be able to find opportunities that justify paying this high
+premium. 
 
 **Providing liquidity for volatile pairs is an active trade.** If the price moved against Alice by
-more than 15%, Alice's ada will likely be entirely converted to dust. Alice must keep an eye on the
+more than 15%, Alice's ada will likely be entirely converted to DUST. Alice must keep an eye on the
 exchange rates to protect herself. Higher potential profit also carries with it higher potential
 risk. 
 
@@ -870,15 +867,15 @@ need for dedicated (censorable) frontends.
 
 ### Naturally Resistant to Denial-of-Service Attacks
 
-Recall that each swap requires a deposit of at least 2 ada. While this behavior is due to the
-current protocol parameters, it is actually a good thing since it helps prevents denial-of-service
+Recall that each swap requires a deposit of at least 2 ADA. While this behavior is due to the
+current protocol parameters, it is actually a good thing since it helps prevent denial-of-service
 attacks. For example, since the protocol does not check that the assets in the datum are real
 assets, it is possible to create swaps for fake assets. *This does not impact normal users who are
 querying swaps for a known trading pair.* The user would have to deliberately query a trading pair
 that contains a fake asset in order to see these fake UTxOs.
 
 These fake asset UTxOs only really impact offer and ask queries which are mainly for arbitragers who
-will likely have powerful hardware. Since these fake UTxOs still require 2 ada, creating millions of
+will likely have powerful hardware. Since these fake UTxOs still require 2 ADA, creating millions of
 them (enough to disrupt the arbitragers) would require a deposit of millions of ada throughout the
 life of the denial-of-service attack. The only way to reclaim the ada is to stop the attack.
 Furthermore, checking if an asset is real is trivial (look for mint history). Once an arbitrager
@@ -899,14 +896,53 @@ the midpoint between the buyers' and sellers' asking prices. It is not an actual
 A healthy market does not need optimal concurrency *at* the market price. Instead, what is important
 is that when market sentiment shifts, the market price can easily shift with it. This is exactly
 what is possible by having most swaps concentrated just above or below the market price. If Alice
-suddenly finds herself really needing usdc, she will have ample swaps to choose from if she pays a
+suddenly finds herself really needing USDC, she will have ample swaps to choose from if she pays a
 little more than she originally would have. Her new circumstances may justify this higher price.
 This is literally what it means to say that market sentiment has shifted and the market price needs
 to be updated to reflect it.
 
+### If there is one two-way swap UTxO with 1000 DJED and there are 10 users trying to use 100 DJED each, isn't this still a concurrency issue despite having enough liquidity?
+
+Yes, this is a concurrency bottleneck but no, this is not an issue. This is the perfect niche for
+businesses to build on top of Cardano-Swaps. Historically, whenever there is a risk that users don't
+want to carry, a business can form to carry that risk instead, for a price. Insurance is one such
+example. The same scenario applies here.
+
+Imagine a slightly simpler example: Alice has a 100 DJED swap available while Mike and Charlie both
+want 50 DJED from it. No liquidity bottleneck here, just a concurrency bottleneck. If Mike and
+Charlie do not want to deal with the concurrency bottleneck, they can pay arbitragers to execute the
+swaps for them. Here is how it would work:
+
+- Both Mike and Charlie create one-way swaps with prices so that, if executed against Alice's swap,
+Mike and Charlie would each get 49 DJED and whoever executes their swaps gets to keep the other 1
+DJED per swap. These swaps are effectively saying: "I'll pay you 1 DJED to execute this swap for
+me."
+- Sarah, an arbitrager, can see all three swaps and executes them, keeping the 2 DJED arbitrage (1
+DJED from each swap).
+
+In other words, Mike and Charlie deliberately create an arbitrage opportunity so that arbitragers
+will want to execute their swaps. If Charlie really needs his swap executed ASAP, he can set his
+price so that he gets 48 DJED and the arbitrager gets 2 DJED for executing his swap. Basically, the
+more attractive the buyer makes the arbitrage opportunity, the more arbitragers will compete for it
+and the faster their swap will be converted. In this scenario, neither Mike nor Charlie experience a
+concurrency bottleneck. The arbitragers competing for their swaps are the ones experiencing the
+concurrency bottleneck, and they are paid accordingly for taking on this risk. 
+
+Users can think of this approach as creating a limit order just below the market price so that it is
+immediately executed; the further the order is set below the market price, the faster it will be
+executed. Users can decide for themselves how much they are willing to pay for a quick execution and
+set their prices accordingly.
+
+In the endgame, most users will not be competing for swaps - arbitragers and other businesses will
+be. Most users will create orders via swap UTxOs that are then swept by these businesses. In this
+scenario, there is zero concurrency problem for the end user.
+
+When it comes to creating a decentralized economy, not every feature needs to be directly enabled by
+the DApp. Some features can, and should, be left to the market to fill.
+
 ### What about swap collisions?
 
-Recall the composition example above. What would happen if another user simultaneously submits a
+Recall the composition examples above. What would happen if another user simultaneously submits a
 transaction using *one* of the same "Swap" UTxOs as an input? Whichever transaction is processed by
 (most) nodes first will succeed, and the other will fail entirely. If the first transaction is
 processed before the second (as in a normal scenario), the second transaction will fail due to the
@@ -959,7 +995,7 @@ action:
 The staking credential effectively *becomes* the "owner" for all actions except for the actual swap
 execution, in which case the spending credential is used directly.
 
-> Note: It is possible to execute a staking script even if 0 ada is withdrawn from a reward address.
+> Note: It is possible to execute a staking script even if 0 ADA is withdrawn from a reward address.
 > The only requirement to use staking scripts like this is that the associated stake address must be
 > registered and delegated. Stake addresses can be utilized this way as soon as the
 > registration+delegation transaction is added to the chain. There is no epoch waiting-period.

@@ -1,13 +1,17 @@
 cabal-version:      2.4
 name:               cardano-swaps
-version:            0.3.0.0
+version:            1.0.0.0
 
 synopsis: A distributed Cardano DEX PoC
 license: Apache-2.0
 author: fallen-icarus
 maintainer: modern.daidalos+git@gmail.com
 copyright: 2022 fallen-icarus
-extra-source-files: CHANGELOG.md
+extra-source-files: 
+  CHANGELOG.md,
+  aiken/plutus.json,
+  preprod-params.json,
+  mainnet-params.json
 
 common lang
   build-depends: base ^>=4.14
@@ -20,22 +24,26 @@ common internals
     , plutus-ledger
     , plutus-ledger-api
     , plutus-tx
-    , plutus-tx-plugin
     , plutus-script-utils
-    , plutus-core
-    , cardano-node-emulator
     , containers
 
 library
   import:
       lang
     , internals
-  exposed-modules: CardanoSwaps
+  exposed-modules: 
+      CardanoSwaps
+    , CardanoSwaps.Blueprints
+    , CardanoSwaps.OneWaySwap
+    , CardanoSwaps.TwoWaySwap
+    , CardanoSwaps.Utils
   build-depends:
       bytestring
     , serialise
     , aeson
     , text
+    , file-embed
+    , prettyprinter
   hs-source-dirs: src
   ghc-options:
     -fobject-code 
@@ -52,16 +60,27 @@ test-suite cardano-swaps-tests
   hs-source-dirs: test
   ghc-options:
     -threaded -rtsopts -with-rtsopts=-N
-    -Wno-deprecations
+    -Wno-deprecations -Wno-unused-matches
+    -Wno-unused-local-binds -Wno-unused-top-binds
   other-modules:
-      Test.Common
-    , Test.CloseSwapAddress
-    , Test.OpenSwapAddress
-    , Test.Update
-    , Test.Swap
+      Test.Internal
+    , Test.Config
+    , Test.OneWaySwap
+    , Test.OneWaySwap.BeaconNames
+    , Test.OneWaySwap.CloseOrUpdate
+    , Test.OneWaySwap.CreateSwap
+    , Test.OneWaySwap.Swap
+    , Test.OneWaySwap.Utils
+    , Test.TwoWaySwap
+    , Test.TwoWaySwap.BeaconNames
+    , Test.TwoWaySwap.CloseOrUpdate
+    , Test.TwoWaySwap.CreateSwap
+    , Test.TwoWaySwap.Swap
+    , Test.TwoWaySwap.Utils
   build-depends:
       cardano-swaps
     , plutus-contract
+    , cardano-node-emulator
     , plutus-tx-constraints
     , aeson
     , text
@@ -78,8 +97,7 @@ executable cardano-swaps
       , CLI.Run
       , CLI.Query
       , CLI.Parsers
-      , CLI.BlockfrostApi
-      , CLI.KoiosApi
+      , CLI.Query.Koios
     build-depends:    
       cardano-swaps,
       optparse-applicative,
@@ -94,7 +112,11 @@ executable cardano-swaps
       aeson-pretty,
       bytestring,
       text,
-      file-embed
+      file-embed,
+      prettyprinter,
+      prettyprinter-ansi-terminal
     hs-source-dirs: app
-    default-language: Haskell2010
-    ghc-options: -Wall -Wredundant-constraints
+    default-extensions:
+      OverloadedStrings
+      TypeApplications
+      RecordWildCards

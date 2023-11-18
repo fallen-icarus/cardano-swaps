@@ -1,5 +1,30 @@
 # Revision history for cardano-swaps
 
+## 1.0.0.0rc
+
+- Added two-way swaps to provide a mechanism to naturally incentivize liquidity providers.
+- Changed one-way swaps to use a single beacon policy for all swaps. The asset name now
+distinguishes the beacon.
+- Changed one-way swaps to not support merging swap outputs. This dramatically improved performance.
+- Support for Blockfrost was dropped in the CLI because it does not allow server-side filtering of
+swaps like Koios does. For example, querying swaps by trading pair also needs to filter out all
+finished swaps. Koios can do this *before* returning the results. Blockfrost requires this filtering
+to be done locally.
+- Added CLI support for using Koios as a remote node.
+- Added template bash scripts for using a remote node.
+- Added CLI support for querying personal addresses using Koios.
+
+## 0.4.0.0
+
+- Universal spending script used instead of one spending script for each trading pair.
+- One beacon policy for each asset being offered. The asset name is: sha2_256( ask_asset policy id ++ ask_asset asset name ). This allows for offer based queries in addition to trading pair based queries.
+- The minimum deposit of 20 ADA was removed. Instead the proper beacon must be stored with each swap UTxO. This requires the minUTxO value due to the protocol parameters.
+- The swap datum was expanded to include information about the swap UTxO: beacon policy id and name, offer asset policy id and name, ask asset policy id and name, and price.
+- Added check for the beacon to be stored with some of the offer asset during creating and updating swaps.
+- Added check for price to have a denominator > 0.
+- Added check that no extraneous assets can be stored in the swap UTxO.
+- Merged Close and Update redeemer into one redeemer.
+
 ## 0.3.0.0
 
 - Plutus scripts written using Aiken.

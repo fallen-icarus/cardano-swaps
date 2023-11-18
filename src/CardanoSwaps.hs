@@ -1,247 +1,237 @@
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE DerivingStrategies    #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RecordWildCards       #-}
-{-# LANGUAGE NumericUnderscores    #-}
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
 
-module CardanoSwaps 
-(
-  SwapConfig(..),
-  SwapDatum(..),
-  SwapRedeemer(..),
-  BeaconRedeemer(..),
-  Blueprints,
-  CurrencySymbol(..),
-  TokenName(..),
-  DappScripts(..),
-  unValidatorScript,
-  unMintingPolicyScript,
+{- | 
+ 
+All that is required to interface with the smart contracts is to add this module to your import
+list:
 
-  adaSymbol,
-  adaToken,
-  Plutus.unsafeRatio,
-  readBlueprints,
-  applySwapParams,
-  applyBeaconParams,
-  readCurrencySymbol,
-  readTokenName,
-  writeData,
-  writeScript,
-  toCBOR,
-  dataFromCBOR,
-  unsafeFromRight,
-  decodeDatum,
-  PlutusRational,
-  UtxoPriceInfo(..),
-  calcWeightedPrice,
-  parseBlueprints,
-  genScripts
-) where
+@
+import CardanoSwaps
+@
 
-import Data.Aeson as Aeson
-import Control.Monad
-import Plutus.V2.Ledger.Api
+This module re-exports the "CardanoSwaps.Utils" module, and renames the on-chain data types and
+script functions to avoid name space collisions. If only one kind of swap is needed, you can get
+started with just:
+
+@
+import CardanoSwaps.OneWaySwap
+import CardanoSwaps.Utils
+@
+
+Importing more than just one kind of swap like this will result in name space collisions so the
+"CardanoSwaps.OneWaySwap" module will need to be qualified. If you would like to work with the
+blueprints directly, you can just use:
+
+@
+import CardanoSwaps.Blueprints
+@
+
+The "CardanoSwaps.Utils" module has types and functions that are helpful when interfacing with
+the contracts.
+-}
+
+module CardanoSwaps
+  (
+    -- * One-Way Swap
+    -- ** On-Chain Data Types
+    OneWaySwapDatum(..)
+  , OneWaySwapRedeemer(..)
+  , OneWayBeaconRedeemer(..)
+
+    -- ** Contracts
+  , oneWaySwapScript
+  , oneWaySwapValidator
+  , oneWaySwapValidatorHash
+  , oneWayBeaconScript
+  , oneWayBeaconMintingPolicy
+  , oneWayBeaconMintingPolicyHash
+  , oneWayBeaconCurrencySymbol
+
+    -- * Two-Way Swap
+    -- ** On-Chain Data Types
+  , TwoWaySwapDatum(..)
+  , TwoWaySwapRedeemer(..)
+  , TwoWayBeaconRedeemer(..)
+
+    -- ** Contracts
+  , twoWaySwapScript
+  , twoWaySwapValidator
+  , twoWaySwapValidatorHash
+  , twoWayBeaconScript
+  , twoWayBeaconMintingPolicy
+  , twoWayBeaconMintingPolicyHash
+  , twoWayBeaconCurrencySymbol
+
+    -- * Helpers
+  , getRequiredSwapDirection
+
+    -- * Re-Export
+  , module CardanoSwaps.Utils
+  , OneWaySwap.genOneWayPairBeaconName
+  , OneWaySwap.genOfferBeaconName
+  , OneWaySwap.genAskBeaconName
+  , TwoWaySwap.genTwoWayPairBeaconName
+  , TwoWaySwap.genAssetBeaconName
+  ) where
+
+import Prelude hiding (fromInteger)
+import Plutus.V2.Ledger.Api as Api
 import qualified PlutusTx
-import qualified PlutusTx.Prelude as Plutus
 import GHC.Generics (Generic)
-import Codec.Serialise hiding (decode,encode)
-import Ledger (Script(..),applyArguments)
-import Cardano.Api hiding (Script)
-import Cardano.Api.Shelley (PlutusScript (..))
-import Data.ByteString.Lazy (fromStrict,toStrict)
-import Data.ByteString (ByteString)
-import qualified Data.ByteString.Lazy as LBS
-import qualified Data.ByteString.Short as SBS
-import Data.String (fromString)
-import Ledger.Bytes (fromHex,bytes,encodeByteString)
-import Data.Text (Text)
-import qualified Data.Map as Map
-import Ledger.Tx.CardanoAPI.Internal
-import Data.List (foldl')
+import Ledger (Script(..))
 import Plutus.Script.Utils.V2.Scripts
+import Data.Aeson
+import Data.List (sort)
+
+import qualified CardanoSwaps.OneWaySwap as OneWaySwap
+import qualified CardanoSwaps.TwoWaySwap as TwoWaySwap
+import CardanoSwaps.Utils
 
 -------------------------------------------------
 -- On-Chain Data Types
 -------------------------------------------------
-data SwapConfig = SwapConfig
-  { swapOffer :: (CurrencySymbol,TokenName)
-  , swapAsk :: (CurrencySymbol,TokenName)
-  } deriving (Generic,Show)
+data OneWaySwapDatum = OneWaySwapDatum
+  { oneWayBeaconId :: CurrencySymbol
+  , oneWayPairBeacon :: TokenName
+  , oneWayOfferId :: CurrencySymbol
+  , oneWayOfferName :: TokenName
+  , oneWayOfferBeacon :: TokenName
+  , oneWayAskId :: CurrencySymbol
+  , oneWayAskName :: TokenName
+  , oneWayAskBeacon :: TokenName
+  , oneWaySwapPrice :: PlutusRational
+  , oneWayPrevInput :: Maybe TxOutRef
+  }
+  deriving (Generic,Show,Eq)
 
--- | Need a custom instance since Aiken treats tuples differently.
-instance ToData SwapConfig where
-  toBuiltinData (SwapConfig (x1,x2) (y1,y2)) = dataToBuiltinData $
-    Constr 0 [List [toData x1, toData x2],List [toData y1, toData y2]]
+instance ToJSON OneWaySwapDatum where
+  toJSON OneWaySwapDatum{..} = 
+    object [ "beacon_id" .= show oneWayBeaconId
+           , "pair_beacon" .= showTokenName oneWayPairBeacon
+           , "offer_id" .= show oneWayOfferId
+           , "offer_name" .= showTokenName oneWayOfferName
+           , "offer_beacon" .= showTokenName oneWayOfferBeacon
+           , "ask_id" .= show oneWayAskId
+           , "ask_name" .= showTokenName oneWayAskName
+           , "ask_beacon" .= showTokenName oneWayAskBeacon
+           , "price" .= oneWaySwapPrice 
+           , "prev_input" .= oneWayPrevInput
+           ]
 
-data SwapDatum
-  = BeaconSymbol CurrencySymbol
-  | SwapPrice Plutus.Rational
+data OneWaySwapRedeemer
+  = OneWayCloseOrUpdate
+  | OneWaySwap
   deriving (Generic,Show)
 
-data SwapRedeemer
-  = Close
-  | Update
-  | Swap
+data OneWayBeaconRedeemer
+  = OneWayCreateSwap 
+  | OneWayBurnBeacons
   deriving (Generic,Show)
 
-data BeaconRedeemer
-  = MintBeacon
-  | BurnBeacon
+PlutusTx.unstableMakeIsData ''OneWaySwapDatum
+PlutusTx.unstableMakeIsData ''OneWaySwapRedeemer
+PlutusTx.unstableMakeIsData ''OneWayBeaconRedeemer
+
+data TwoWaySwapDatum = TwoWaySwapDatum
+  { twoWayBeaconId :: CurrencySymbol
+  , twoWayPairBeacon :: TokenName
+  , twoWayAsset1Id :: CurrencySymbol
+  , twoWayAsset1Name :: TokenName
+  , twoWayAsset1Beacon :: TokenName
+  , twoWayAsset2Id :: CurrencySymbol
+  , twoWayAsset2Name :: TokenName
+  , twoWayAsset2Beacon :: TokenName
+  , twoWayForwardPrice :: PlutusRational
+  , twoWayReversePrice :: PlutusRational
+  , twoWayPrevInput :: Maybe TxOutRef
+  } deriving (Generic,Show,Eq)
+
+instance ToJSON TwoWaySwapDatum where
+  toJSON TwoWaySwapDatum{..} = 
+    object [ "beacon_id" .= show twoWayBeaconId
+           , "pair_beacon" .= showTokenName twoWayPairBeacon
+           , "asset1_id" .= show twoWayAsset1Id
+           , "asset1_name" .= showTokenName twoWayAsset1Name
+           , "asset1_beacon" .= showTokenName twoWayAsset1Beacon
+           , "asset2_id" .= show twoWayAsset2Id
+           , "asset2_name" .= showTokenName twoWayAsset2Name
+           , "asset2_beacon" .= showTokenName twoWayAsset2Beacon
+           , "forward_price" .= twoWayForwardPrice 
+           , "reverse_price" .= twoWayReversePrice 
+           , "prev_input" .= twoWayPrevInput
+           ]
+
+data TwoWaySwapRedeemer
+  = TwoWayCloseOrUpdate
+  | TwoWayForwardSwap
+  | TwoWayReverseSwap
   deriving (Generic,Show)
 
-PlutusTx.unstableMakeIsData ''SwapDatum
-PlutusTx.unstableMakeIsData ''SwapRedeemer
-PlutusTx.unstableMakeIsData ''BeaconRedeemer
+data TwoWayBeaconRedeemer
+  = TwoWayCreateSwap 
+  | TwoWayBurnBeacons
+  deriving (Generic,Show)
+
+PlutusTx.unstableMakeIsData ''TwoWaySwapDatum
+PlutusTx.unstableMakeIsData ''TwoWaySwapRedeemer
+PlutusTx.unstableMakeIsData ''TwoWayBeaconRedeemer
 
 -------------------------------------------------
--- Functions and Types for working with blueprints
+-- Contracts
 -------------------------------------------------
-type Title = String
-type CBOR = String
-type Blueprints = Map.Map Title CBOR
+oneWaySwapScript :: Ledger.Script
+oneWaySwapScript = OneWaySwap.swapScript
 
-newtype Blueprints' = Blueprints' [(Title,CBOR)]
-  deriving (Show)
+oneWaySwapValidator :: Validator
+oneWaySwapValidator = Validator oneWaySwapScript
 
-instance FromJSON Blueprints' where
-  parseJSON (Object o) = 
-    Blueprints' 
-      <$> (o .: "validators" >>= 
-            mapM (\(Object o') -> (,) <$> o' .: "title" <*> o' .: "compiledCode"))
-  parseJSON _ = mzero
+oneWaySwapValidatorHash :: ValidatorHash
+oneWaySwapValidatorHash = validatorHash oneWaySwapValidator
 
-readBlueprints :: FilePath -> IO Blueprints
-readBlueprints = fmap parseBlueprints . LBS.readFile
+oneWayBeaconScript :: Ledger.Script
+oneWayBeaconScript = OneWaySwap.beaconScript
 
-parseBlueprints :: LBS.ByteString -> Blueprints
-parseBlueprints = toBlueprints . decode
+oneWayBeaconMintingPolicy :: MintingPolicy
+oneWayBeaconMintingPolicy = MintingPolicy oneWayBeaconScript
 
-toBlueprints :: Maybe Blueprints' -> Blueprints
-toBlueprints (Just (Blueprints' bs)) = Map.fromList bs
-toBlueprints Nothing = error "Failed to decode blueprint file"
+oneWayBeaconMintingPolicyHash :: MintingPolicyHash
+oneWayBeaconMintingPolicyHash = mintingPolicyHash oneWayBeaconMintingPolicy
 
-data DappScripts = DappScripts
-  { spendingValidator :: Validator
-  , spendingValidatorHash :: ValidatorHash
-  , beaconPolicy :: MintingPolicy
-  , beaconPolicyHash :: MintingPolicyHash
-  , beaconCurrencySymbol :: CurrencySymbol
-  } deriving (Generic)
+oneWayBeaconCurrencySymbol :: CurrencySymbol
+oneWayBeaconCurrencySymbol = scriptCurrencySymbol oneWayBeaconMintingPolicy
 
-genScripts :: SwapConfig -> Blueprints -> DappScripts
-genScripts cfg bs = DappScripts
-    { spendingValidator = spendVal
-    , spendingValidatorHash = spendValHash
-    , beaconPolicy = beacon
-    , beaconPolicyHash = beaconHash
-    , beaconCurrencySymbol = scriptCurrencySymbol beacon
-    }
-  where spendVal = Validator $ applySwapParams cfg $ bs Map.! "cardano_swaps.spend"
-        spendValHash = validatorHash spendVal
-        beacon = MintingPolicy $ applyBeaconParams spendValHash $ bs Map.! "cardano_swaps.mint"
-        beaconHash = mintingPolicyHash beacon
+twoWaySwapScript :: Ledger.Script
+twoWaySwapScript = TwoWaySwap.swapScript
 
-fromHex' :: String -> ByteString
-fromHex' s = case fmap bytes $ fromHex $ fromString s of
-  Right b -> b
-  Left err -> error err
+twoWaySwapValidator :: Validator
+twoWaySwapValidator = Validator twoWaySwapScript
 
-parseScriptFromCBOR :: String -> Ledger.Script
-parseScriptFromCBOR = deserialise . fromStrict . fromHex'
+twoWaySwapValidatorHash :: ValidatorHash
+twoWaySwapValidatorHash = validatorHash twoWaySwapValidator
 
-dataFromCBOR :: String -> Data
-dataFromCBOR = deserialise . fromStrict . fromHex'
+twoWayBeaconScript :: Ledger.Script
+twoWayBeaconScript = TwoWaySwap.beaconScript
 
-toCBOR :: Serialise a => a -> Text
-toCBOR = encodeByteString . toStrict . serialise
+twoWayBeaconMintingPolicy :: MintingPolicy
+twoWayBeaconMintingPolicy = MintingPolicy twoWayBeaconScript
 
-applySwapParams :: SwapConfig -> String -> Ledger.Script
-applySwapParams cfg cbor = applyArguments paramScript [toData cfg]
-  where paramScript = parseScriptFromCBOR cbor
+twoWayBeaconMintingPolicyHash :: MintingPolicyHash
+twoWayBeaconMintingPolicyHash = mintingPolicyHash twoWayBeaconMintingPolicy
 
-applyBeaconParams :: ValidatorHash -> String -> Ledger.Script
-applyBeaconParams valHash cbor = applyArguments paramScript [toData valHash]
-  where paramScript = parseScriptFromCBOR cbor
-
-unsafeFromRight :: Either a b -> b
-unsafeFromRight (Right x) = x
-unsafeFromRight _ = error "unsafeFromRight used on Left"
+twoWayBeaconCurrencySymbol :: CurrencySymbol
+twoWayBeaconCurrencySymbol = scriptCurrencySymbol twoWayBeaconMintingPolicy
 
 -------------------------------------------------
--- | Functions for parsing user input.
+-- Helpers
 -------------------------------------------------
--- | Parse Currency from user supplied String
-readCurrencySymbol :: String -> Either String CurrencySymbol
-readCurrencySymbol s = case fromHex $ fromString s of
-  Right (LedgerBytes bytes') -> Right $ CurrencySymbol bytes'
-  Left msg                   -> Left $ "could not convert: " <> msg
-
--- | Parse TokenName from user supplied String
-readTokenName :: String -> Either String TokenName
-readTokenName s = case fromHex $ fromString s of
-  Right (LedgerBytes bytes') -> Right $ TokenName bytes'
-  Left msg                   -> Left $ "could not convert: " <> msg
-
--------------------------------------------------
--- Serialization
--------------------------------------------------
-dataToScriptData :: Data -> ScriptData
-dataToScriptData (Constr n xs) = ScriptDataConstructor n $ dataToScriptData <$> xs
-dataToScriptData (Map xs)      = ScriptDataMap [(dataToScriptData x, dataToScriptData y) | (x, y) <- xs]
-dataToScriptData (List xs)     = ScriptDataList $ dataToScriptData <$> xs
-dataToScriptData (I n)         = ScriptDataNumber n
-dataToScriptData (B bs)        = ScriptDataBytes bs
-
-toJSONValue :: PlutusTx.ToData a => a -> Aeson.Value
-toJSONValue = scriptDataToJson ScriptDataJsonDetailedSchema
-           . dataToScriptData
-           . PlutusTx.toData
-
-writeJSON :: PlutusTx.ToData a => FilePath -> a -> IO ()
-writeJSON file = LBS.writeFile file . encode . toJSONValue
-
-serialisedScript :: Script -> PlutusScript PlutusScriptV2
-serialisedScript = PlutusScriptSerialised . SBS.toShort . LBS.toStrict . serialise
-
-writeScript :: FilePath -> Script -> IO (Either (FileError ()) ())
-writeScript file script = writeFileTextEnvelope @(PlutusScript PlutusScriptV2) file Nothing
-                         $ serialisedScript script
-
-writeData :: PlutusTx.ToData a => FilePath -> a -> IO ()
-writeData = writeJSON
-
-decodeDatum :: (FromData a) => Aeson.Value -> Maybe a
-decodeDatum = unsafeFromRight . fmap (PlutusTx.fromBuiltinData . fromCardanoScriptData)
-            . scriptDataFromJson ScriptDataJsonDetailedSchema
-
--------------------------------------------------
--- | Other Off-Chain functions
--------------------------------------------------
-type PlutusRational = Plutus.Rational
-data UtxoPriceInfo = UtxoPriceInfo
-  { utxoAmount :: Integer
-  , price :: PlutusRational
-  } deriving (Show)
-
--- | Helper function to calculate the weighted price.
--- Will match the weighted price calculation done by script.
-calcWeightedPrice :: [UtxoPriceInfo] -> PlutusRational
-calcWeightedPrice xs = snd $ foldl' foo (0,Plutus.fromInteger 0) xs
-  where 
-    foo :: (Integer,PlutusRational) -> UtxoPriceInfo -> (Integer,PlutusRational)
-    foo (runningTot,wp) UtxoPriceInfo{..} =
-      let newAmount = runningTot + utxoAmount
-          newWp = Plutus.unsafeRatio runningTot newAmount Plutus.* wp Plutus.+
-                  Plutus.unsafeRatio utxoAmount newAmount Plutus.* price
-      in (newAmount,newWp)
+-- | Get the required two-way swap redeemer based on the swap direction.
+getRequiredSwapDirection :: OfferAsset -> AskAsset -> TwoWaySwapRedeemer
+getRequiredSwapDirection (OfferAsset offer) (AskAsset ask)
+  | offer == asset1 = TwoWayReverseSwap
+  | otherwise = TwoWayForwardSwap
+  where
+    [asset1,_] = sort [offer,ask]

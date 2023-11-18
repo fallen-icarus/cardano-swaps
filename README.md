@@ -903,39 +903,44 @@ to be updated to reflect it.
 
 ### If there is one two-way swap UTxO with 1000 DJED and there are 10 users trying to use 100 DJED each, isn't this still a concurrency issue despite having enough liquidity?
 
-Yes, this is a concurrency bottleneck but no, this is not an issue. This is the perfect niche for
-businesses to build on top of Cardano-Swaps. Historically, whenever there is a risk that users don't
-want to carry, a business can form to carry that risk instead, for a price. Insurance is one such
-example. The same scenario applies here.
+Yes, this is a concurrency bottleneck but no, this is not an issue. *Cardano-Swaps addresses these
+bottlenecks by natively supporting a healthy fee market.*
 
-Imagine a slightly simpler example: Alice has a 100 DJED swap available while Mike and Charlie both
-want 50 DJED from it. No liquidity bottleneck here, just a concurrency bottleneck. If Mike and
-Charlie do not want to deal with the concurrency bottleneck, they can pay arbitragers to execute the
-swaps for them. Here is how it would work:
+Imagine a slightly simpler example: Alice has a 100 DJED swap available for ADA at 1:1, and Mike and
+Charlie both want 50 DJED from it. No liquidity bottleneck here, just a concurrency bottleneck. If
+Mike and Charlie do not want to deal with the concurrency bottleneck, they can pay arbitragers to
+execute the swaps for them. Here is how it would work:
 
-- Both Mike and Charlie create one-way swaps with prices so that, if executed against Alice's swap,
-Mike and Charlie would each get 49 DJED and whoever executes their swaps gets to keep the other 1
-DJED per swap. These swaps are effectively saying: "I'll pay you 1 DJED to execute this swap for
-me."
-- Sarah, an arbitrager, can see all three swaps and executes them, keeping the 2 DJED arbitrage (1
-DJED from each swap).
+- Both Mike and Charlie create one-way swaps for 50.2 ADA -> 50 DJED (a price of about 0.99 DJED per
+ADA). If executed against Alice's swap, Mike and Charlie would each get 50 DJED and whoever executes
+their swaps gets to keep the other 0.2 ADA per swap. These swaps are effectively saying: "I'll pay
+you 0.2 ADA to execute this swap for me."
+- Sarah, an arbitrager, can see all three swaps and executes them, keeping the 0.4 ADA arbitrage
+(0.2 ADA from Mike's swap and 0.2 ADA from Charlie's swap). After the 0.2 ADA transaction fee, she
+pockets the remaining 0.2 ADA.
 
 In other words, Mike and Charlie deliberately create an arbitrage opportunity so that arbitragers
-will want to execute their swaps. If Charlie really needs his swap executed ASAP, he can set his
-price so that he gets 48 DJED and the arbitrager gets 2 DJED for executing his swap. Basically, the
-more attractive the buyer makes the arbitrage opportunity, the more arbitragers will compete for it
-and the faster their swap will be converted. In this scenario, neither Mike nor Charlie experience a
-concurrency bottleneck. The arbitragers competing for their swaps are the ones experiencing the
-concurrency bottleneck, and they are paid accordingly for taking on this risk. 
+will want to execute their swaps. If Charlie really needs his swap executed ASAP, he can configure
+his swap so that he gets 50 DJED and the arbitrager gets 0.5 ADA for executing his swap. Basically,
+the more attractive the buyer makes the arbitrage opportunity, the more arbitragers will compete for
+it and the faster their swap will be converted. 
 
-Users can think of this approach as creating a limit order just below the market price so that it is
-immediately executed; the further the order is set below the market price, the faster it will be
-executed. Users can decide for themselves how much they are willing to pay for a quick execution and
-set their prices accordingly.
+From the perspective of the arbitragers, the only cost to them is the transaction fee which scales
+very slowly relative to the number of swaps in the transaction (14 swaps costs about 1.5 ADA).
+Combine this with the fact that these transactions are risk free for arbitragers (a failed
+transaction is no cost to the arbitrager) and you end up with very healthy incentives for
+arbitragers to *want* to do this and satisfy as many users as possible with each transaction. The
+risk free nature means arbitragers would even be willing to do this for small profits like 0.2 ADA.
+Being an arbitrager is fully permissionless so anyone can start generating income this way.
 
-In the endgame, most users will not be competing for swaps - arbitragers and other businesses will
-be. Most users will create orders via swap UTxOs that are then swept by these businesses. In this
-scenario, there is zero concurrency problem for the end user.
+These incentives are how Cardano-Swaps natively creates a fee market. It is effectively no different
+than paying a larger transaction fee to ensure your transaction gets into the next block.
+Furthermore, since users must explicitly set their prices which are trustlessly enforced, abuse by
+arbitragers is simply not possible. 
+
+As this scenario shows, most users will likely not be competing for swaps - arbitragers and other
+businesses will be. Most users will create orders via swap UTxOs that are then swept by these
+businesses. This results in there being zero concurrency problem for the end user. 
 
 When it comes to creating a decentralized economy, not every feature needs to be directly enabled by
 the DApp. Some features can, and should, be left to the market to fill.

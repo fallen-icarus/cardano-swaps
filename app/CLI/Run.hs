@@ -43,9 +43,9 @@ runExportScriptCmd :: Script -> FilePath -> IO ()
 runExportScriptCmd script file = do
   res <- writeScript file $ case script of
     OneWaySwapScript -> oneWaySwapScript
-    OneWayBeaconPolicy -> oneWayBeaconScript
+    OneWayBeaconScript -> oneWayBeaconScript
     TwoWaySwapScript -> twoWaySwapScript
-    TwoWayBeaconPolicy -> twoWayBeaconScript
+    TwoWayBeaconScript -> twoWayBeaconScript
   case res of
     Right _ -> return ()
     Left err -> putStrLn $ "There was an error: " <> show err

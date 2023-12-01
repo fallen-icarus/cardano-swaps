@@ -6,6 +6,7 @@ use aiken/transaction/credential.{
   Address,
   Inline,
   StakeCredential,
+  ScriptCredential,
   VerificationKey,
   VerificationKeyCredential
   }
@@ -65,15 +66,19 @@ pub fn compare_asset_config(asset1: AssetConfig, asset2: AssetConfig) -> Orderin
   }
 }
 
-pub fn beacons_only_burned(
+pub fn has_beacon_script_minting_execution(
   beacon_id: PolicyId,
   mint: MintedValue
 ) -> Bool {
-  // Get all the beacons minted/burned in this transaction.
-  let beacons_minted = 
-    value.from_minted_value(mint)
-    |> value.tokens(_,beacon_id)
-
-  dict.foldl( beacons_minted, True, fn(_,v,r) {r && v < 0})
+  !(value.from_minted_value(mint) |> value.tokens(_,beacon_id) |> dict.is_empty(_))
 }
 
+pub fn has_beacon_script_staking_execution(
+  beacon_id: PolicyId,
+  withdrawals: Dict<StakeCredential, Int>,
+) -> Bool {
+  dict.has_key(
+    withdrawals,
+    Inline(ScriptCredential(beacon_id))
+  )
+}

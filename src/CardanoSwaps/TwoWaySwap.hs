@@ -75,14 +75,15 @@ instance ToJSON SwapDatum where
            ]
 
 data SwapRedeemer
-  = CloseOrUpdate
+  = SpendWithMint
+  | SpendWithStake
   | ForwardSwap
   | ReverseSwap
   deriving (Generic,Show)
 
 data BeaconRedeemer
-  = CreateSwap 
-  | BurnBeacons
+  = CreateOrCloseSwaps 
+  | UpdateSwaps
   deriving (Generic,Show)
 
 PlutusTx.unstableMakeIsData ''SwapDatum
@@ -93,7 +94,7 @@ PlutusTx.unstableMakeIsData ''BeaconRedeemer
 -- Contracts
 -------------------------------------------------
 swapScript :: Ledger.Script
-swapScript = parseScriptFromCBOR $ blueprints Map.! "two_way_swap.spend"
+swapScript = parseScriptFromCBOR $ blueprints Map.! "two_way_swap.swap_script"
 
 swapValidator :: Validator
 swapValidator = Validator swapScript
@@ -104,7 +105,7 @@ swapValidatorHash = validatorHash swapValidator
 beaconScript :: Ledger.Script
 beaconScript =
   applyArguments
-    (parseScriptFromCBOR $ blueprints Map.! "two_way_swap.mint")
+    (parseScriptFromCBOR $ blueprints Map.! "two_way_swap.beacon_script")
     [toData swapValidatorHash]
 
 beaconMintingPolicy :: MintingPolicy

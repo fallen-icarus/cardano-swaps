@@ -22,9 +22,9 @@ data Command
   | ExportParams Network Output
 
 data Script 
-  = OneWayBeaconPolicy 
+  = OneWayBeaconScript
   | OneWaySwapScript
-  | TwoWayBeaconPolicy 
+  | TwoWayBeaconScript 
   | TwoWaySwapScript
 
 -- | This has all the info necessary to create the actual SwapDatums.

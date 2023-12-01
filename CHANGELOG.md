@@ -1,5 +1,17 @@
 # Revision history for cardano-swaps
 
+## 2.0.0.0rc
+
+- Bumped aiken stdlib version to 1.7.0.
+- Added staking execution option to the beacon scripts.
+- Changed the spending scripts to delegate to the beacon scripts for owner related actions.
+- Split the owner spending redeemers into separate redeemers based on whether the beacon script
+will use a staking execution or a minting execution.
+- Updated the CLI to use the new redeemers.
+- Updated the template scripts to show how to use the new redeemers and staking execution.
+- Update the tests and benchmarks.
+- Updated the documentation.
+
 ## 1.0.0.0rc
 
 - Added two-way swaps to provide a mechanism to naturally incentivize liquidity providers.

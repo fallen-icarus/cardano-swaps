@@ -61,8 +61,7 @@ pub fn generate_asset_beacon(policy_id: PolicyId, asset_name: AssetName) -> Asse
   )
 }
 
-// This function is used for creating swaps with either `CloseOrUpdate` or `CreateSwap`. This 
-// function should only be called after the output has been checked for exactly three types of 
+// This function should only be called after the output has been checked for exactly three types of 
 // beacons.
 fn valid_swap_output(
   beacon_id: PolicyId,
@@ -178,8 +177,7 @@ fn valid_swap_output(
 
 // Check if the beacons are locked at the proper address and the UTxO is configured properly.
 // This function will return `True` or `False`. It uses `app_name` in the error message to generate
-// a unique beacon policy for testing. This function is used for both `CloseOrUpdate` and 
-// `CreateSwap`.
+// a unique beacon policy for testing. 
 pub fn beacon_destination_check(
   dapp_hash: Hash<Blake2b_224, Script>,
   beacon_id: PolicyId,

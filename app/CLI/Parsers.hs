@@ -46,16 +46,16 @@ parseExportScript = hsubparser $ mconcat
 
 parseOneWayExportScript :: Parser Command
 parseOneWayExportScript = hsubparser $ mconcat
-    [ command "beacon-policy" $
-        info pExportPolicy $ progDesc "Export the beacon policy for one-way swaps."
+    [ command "beacon-script" $
+        info pExportPolicy $ progDesc "Export the beacon script for one-way swaps."
     , command "swap-script" $
-        info pExportSwap $ progDesc "Export the swap validator for one-way swaps."
+        info pExportSwap $ progDesc "Export the swap script for one-way swaps."
     ]
   where
     pExportPolicy :: Parser Command
     pExportPolicy = 
       ExportScript 
-        <$> pure OneWayBeaconPolicy
+        <$> pure OneWayBeaconScript
         <*> pOutputFile
     
     pExportSwap :: Parser Command
@@ -66,16 +66,16 @@ parseOneWayExportScript = hsubparser $ mconcat
 
 parseTwoWayExportScript :: Parser Command
 parseTwoWayExportScript = hsubparser $ mconcat
-    [ command "beacon-policy" $
-        info pExportPolicy $ progDesc "Export the beacon policy for two-way swaps."
+    [ command "beacon-script" $
+        info pExportPolicy $ progDesc "Export the beacon script for two-way swaps."
     , command "swap-script" $
-        info pExportSwap $ progDesc "Export the swap validator for two-way swaps."
+        info pExportSwap $ progDesc "Export the swap script for two-way swaps."
     ]
   where
     pExportPolicy :: Parser Command
     pExportPolicy = 
       ExportScript 
-        <$> pure TwoWayBeaconPolicy
+        <$> pure TwoWayBeaconScript
         <*> pOutputFile
     
     pExportSwap :: Parser Command
@@ -131,14 +131,27 @@ parseCreateSpendingRedeemer = hsubparser $ mconcat
 pCreateOneWaySpendingRedeemer :: Parser Command
 pCreateOneWaySpendingRedeemer = 
     CreateSpendingRedeemer 
-      <$> (OneWaySpendingRedeemer <$> (pCloseOrUpdate <|> pSwap))
+      <$> (OneWaySpendingRedeemer <$> (pClose <|> pUpdateMint <|> pUpdateStake <|> pSwap))
       <*> pOutputFile
   where
-    pCloseOrUpdate :: Parser OneWaySwapRedeemer
-    pCloseOrUpdate = flag' OneWayCloseOrUpdate
-      (  long "close-or-update"
-      <> help "Close or update swap positions."
+    pClose :: Parser OneWaySwapRedeemer
+    pClose = flag' OneWaySpendWithMint
+      (  long "close"
+      <> help "Close swap(s)."
       )
+
+    pUpdateMint :: Parser OneWaySwapRedeemer
+    pUpdateMint = flag' OneWaySpendWithMint
+      (  long "update-with-mint"
+      <> help "Update swap(s) when minting/burning beacons in tx."
+      )
+
+    pUpdateStake :: Parser OneWaySwapRedeemer
+    pUpdateStake = flag' OneWaySpendWithStake
+      (  long "update-with-stake"
+      <> help "Update swap(s) when NOT minting/burning beacons in tx."
+      )
+
 
     pSwap :: Parser OneWaySwapRedeemer
     pSwap = flag' OneWaySwap
@@ -154,7 +167,8 @@ pCreateTwoWaySpendingRedeemer =
   where
     pKnownTwoWayRedeemer :: Parser InternalTwoWaySwapRedeemer
     pKnownTwoWayRedeemer = 
-      KnownTwoWaySwapRedeemer <$> (pCloseOrUpdate <|> pForwardSwap <|> pReverseSwap)
+      KnownTwoWaySwapRedeemer 
+        <$> (pClose <|> pUpdateMint <|> pUpdateStake <|> pForwardSwap <|> pReverseSwap)
 
     pUnknownTwoWaySwapRedeemer :: Parser InternalTwoWaySwapRedeemer
     pUnknownTwoWaySwapRedeemer = 
@@ -162,10 +176,22 @@ pCreateTwoWaySpendingRedeemer =
         <$> (OfferAsset <$> pOneWayAsset "offer") 
         <*> (AskAsset <$> pOneWayAsset "ask")
 
-    pCloseOrUpdate :: Parser TwoWaySwapRedeemer
-    pCloseOrUpdate = flag' TwoWayCloseOrUpdate
-      (  long "close-or-update"
-      <> help "Close or update swap positions."
+    pClose :: Parser TwoWaySwapRedeemer
+    pClose = flag' TwoWaySpendWithMint
+      (  long "close"
+      <> help "Close swap(s)."
+      )
+
+    pUpdateMint :: Parser TwoWaySwapRedeemer
+    pUpdateMint = flag' TwoWaySpendWithMint
+      (  long "update-with-mint"
+      <> help "Update swap(s) when minting/burning beacons in tx."
+      )
+
+    pUpdateStake :: Parser TwoWaySwapRedeemer
+    pUpdateStake = flag' TwoWaySpendWithStake
+      (  long "update-with-stake"
+      <> help "Update swap(s) when NOT minting/burning beacons in tx."
       )
 
     pForwardSwap :: Parser TwoWaySwapRedeemer
@@ -194,37 +220,37 @@ parseCreateMintingRedeemer = hsubparser $ mconcat
 pCreateOneWayBeaconRedeemer :: Parser Command
 pCreateOneWayBeaconRedeemer = 
     CreateMintingRedeemer
-      <$> (pMint <|> pBurn)
+      <$> (pMint <|> pStake)
       <*> pOutputFile
   where
     pMint :: Parser MintingRedeemer
-    pMint = flag' (OneWayMintingRedeemer OneWayCreateSwap)
-      (  long "create-swap"
-      <> help "Mint the beacons for a new swap UTxO."
+    pMint = flag' (OneWayMintingRedeemer OneWayCreateOrCloseSwaps)
+      (  long "mint-or-burn"
+      <> help "Mint/burn the beacons for a swap."
       )
 
-    pBurn :: Parser MintingRedeemer
-    pBurn = flag' (OneWayMintingRedeemer OneWayCreateSwap)
-      (  long "burn"
-      <> help "Burn the beacons for a swap UTxO."
+    pStake :: Parser MintingRedeemer
+    pStake = flag' (OneWayMintingRedeemer OneWayUpdateSwaps)
+      (  long "update-only"
+      <> help "Update swaps without minting/burning."
       )
 
 pCreateTwoWayBeaconRedeemer :: Parser Command
 pCreateTwoWayBeaconRedeemer = 
     CreateMintingRedeemer
-      <$> (pMint <|> pBurn)
+      <$> (pMint <|> pStake)
       <*> pOutputFile
   where
     pMint :: Parser MintingRedeemer
-    pMint = flag' (TwoWayMintingRedeemer TwoWayCreateSwap)
-      (  long "create-swap"
-      <> help "Mint the beacons for a new swap UTxO."
+    pMint = flag' (TwoWayMintingRedeemer TwoWayCreateOrCloseSwaps)
+      (  long "mint-or-burn"
+      <> help "Mint/burn the beacons for a swap."
       )
 
-    pBurn :: Parser MintingRedeemer
-    pBurn = flag' (TwoWayMintingRedeemer TwoWayCreateSwap)
-      (  long "burn"
-      <> help "Burn the beacons for a swap UTxO."
+    pStake :: Parser MintingRedeemer
+    pStake = flag' (TwoWayMintingRedeemer TwoWayUpdateSwaps)
+      (  long "update-only"
+      <> help "Update swaps without minting/burning."
       )
 
 -------------------------------------------------

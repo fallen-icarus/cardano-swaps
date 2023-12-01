@@ -123,13 +123,14 @@ instance ToJSON OneWaySwapDatum where
            ]
 
 data OneWaySwapRedeemer
-  = OneWayCloseOrUpdate
+  = OneWaySpendWithMint
+  | OneWaySpendWithStake
   | OneWaySwap
   deriving (Generic,Show)
 
 data OneWayBeaconRedeemer
-  = OneWayCreateSwap 
-  | OneWayBurnBeacons
+  = OneWayCreateOrCloseSwaps
+  | OneWayUpdateSwaps
   deriving (Generic,Show)
 
 PlutusTx.unstableMakeIsData ''OneWaySwapDatum
@@ -166,14 +167,15 @@ instance ToJSON TwoWaySwapDatum where
            ]
 
 data TwoWaySwapRedeemer
-  = TwoWayCloseOrUpdate
+  = TwoWaySpendWithMint
+  | TwoWaySpendWithStake
   | TwoWayForwardSwap
   | TwoWayReverseSwap
   deriving (Generic,Show)
 
 data TwoWayBeaconRedeemer
-  = TwoWayCreateSwap 
-  | TwoWayBurnBeacons
+  = TwoWayCreateOrCloseSwaps
+  | TwoWayUpdateSwaps
   deriving (Generic,Show)
 
 PlutusTx.unstableMakeIsData ''TwoWaySwapDatum

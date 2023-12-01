@@ -19,12 +19,13 @@ pub type SwapDatum {
 }
 
 pub type SwapRedeemer {
-  CloseOrUpdate
+  SpendWithMint
+  SpendWithStake
   ForwardSwap
   ReverseSwap
 }
 
 pub type BeaconRedeemer {
-  CreateSwap 
-  BurnBeacons
+  CreateOrCloseSwaps // Minting execution.
+  UpdateSwaps // Staking execution.
 }

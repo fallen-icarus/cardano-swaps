@@ -15,6 +15,8 @@ must be manually balanced.
 - [Using Remote Nodes](#using-remote-nodes)
 - [Minting Test Tokens](#minting-test-tokens)
 - [One-Way Swaps](#one-way-swaps)
+  - [Registering The Meta Beacon Script - DEVELOPERS
+  ONLY](#registering-the-meta-beacon-script-developers-only)
   - [Creating Reference Scripts](#creating-reference-scripts)
   - [Creating A Swap](#creating-a-swap)
   - [Closing A Swap](#closing-a-swap)
@@ -22,6 +24,8 @@ must be manually balanced.
   - [Converting A Swap To A New Trading Pair](#converting-a-swap-to-a-new-trading-pair)
   - [Executing A Swap](#executing-a-swap)
 - [Two-Sway Swaps](#two-way-swaps)
+  - [Registering The Meta Beacon Script - DEVELOPERS
+  ONLY](#registering-the-meta-beacon-script-developers-only-1)
   - [Creating Reference Scripts](#creating-reference-scripts-1)
   - [Creating A Swap](#creating-a-swap-1)
   - [Closing A Swap](#closing-a-swap-1)
@@ -211,7 +215,9 @@ cardano-swaps evaluate-tx \
 
 The returned budgets will be indexed by the input order and policy id order. **This may not be the
 same order you specified when building the temporary transaction.** The node will reorder them
-base on lexicographical ordering.
+base on lexicographical ordering. If you are not sure of the proper ordering, you can view the 
+transaction file that is created with `cardano-cli` using `cardano-cli transaction view`; the
+inputs and policy ids will be properly ordered.
 
 ##### Submitting the final transaction
 
@@ -237,6 +243,41 @@ To see how to build the transaction using a remote node, refer
 
 ## One-Way Swaps
 
+### Registering The Meta Beacon Script - DEVELOPERS ONLY
+
+**This action only needs to be done once for the entire DApp. It does not need to be done by any
+users.** These instructions are for completeness as they may be needed by developers.
+
+Once the script is registered, it can be used as a staking script by all users. Registering
+the script does not require executing the script. Once it is registered, *it cannot be
+deregistered*.
+
+Registering the beacon script involves:
+1. Exporting the beacon script from the `cardano-swaps` CLI.
+2. Creating a registration certificate for the beacon script.
+3. Submitting a transaction that also pays the registration deposit (2 ADA).
+
+##### Exporting the beacon script
+```Bash
+cardano-swaps scripts one-way beacon-policy \
+  --out-file oneWayBeacons.plutus
+```
+
+##### Create the registration certificate
+```Bash
+cardano-cli stake-address registration-certificate \
+  --stake-script-file oneWayBeacons.plutus \
+  --out-file registration.cert
+```
+
+##### Building the transaction
+To see how to build the transaction using a local node, refer 
+[here](scripts/local/one-way/register-beacon-script.sh).
+
+To see how to build the transaction using a remote node, refer
+[here](scripts/remote/one-way/register-beacon-script.sh).
+
+
 ### Creating Reference Scripts
 
 Creating reference scripts involves the following steps:
@@ -245,12 +286,12 @@ Creating reference scripts involves the following steps:
 
 ##### Exporting the scripts
 ```Bash
-# Export the swap validator script.
+# Export the spending script.
 cardano-swaps scripts one-way swap-script \
   --out-file oneWaySwap.plutus
 
-# Export the beacon policy.
-cardano-swaps scripts one-way beacon-policy \
+# Export the beacon script.
+cardano-swaps scripts one-way beacon-script \
   --out-file oneWayBeacons.plutus
 ```
 
@@ -266,13 +307,13 @@ To see how to build the transaction using a remote node, refer
 Creating a swap involves the following steps:
 1. Create your swap address.
 2. Calculate the required beacon names to mint.
-3. Create the required beacon minting redeemer.
+3. Create the required beacon script redeemer.
 4. Create the required swap datum for each swap.
 5. Submit a transaction that creates the swaps.
 
 ##### Creating your swap address
 ```Bash
-# Export the swap validator script.
+# Export the spending script.
 cardano-swaps scripts one-way swap-script \
   --out-file oneWaySwap.plutus
 
@@ -324,11 +365,11 @@ askBeacon="${beaconPolicyId}.${askBeaconName}"
 
 The above beacons are for a swap that is offering a native token in exchange for ADA.
 
-##### Create the required minting redeemer
+##### Create the required beacon script redeemer
 ```Bash
 cardano-swaps beacon-redeemers one-way \
-  --create-swap \
-  --out-file createOneWaySwap.json
+  --mint-or-burn \
+  --out-file beaconRedeemer.json
 ```
 
 ##### Creating the required swap datum
@@ -358,9 +399,9 @@ To see how to build the transaction using a remote node, refer
 
 Closing a swap requires the following steps:
 1. Calculate the hash of the swap's staking credential.
-2. Create the required spending redeemer.
+2. Create the required spending script redeemer.
 3. Calculate the required beacon names to burn.
-4. Create the required beacon burning redeemer.
+4. Create the required beacon script redeemer.
 5. Submit the transaction.
 
 ##### Calculate the hash of the swap's staking credential
@@ -377,11 +418,11 @@ ownerStakingScriptHash=$(cardano-cli transaction policyid \
 While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
 creating the hash of *any* script.
 
-##### Create the required spending redeemer
+##### Create the required spending script redeemer
 ```Bash
 cardano-swaps spending-redeemers one-way \
-  --close-or-update \
-  --out-file closeOrUpdateOneWaySwap.json
+  --close \
+  --out-file spendingRedeemer.json
 ```
 
 ##### Calculate the required beacon names to burn
@@ -409,11 +450,11 @@ offerBeacon="${beaconPolicyId}.${offerBeaconName}"
 askBeacon="${beaconPolicyId}.${askBeaconName}"
 ```
 
-##### Create the required burning redeemer
+##### Create the required beacon script redeemer
 ```Bash
 cardano-swaps beacon-redeemers one-way \
-  --burn \
-  --out-file burnOneWayBeacons.json
+  --mint-or-burn \
+  --out-file beaconRedeemer.json
 ```
 
 ##### Building the transaction
@@ -426,11 +467,16 @@ To see how to build the transaction using a remote node, refer
 
 ### Updating A Swap
 
+When no beacons need to be minted or burned, the beacon script can be executed as a staking script
+for this action. If you are also converting a swap's pair or closing a swap in the transaction,
+you do not need to use the staking execution; only the minting execution will be needed.
+
 Updating a swap requires the following steps:
 1. Calculate the hash of the swap's staking credential.
-2. Create the required spending redeemer.
-3. Create the new swap datum.
-4. Submit the transaction.
+2. Create the required spending script redeemer.
+3. Create the required beacon script redeemer.
+4. Create the new swap datum.
+5. Submit the transaction.
 
 ##### Calculate the hash of the swap's staking credential
 ```Bash
@@ -446,12 +492,25 @@ ownerStakingScriptHash=$(cardano-cli transaction policyid \
 While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
 creating the hash of *any* script.
 
-##### Create the required spending redeemer
+##### Create the required spending script redeemer
 ```Bash
 cardano-swaps spending-redeemers one-way \
-  --close-or-update \
-  --out-file closeOrUpdateOneWaySwap.json
+  --update-with-stake \
+  --out-file spendingRedeemer.json
 ```
+
+If the beacon script is being executed as a minting policy in this transaction, you can use the
+`--update-with-mint` flag instead.
+
+##### Create the beacon script redeemer.
+```Bash
+cardano-swaps beacon-redeemers one-way \
+  --update-only \
+  --out-file beaconRedeemer.json
+```
+
+If the beacon script is going to be executed as a minting policy, use the `--mint-or-burn` flag
+instead.
 
 ##### Creating the new swap datum
 ```Bash
@@ -469,6 +528,10 @@ taken. The `--tx-hash` and `--output-index` flags are only needed when executing
 leave them out here.
 
 ##### Building the transaction
+The following transactions assume you are using a staking execution for the beacons script. If you
+are going to use the minting execution instead, you can model the transactions off of the converting
+swap template transactions.
+
 To see how to build the transaction using a local node, refer 
 [here](scripts/local/one-way/update-price.sh).
 
@@ -480,8 +543,8 @@ To see how to build the transaction using a remote node, refer
 
 Converting a swap requires the following steps:
 1. Calculate the hash of the swap's staking credential.
-2. Create the required spending redeemer.
-3. Create the required minting redeemer.
+2. Create the required spending script redeemer.
+3. Create the required beacon script redeemer.
 4. Calculate the required beacon names to mint. These are for the new pair.
 5. Calculate the required beacon names to burn. These are for the old pair.
 6. Create the new swap datum.
@@ -501,21 +564,19 @@ ownerStakingScriptHash=$(cardano-cli transaction policyid \
 While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
 creating the hash of *any* script.
 
-##### Create the required spending redeemer
+##### Create the required spending script redeemer
 ```Bash
 cardano-swaps spending-redeemers one-way \
-  --close-or-update \
-  --out-file closeOrUpdateOneWaySwap.json
+  --update-with-mint \
+  --out-file spendingRedeemer.json
 ```
 
-##### Create the required minting redeemer
+##### Create the required beacon script redeemer
 ```Bash
 cardano-swaps beacon-redeemers one-way \
-  --create-swap \
-  --out-file createOneWaySwap.json
+  --mint-or-burn \
+  --out-file beaconRedeemer.json
 ```
-
-This redeemer can be used to both burn the old beacons and mint the new ones.
 
 ##### Calculate the required beacon names to mint
 One-way swaps require three beacons: the trading pair beacon, the offer beacon, and the ask beacon.
@@ -612,14 +673,14 @@ To see how to build the transaction using a remote node, refer
 ### Executing A Swap
 
 Executing a swap involves the following steps:
-1. Create the spending redeemer.
+1. Create the spending script redeemer.
 2. Create the corresponding swap datum for the target swap.
 3. Submit the transaction.
 
 It may be helpful to also calculate the beacon names and store them as variables since the swap
 output still needs them.
 
-##### Create the spending redeemer
+##### Create the spending script redeemer
 ```Bash
 cardano-swaps spending-redeemers one-way \
   --swap \
@@ -654,6 +715,41 @@ To see how to build the transaction using a remote node, refer
 
 ## Two-Way Swaps
 
+### Registering The Meta Beacon Script - DEVELOPERS ONLY
+
+**This action only needs to be done once for the entire DApp. It does not need to be done by any
+users.** These instructions are for completeness as they may be needed by developers.
+
+Once the script is registered, it can be used as a staking script by all users. Registering
+the script does not require executing the script. Once it is registered, *it cannot be
+deregistered*.
+
+Registering the beacon script involves:
+1. Exporting the beacon script from the `cardano-swaps` CLI.
+2. Creating a registration certificate for the beacon script.
+3. Submitting a transaction that also pays the registration deposit.
+
+##### Exporting the beacon script
+```Bash
+cardano-swaps scripts two-way beacon-policy \
+  --out-file twoWayBeacons.plutus
+```
+
+##### Create the registration certificate
+```Bash
+cardano-cli stake-address registration-certificate \
+  --stake-script-file twoWayBeacons.plutus \
+  --out-file registration.cert"
+```
+
+##### Building the transaction
+To see how to build the transaction using a local node, refer 
+[here](scripts/local/two-way/register-beacon-script.sh).
+
+To see how to build the transaction using a remote node, refer
+[here](scripts/remote/two-way/register-beacon-script.sh).
+
+
 ### Creating Reference Scripts
 
 Creating reference scripts involves the following steps:
@@ -662,11 +758,11 @@ Creating reference scripts involves the following steps:
 
 ##### Exporting the scripts
 ```Bash
-# Export the swap validator script.
+# Export the spending script.
 cardano-swaps scripts two-way swap-script \
   --out-file twoWaySwap.plutus
 
-# Export the beacon policy.
+# Export the beacon script.
 cardano-swaps scripts two-way beacon-policy \
   --out-file twoWayBeacons.plutus
 ```
@@ -683,7 +779,7 @@ To see how to build the transaction using a remote node, refer
 Creating a swap involves the following steps:
 1. Create your swap address.
 2. Calculate the required beacon names to mint.
-3. Create the required beacon minting redeemer.
+3. Create the required beacon script redeemer.
 4. Create the required swap datum for each swap.
 5. Submit a transaction that creates the swaps.
 
@@ -695,7 +791,7 @@ assets, make sure to also change the prices!**
 
 ##### Creating your swap address
 ```Bash
-# Export the swap validator script.
+# Export the spending script.
 cardano-swaps scripts two-way swap-script \
   --out-file twoWaySwap.plutus
 
@@ -748,11 +844,11 @@ asset2Beacon="${beaconPolicyId}.${asset2BeaconName}"
 
 The above beacons are for a two-way swap between ADA and a native token.
 
-##### Create the required minting redeemer
+##### Create the required beacon script redeemer
 ```Bash
 cardano-swaps beacon-redeemers two-way \
-  --create-swap \
-  --out-file createTwoWaySwap.json
+  --mint-or-burn \
+  --out-file beaconRedeemer.json
 ```
 
 ##### Creating the required swap datum
@@ -794,9 +890,9 @@ To see how to build the transaction using a remote node, refer
 
 Closing a swap requires the following steps:
 1. Calculate the hash of the swap's staking credential.
-2. Create the required spending redeemer.
+2. Create the required spending script redeemer.
 3. Calculate the required beacon names to burn.
-4. Create the required beacon burning redeemer.
+4. Create the required beacon script redeemer.
 5. Submit the transaction.
 
 ##### Calculate the hash of the swap's staking credential
@@ -813,11 +909,11 @@ ownerStakingScriptHash=$(cardano-cli transaction policyid \
 While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
 creating the hash of *any* script.
 
-##### Create the required spending redeemer
+##### Create the required spending script redeemer
 ```Bash
 cardano-swaps spending-redeemers two-way \
-  --close-or-update \
-  --out-file closeOrUpdateTwoWaySwap.json
+  --close \
+  --out-file spendingRedeemer.json
 ```
 
 ##### Calculate the required beacon names to burn
@@ -845,10 +941,10 @@ asset1Beacon="${beaconPolicyId}.${asset1BeaconName}"
 asset2Beacon="${beaconPolicyId}.${asset2BeaconName}"
 ```
 
-##### Create the required burning redeemer
+##### Create the required beacon script redeemer
 ```Bash
 cardano-swaps beacon-redeemers two-way \
-  --burn \
+  --mint-or-burn \
   --out-file burnTwoWayBeacons.json
 ```
 
@@ -862,11 +958,16 @@ To see how to build the transaction using a remote node, refer
 
 ### Updating A Swap
 
+When no beacons need to be minted or burned, the beacon script can be executed as a staking script
+for this action. If you are also converting a swap's pair or closing a swap in the transaction,
+you do not need to use the staking execution; only the minting execution will be needed.
+
 Updating a swap requires the following steps:
 1. Calculate the hash of the swap's staking credential.
 2. Create the required spending redeemer.
-3. Create the new swap datum.
-4. Submit the transaction.
+3. Create the required beacon script redeemer.
+4. Create the new swap datum.
+5. Submit the transaction.
 
 ##### Calculate the hash of the swap's staking credential
 ```Bash
@@ -882,12 +983,25 @@ ownerStakingScriptHash=$(cardano-cli transaction policyid \
 While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
 creating the hash of *any* script.
 
-##### Create the required spending redeemer
+##### Create the required spending script redeemer
 ```Bash
 cardano-swaps spending-redeemers two-way \
-  --close-or-update \
-  --out-file closeOrUpdateTwoWaySwap.json
+  --update-with-mint \
+  --out-file spendingRedeemer.json
 ```
+
+If the beacon script is being executed as a minting policy in this transaction, you can use the
+`--update-with-mint` flag instead.
+
+##### Create the beacon script redeemer.
+```Bash
+cardano-swaps beacon-redeemers one-way \
+  --update-only \
+  --out-file beaconRedeemer.json
+```
+
+If the beacon script is going to be executed as a minting policy, use the `--mint-or-burn` flag
+instead.
 
 ##### Creating the new swap datum
 ```Bash
@@ -917,6 +1031,10 @@ The `--tx-hash` and `--output-index` flags are only needed when executing a swap
 leave them out here.
 
 ##### Building the transaction
+The following transactions assume you are using a staking execution for the beacons script. If you
+are going to use the minting execution instead, you can model the transactions off of the converting
+swap template transactions.
+
 To see how to build the transaction using a local node, refer 
 [here](scripts/local/two-way/update-price.sh).
 
@@ -928,8 +1046,8 @@ To see how to build the transaction using a remote node, refer
 
 Converting a swap requires the following steps:
 1. Calculate the hash of the swap's staking credential.
-2. Create the required spending redeemer.
-3. Create the required minting redeemer.
+2. Create the required spending script redeemer.
+3. Create the required beacon script redeemer.
 4. Calculate the required beacon names to mint. These are for the new pair.
 5. Calculate the required beacon names to burn. These are for the old pair.
 6. Create the new swap datum.
@@ -949,18 +1067,18 @@ ownerStakingScriptHash=$(cardano-cli transaction policyid \
 While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
 creating the hash of *any* script.
 
-##### Create the required spending redeemer
+##### Create the required spending script redeemer
 ```Bash
 cardano-swaps spending-redeemers two-way \
   --close-or-update \
-  --out-file closeOrUpdateTwoWaySwap.json
+  --out-file spendingRedeemer.json
 ```
 
-##### Create the required minting redeemer
+##### Create the required beacon script redeemer
 ```Bash
 cardano-swaps beacon-redeemers two-way \
-  --create-swap \
-  --out-file createTwoWaySwap.json
+  --mint-or-burn \
+  --out-file beaconRedeemer.json
 ```
 
 This redeemer can be used to both burn the old beacons and mint the new ones.
@@ -1055,7 +1173,7 @@ To see how to build the transaction using a remote node, refer
 ### Executing A Swap
 
 Executing a swap involves the following steps:
-1. Create the spending redeemer.
+1. Create the spending script redeemer.
 2. Create the corresponding swap datum for the target swap.
 3. Submit the transaction.
 
@@ -1065,7 +1183,7 @@ output still needs them.
 - Forward Swaps mean asset2 is being taken from the swap and asset1 is being deposited.
 - Reverse Swaps mean asset1 is being taken from the swap and asset2 is being deposited.
 
-##### Create the spending redeemer
+##### Create the spending script redeemer
 ```Bash
 cardano-swaps spending-redeemers two-way \
   --forward-swap \
@@ -1122,11 +1240,12 @@ To see how to build the transaction using a remote node, refer
 
 - All queries use Koios.
 - All query commands are capable of saving results to a file or printing to stdout. 
-- Results can be formatted as JSON, pretty, or plain. The pretty and plain formats are meant for
-printing to the stdout but both can also be saved to a file. The only difference between the pretty
-format and the plain format is the pretty format uses ansii escape sequences to highlight certain
-items with color. The plain format is there as a fallback in case the ansii escape sequences are
-causing issues for a user.
+- Results can be formatted as JSON, pretty, or plain. 
+
+The pretty and plain formats are meant for printing to the stdout but both can also be saved to a
+file. The only difference between the pretty format and the plain format is the pretty format uses
+ansii escape sequences to highlight certain items with color. The plain format is there as a
+fallback in case the ansii escape sequences are causing issues for a user.
 
 > Note: Currently, `cardano-swaps` CLI will only get the first 1000 UTxOs that satisfy a query. This
 > could be 1000 personal UTxOs or 1000 swap UTxOs, depending on the query. For the beta release,

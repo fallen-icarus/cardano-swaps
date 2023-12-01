@@ -7,28 +7,28 @@ dir="../../../ignored/swap-files/"
 tmpDir="../../../ignored/tmp/"
 
 swapScriptFile="${dir}twoWaySwap.plutus"
-beaconPolicyFile="${dir}twoWayBeacons.plutus"
+beaconScriptFile="${dir}twoWayBeacons.plutus"
 
 ## Export the swap validator script.
 echo "Exporting the swap validator script..."
 cardano-swaps scripts two-way swap-script \
   --out-file $swapScriptFile
 
-## Export the beacon policy.
-echo "Exporting the beacon policy script..."
-cardano-swaps scripts two-way beacon-policy \
-  --out-file $beaconPolicyFile
+## Export the beacon script.
+echo "Exporting the beacon script..."
+cardano-swaps scripts two-way beacon-script \
+  --out-file $beaconScriptFile
 
 ## Create and submit the transaction.
 echo "Building the transaction..."
 cardano-cli transaction build \
-  --tx-in c1d7755d9089bc1a6b85561e1f3eb740935c6a887a15589395bfc36f8b64fa10#0 \
-  --tx-in c1d7755d9089bc1a6b85561e1f3eb740935c6a887a15589395bfc36f8b64fa10#1 \
-  --tx-in 652ee7042b5dec846d16082168ff88fddf0ee1f7cdd3fa94397eccbbbf835f66#2 \
+  --tx-in 4993b083e08ac565a293140bb737b20035901c8ce8cf026d97a77eace302ada4#0 \
+  --tx-in 4993b083e08ac565a293140bb737b20035901c8ce8cf026d97a77eace302ada4#1 \
+  --tx-in 4e3fbfe9ada401239215fbe680c24fdba029e7c082fb1c16768389733f0eb083#1 \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + 31000000 lovelace " \
   --tx-out-reference-script-file $swapScriptFile \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + 19000000 lovelace " \
-  --tx-out-reference-script-file $beaconPolicyFile \
+  --tx-out-reference-script-file $beaconScriptFile \
   --change-address "$(cat ../../../ignored/wallets/01.addr)" \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.body"

@@ -6,7 +6,7 @@ tmpDir="../../../ignored/tmp/"
 
 ownerPubKeyFile="../../../ignored/wallets/01Stake.vkey"
 
-swapRedeemerFile="${dir}closeOrUpdateTwoWaySwap.json"
+swapRedeemerFile="${dir}twoWaySpendingRedeemer.json"
 
 beaconRedeemerFile="${dir}twoWayBeaconRedeemer.json"
 
@@ -15,10 +15,10 @@ echo "Calculating the staking pubkey hash for the borrower..."
 ownerPubKeyHash=$(cardano-cli stake-address key-hash \
   --stake-verification-key-file $ownerPubKeyFile)
 
-# Create the CloseOrUpdate redeemer.
+# Create the spending redeemer.
 echo "Creating the spending redeemer..."
 cardano-swaps spending-redeemers two-way \
-  --close-or-update \
+  --close \
   --out-file $swapRedeemerFile
 
 # Helper beacon variables.
@@ -29,7 +29,7 @@ beaconPolicyId=$(cardano-swaps beacon-info two-way policy-id \
 pairBeaconName=$(cardano-swaps beacon-info two-way pair-beacon \
   --asset1-is-lovelace \
   --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 54657374546f6b656e31 \
+  --asset2-token-name 4f74686572546f6b656e0a \
   --stdout)
 
 asset1BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
@@ -38,30 +38,30 @@ asset1BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
 
 asset2BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
   --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 54657374546f6b656e31 \
+  --asset2-token-name 4f74686572546f6b656e0a \
   --stdout)
 
 pairBeacon="${beaconPolicyId}.${pairBeaconName}"
 asset1Beacon="${beaconPolicyId}.${asset1BeaconName}"
 asset2Beacon="${beaconPolicyId}.${asset2BeaconName}"
 
-# Creating the beacon policy redeemer.  
-echo "Creating the beacon policy redeemer..."
+# Creating the beacon script redeemer.  
+echo "Creating the beacon script redeemer..."
 cardano-swaps beacon-redeemers two-way \
-  --burn \
+  --mint-or-burn \
   --out-file $beaconRedeemerFile
 
 # Create the transaction.
 cardano-cli transaction build \
-  --tx-in 980cd3a6844fa92780f692f17d48372d68e6e66dabd12285639b993b016b8e7e#1 \
-  --tx-in 1b1c36bc69ff9147a748a7058075604ba084572949da30ea8932f0d33526dad7#0 \
-  --spending-tx-in-reference c1d7755d9089bc1a6b85561e1f3eb740935c6a887a15589395bfc36f8b64fa10#0 \
+  --tx-in dcbaa709938e47c6d4337472f6e33dd1c647f1a92bbb5687a388d093ca2411bd#1 \
+  --tx-in 1099345534975baa0b2f5234a197db38253076a657cbff815c4d1c2f3cfda524#0 \
+  --spending-tx-in-reference 825a452672dff10a4ae463caa9c53cce428658b04a53a299e227fff87286757f#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 3000000 lovelace + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 3000000 lovelace + 6 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --mint "-1 ${pairBeacon} + -1 ${asset1Beacon} + -1 ${asset2Beacon}" \
-  --mint-tx-in-reference c1d7755d9089bc1a6b85561e1f3eb740935c6a887a15589395bfc36f8b64fa10#1 \
+  --mint-tx-in-reference 825a452672dff10a4ae463caa9c53cce428658b04a53a299e227fff87286757f#1 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id "$beaconPolicyId" \

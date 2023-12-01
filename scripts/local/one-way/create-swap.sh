@@ -12,7 +12,7 @@ swapAddrFile="${dir}oneWaySwap.addr"
 
 swapDatumFile="${dir}swapDatum.json"
 
-beaconRedeemerFile="${dir}createOneWaySwap.json"
+beaconRedeemerFile="${dir}oneWayBeaconRedeemer.json"
 
 # Export the swap validator script.
 echo "Exporting the swap validator script..."
@@ -51,10 +51,10 @@ pairBeacon="${beaconPolicyId}.${pairBeaconName}"
 offerBeacon="${beaconPolicyId}.${offerBeaconName}"
 askBeacon="${beaconPolicyId}.${askBeaconName}"
 
-# Get the mint beacon redeemer.
+# Get the beacon script redeemer.
 echo "Creating the minting redeemer..."
 cardano-swaps beacon-redeemers one-way \
-  --create-swap \
+  --mint-or-burn \
   --out-file $beaconRedeemerFile
 
 # Create the swap datum.
@@ -70,12 +70,12 @@ cardano-swaps datums one-way \
 # Create the transaction.
 echo "Building the transaction..."
 cardano-cli transaction build \
-  --tx-in 31c5603bb70974aad4ef47e48e6f83ff6e931bcdbc6093b40500524db941bf67#1 \
-  --tx-in 3528a53aff6dfbf132d33fc6309d49d2fdbc13258befaca6b3144d785dc14b01#1 \
+  --tx-in 78a9db4d884a69db8e4f07b87dac0c7bd7079a87a517cc6b4fc56b2b44a6d08c#0 \
+  --tx-in b9b891381013d97f06b1cab4d8cf47946e264840772db7b5d0812934c371fba9#0 \
   --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${offerBeacon} + 1 ${askBeacon} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out-inline-datum-file $swapDatumFile \
   --mint "1 ${pairBeacon} + 1 ${offerBeacon} + 1 ${askBeacon}" \
-  --mint-tx-in-reference 3d91a6c59c4065c8b9882a7e232824d2064e92024d0db318f09b6ad815f1ccd4#1 \
+  --mint-tx-in-reference 98471060e651cc6e60b863f2bb37bdefbc64d8faa17513aa2974f0beec8430d6#1 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id "$beaconPolicyId" \

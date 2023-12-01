@@ -6,22 +6,44 @@ tmpDir="../../../ignored/tmp/"
 
 ownerPubKeyFile="../../../ignored/wallets/01Stake.vkey"
 
+beaconScriptFile="${dir}oneWayBeacons.plutus"
+beaconAddrFile="${dir}oneWayBeaconStake.addr"
+
 swapAddrFile="${dir}oneWaySwap.addr"
 
 swapDatumFile="${dir}swapDatum.json"
 
-swapRedeemerFile="${dir}closeOrUpdateOneWaySwap.json"
+swapRedeemerFile="${dir}oneWaySpendingRedeemer.json"
+beaconRedeemerFile="${dir}oneWayBeaconRedeemer.json"
 
 # Generate the hash for the staking verification key.
 echo "Calculating the staking pubkey hash for the borrower..."
 ownerPubKeyHash=$(cardano-cli stake-address key-hash \
   --stake-verification-key-file $ownerPubKeyFile)
 
-# Create the CloseOrUpdate redeemer.
+# Export the beacon script.
+echo "Exporting the beacon script..."
+cardano-swaps scripts one-way beacon-script \
+  --out-file $beaconScriptFile
+
+# Create the meta beacon stake address.
+echo "Creating the beacon reward address..."
+cardano-cli stake-address build \
+  --stake-script-file $beaconScriptFile \
+  --testnet-magic 1 \
+  --out-file $beaconAddrFile
+
+# Create the spending redeemer.
 echo "Creating the spending redeemer..."
 cardano-swaps spending-redeemers one-way \
-  --close-or-update \
+  --update-with-stake \
   --out-file $swapRedeemerFile
+
+# Create the beacon script redeemer.
+echo "Creating the beacon redeemer..."
+cardano-swaps beacon-redeemers one-way \
+  --update-only \
+  --out-file $beaconRedeemerFile
 
 # Create the new swap datum.
 echo "Creating the new swap datum..."
@@ -59,12 +81,16 @@ askBeacon="${beaconPolicyId}.${askBeaconName}"
 
 # Create the transaction.
 cardano-cli transaction build \
-  --tx-in 35ace8d34752c6eb686ab6f5622baa9494d7d1ada024d31f591814ed7b465def#1 \
-  --tx-in ad6a838d8139291661bd130d98253e233a617adb866a138fe4d28afe67617f48#0 \
-  --spending-tx-in-reference 3d91a6c59c4065c8b9882a7e232824d2064e92024d0db318f09b6ad815f1ccd4#0 \
+  --tx-in a475dde6c24ad47857ba7c9ddc98fd86cb5adedaa0a8e0ab797a21aa72ad3f2c#1 \
+  --tx-in e39e1414f0ba51220be1e1a11b8379a3ef629ebb6bca8d4e11ad11076c762263#0 \
+  --spending-tx-in-reference 98471060e651cc6e60b863f2bb37bdefbc64d8faa17513aa2974f0beec8430d6#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
+  --withdrawal "$(cat ${beaconAddrFile})+0" \
+  --withdrawal-tx-in-reference 98471060e651cc6e60b863f2bb37bdefbc64d8faa17513aa2974f0beec8430d6#1 \
+  --withdrawal-plutus-script-v2 \
+  --withdrawal-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${offerBeacon} + 1 ${askBeacon} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out-inline-datum-file $swapDatumFile \
   --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \

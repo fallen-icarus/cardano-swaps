@@ -7,17 +7,17 @@
 dir="../../../ignored/swap-files/"
 tmpDir="../../../ignored/tmp/"
 
-swapScriptFile="${dir}two_way_spend.plutus"
-beaconPolicyFile="${dir}two_way_beacon.plutus"
+swapScriptFile="${dir}twoWaySwap.plutus"
+beaconPolicyFile="${dir}twoWayBeacon.plutus"
 
 ## Export the swap validator script.
 echo "Exporting the swap validator script..."
 cardano-swaps scripts two-way swap-script \
   --out-file $swapScriptFile
 
-## Export the beacon policy.
-echo "Exporting the beacon policy script..."
-cardano-swaps scripts two-way beacon-policy \
+## Export the beacon script.
+echo "Exporting the beacon script..."
+cardano-swaps scripts two-way beacon-script \
   --out-file $beaconPolicyFile
 
 ## Create and submit the transaction.
@@ -26,13 +26,13 @@ cardano-swaps protocol-params \
   --testnet \
   --out-file "${tmpDir}protocol.json"
 
-initial_change=237707298
+initial_change=147545056
 
 echo "Building the initial transaction..."
 cardano-cli transaction build-raw \
-  --tx-in e0f0122f7cf6ca6dcb79a310886155c771bf825d057396ddb8a9ea80a18b6f7b#0 \
-  --tx-in e0f0122f7cf6ca6dcb79a310886155c771bf825d057396ddb8a9ea80a18b6f7b#1 \
-  --tx-in e0f0122f7cf6ca6dcb79a310886155c771bf825d057396ddb8a9ea80a18b6f7b#2 \
+  --tx-in 825a452672dff10a4ae463caa9c53cce428658b04a53a299e227fff87286757f#0 \
+  --tx-in 825a452672dff10a4ae463caa9c53cce428658b04a53a299e227fff87286757f#1 \
+  --tx-in 776e817ebe6d4094d0fffba4bd175d90c8c883d5e18061dae2c3263af670c212#2 \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + 31000000 lovelace " \
   --tx-out-reference-script-file $swapScriptFile \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + 19000000 lovelace " \
@@ -52,9 +52,9 @@ req_fee=$(cardano-cli transaction calculate-min-fee \
 
 echo "Rebuilding the transaction with the required fee..."
 cardano-cli transaction build-raw \
-  --tx-in e0f0122f7cf6ca6dcb79a310886155c771bf825d057396ddb8a9ea80a18b6f7b#0 \
-  --tx-in e0f0122f7cf6ca6dcb79a310886155c771bf825d057396ddb8a9ea80a18b6f7b#1 \
-  --tx-in e0f0122f7cf6ca6dcb79a310886155c771bf825d057396ddb8a9ea80a18b6f7b#2 \
+  --tx-in 825a452672dff10a4ae463caa9c53cce428658b04a53a299e227fff87286757f#0 \
+  --tx-in 825a452672dff10a4ae463caa9c53cce428658b04a53a299e227fff87286757f#1 \
+  --tx-in 776e817ebe6d4094d0fffba4bd175d90c8c883d5e18061dae2c3263af670c212#2 \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + 31000000 lovelace " \
   --tx-out-reference-script-file $swapScriptFile \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + 19000000 lovelace " \

@@ -127,9 +127,9 @@ The maximum number of swaps that could be closed in the transaction was 54.
 | 10 | 0.821743 ADA | 1.232615 ADA |
 | 15 | 1.182208 ADA | 1.773312 ADA |
 | 20 | 1.554603 ADA | 2.331905 ADA |
-| 24 | 1.861240 ADA | 2.791860 ADA |
+| 25 | 1.897395 ADA | 2.846093 ADA |
 
-The maximum number of swaps that could be updated in the transaction was 24.
+The maximum number of swaps that could be updated in the transaction was 25.
 
 #### Updating swaps for different trading pairs.
 | Number Updated | Tx Fee | Collateral Required |
@@ -140,8 +140,9 @@ The maximum number of swaps that could be updated in the transaction was 24.
 | 15 | 1.123418 ADA | 1.685127 ADA |
 | 20 | 1.475681 ADA | 2.213522 ADA |
 | 25 | 1.840094 ADA | 2.760141 ADA |
+| 26 | 1.870567 ADA | 2.805851 ADA |
 
-The maximum number of swaps that could be updated in the transaction was 25.
+The maximum number of swaps that could be updated in the transaction was 26.
 
 
 

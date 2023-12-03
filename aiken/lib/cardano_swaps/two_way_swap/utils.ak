@@ -2,7 +2,6 @@ use aiken/bytearray
 use aiken/dict
 use aiken/hash.{Hash,Blake2b_224}
 use aiken/list
-use aiken/math/rational.{Rational} as ratio
 use aiken/option.{is_some}
 use aiken/string.{concat}
 use aiken/transaction.{Datum,InlineDatum,Output,OutputReference} as tx
@@ -13,7 +12,7 @@ use aiken/transaction/credential.{
   }
 use aiken/transaction/value.{PolicyId,AssetName,Value}
 
-use cardano_swaps/common/types.{app_name,AssetConfig} as common_types
+use cardano_swaps/common/types.{app_name,AssetConfig,Rational} as common_types
 use cardano_swaps/common/utils.{
   compare_asset_config,
   trace_if_false,
@@ -76,13 +75,15 @@ fn valid_swap_output(
     asset2_id_,
     asset2_name_,
     asset2_beacon_,
-    forward_price,
-    reverse_price,
+    forward_price_,
+    reverse_price_,
     _ // prev_input does not need to be check.
   ) = parse_datum(output_datum)
 
   let asset1 = AssetConfig(asset1_id_,asset1_name_)
   let asset2 = AssetConfig(asset2_id_,asset2_name_)
+  let Rational(rev_price_num_,rev_price_den_) = reverse_price_
+  let Rational(for_price_num_,for_price_den_) = forward_price_
 
   // The beacon_id must be the policy id of the beacon policy.
   trace_if_false( @"Wrong beacon_id", beacon_id == beacon_id_ ) &&
@@ -114,25 +115,25 @@ fn valid_swap_output(
   // The forward_price denominator must be > 0.
   trace_if_false( 
     @"forward_price denominator not > 0", 
-    ratio.denominator(forward_price) > 0 
+    for_price_den_ > 0 
   ) &&
 
   // The forward_price must be > 0.
   trace_if_false(
-    @"forward_price not > 0", 
-    ratio.compare(forward_price,ratio.zero()) == Greater 
+    @"forward_price numerator not > 0", 
+    for_price_num_ > 0 
   ) &&
 
   // The reverse_price denominator must be > 0.
   trace_if_false( 
     @"reverse_price denominator not > 0", 
-    ratio.denominator(reverse_price) > 0 
+    rev_price_den_ > 0
   ) &&
 
   // The reverse_price must be > 0.
   trace_if_false( 
-    @"reverse_price not > 0", 
-    ratio.compare(reverse_price,ratio.zero()) == Greater 
+    @"reverse_price numerator not > 0", 
+    rev_price_num_ > 0
   ) &&
 
   // The UTxO must have exactly 1 pair_beacon.
@@ -417,26 +418,23 @@ pub fn valid_swap(
     if reverse { (asset1_id,asset1_name,asset2_id,asset2_name,reverse_price) }
     else { (asset2_id,asset2_name,asset1_id,asset1_name,forward_price) }
 
+  let Rational(price_num,price_den) = price
+
   // Calculate the quantity of the ask asset in flux.
   let ask_given = 
     value.quantity_of( swap_flux, ask_id, ask_name )
     |> fn(x) {-x} // Must negate the number since negative means the asset was received.
-    |> ratio.from_int(_) // Convert it to a `Rational`.
 
   // Calculate the quantity of the offer asset in flux.
-  let offer_taken =
-    value.quantity_of( swap_flux, offer_id, offer_name )
-    |> ratio.from_int(_) // Convert it to a `Rational`.
+  let offer_taken = value.quantity_of( swap_flux, offer_id, offer_name )
 
-  // Compare the ask and offer quantities.
-  let swap_ratio = 
-    ratio.mul(offer_taken, price) // Convert the offer asset to units of the ask asset.
-    |> ratio.compare(_, ask_given) // Compare it against the amount of ask given.
+  // Convert the offer asset to units of the ask asset using the price.
+  let swap_ratio = offer_taken * price_num / price_den
 
   // The swap_ratio must be `Less` or `Equal`. Using `!= Greater` had a performance regression...
   trace_if_false( 
     @"Fail: offer_taken * price <= ask_given",
-    swap_ratio == Less || swap_ratio == Equal 
+    swap_ratio <= ask_given
   ) &&
 
   // Only the offer asset can leave and only the ask asset can be deposited. 

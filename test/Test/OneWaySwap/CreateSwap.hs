@@ -3109,9 +3109,9 @@ tests = do
     , checkPredicateOptions opts "failureTest24"
         (assertEvaluationError "Offer asset cannot be same as ask asset") failureTest24
     , checkPredicateOptions opts "failureTest25"
-        (assertEvaluationError "swap_price not > 0") failureTest25
+        (assertEvaluationError "swap_price numerator not > 0") failureTest25
     , checkPredicateOptions opts "failureTest26"
-        (assertEvaluationError "swap_price not > 0") failureTest26
+        (assertEvaluationError "swap_price numerator not > 0") failureTest26
     , checkPredicateOptions opts "failureTest27"
         (assertEvaluationError "swap_price denominator not > 0") failureTest27
     , checkPredicateOptions opts "failureTest28"

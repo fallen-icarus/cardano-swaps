@@ -2,7 +2,6 @@ use aiken/bytearray
 use aiken/dict
 use aiken/hash.{Hash,Blake2b_224}
 use aiken/list
-use aiken/math/rational.{Rational} as ratio
 use aiken/option.{is_some}
 use aiken/string.{concat}
 use aiken/transaction.{Datum,InlineDatum,Output,OutputReference} as tx
@@ -13,7 +12,7 @@ use aiken/transaction/credential.{
   }
 use aiken/transaction/value.{PolicyId,AssetName,Value}
 
-use cardano_swaps/common/types.{app_name,AssetConfig} as common_types
+use cardano_swaps/common/types.{app_name,AssetConfig,Rational} as common_types
 use cardano_swaps/common/utils.{
   trace_if_false,
   } as common_utils
@@ -97,6 +96,7 @@ fn valid_swap_output(
 
   let offer = AssetConfig(offer_id_,offer_name_)
   let ask = AssetConfig(ask_id_,ask_name_)
+  let Rational(price_num_,price_den_) = swap_price_
 
   // The beacon_id must be the policy id of the beacon policy.
   trace_if_false( @"Wrong beacon_id", beacon_id == beacon_id_ ) &&
@@ -125,13 +125,13 @@ fn valid_swap_output(
   // The swap_price denominator must be > 0.
   trace_if_false( 
     @"swap_price denominator not > 0", 
-    ratio.denominator(swap_price_) > 0 
+    price_den_ > 0 
   ) &&
 
   // The swap_price must be > 0.
   trace_if_false(
-    @"swap_price not > 0", 
-    ratio.compare(swap_price_,ratio.zero()) == Greater 
+    @"swap_price numerator not > 0", 
+    price_num_ > 0 
   ) &&
 
   // The UTxO must have exactly 1 pair_beacon.
@@ -385,6 +385,8 @@ pub fn valid_swap(
       Some(input_ref)
     ) |> InlineDatum
 
+  let Rational(price_num,price_den) = swap_price
+
   // Get the swap flux for this address.
   let swap_flux = swap_value_diff(
     input_val,
@@ -399,22 +401,17 @@ pub fn valid_swap(
   let ask_given = 
     value.quantity_of( swap_flux, ask_id, ask_name )
     |> fn(x) {-x} // Must negate the number since negative means the asset was received.
-    |> ratio.from_int(_) // Convert it to a `Rational`.
 
   // Calculate the quantity of the offer asset in flux.
-  let offer_taken =
-    value.quantity_of( swap_flux, offer_id, offer_name )
-    |> ratio.from_int(_) // Convert it to a `Rational`.
+  let offer_taken = value.quantity_of( swap_flux, offer_id, offer_name )
 
-  // Compare the ask and offer quantities.
-  let swap_ratio = 
-    ratio.mul(offer_taken, swap_price) // Convert the offer asset to units of the ask asset.
-    |> ratio.compare(_, ask_given) // Compare it against the amount of ask given.
+  // Convert the offer asset to units of the ask asset using the price.
+  let swap_ratio = offer_taken * price_num / price_den
 
   // The swap_ratio must be `Less` or `Equal`. Using `!= Greater` had a performance regression...
   trace_if_false( 
     @"Fail: offer_taken * price <= ask_given",
-    swap_ratio == Less || swap_ratio == Equal 
+    swap_ratio <= ask_given 
   ) &&
 
   // Only the offer asset can leave and only the ask asset can be deposited. 

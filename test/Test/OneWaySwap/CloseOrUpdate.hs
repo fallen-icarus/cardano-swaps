@@ -4839,9 +4839,9 @@ tests = do
     , checkPredicateOptions opts "failureTest4"
         (assertEvaluationError "One-way swaps must have exactly three kinds of beacons") failureTest4
     , checkPredicateOptions opts "failureTest5"
-        (assertEvaluationError "swap_price not > 0") failureTest5
+        (assertEvaluationError "swap_price numerator not > 0") failureTest5
     , checkPredicateOptions opts "failureTest6"
-        (assertEvaluationError "swap_price not > 0") failureTest6
+        (assertEvaluationError "swap_price numerator not > 0") failureTest6
     , checkPredicateOptions opts "failureTest7"
         (assertEvaluationError "swap_price denominator not > 0") failureTest7
     , checkPredicateOptions opts "failureTest8"
@@ -4887,7 +4887,7 @@ tests = do
     , checkPredicateOptions opts "benchTest3"
         assertNoFailedTransactions $ benchTest3 26
     , checkPredicateOptions opts "benchTest4"
-        assertNoFailedTransactions $ benchTest4 27
+        assertNoFailedTransactions $ benchTest4 28
     , checkPredicateOptions opts "benchTest5"
         assertNoFailedTransactions $ benchTest5 26
 
@@ -4899,7 +4899,7 @@ tests = do
     , checkPredicateOptions opts "perfIncreaseTest3"
         (Test.not assertNoFailedTransactions) $ benchTest3 27
     , checkPredicateOptions opts "perfIncreaseTest4"
-        (Test.not assertNoFailedTransactions) $ benchTest4 28
+        (Test.not assertNoFailedTransactions) $ benchTest4 29
     , checkPredicateOptions opts "perfIncreaseTest5"
         (Test.not assertNoFailedTransactions) $ benchTest5 27
 

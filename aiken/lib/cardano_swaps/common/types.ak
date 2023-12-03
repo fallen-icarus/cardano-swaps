@@ -7,3 +7,8 @@ pub type AssetConfig {
   asset_id: PolicyId,
   asset_name: AssetName
 }
+
+pub type Rational {
+  numerator: Int,
+  denominator: Int
+}

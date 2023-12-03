@@ -3412,17 +3412,17 @@ tests = do
     , checkPredicateOptions opts "failureTest22"
         (assertEvaluationError "Asset1 must be less than asset2") failureTest22
     , checkPredicateOptions opts "failureTest23"
-        (assertEvaluationError "forward_price not > 0") failureTest23
+        (assertEvaluationError "forward_price numerator not > 0") failureTest23
     , checkPredicateOptions opts "failureTest24"
-        (assertEvaluationError "forward_price not > 0") failureTest24
+        (assertEvaluationError "forward_price numerator not > 0") failureTest24
     , checkPredicateOptions opts "failureTest25"
         (assertEvaluationError "forward_price denominator not > 0") failureTest25
     , checkPredicateOptions opts "failureTest26"
         (assertEvaluationError "forward_price denominator not > 0") failureTest26
     , checkPredicateOptions opts "failureTest27"
-        (assertEvaluationError "reverse_price not > 0") failureTest27
+        (assertEvaluationError "reverse_price numerator not > 0") failureTest27
     , checkPredicateOptions opts "failureTest28"
-        (assertEvaluationError "reverse_price not > 0") failureTest28
+        (assertEvaluationError "reverse_price numerator not > 0") failureTest28
     , checkPredicateOptions opts "failureTest29"
         (assertEvaluationError "reverse_price denominator not > 0") failureTest29
     , checkPredicateOptions opts "failureTest30"
@@ -3438,9 +3438,9 @@ tests = do
     , checkPredicateOptions opts "failureTest35"
         (assertEvaluationError "UTxO does not have exactly 1 asset2_beacon") failureTest35
     , checkPredicateOptions opts "failureTest36"
-        (assertEvaluationError "forward_price not > 0") failureTest36
+        (assertEvaluationError "forward_price numerator not > 0") failureTest36
     , checkPredicateOptions opts "failureTest37"
-        (assertEvaluationError "forward_price not > 0") failureTest37
+        (assertEvaluationError "forward_price numerator not > 0") failureTest37
 
       -- Benchmark tests
     , checkPredicateOptions opts "benchTest1"

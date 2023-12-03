@@ -1,6 +1,6 @@
 use aiken/transaction.{OutputReference}
 use aiken/transaction/value.{PolicyId,AssetName}
-use aiken/math/rational.{Rational}
+use cardano_swaps/common/types.{Rational}
 
 pub type SwapDatum {
   SwapDatum { 

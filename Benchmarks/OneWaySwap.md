@@ -61,8 +61,9 @@ Swaps are validated by checking each output in the transaction. The checks are e
 | 14 | 1.484735 ADA | 2.227103 ADA |
 | 15 | 1.606878 ADA | 2.410317 ADA |
 | 16 | 1.732968 ADA | 2.599452 ADA |
+| 17 | 1.792753 ADA | 2.689130 ADA |
 
-The maximum number of swaps that could fit in the transaction was 16.
+The maximum number of swaps that could fit in the transaction was 17.
 
 #### Execute multiple swap UTxOs for the different trading pairs.
 | Number of Swaps | Tx Fee | Collateral Required |
@@ -139,9 +140,9 @@ The maximum number of swaps that could be updated in the transaction was 26.
 | 15 | 1.063565 ADA | 1.595348 ADA |
 | 20 | 1.394747 ADA | 2.092121 ADA |
 | 25 | 1.738079 ADA | 2.607119 ADA |
-| 27 | 1.878664 ADA | 2.817996 ADA |
+| 28 | 1.878664 ADA | 2.817996 ADA |
 
-The maximum number of swaps that could be updated in the transaction was 27.
+The maximum number of swaps that could be updated in the transaction was 28.
 
 
 

@@ -42,31 +42,29 @@ Swaps are validated by checking each output in the transaction. The checks are e
 2) If "Yes" to (1), is this output locked at the address where the input comes from?
 3) If "Yes" to (2), does this output have the proper datum for the corresponding output?
 
-Whenever a question is answered "No", the checks stop for that output and the validator moves on
-to the next output. Because of this, the best possible performance is when all swaps are for unique
-trading pairs (ie, the checks stop after the first question for all but the relevant output). The
-worst possible performance is when all swaps are for the same trading pair AND are all from the
-same address. All other scenarios will fall somewhere in between.
-
-#### WORST CASE SCENARIO: Execute multiple swap UTxOs for the same trading pair and from the same address.
+#### Execute multiple swap UTxOs for the same trading pair and from the same address.
 | Number of Swaps | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
-| 1 | 0.248925 ADA | 0.373388 ADA |
-| 2 | 0.323246 ADA | 0.484869 ADA |
-| 3 | 0.406107 ADA | 0.609161 ADA |
-| 4 | 0.497421 ADA | 0.746132 ADA |
-| 5 | 0.597231 ADA | 0.895847 ADA |
-| 6 | 0.705538 ADA | 1.058307 ADA |
-| 7 | 0.822342 ADA | 1.233513 ADA |
-| 8 | 0.947643 ADA | 1.421465 ADA |
-| 9 | 1.081440 ADA | 1.622160 ADA |
-| 10 | 1.234534 ADA | 2.851801 ADA |
-| 11 | 1.385802 ADA | 2.078703 ADA |
-| 12 | 1.545567 ADA | 2.318251 ADA |
+| 1 | 0.249986 ADA | 0.374979 ADA |
+| 2 | 0.320817 ADA | 0.481226 ADA |
+| 3 | 0.395639 ADA | 0.593459 ADA |
+| 4 | 0.474365 ADA | 0.711548 ADA |
+| 5 | 0.557037 ADA | 0.835556 ADA |
+| 6 | 0.643657 ADA | 0.965486 ADA |
+| 7 | 0.734223 ADA | 1.101335 ADA |
+| 8 | 0.828737 ADA | 1.243106 ADA |
+| 9 | 1.927197 ADA | 1.390796 ADA |
+| 10 | 1.035633 ADA | 1.553450 ADA |
+| 11 | 1.141988 ADA | 1.712982 ADA |
+| 12 | 1.252290 ADA | 1.878435 ADA |
+| 13 | 1.366539 ADA | 2.049809 ADA |
+| 14 | 1.484735 ADA | 2.227103 ADA |
+| 15 | 1.606878 ADA | 2.410317 ADA |
+| 16 | 1.732968 ADA | 2.599452 ADA |
 
-The maximum number of swaps that could fit in the transaction was 12.
+The maximum number of swaps that could fit in the transaction was 16.
 
-#### BEST CASE SCENARIO: Execute multiple swap UTxOs for the different trading pairs.
+#### Execute multiple swap UTxOs for the different trading pairs.
 | Number of Swaps | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
 | 1 | 0.285138 ADA | 0.427707 ADA |
@@ -83,8 +81,9 @@ The maximum number of swaps that could fit in the transaction was 12.
 | 12 | 1.313461 ADA | 1.970192 ADA |
 | 13 | 1.429034 ADA | 2.143551 ADA |
 | 14 | 1.548438 ADA | 2.322657 ADA |
+| 15 | 1.713331 ADA | 2.569997 ADA |
 
-The maximum number of swaps that could fit in the transaction was 14.
+The maximum number of swaps that could fit in the transaction was 15.
 
 
 

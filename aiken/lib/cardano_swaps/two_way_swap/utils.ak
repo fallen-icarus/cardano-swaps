@@ -16,7 +16,6 @@ use aiken/transaction/value.{PolicyId,AssetName,Value}
 use cardano_swaps/common/types.{app_name,AssetConfig} as common_types
 use cardano_swaps/common/utils.{
   compare_asset_config,
-  error_if_false,
   trace_if_false,
   } as common_utils
 use cardano_swaps/two_way_swap/types.{
@@ -259,14 +258,7 @@ fn swap_value_diff(
   swap_addr: Address,
   beacon_id: PolicyId,
   pair_beacon: AssetName,
-  asset1_id: PolicyId,
-  asset1_name: AssetName,
-  asset1_beacon: AssetName,
-  asset2_id: PolicyId,
-  asset2_name: AssetName,
-  asset2_beacon: AssetName,
-  forward_price: Rational,
-  reverse_price: Rational,
+  req_datum: Datum,
   outputs: List<Output>
 ) -> Value {
   when outputs is {
@@ -282,82 +274,7 @@ fn swap_value_diff(
         // Check if the output is to this swap address.
         if swap_addr == addr {
           // Check if the datum is correct.
-          let SwapDatum(
-            beacon_id_,
-            pair_beacon_,
-            asset1_id_,
-            asset1_name_,
-            asset1_beacon_,
-            asset2_id_,
-            asset2_name_,
-            asset2_beacon_,
-            forward_price_,
-            reverse_price_,
-            prev_input
-          ) = parse_datum(d)
-
-          // Check if the prev_input field points to this input.
-          if prev_input == Some(input_ref) {
-            // The beacon_id must be the policy id of the beacon policy.
-            expect True = error_if_false( 
-              @"Wrong beacon_id", 
-              beacon_id == beacon_id_ 
-            )
-
-            // The pair_beacon must be the pair_beacon from the input.
-            expect True = error_if_false( 
-              @"Wrong pair_beacon", 
-              pair_beacon == pair_beacon_ 
-            )
-
-            // The asset1_id must be the asset1_id from the input.
-            expect True = error_if_false( 
-              @"Wrong asset1_id", 
-              asset1_id == asset1_id_ 
-            )
-
-            // The asset1_name must be the asset1_name from the input.
-            expect True = error_if_false( 
-              @"Wrong asset1_name", 
-              asset1_name == asset1_name_ 
-            )
-
-            // The asset1_beacon must be the asset1_beacon from the input.
-            expect True = error_if_false( 
-              @"Wrong asset1_beacon", 
-              asset1_beacon == asset1_beacon_ 
-            )
-
-            // The asset2_id must be the asset2_id from the input.
-            expect True = error_if_false( 
-              @"Wrong asset2_id", 
-              asset2_id == asset2_id_ 
-            )
-
-            // The asset2_name must be the asset2_name from the input.
-            expect True = error_if_false( 
-              @"Wrong asset2_name", 
-              asset2_name == asset2_name_ 
-            )
-
-            // The asset2_beacon must be the asset2_beacon from the input.
-            expect True = error_if_false( 
-              @"Wrong asset2_beacon", 
-              asset2_beacon == asset2_beacon_ 
-            )
-
-            // The forward_price must be the forward_price from the input.
-            expect True = error_if_false( 
-              @"Wrong forward_price", 
-              forward_price == forward_price_
-            )
-
-            // The reverse_price must be the reverse_price from the input.
-            expect True = error_if_false( 
-              @"Wrong reverse_price", 
-              reverse_price == reverse_price_
-            )
-
+          if req_datum == d {
             // Subtract the output value from the input. This stops the recursion.
             value.merge( input_val, value.negate(oval) )
           }
@@ -370,14 +287,7 @@ fn swap_value_diff(
               swap_addr,
               beacon_id,
               pair_beacon,
-              asset1_id,
-              asset1_name,
-              asset1_beacon,
-              asset2_id,
-              asset2_name,
-              asset2_beacon,
-              forward_price,
-              reverse_price,
+              req_datum,
               rest
             )
           }
@@ -391,14 +301,7 @@ fn swap_value_diff(
             swap_addr,
             beacon_id,
             pair_beacon,
-            asset1_id,
-            asset1_name,
-            asset1_beacon,
-            asset2_id,
-            asset2_name,
-            asset2_beacon,
-            forward_price,
-            reverse_price,
+            req_datum,
             rest
           )
         }
@@ -412,14 +315,7 @@ fn swap_value_diff(
           swap_addr,
           beacon_id,
           pair_beacon,
-          asset1_id,
-          asset1_name,
-          asset1_beacon,
-          asset2_id,
-          asset2_name,
-          asset2_beacon,
-          forward_price,
-          reverse_price,
+          req_datum,
           rest
         )
       }
@@ -489,6 +385,22 @@ pub fn valid_swap(
   outputs: List<Output>,
   reverse: Bool // Whether the `ReverseSwap` redeemer was used. Simpler than passing the redeemer.
 ) -> Bool {
+  
+  let req_datum =
+    SwapDatum(
+      beacon_id,
+      pair_beacon,
+      asset1_id,
+      asset1_name,
+      asset1_beacon,
+      asset2_id,
+      asset2_name,
+      asset2_beacon,
+      forward_price,
+      reverse_price,
+      Some(input_ref)
+    ) |> InlineDatum
+
   // Get the swap flux for this address.
   let swap_flux = swap_value_diff(
     input_ref,
@@ -496,14 +408,7 @@ pub fn valid_swap(
     swap_addr,
     beacon_id,
     pair_beacon,
-    asset1_id,
-    asset1_name,
-    asset1_beacon,
-    asset2_id,
-    asset2_name,
-    asset2_beacon,
-    forward_price,
-    reverse_price,
+    req_datum,
     outputs
   )
 

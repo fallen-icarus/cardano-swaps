@@ -119,7 +119,7 @@ validator() {
         // The input must have the swap beacon for this trading pair.
         trace_if_false( 
           @"Swap input missing pair beacon",
-          value.quantity_of(val,beacon_id,pair_beacon) > 0
+          value.quantity_of(val,beacon_id,pair_beacon) == 1
         ) &&
 
         // The following checks requirements 2,3,4. It has its own error messages.
@@ -191,7 +191,7 @@ validator() {
         // The input must have the swap beacon for this trading pair.
         trace_if_false( 
           @"Swap input missing pair beacon",
-          value.quantity_of(val,beacon_id,pair_beacon) > 0
+          value.quantity_of(val,beacon_id,pair_beacon) == 1
         ) &&
 
         // The following checks requirements 2,3,4. It has its own error messages.

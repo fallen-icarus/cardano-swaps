@@ -4896,23 +4896,23 @@ tests = do
     , checkPredicateOptions opts "failureTest5"
         (assertEvaluationError "Fail: offer_taken * price <= ask_given") failureTest5
     , checkPredicateOptions opts "failureTest6"
-        (assertEvaluationError "Wrong beacon_id") failureTest6
+        (assertEvaluationError "Corresponding swap output not found") failureTest6
     , checkPredicateOptions opts "failureTest7"
-        (assertEvaluationError "Wrong pair_beacon") failureTest7
+        (assertEvaluationError "Corresponding swap output not found") failureTest7
     , checkPredicateOptions opts "failureTest8"
-        (assertEvaluationError "Wrong offer_id") failureTest8
+        (assertEvaluationError "Corresponding swap output not found") failureTest8
     , checkPredicateOptions opts "failureTest9"
-        (assertEvaluationError "Wrong offer_name") failureTest9
+        (assertEvaluationError "Corresponding swap output not found") failureTest9
     , checkPredicateOptions opts "failureTest10"
-        (assertEvaluationError "Wrong offer_beacon") failureTest10
+        (assertEvaluationError "Corresponding swap output not found") failureTest10
     , checkPredicateOptions opts "failureTest11"
-        (assertEvaluationError "Wrong ask_id") failureTest11
+        (assertEvaluationError "Corresponding swap output not found") failureTest11
     , checkPredicateOptions opts "failureTest12"
-        (assertEvaluationError "Wrong ask_name") failureTest12
+        (assertEvaluationError "Corresponding swap output not found") failureTest12
     , checkPredicateOptions opts "failureTest13"
-        (assertEvaluationError "Wrong ask_beacon") failureTest13
+        (assertEvaluationError "Corresponding swap output not found") failureTest13
     , checkPredicateOptions opts "failureTest14"
-        (assertEvaluationError "Wrong swap_price") failureTest14
+        (assertEvaluationError "Corresponding swap output not found") failureTest14
     , checkPredicateOptions opts "failureTest15"
         (assertEvaluationError "Corresponding swap output not found") failureTest15
     , checkPredicateOptions opts "failureTest16"
@@ -4926,7 +4926,7 @@ tests = do
     , checkPredicateOptions opts "failureTest20"
         (assertEvaluationError "Only the asked asset or ada can be deposited into the swap") failureTest20
     , checkPredicateOptions opts "failureTest21"
-        (assertEvaluationError "All swap datums must be inline datums") failureTest21
+        (assertEvaluationError "Corresponding swap output not found") failureTest21
     , checkPredicateOptions opts "failureTest22"
         (assertEvaluationError "Fail: offer_taken * price <= ask_given") failureTest22
     , checkPredicateOptions opts "failureTest23"
@@ -4934,17 +4934,17 @@ tests = do
 
       -- Benchmark tests
     , checkPredicateOptions opts "benchTest1"
-        assertNoFailedTransactions $ benchTest1 12
+        assertNoFailedTransactions $ benchTest1 16
     , checkPredicateOptions opts "benchTest2"
-        assertNoFailedTransactions $ benchTest2 14
+        assertNoFailedTransactions $ benchTest2 15
 
       -- Performance Increases tests
     , checkPredicateOptions opts "perfIncreaseTest1"
-        (Test.not assertNoFailedTransactions) $ benchTest1 13
+        (Test.not assertNoFailedTransactions) $ benchTest1 17
     , checkPredicateOptions opts "perfIncreaseTest2"
-        (Test.not assertNoFailedTransactions) $ benchTest2 15
+        (Test.not assertNoFailedTransactions) $ benchTest2 16
 
     ]
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig regressionTest9
+testTrace = runEmulatorTraceIO' def emConfig regressionTest1

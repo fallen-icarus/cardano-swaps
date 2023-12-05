@@ -3061,25 +3061,25 @@ tests = do
 
       -- Failure Tests
     , checkPredicateOptions opts "failureTest1"
-        (assertEvaluationError "UTxO does not have exactly 1 pair_beacon") failureTest1
+        (assertEvaluationError "UTxO has wrong beacons") failureTest1
     , checkPredicateOptions opts "failureTest2"
         (assertEvaluationError "Wrong pair_beacon") failureTest2
     , checkPredicateOptions opts "failureTest3"
         (assertEvaluationError "One-way swaps must have exactly three kinds of beacons") failureTest3
     , checkPredicateOptions opts "failureTest4"
-        (assertEvaluationError "UTxO does not have exactly 1 pair_beacon") failureTest4
+        (assertEvaluationError "UTxO has wrong beacons") failureTest4
     , checkPredicateOptions opts "failureTest5"
-        (assertEvaluationError "UTxO does not have exactly 1 offer_beacon") failureTest5
+        (assertEvaluationError "UTxO has wrong beacons") failureTest5
     , checkPredicateOptions opts "failureTest6"
         (assertEvaluationError "One-way swaps must have exactly three kinds of beacons") failureTest6
     , checkPredicateOptions opts "failureTest7"
-        (assertEvaluationError "UTxO does not have exactly 1 offer_beacon") failureTest7
+        (assertEvaluationError "UTxO has wrong beacons") failureTest7
     , checkPredicateOptions opts "failureTest8"
-        (assertEvaluationError "UTxO does not have exactly 1 ask_beacon") failureTest8
+        (assertEvaluationError "UTxO has wrong beacons") failureTest8
     , checkPredicateOptions opts "failureTest9"
         (assertEvaluationError "One-way swaps must have exactly three kinds of beacons") failureTest9
     , checkPredicateOptions opts "failureTest10"
-        (assertEvaluationError "UTxO does not have exactly 1 ask_beacon") failureTest10
+        (assertEvaluationError "UTxO has wrong beacons") failureTest10
     , checkPredicateOptions opts "failureTest11"
         (assertEvaluationError "One-way swaps must have exactly three kinds of beacons") failureTest11
     , checkPredicateOptions opts "failureTest12"
@@ -3093,19 +3093,19 @@ tests = do
     , checkPredicateOptions opts "failureTest16"
         (assertEvaluationError "Wrong beacon_id") failureTest16
     , checkPredicateOptions opts "failureTest17"
-        (assertEvaluationError "Wrong pair_beacon") failureTest17
+        (assertEvaluationError "UTxO has wrong beacons") failureTest17
     , checkPredicateOptions opts "failureTest18"
-        (assertEvaluationError "Wrong pair_beacon") failureTest18
+        (assertEvaluationError "No extraneous assets allowed in the UTxO") failureTest18
     , checkPredicateOptions opts "failureTest19"
-        (assertEvaluationError "Wrong pair_beacon") failureTest19
+        (assertEvaluationError "No extraneous assets allowed in the UTxO") failureTest19
     , checkPredicateOptions opts "failureTest20"
-        (assertEvaluationError "Wrong offer_beacon") failureTest20
+        (assertEvaluationError "UTxO has wrong beacons") failureTest20
     , checkPredicateOptions opts "failureTest21"
         (assertEvaluationError "Wrong pair_beacon") failureTest21
     , checkPredicateOptions opts "failureTest22"
         (assertEvaluationError "Wrong pair_beacon") failureTest22
     , checkPredicateOptions opts "failureTest23"
-        (assertEvaluationError "Wrong ask_beacon") failureTest23
+        (assertEvaluationError "UTxO has wrong beacons") failureTest23
     , checkPredicateOptions opts "failureTest24"
         (assertEvaluationError "Offer asset cannot be same as ask asset") failureTest24
     , checkPredicateOptions opts "failureTest25"
@@ -3117,19 +3117,19 @@ tests = do
     , checkPredicateOptions opts "failureTest28"
         (assertEvaluationError "swap_price denominator not > 0") failureTest28
     , checkPredicateOptions opts "failureTest29"
-        (assertEvaluationError "No extraneous assets can be stored in the swap UTxO") failureTest29
+        (assertEvaluationError "No extraneous assets allowed in the UTxO") failureTest29
     , checkPredicateOptions opts "failureTest30"
         (assertEvaluationError "All swap datums must be inline datums") failureTest30
     , checkPredicateOptions opts "failureTest31"
-        (assertEvaluationError "UTxO does not have exactly 1 pair_beacon") failureTest31
+        (assertEvaluationError "UTxO has wrong beacons") failureTest31
     , checkPredicateOptions opts "failureTest32"
-        (assertEvaluationError "UTxO does not have exactly 1 offer_beacon") failureTest32
+        (assertEvaluationError "UTxO has wrong beacons") failureTest32
     , checkPredicateOptions opts "failureTest33"
-        (assertEvaluationError "UTxO does not have exactly 1 ask_beacon") failureTest33
+        (assertEvaluationError "UTxO has wrong beacons") failureTest33
     , checkPredicateOptions opts "failureTest34"
-        (assertEvaluationError "Wrong ask_beacon") failureTest34
+        (assertEvaluationError "UTxO has wrong beacons") failureTest34
     , checkPredicateOptions opts "failureTest35"
-        (assertEvaluationError "Wrong ask_beacon") failureTest35
+        (assertEvaluationError "UTxO has wrong beacons") failureTest35
 
       -- Benchmark tests
     , checkPredicateOptions opts "benchTest1"

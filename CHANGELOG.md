@@ -11,6 +11,9 @@ will use a staking execution or a minting execution.
 - Updated the template scripts to show how to use the new redeemers and staking execution.
 - Update the tests and benchmarks.
 - Updated the documentation.
+- Changed the internal representation of prices from `Rational` to Int. Performance boost.
+- Changed how datums were checked during swap executions. Performance boost.
+- Changed how values are checked. Major performance boost.
 
 ## 1.0.0.0rc
 

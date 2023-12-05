@@ -9,13 +9,13 @@ import PlutusTx.Prelude hiding (Semigroup (..))
 import Plutus.Script.Utils.Value
 import Plutus.V2.Ledger.Api (TxOutRef)
 
--- | 31 ADA is the default. This is what the cardano-swaps spending validator requires.
+-- | 24 ADA is the default. This is what the cardano-swaps spending validator requires.
 minUTxOSpendRef :: Integer
-minUTxOSpendRef = 31_000_000
+minUTxOSpendRef = 24_000_000
 
--- | 18 ADA is the default. This is what the cardano-swaps minting policy requires.
+-- | 22 ADA is the default. This is what the cardano-swaps minting policy requires.
 minUTxOMintRef :: Integer
-minUTxOMintRef = 18_000_000
+minUTxOMintRef = 22_000_000
 
 data UnsafeDatum = UnsafeDatum
   { unsafeBeaconId :: CurrencySymbol

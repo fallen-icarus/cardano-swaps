@@ -42,6 +42,8 @@ module Test.TwoWaySwap.CloseOrUpdate
   , failureTest22
   , failureTest23
   , failureTest24
+  , failureTest25
+  , failureTest26
 
     -- ** Benchmark Tests
   , benchTest1
@@ -4409,6 +4411,123 @@ failureTest25 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
+-- | When closing swaps, the beacon script is not executed as a minting policy.
+failureTest26 :: EmulatorTrace ()
+failureTest26 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      assetX = testToken1
+      assetY = (adaSymbol,adaToken)
+      [asset1,asset2] = sort [assetX,assetY]
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
+      swapDatum = SwapDatum
+        { beaconId = beaconCurrencySymbol
+        , pairBeacon = pairBeacon'
+        , asset1Id = fst asset1
+        , asset1Name = snd asset1
+        , asset1Beacon = asset1Beacon'
+        , asset2Id = fst asset2
+        , asset2Name = snd asset2
+        , asset2Beacon = asset2Beacon'
+        , forwardPrice = unsafeRatio 1_000_000 1
+        , reversePrice = unsafeRatio 2 1_000_000
+        , prevInput = Nothing
+        }
+
+  (mintRef,spendRef) <- initializeScripts
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
+              , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym pairBeacon' 1
+                    <> singleton beaconSym asset1Beacon' 1
+                    <> singleton beaconSym asset2Beacon' 1
+                    <> uncurry singleton assetX 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  swap <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconSym pairBeacon' 1
+            <> singleton beaconSym asset1Beacon' 1
+            <> singleton beaconSym asset2Beacon' 1
+            <> uncurry singleton assetX 10
+            )
+            swapDatum
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          , TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer UpdateSwaps
+              , mintTokens = [(pairBeacon',-1),(asset1Beacon',-1),(asset2Beacon',-1)]
+              }
+          ]
+      , inputs = 
+          [
+            ScriptUtxoInput
+              { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer SpendWithMint
+              , spendFromAddress = swapAddr
+              , spendUtxos = [ swap ]
+              }
+          ]
+      , outputs = [ ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
 -------------------------------------------------
 -- Benchmark Tests
 -------------------------------------------------
@@ -5259,55 +5378,57 @@ tests = do
     , checkPredicateOptions opts "failureTest12"
         (assertEvaluationError "reverse_price denominator not > 0") failureTest12
     , checkPredicateOptions opts "failureTest13"
-        (assertEvaluationError "UTxO does not have exactly 1 pair_beacon") failureTest13
+        (assertEvaluationError "UTxO has wrong beacons") failureTest13
     , checkPredicateOptions opts "failureTest14"
-        (assertEvaluationError "UTxO does not have exactly 1 pair_beacon") failureTest14
+        (assertEvaluationError "UTxO has wrong beacons") failureTest14
     , checkPredicateOptions opts "failureTest15"
-        (assertEvaluationError "UTxO does not have exactly 1 asset1_beacon") failureTest15
+        (assertEvaluationError "UTxO has wrong beacons") failureTest15
     , checkPredicateOptions opts "failureTest16"
-        (assertEvaluationError "UTxO does not have exactly 1 asset2_beacon") failureTest16
+        (assertEvaluationError "UTxO has wrong beacons") failureTest16
     , checkPredicateOptions opts "failureTest17"
         (assertEvaluationError "Wrong beacon_id") failureTest17
     , checkPredicateOptions opts "failureTest18"
-        (assertEvaluationError "Wrong pair_beacon") failureTest18
+        (assertEvaluationError "UTxO has wrong beacons") failureTest18
     , checkPredicateOptions opts "failureTest19"
         (assertEvaluationError "Wrong pair_beacon") failureTest19
     , checkPredicateOptions opts "failureTest20"
         (assertEvaluationError "Wrong pair_beacon") failureTest20
     , checkPredicateOptions opts "failureTest21"
-        (assertEvaluationError "Wrong pair_beacon") failureTest21
+        (assertEvaluationError "No extraneous assets allowed in the UTxO") failureTest21
     , checkPredicateOptions opts "failureTest22"
-        (assertEvaluationError "Wrong pair_beacon") failureTest22
+        (assertEvaluationError "No extraneous assets allowed in the UTxO") failureTest22
     , checkPredicateOptions opts "failureTest23"
-        (assertEvaluationError "No extraneous assets can be stored in the swap UTxO") failureTest23
+        (assertEvaluationError "No extraneous assets allowed in the UTxO") failureTest23
     , checkPredicateOptions opts "failureTest24"
         (assertEvaluationError "Staking credential did not approve") failureTest24
     , checkPredicateOptions opts "failureTest25"
         (assertEvaluationError "Validator returned false") failureTest25
+    , checkPredicateOptions opts "failureTest26"
+        (assertEvaluationError "Redeemer not used with staking execution") failureTest26
 
       -- Benchmark tests
     , checkPredicateOptions opts "benchTest1"
-        assertNoFailedTransactions $ benchTest1 54
+        assertNoFailedTransactions $ benchTest1 55
     , checkPredicateOptions opts "benchTest2"
-        assertNoFailedTransactions $ benchTest2 54
+        assertNoFailedTransactions $ benchTest2 55
     , checkPredicateOptions opts "benchTest3"
-        assertNoFailedTransactions $ benchTest3 25
+        assertNoFailedTransactions $ benchTest3 29
     , checkPredicateOptions opts "benchTest4"
-        assertNoFailedTransactions $ benchTest4 26
+        assertNoFailedTransactions $ benchTest4 30
     , checkPredicateOptions opts "benchTest5"
-        assertNoFailedTransactions $ benchTest5 25
+        assertNoFailedTransactions $ benchTest5 26
 
       -- Performance Increases tests
     , checkPredicateOptions opts "perfIncreaseTest1"
-        (Test.not assertNoFailedTransactions) $ benchTest1 55
+        (Test.not assertNoFailedTransactions) $ benchTest1 56
     , checkPredicateOptions opts "perfIncreaseTest2"
-        (Test.not assertNoFailedTransactions) $ benchTest2 55
+        (Test.not assertNoFailedTransactions) $ benchTest2 56
     , checkPredicateOptions opts "perfIncreaseTest3"
-        (Test.not assertNoFailedTransactions) $ benchTest3 26
+        (Test.not assertNoFailedTransactions) $ benchTest3 30
     , checkPredicateOptions opts "perfIncreaseTest4"
-        (Test.not assertNoFailedTransactions) $ benchTest4 27
+        (Test.not assertNoFailedTransactions) $ benchTest4 31
     , checkPredicateOptions opts "perfIncreaseTest5"
-        (Test.not assertNoFailedTransactions) $ benchTest5 26
+        (Test.not assertNoFailedTransactions) $ benchTest5 27
 
     ]
 

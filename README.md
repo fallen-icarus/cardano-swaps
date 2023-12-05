@@ -722,8 +722,8 @@ Custom error messages are included to help troubleshoot why a swap failed.
 
 ## Benchmarks and Fee Estimations (YMMV)
 
-The protocol is capable of handling 11-14 swaps in a single transaction, regardless of the
-composition of one-way and two-way swaps in the transaction.
+The protocol is capable of handling 25 swaps in a single transaction, regardless of the composition
+of one-way and two-way swaps in the transaction.
 
 **No CIPs or hard-forks are needed. This protocol works on the Cardano blockchain, as is.**
 
@@ -830,7 +830,7 @@ into less liquid swap pairs. And since two-way swaps naturally incentivize provi
 major trading pairs (see the next two sub-sections), this requirement for entry and exit liquidity
 is naturally incentivized to be satisfied.
 
-Since the current design is capable of handling 11-14 swaps in a single transaction, there is ample
+Since the current design is capable of handling 25 swaps in a single transaction, there is ample
 flexibility for finding arbitrage opportunities. For example, maybe the 3rd swap is at a slight loss
 but the 5th swap is such a good arbitrage that it more than makes up for it resulting in a net
 profit for the arbitrage.
@@ -872,7 +872,7 @@ example where Sarah paid the transaction fee and got 5 AGIX from the arbitrage. 
 benchmarks, composing 4 swaps requires about a 0.5 ADA transaction fee. This is practically
 equivalent to Sarah paying 0.5 ADA for 5 AGIX. What if the current market rate is 0.66 ADA/AGIX? If
 Sarah immediately sold her new AGIX, she would get 3.3 ADA. That is a 560% yield! Sarah has plenty
-of income to cover a 15% premium if needed. Since the protocol supports chaining up to 14 swaps, it
+of income to cover a 15% premium if needed. Since the protocol supports chaining up to 25 swaps, it
 is actually likely that arbitragers will be able to find opportunities that justify paying this high
 premium. 
 
@@ -976,7 +976,7 @@ the more attractive the buyer makes the arbitrage opportunity, the more arbitrag
 it and the faster their swap will be converted. 
 
 From the perspective of the arbitragers, the only cost to them is the transaction fee which scales
-very slowly relative to the number of swaps in the transaction (14 swaps costs about 1.5 ADA).
+very slowly relative to the number of swaps in the transaction (25 swaps costs about 2 ADA).
 Combine this with the fact that these transactions are risk free for arbitragers (a failed
 transaction is no cost to the arbitrager) and you end up with very healthy incentives for
 arbitragers to *want* to do this and satisfy as many users as possible with each transaction. The

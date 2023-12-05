@@ -1,7 +1,6 @@
 use aiken/hash.{Hash,Blake2b_224}
 use aiken/transaction.{ScriptContext,Transaction,Input,Output} as tx
 use aiken/transaction/credential.{Script,ScriptCredential,Inline}
-use aiken/transaction/value
 
 use cardano_swaps/two_way_swap/types.{ 
   BeaconRedeemer,
@@ -74,10 +73,10 @@ validator() {
       // value to determine the value flux. Asset2 is the offered asset and Asset1 is the ask asset.
       ForwardSwap -> {
         // Requirements:
-        // 1) The input must contain the beacon for that trading pair.
+        // 1) The input must contain the beacons for that trading pair.
         // 2) There must must be an output to this address with the proper value and inline
         //    SwapDatum:
-        //      a) Must contain exactly 1 trading pair beacon.
+        //      a) Must contain exactly 1 of each of the required beacons.
         //      b) The swap datum must be exactly the same as the input's except the prev_input
         //         must be == Some(input_ref).
         // 3) Asset2 taken * price <= Asset1 given
@@ -85,8 +84,8 @@ validator() {
         //
         // Requirement 1 guarantees that all invalid UTxOs belong to the address owner and that
         // swap inputs have a valid price:
-        //      a) forward_price denominator > 0
-        //      b) `forward_price` > 0
+        //      a) `forward_price` denominator > 0
+        //      b) `forward_price` numerator > 0
         //
         // Requirement 2 guarantees that beacons from other trading pairs cannot be combined into
         // one output UTxO; all swaps must get their own swap UTxOs.
@@ -116,13 +115,7 @@ validator() {
           _ // prev_input is not needed.
         ) = datum
 
-        // The input must have the swap beacon for this trading pair.
-        trace_if_false( 
-          @"Swap input missing pair beacon",
-          value.quantity_of(val,beacon_id,pair_beacon) == 1
-        ) &&
-
-        // The following checks requirements 2,3,4. It has its own error messages.
+        // The following checks requirements 1,2,3,4. It has its own error messages.
         utils.valid_swap(
           input_ref,
           val, // Input's value.
@@ -146,10 +139,10 @@ validator() {
       // value to determine the value flux. Asset1 is the offered asset and Asset2 is the ask asset.
       ReverseSwap -> {
         // Requirements:
-        // 1) The input must contain the beacon for that trading pair.
+        // 1) The input must contain the beacons for that trading pair.
         // 2) There must must be an output to this address with the proper value and inline
         //    SwapDatum:
-        //      a) Must contain exactly 1 trading pair beacon.
+        //      a) Must contain exactly 1 of each of the required beacons.
         //      b) The swap datum must be exactly the same as the input's except the prev_input
         //         must be == Some(input_ref).
         // 3) Asset1 taken * price <= Asset2 given
@@ -157,8 +150,8 @@ validator() {
         //
         // Requirement 1 guarantees that all invalid UTxOs belong to the address owner and that
         // swap inputs have a valid price:
-        //      a) reverse_price denominator > 0
-        //      b) `reverse_price` > 0
+        //      a) `reverse_price` denominator > 0
+        //      b) `reverse_price` numerator > 0
         //
         // Requirement 2 guarantees that beacons from other trading pairs cannot be combined into
         // one output UTxO; all swaps must get their own swap UTxOs.
@@ -188,13 +181,7 @@ validator() {
           _ // prev_input is not needed.
         ) = datum
 
-        // The input must have the swap beacon for this trading pair.
-        trace_if_false( 
-          @"Swap input missing pair beacon",
-          value.quantity_of(val,beacon_id,pair_beacon) == 1
-        ) &&
-
-        // The following checks requirements 2,3,4. It has its own error messages.
+        // The following checks requirements 1,2,3,4. It has its own error messages.
         utils.valid_swap(
           input_ref,
           val, // Input's value.
@@ -240,9 +227,9 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
         //      g) `asset2_name` == asset name of asset2 for that trading_pair.
         //      h) `asset2_beacon` == sha2_256(asset2_id ++ asset2_name).
         //      i) `forward_price` denominator > 0
-        //      j) `forward_price` > 0
+        //      j) `forward_price` numerator > 0
         //      k) `reverse_price` denominator > 0
-        //      l) `reverse_price` > 0
+        //      l) `reverse_price` numerator > 0
         //      m) asset1 < asset2
         //
         // The validator assumes the trading pairs are sorted which is why asset1 must be less than
@@ -283,9 +270,9 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
         //      g) `asset2_name` == asset name of asset2 for that trading_pair.
         //      h) `asset2_beacon` == sha2_256(asset2_id ++ asset2_name).
         //      i) `forward_price` denominator > 0
-        //      j) `forward_price` > 0
+        //      j) `forward_price` numerator > 0
         //      k) `reverse_price` denominator > 0
-        //      l) `reverse_price` > 0
+        //      l) `reverse_price` numerator > 0
         //      m) asset1 < asset2
         //
         // The validator assumes the trading pairs are sorted which is why asset1 must be less than

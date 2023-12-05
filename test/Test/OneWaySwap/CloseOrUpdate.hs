@@ -4847,31 +4847,31 @@ tests = do
     , checkPredicateOptions opts "failureTest8"
         (assertEvaluationError "swap_price denominator not > 0") failureTest8
     , checkPredicateOptions opts "failureTest9"
-        (assertEvaluationError "UTxO does not have exactly 1 pair_beacon") failureTest9
+        (assertEvaluationError "UTxO has wrong beacons") failureTest9
     , checkPredicateOptions opts "failureTest10"
-        (assertEvaluationError "UTxO does not have exactly 1 pair_beacon") failureTest10
+        (assertEvaluationError "UTxO has wrong beacons") failureTest10
     , checkPredicateOptions opts "failureTest11"
-        (assertEvaluationError "UTxO does not have exactly 1 offer_beacon") failureTest11
+        (assertEvaluationError "UTxO has wrong beacons") failureTest11
     , checkPredicateOptions opts "failureTest12"
-        (assertEvaluationError "UTxO does not have exactly 1 ask_beacon") failureTest12
+        (assertEvaluationError "UTxO has wrong beacons") failureTest12
     , checkPredicateOptions opts "failureTest13"
         (assertEvaluationError "Wrong beacon_id") failureTest13
     , checkPredicateOptions opts "failureTest14"
-        (assertEvaluationError "Wrong pair_beacon") failureTest14
+        (assertEvaluationError "UTxO has wrong beacons") failureTest14
     , checkPredicateOptions opts "failureTest15"
-        (assertEvaluationError "Wrong pair_beacon") failureTest15
+        (assertEvaluationError "No extraneous assets allowed in the UTxO") failureTest15
     , checkPredicateOptions opts "failureTest16"
-        (assertEvaluationError "Wrong pair_beacon") failureTest16
+        (assertEvaluationError "No extraneous assets allowed in the UTxO") failureTest16
     , checkPredicateOptions opts "failureTest17"
-        (assertEvaluationError "Wrong offer_beacon") failureTest17
+        (assertEvaluationError "UTxO has wrong beacons") failureTest17
     , checkPredicateOptions opts "failureTest18"
         (assertEvaluationError "Wrong pair_beacon") failureTest18
     , checkPredicateOptions opts "failureTest19"
         (assertEvaluationError "Wrong pair_beacon") failureTest19
     , checkPredicateOptions opts "failureTest20"
-        (assertEvaluationError "Wrong ask_beacon") failureTest20
+        (assertEvaluationError "UTxO has wrong beacons") failureTest20
     , checkPredicateOptions opts "failureTest21"
-        (assertEvaluationError "No extraneous assets can be stored in the swap UTxO") failureTest21
+        (assertEvaluationError "No extraneous assets allowed in the UTxO") failureTest21
     , checkPredicateOptions opts "failureTest22"
         (assertEvaluationError "Staking credential did not approve") failureTest22
     , checkPredicateOptions opts "failureTest23"
@@ -4885,9 +4885,9 @@ tests = do
     , checkPredicateOptions opts "benchTest2"
         assertNoFailedTransactions $ benchTest2 56
     , checkPredicateOptions opts "benchTest3"
-        assertNoFailedTransactions $ benchTest3 26
+        assertNoFailedTransactions $ benchTest3 31
     , checkPredicateOptions opts "benchTest4"
-        assertNoFailedTransactions $ benchTest4 28
+        assertNoFailedTransactions $ benchTest4 32
     , checkPredicateOptions opts "benchTest5"
         assertNoFailedTransactions $ benchTest5 26
 
@@ -4897,9 +4897,9 @@ tests = do
     , checkPredicateOptions opts "perfIncreaseTest2"
         (Test.not assertNoFailedTransactions) $ benchTest2 57
     , checkPredicateOptions opts "perfIncreaseTest3"
-        (Test.not assertNoFailedTransactions) $ benchTest3 27
+        (Test.not assertNoFailedTransactions) $ benchTest3 32
     , checkPredicateOptions opts "perfIncreaseTest4"
-        (Test.not assertNoFailedTransactions) $ benchTest4 29
+        (Test.not assertNoFailedTransactions) $ benchTest4 33
     , checkPredicateOptions opts "perfIncreaseTest5"
         (Test.not assertNoFailedTransactions) $ benchTest5 27
 

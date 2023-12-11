@@ -117,7 +117,7 @@ beaconCurrencySymbol = scriptCurrencySymbol beaconMintingPolicy
 -- | Generate the beacon asset name by hashing offer ++ ask.
 genOneWayPairBeaconName :: OfferAsset -> AskAsset -> TokenName
 genOneWayPairBeaconName (OfferAsset assetX) (AskAsset assetY) =
-  let [((CurrencySymbol sym1'),(TokenName name1)),((CurrencySymbol sym2'),(TokenName name2))] =
+  let [(CurrencySymbol sym1',TokenName name1),(CurrencySymbol sym2',TokenName name2)] =
         [assetX,assetY]
       sym1 = 
         if sym1' == "" 

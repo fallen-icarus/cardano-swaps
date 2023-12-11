@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE StrictData #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 
 {-# OPTIONS_GHC -Wno-orphans -Wno-missing-signatures #-}
@@ -242,7 +241,7 @@ convertToPersonalUTxO KoiosUTxO{..} =
   PersonalUTxO
     { personalTxHash = koiosUtxoTxHash
     , personalOutputIndex = koiosUtxoOutputIndex
-    , personalValue = (Asset "" "" koiosUtxoLovelaceValue) : koiosUtxoAssetList
+    , personalValue = Asset "" "" koiosUtxoLovelaceValue : koiosUtxoAssetList
     , personalDatumHash = koiosUtxoDatumHash
     , personalReferenceScriptHash = koiosUtxoReferenceScriptHash
     }
@@ -253,12 +252,12 @@ convertToSwapUTxO KoiosUTxO{..} =
       { swapAddress = koiosUtxoAddress
       , swapTxHash = koiosUtxoTxHash 
       , swapOutputIndex = koiosUtxoOutputIndex
-      , swapValue = (Asset "" "" koiosUtxoLovelaceValue) : koiosUtxoAssetList
+      , swapValue = Asset "" "" koiosUtxoLovelaceValue : koiosUtxoAssetList
       , swapDatum = datum
       }
   where
-    oneWaySwapDatum = join $ fmap (decodeDatum @OneWaySwapDatum) koiosUtxoInlineDatum
-    twoWaySwapDatum = join $ fmap (decodeDatum @TwoWaySwapDatum) koiosUtxoInlineDatum
+    oneWaySwapDatum = (decodeDatum @OneWaySwapDatum) =<< koiosUtxoInlineDatum
+    twoWaySwapDatum = (decodeDatum @TwoWaySwapDatum) =<< koiosUtxoInlineDatum
     datum = case (oneWaySwapDatum,twoWaySwapDatum) of
       (Nothing,Nothing) -> Nothing
       (Just oneDatum,Nothing) -> Just $ OneWayDatum oneDatum

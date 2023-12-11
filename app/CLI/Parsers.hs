@@ -324,7 +324,7 @@ pTwoWayBeaconInfo = hsubparser $ mconcat
     pPairName = 
       BeaconInfo
         <$> ( fmap TwoWayPairBeaconName . (,) 
-                <$> (pTwoWayAsset "asset1") <*> (pTwoWayAsset "asset2")
+                <$> pTwoWayAsset "asset1" <*> pTwoWayAsset "asset2"
             )
         <*> pOutput
 

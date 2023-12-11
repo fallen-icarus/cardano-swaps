@@ -124,7 +124,7 @@ beaconCurrencySymbol = scriptCurrencySymbol beaconMintingPolicy
 -- sorted so that the beacon name is independent of the ordering. This is used for two-way swaps.
 genTwoWayPairBeaconName :: AssetConfig -> AssetConfig -> TokenName
 genTwoWayPairBeaconName assetX assetY =
-  let (((CurrencySymbol sym1'),(TokenName name1)),((CurrencySymbol sym2'),(TokenName name2))) =
+  let ((CurrencySymbol sym1',TokenName name1),(CurrencySymbol sym2',TokenName name2)) =
        if assetY < assetX then (assetY,assetX) else (assetX,assetY) 
       sym1 = 
         if sym1' == "" 
@@ -138,7 +138,7 @@ genTwoWayPairBeaconName assetX assetY =
 
 -- | Generate the beacon asset name by hashing the ask asset policy id and name.
 genAssetBeaconName :: AssetConfig -> TokenName
-genAssetBeaconName ((CurrencySymbol sym),(TokenName name)) =
+genAssetBeaconName (CurrencySymbol sym,TokenName name) =
   TokenName $ Plutus.sha2_256 $ sym <> name
 
 -------------------------------------------------

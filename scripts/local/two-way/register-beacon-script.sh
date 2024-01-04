@@ -18,8 +18,8 @@ cardano-cli stake-address registration-certificate \
 
 # Create the transaction.
 cardano-cli transaction build \
-  --tx-in e39e1414f0ba51220be1e1a11b8379a3ef629ebb6bca8d4e11ad11076c762263#1 \
-  --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
+  --tx-in aec62de69f36fc9860d0d4bcf2ff8836dd32e5d27a43169b2df35efc4a16b263#1 \
+  --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --change-address "$(cat ../../../ignored/wallets/01.addr)" \
   --certificate-file "${tmpDir}registration.cert" \
   --testnet-magic 1 \

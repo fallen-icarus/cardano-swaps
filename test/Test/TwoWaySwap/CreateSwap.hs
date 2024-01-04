@@ -127,8 +127,8 @@ regressionTest1 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -199,8 +199,8 @@ regressionTest2 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -283,8 +283,8 @@ regressionTest3 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -296,8 +296,8 @@ regressionTest3 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2'Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -378,8 +378,8 @@ regressionTest4 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -455,8 +455,8 @@ failureTest1 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -528,8 +528,8 @@ failureTest2 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -600,8 +600,8 @@ failureTest3 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -672,8 +672,8 @@ failureTest4 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -744,8 +744,8 @@ failureTest5 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -816,8 +816,8 @@ failureTest6 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -888,8 +888,8 @@ failureTest7 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -960,8 +960,8 @@ failureTest8 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -1032,8 +1032,8 @@ failureTest9 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -1104,8 +1104,8 @@ failureTest10 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -1176,8 +1176,8 @@ failureTest11 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -1248,8 +1248,8 @@ failureTest12 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -1320,8 +1320,8 @@ failureTest13 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -1392,8 +1392,8 @@ failureTest14 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -1464,8 +1464,8 @@ failureTest15 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -1536,8 +1536,8 @@ failureTest16 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -1608,8 +1608,8 @@ failureTest17 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -1680,8 +1680,8 @@ failureTest18 = do
         , asset2Id = fst asset1
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -1752,8 +1752,8 @@ failureTest19 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset1
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -1824,8 +1824,8 @@ failureTest20 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = ""
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -1896,8 +1896,8 @@ failureTest21 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -1968,8 +1968,8 @@ failureTest22 = do
         , asset2Id = fst asset1
         , asset2Name = snd asset1
         , asset2Beacon = asset1Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -2014,7 +2014,7 @@ failureTest22 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
--- | SwapDatum has a zero forwardPrice.
+-- | SwapDatum has a zero asset2Price.
 failureTest23 :: EmulatorTrace ()
 failureTest23 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -2040,8 +2040,8 @@ failureTest23 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 0 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 0 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -2086,7 +2086,7 @@ failureTest23 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
--- | SwapDatum has a negative forwardPrice.
+-- | SwapDatum has a negative asset2Price.
 failureTest24 :: EmulatorTrace ()
 failureTest24 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -2112,8 +2112,8 @@ failureTest24 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio ( -1_000_000 ) 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio ( -1_000_000 ) 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -2158,7 +2158,7 @@ failureTest24 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
--- | SwapDatum has a zero denominator for forwardPrice.
+-- | SwapDatum has a zero denominator for asset2Price.
 failureTest25 :: EmulatorTrace ()
 failureTest25 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -2184,8 +2184,8 @@ failureTest25 = do
         , unsafeAsset2Id = fst asset2
         , unsafeAsset2Name = snd asset2
         , unsafeAsset2Beacon = asset2Beacon'
-        , unsafeForwardPrice = (1,0)
-        , unsafeReversePrice = (1,1)
+        , unsafeAsset2Price = (1,0)
+        , unsafeAsset1Price = (1,1)
         , unsafePrevInput = Nothing
         }
 
@@ -2230,7 +2230,7 @@ failureTest25 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
--- | SwapDatum has a negative denominator for forwardPrice.
+-- | SwapDatum has a negative denominator for asset2Price.
 failureTest26 :: EmulatorTrace ()
 failureTest26 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -2256,8 +2256,8 @@ failureTest26 = do
         , unsafeAsset2Id = fst asset2
         , unsafeAsset2Name = snd asset2
         , unsafeAsset2Beacon = asset2Beacon'
-        , unsafeForwardPrice = (1,-1)
-        , unsafeReversePrice = (1,1)
+        , unsafeAsset2Price = (1,-1)
+        , unsafeAsset1Price = (1,1)
         , unsafePrevInput = Nothing
         }
 
@@ -2302,7 +2302,7 @@ failureTest26 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
--- | SwapDatum has a zero reversePrice.
+-- | SwapDatum has a zero asset1Price.
 failureTest27 :: EmulatorTrace ()
 failureTest27 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -2328,8 +2328,8 @@ failureTest27 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 0 1_000_000
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 0 1_000_000
         , prevInput = Nothing
         }
 
@@ -2374,7 +2374,7 @@ failureTest27 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
--- | SwapDatum has a negative reversePrice.
+-- | SwapDatum has a negative asset1Price.
 failureTest28 :: EmulatorTrace ()
 failureTest28 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -2400,8 +2400,8 @@ failureTest28 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio ( -1 ) 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio ( -1 ) 1_000_000
         , prevInput = Nothing
         }
 
@@ -2446,7 +2446,7 @@ failureTest28 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
--- | SwapDatum has a zero denominator for reversePrice.
+-- | SwapDatum has a zero denominator for asset1Price.
 failureTest29 :: EmulatorTrace ()
 failureTest29 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -2472,8 +2472,8 @@ failureTest29 = do
         , unsafeAsset2Id = fst asset2
         , unsafeAsset2Name = snd asset2
         , unsafeAsset2Beacon = asset2Beacon'
-        , unsafeForwardPrice = (1,1)
-        , unsafeReversePrice = (1,0)
+        , unsafeAsset2Price = (1,1)
+        , unsafeAsset1Price = (1,0)
         , unsafePrevInput = Nothing
         }
 
@@ -2518,7 +2518,7 @@ failureTest29 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
--- | SwapDatum has a negative denominator for reversePrice.
+-- | SwapDatum has a negative denominator for asset1Price.
 failureTest30 :: EmulatorTrace ()
 failureTest30 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -2544,8 +2544,8 @@ failureTest30 = do
         , unsafeAsset2Id = fst asset2
         , unsafeAsset2Name = snd asset2
         , unsafeAsset2Beacon = asset2Beacon'
-        , unsafeForwardPrice = (1,1)
-        , unsafeReversePrice = (1,-1)
+        , unsafeAsset2Price = (1,1)
+        , unsafeAsset1Price = (1,-1)
         , unsafePrevInput = Nothing
         }
 
@@ -2616,8 +2616,8 @@ failureTest31 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -2689,8 +2689,8 @@ failureTest32 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -2768,8 +2768,8 @@ failureTest33 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -2781,8 +2781,8 @@ failureTest33 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2'Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -2870,8 +2870,8 @@ failureTest34 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -2883,8 +2883,8 @@ failureTest34 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2'Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -2972,8 +2972,8 @@ failureTest35 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -2985,8 +2985,8 @@ failureTest35 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2'Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -3069,8 +3069,8 @@ failureTest36 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -3102,7 +3102,7 @@ failureTest36 = do
           [ UtxoOutput
               { toAddress = swapAddr
               , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum{forwardPrice = unsafeRatio 0 1}
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum{asset2Price = unsafeRatio 0 1}
                     , lovelaceValueOf 3_000_000 
                     <> singleton beaconSym pairBeacon' 1
                     <> singleton beaconSym asset1Beacon' 1
@@ -3149,8 +3149,8 @@ failureTest37 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -3189,7 +3189,7 @@ failureTest37 = do
                     <> singleton beaconSym asset2Beacon' 1
                     <> uncurry singleton assetY 10
                     )
-                  , ( Just $ TxOutDatumInline $ toDatum swapDatum{forwardPrice = unsafeRatio 0 1}
+                  , ( Just $ TxOutDatumInline $ toDatum swapDatum{asset2Price = unsafeRatio 0 1}
                     , lovelaceValueOf 3_000_000 
                     <> singleton beaconSym pairBeacon' 1
                     <> singleton beaconSym asset1Beacon' 1
@@ -3230,8 +3230,8 @@ benchTest1 numberCreated = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -3294,8 +3294,8 @@ benchTest2 numberCreated = do
                 , asset2Id = fst asset2
                 , asset2Name = snd asset2
                 , asset2Beacon = genAssetBeaconName asset2
-                , forwardPrice = unsafeRatio 1 1
-                , reversePrice = unsafeRatio 1 1
+                , asset2Price = unsafeRatio 1 1
+                , asset1Price = unsafeRatio 1 1
                 , prevInput = Nothing
                 }
             ) 
@@ -3412,21 +3412,21 @@ tests = do
     , checkPredicateOptions opts "failureTest22"
         (assertEvaluationError "Asset1 must be less than asset2") failureTest22
     , checkPredicateOptions opts "failureTest23"
-        (assertEvaluationError "forward_price numerator not > 0") failureTest23
+        (assertEvaluationError "asset2_price numerator not > 0") failureTest23
     , checkPredicateOptions opts "failureTest24"
-        (assertEvaluationError "forward_price numerator not > 0") failureTest24
+        (assertEvaluationError "asset2_price numerator not > 0") failureTest24
     , checkPredicateOptions opts "failureTest25"
-        (assertEvaluationError "forward_price denominator not > 0") failureTest25
+        (assertEvaluationError "asset2_price denominator not > 0") failureTest25
     , checkPredicateOptions opts "failureTest26"
-        (assertEvaluationError "forward_price denominator not > 0") failureTest26
+        (assertEvaluationError "asset2_price denominator not > 0") failureTest26
     , checkPredicateOptions opts "failureTest27"
-        (assertEvaluationError "reverse_price numerator not > 0") failureTest27
+        (assertEvaluationError "asset1_price numerator not > 0") failureTest27
     , checkPredicateOptions opts "failureTest28"
-        (assertEvaluationError "reverse_price numerator not > 0") failureTest28
+        (assertEvaluationError "asset1_price numerator not > 0") failureTest28
     , checkPredicateOptions opts "failureTest29"
-        (assertEvaluationError "reverse_price denominator not > 0") failureTest29
+        (assertEvaluationError "asset1_price denominator not > 0") failureTest29
     , checkPredicateOptions opts "failureTest30"
-        (assertEvaluationError "reverse_price denominator not > 0") failureTest30
+        (assertEvaluationError "asset1_price denominator not > 0") failureTest30
     , checkPredicateOptions opts "failureTest31"
         (assertEvaluationError "No extraneous assets allowed in the UTxO") failureTest31
     , checkPredicateOptions opts "failureTest32"
@@ -3438,9 +3438,9 @@ tests = do
     , checkPredicateOptions opts "failureTest35"
         (assertEvaluationError "UTxO has wrong beacons") failureTest35
     , checkPredicateOptions opts "failureTest36"
-        (assertEvaluationError "forward_price numerator not > 0") failureTest36
+        (assertEvaluationError "asset2_price numerator not > 0") failureTest36
     , checkPredicateOptions opts "failureTest37"
-        (assertEvaluationError "forward_price numerator not > 0") failureTest37
+        (assertEvaluationError "asset2_price numerator not > 0") failureTest37
 
       -- Benchmark tests
     , checkPredicateOptions opts "benchTest1"
@@ -3455,5 +3455,5 @@ tests = do
         (Test.not assertNoFailedTransactions) $ benchTest2 26
     ]
 
-testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig failureTest37
+testTrace :: EmulatorTrace () -> IO ()
+testTrace = runEmulatorTraceIO' def emConfig

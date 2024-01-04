@@ -141,8 +141,8 @@ regressionTest1 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -215,7 +215,7 @@ regressionTest1 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -265,8 +265,8 @@ regressionTest2 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -339,7 +339,7 @@ regressionTest2 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ReverseSwap
+              , spendRedeemer = toRedeemer TakeAsset1
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -391,8 +391,8 @@ regressionTest3 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -465,7 +465,7 @@ regressionTest3 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = swaps
               }
@@ -522,8 +522,8 @@ regressionTest4 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -596,7 +596,7 @@ regressionTest4 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ReverseSwap
+              , spendRedeemer = toRedeemer TakeAsset1
               , spendFromAddress = swapAddr
               , spendUtxos = swaps
               }
@@ -660,8 +660,8 @@ regressionTest5 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -741,13 +741,13 @@ regressionTest5 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr1
               , spendUtxos = swaps1
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr2
               , spendUtxos = swaps2
               }
@@ -814,8 +814,8 @@ regressionTest6 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -895,13 +895,13 @@ regressionTest6 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ReverseSwap
+              , spendRedeemer = toRedeemer TakeAsset1
               , spendFromAddress = swapAddr1
               , spendUtxos = swaps1
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ReverseSwap
+              , spendRedeemer = toRedeemer TakeAsset1
               , spendFromAddress = swapAddr2
               , spendUtxos = swaps2
               }
@@ -963,8 +963,8 @@ regressionTest7 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 2 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 2 1
         , prevInput = Nothing
         }
 
@@ -1037,7 +1037,7 @@ regressionTest7 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ReverseSwap
+              , spendRedeemer = toRedeemer TakeAsset1
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -1097,8 +1097,8 @@ regressionTest8 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon1
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -1110,8 +1110,8 @@ regressionTest8 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2Beacon2
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
   
@@ -1194,13 +1194,13 @@ regressionTest8 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr1
               , spendUtxos = [ swap1 ]
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr2
               , spendUtxos = [ swap2 ]
               }
@@ -1272,8 +1272,8 @@ regressionTest9 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon1
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -1285,8 +1285,8 @@ regressionTest9 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2Beacon2
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
   
@@ -1369,13 +1369,13 @@ regressionTest9 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr1
               , spendUtxos = [ swap1 ]
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr2
               , spendUtxos = [ swap2 ]
               }
@@ -1436,8 +1436,8 @@ regressionTest10 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -1518,7 +1518,7 @@ regressionTest10 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -1599,8 +1599,8 @@ regressionTest11 = do
         , asset2Id = fst asset21
         , asset2Name = snd asset21
         , asset2Beacon = asset2Beacon1
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -1612,8 +1612,8 @@ regressionTest11 = do
         , asset2Id = fst asset22
         , asset2Name = snd asset22
         , asset2Beacon = asset2Beacon2
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
       swapDatum3 = SwapDatum
@@ -1625,8 +1625,8 @@ regressionTest11 = do
         , asset2Id = fst asset23
         , asset2Name = snd asset23
         , asset2Beacon = asset2Beacon3
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
       swapDatum4 = SwapDatum
@@ -1638,8 +1638,8 @@ regressionTest11 = do
         , asset2Id = fst asset24
         , asset2Name = snd asset24
         , asset2Beacon = asset2Beacon4
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
   
@@ -1838,8 +1838,8 @@ regressionTest12 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 2 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 2 1
         , prevInput = Nothing
         }
 
@@ -1953,7 +1953,7 @@ regressionTest12 = do
           , UtxoOutput
               { toAddress = swapAddr2
               , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum{forwardPrice = unsafeRatio 2 1}
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum{asset2Price = unsafeRatio 2 1}
                     , lovelaceValueOf 3_000_000 
                     <> singleton beaconSym pairBeacon' 1
                     <> singleton beaconSym asset1Beacon' 1
@@ -1993,8 +1993,8 @@ regressionTest13 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -2067,7 +2067,7 @@ regressionTest13 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -2119,8 +2119,8 @@ failureTest1 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -2187,7 +2187,7 @@ failureTest1 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -2232,8 +2232,8 @@ failureTest2 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -2306,7 +2306,7 @@ failureTest2 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -2353,8 +2353,8 @@ failureTest3 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -2427,7 +2427,7 @@ failureTest3 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -2474,8 +2474,8 @@ failureTest4 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -2548,7 +2548,7 @@ failureTest4 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -2568,7 +2568,7 @@ failureTest4 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
--- | When using `ForwardSwap`, not enough of the ask asset given.
+-- | When using `TakeAsset2`, not enough of the ask asset given.
 failureTest5 :: EmulatorTrace ()
 failureTest5 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -2595,8 +2595,8 @@ failureTest5 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -2669,7 +2669,7 @@ failureTest5 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -2690,7 +2690,7 @@ failureTest5 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
--- | When using `ReverseSwap`, not enough of the ask asset given.
+-- | When using `TakeAsset1`, not enough of the ask asset given.
 failureTest6 :: EmulatorTrace ()
 failureTest6 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -2717,8 +2717,8 @@ failureTest6 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -2791,7 +2791,7 @@ failureTest6 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ReverseSwap
+              , spendRedeemer = toRedeemer TakeAsset1
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -2840,8 +2840,8 @@ failureTest7 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -2914,7 +2914,7 @@ failureTest7 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -2965,8 +2965,8 @@ failureTest8 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -3039,7 +3039,7 @@ failureTest8 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -3090,8 +3090,8 @@ failureTest9 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -3164,7 +3164,7 @@ failureTest9 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -3215,8 +3215,8 @@ failureTest10 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -3289,7 +3289,7 @@ failureTest10 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -3340,8 +3340,8 @@ failureTest11 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -3414,7 +3414,7 @@ failureTest11 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -3465,8 +3465,8 @@ failureTest12 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -3539,7 +3539,7 @@ failureTest12 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -3590,8 +3590,8 @@ failureTest13 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -3664,7 +3664,7 @@ failureTest13 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -3715,8 +3715,8 @@ failureTest14 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -3789,7 +3789,7 @@ failureTest14 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -3813,7 +3813,7 @@ failureTest14 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
--- | Output's SwapDatum has wrong forwardPrice.
+-- | Output's SwapDatum has wrong asset2Price.
 failureTest15 :: EmulatorTrace ()
 failureTest15 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -3840,8 +3840,8 @@ failureTest15 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -3914,7 +3914,7 @@ failureTest15 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -3925,7 +3925,7 @@ failureTest15 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline 
                            $ toDatum swapDatum{ prevInput = Just swap
-                                              , forwardPrice = unsafeRatio 0 1
+                                              , asset2Price = unsafeRatio 0 1
                                               }
                     , lovelaceValueOf 13_000_000 
                     <> singleton beaconSym pairBeacon' 1
@@ -3938,7 +3938,7 @@ failureTest15 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
--- | Output's SwapDatum has wrong reversePrice.
+-- | Output's SwapDatum has wrong asset1Price.
 failureTest16 :: EmulatorTrace ()
 failureTest16 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -3965,8 +3965,8 @@ failureTest16 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -4039,7 +4039,7 @@ failureTest16 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -4050,7 +4050,7 @@ failureTest16 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline 
                            $ toDatum swapDatum{ prevInput = Just swap
-                                              , reversePrice = unsafeRatio 0 1
+                                              , asset1Price = unsafeRatio 0 1
                                               }
                     , lovelaceValueOf 13_000_000 
                     <> singleton beaconSym pairBeacon' 1
@@ -4091,8 +4091,8 @@ failureTest17 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -4165,7 +4165,7 @@ failureTest17 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = swaps
               }
@@ -4223,8 +4223,8 @@ failureTest18 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon1
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -4236,8 +4236,8 @@ failureTest18 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2Beacon2
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
   
@@ -4320,13 +4320,13 @@ failureTest18 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr1
               , spendUtxos = [ swap1 ]
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr2
               , spendUtxos = [ swap2 ]
               }
@@ -4389,8 +4389,8 @@ failureTest19 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon1
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -4402,8 +4402,8 @@ failureTest19 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2Beacon2
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
   
@@ -4486,13 +4486,13 @@ failureTest19 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr1
               , spendUtxos = [ swap1 ]
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr2
               , spendUtxos = [ swap2 ]
               }
@@ -4563,8 +4563,8 @@ failureTest20 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon1
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -4576,8 +4576,8 @@ failureTest20 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2Beacon2
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
   
@@ -4660,13 +4660,13 @@ failureTest20 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr1
               , spendUtxos = [ swap1 ]
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr2
               , spendUtxos = [ swap2 ]
               }
@@ -4737,8 +4737,8 @@ failureTest21 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon1
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -4750,8 +4750,8 @@ failureTest21 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2Beacon2
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
   
@@ -4834,13 +4834,13 @@ failureTest21 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr1
               , spendUtxos = [ swap1 ]
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr2
               , spendUtxos = [ swap2 ]
               }
@@ -4901,8 +4901,8 @@ failureTest22 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -4975,7 +4975,7 @@ failureTest22 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -5024,8 +5024,8 @@ failureTest23 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -5098,7 +5098,7 @@ failureTest23 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -5157,8 +5157,8 @@ failureTest24 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon1
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -5170,8 +5170,8 @@ failureTest24 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2Beacon2
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
   
@@ -5254,13 +5254,13 @@ failureTest24 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr1
               , spendUtxos = [ swap1 ]
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr2
               , spendUtxos = [ swap2 ]
               }
@@ -5332,8 +5332,8 @@ failureTest25 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon1
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -5345,8 +5345,8 @@ failureTest25 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2Beacon2
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
   
@@ -5429,13 +5429,13 @@ failureTest25 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr1
               , spendUtxos = [ swap1 ]
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr2
               , spendUtxos = [ swap2 ]
               }
@@ -5496,8 +5496,8 @@ failureTest26 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 2 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 2 1
         , prevInput = Nothing
         }
 
@@ -5570,7 +5570,7 @@ failureTest26 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ReverseSwap
+              , spendRedeemer = toRedeemer TakeAsset1
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -5620,8 +5620,8 @@ failureTest27 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 2 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 2 1
         , prevInput = Nothing
         }
 
@@ -5696,7 +5696,7 @@ failureTest27 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ReverseSwap
+              , spendRedeemer = toRedeemer TakeAsset1
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -5747,8 +5747,8 @@ benchTest1 numberSwapped = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -5827,7 +5827,7 @@ benchTest1 numberSwapped = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = map fst swaps
               }
@@ -5875,8 +5875,8 @@ benchTest2 numberSwapped = do
                 , asset2Id = fst asset2
                 , asset2Name = snd asset2
                 , asset2Beacon = genAssetBeaconName asset2
-                , forwardPrice = unsafeRatio 1 1
-                , reversePrice = unsafeRatio 1 1
+                , asset2Price = unsafeRatio 1 1
+                , asset1Price = unsafeRatio 1 1
                 , prevInput = Nothing
                 }
             ) 
@@ -5937,7 +5937,7 @@ benchTest2 numberSwapped = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ReverseSwap
+              , spendRedeemer = toRedeemer TakeAsset1
               , spendFromAddress = swapAddr
               , spendUtxos = map fst swaps
               }
@@ -6071,4 +6071,4 @@ tests = do
     ]
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig regressionTest13
+testTrace = runEmulatorTraceIO' def emConfig failureTest24

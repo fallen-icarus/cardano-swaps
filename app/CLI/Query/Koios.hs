@@ -275,6 +275,6 @@ assetToQueryParam (currSym,tokName) =
 prices :: OfferAsset -> AskAsset -> SwapUTxO -> PlutusRational
 prices _ _ SwapUTxO{swapDatum = Just (OneWayDatum OneWaySwapDatum{..})} = oneWaySwapPrice
 prices (OfferAsset offer) (AskAsset ask) SwapUTxO{swapDatum = Just (TwoWayDatum TwoWaySwapDatum{..})}
-  | offer < ask = twoWayReversePrice
-  | otherwise = twoWayForwardPrice
+  | offer < ask = twoWayAsset1Price
+  | otherwise = twoWayAsset2Price
 prices _ _ _ = error "CLI.Query.Koios.prices used on swap without datum"

@@ -4,7 +4,7 @@
 dir="../../../ignored/swap-files/"
 tmpDir="../../../ignored/tmp/"
 
-swapAddr1="addr_test1zrd7gr0cwkclrhxq4p6m7qnwha77sk7adrc873wym5em40eualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqsq4qg4"
+swapAddr1="addr_test1zqql5djxthlrdcnvy87m7uswf0d0es9cdw6nvl72gcqj743ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqv7yg2s"
 
 swapDatumFile1="${dir}swapDatum1.json"
 
@@ -19,13 +19,10 @@ cardano-swaps spending-redeemers one-way \
 # Create the new swap datum.
 echo "Creating the new swap datum..."
 cardano-swaps datums one-way \
-  --ask-lovelace \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 54657374546f6b656e31 \
-  --price-numerator 1000000 \
-  --price-denominator 1 \
-  --tx-hash 1222c97808e9fb8b2212d0d337f6744072c74cb1cae660e0160e5bbd97fc434f \
-  --output-index 0 \
+  --ask-asset lovelace \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
+  --offer-price 1000000 \
+  --input-swap-ref 8f224fb4d358bfc9c05b1784d412c2b9161d66a2246734a400a52578ceef26f5#0 \
   --out-file $swapDatumFile1
 
 # Helper beacon variables.
@@ -34,18 +31,16 @@ beaconPolicyId1=$(cardano-swaps beacon-info one-way policy-id \
   --stdout)
 
 pairBeaconName1=$(cardano-swaps beacon-info one-way pair-beacon \
-  --ask-lovelace \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 54657374546f6b656e31 \
+  --ask-asset lovelace \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
   --stdout)
 
 offerBeaconName1=$(cardano-swaps beacon-info one-way offer-beacon \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 54657374546f6b656e31 \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
   --stdout)
 
 askBeaconName1=$(cardano-swaps beacon-info one-way ask-beacon \
-  --ask-lovelace \
+  --ask-asset lovelace \
   --stdout)
 
 pairBeacon1="${beaconPolicyId1}.${pairBeaconName1}"
@@ -54,9 +49,9 @@ askBeacon1="${beaconPolicyId1}.${askBeaconName1}"
 
 # Create the transaction.
 cardano-cli transaction build \
-  --tx-in dfcdd809ffafc52112e68e734f6ca1603aab6c02317579254eb89a84570ca63d#1 \
-  --tx-in 1222c97808e9fb8b2212d0d337f6744072c74cb1cae660e0160e5bbd97fc434f#0 \
-  --spending-tx-in-reference 98471060e651cc6e60b863f2bb37bdefbc64d8faa17513aa2974f0beec8430d6#0 \
+  --tx-in 67b735bc6f14e5639ad49ad226a052281cf96616ba9b1dfc498e75e6ecca09d1#0 \
+  --tx-in 8f224fb4d358bfc9c05b1784d412c2b9161d66a2246734a400a52578ceef26f5#0 \
+  --spending-tx-in-reference 8762f07fef0c5137ee7d6d8bce962f29554f1ddff3883f1b2d2fc39f213df94c#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \

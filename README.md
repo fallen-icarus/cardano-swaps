@@ -515,12 +515,12 @@ Four spending script redeemers are introduced here; their usage is explained fur
 data SwapRedeemer
   = SpendWithMint -- ^ Delegates checks to the beacon script's minting policy execution.
   | SpendWithStake -- ^ Delegates checks to the beacon script's staking script execution.
-  | ForwardSwap
-  | ReverseSwap
+  | TakeAsset1 -- ^ Take asset 1 from the swap and give asset 2.
+  | TakeAsset2 -- ^ Take asset 2 from the swap and give asset 1.
 ```
 
 Only the owner (signified by the address' staking credential) can use the `SpendWithMint` and
-`SpendWithStake` redeemers. Anyone can use the `ForwardSwap` or `ReverseSwap` redeemers as long as
+`SpendWithStake` redeemers. Anyone can use the `TakeAsset1` or `TakeAsset2` redeemers as long as
 the swap conditions are met.
 
 ##### Datums
@@ -536,8 +536,8 @@ data SwapDatum = SwapDatum
   , asset2Id :: CurrencySymbol -- ^ The policy id for the second asset in the sorted pair.
   , asset2Name :: TokenName -- ^ The asset name for the second asset in the sorted pair.
   , asset2Beacon :: TokenName -- ^ The asset name for the asset2 beacon.
-  , forwardPrice :: Rational -- ^ The swap price as a fraction: Asset1/Asset2.
-  , reversePrice :: Rational -- ^ The swap price as a fraction: Asset2/Asset1.
+  , asset1Price :: Rational -- ^ The swap price to take asset1 as a fraction: Asset2/Asset1.
+  , asset2Price :: Rational -- ^ The swap price to take asset2 as a fraction: Asset1/Asset2.
   , prevInput :: Maybe TxOutRef -- ^ The output reference for the corresponding swap input.
   }
 ```
@@ -553,8 +553,8 @@ askedAsset/offeredAsset. For example, if ADA is being offered for DUST at a pric
 to 3/2), the contract requires that 3 DUST are deposited for every 2 ADA removed from the swap
 address. Ratios of DUST:ADA >= 3/2 will pass, while ratios < 3/2 will fail.
 
-Since all prices are askedAsset/offeredAsset, asset2 is being offered in `forwardPrice` and asset1
-is being offered in `reversePrice`.
+Since all prices are askedAsset/offeredAsset, asset2 is being offered in `asset2Price` and asset1
+is being offered in `asset1Price`.
 
 When engaging in swaps, it is only necessary that the desired swap ratio is met; **not all assets in
 the UTxO must be swapped.** For example, if there is 100 ADA in a swap requesting 2:1 for DUST, a
@@ -586,10 +586,10 @@ beacons with this redeemer, **all of the following must be true**:
     - `asset2Id` == policy id of asset2 for that trading pair.
     - `asset2Name` == asset name of asset2 for that trading pair.
     - `asset2Beacon` == beacon asset name for asset2.
-    - `forwardPrice` denominator > 0
-    - `forwardPrice` > 0
-    - `reversePrice` denominator > 0
-    - `reversePrice` > 0
+    - `asset1Price` denominator > 0
+    - `asset1Price` > 0
+    - `asset2Price` denominator > 0
+    - `asset2Price` > 0
     - asset1 < asset2
 
 The spending script will assume that the trading pairs are sorted which is why asset1 must be less
@@ -639,10 +639,10 @@ spending script redeemer is used, the beacon script must be executed as a stakin
     - `asset2Id` == policy id of asset2 for that trading pair.
     - `asset2Name` == asset name of asset2 for that trading pair.
     - `asset2Beacon` == beacon asset name for asset2.
-    - `forwardPrice` denominator > 0
-    - `forwardPrice` > 0
-    - `reversePrice` denominator > 0
-    - `reversePrice` > 0
+    - `asset1Price` denominator > 0
+    - `asset1Price` > 0
+    - `asset2Price` denominator > 0
+    - `asset2Price` > 0
     - asset1 < asset2
 6) The address' staking credential must approve.
 7) Any unused beacons must be burned.
@@ -673,10 +673,10 @@ redundant.
 
 ##### Executing a Two-Way Swap
 
-Any Cardano user can execute an available swap using either the `ForwardSwap` or `ReverseSwap`
-redeemer as long as the swap conditions are met. When `ForwardSwap` is used, the `forwardPrice` is
-used and asset2 is the offer asset while asset1 is the ask asset. When `ReverseSwap` is used, the
-`reversePrice` is used and asset1 is the offer asset and asset2 is the ask asset.
+Any Cardano user can execute an available swap using either the `TakeAsset1` or `TakeAsset1`
+redeemer as long as the swap conditions are met. When `TakeAsset1` is used, the `asset1Price` is
+used, and asset1 is the offer asset while asset2 is the ask asset. When `TakeAsset2` is used, the
+`asset2Price` is used, and asset2 is the offer asset and asset1 is the ask asset.
 
 At a high level, the spending script uses the swap input's output reference and datum to find the
 corresponding swap output. The checks are essentially:

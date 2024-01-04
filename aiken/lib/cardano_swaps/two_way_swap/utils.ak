@@ -214,15 +214,15 @@ fn valid_swap_output(
     asset2_id_,
     asset2_name_,
     asset2_beacon_,
-    forward_price_,
-    reverse_price_,
+    asset1_price_,
+    asset2_price_,
     _ // prev_input does not need to be check.
   ) = parse_datum(output_datum)
 
   let asset1 = AssetConfig(asset1_id_,asset1_name_)
   let asset2 = AssetConfig(asset2_id_,asset2_name_)
-  let Rational(rev_price_num_,rev_price_den_) = reverse_price_
-  let Rational(for_price_num_,for_price_den_) = forward_price_
+  let Rational(asset2_price_num_,asset2_price_den_) = asset2_price_
+  let Rational(asset1_price_num_,asset1_price_den_) = asset1_price_
 
   let (o,_,_) = 
     extract_ask_and_offer_quantity(
@@ -264,28 +264,28 @@ fn valid_swap_output(
     asset2_beacon_ == generate_asset_beacon(asset2_id_,asset2_name_)
   ) &&
 
-  // The forward_price denominator must be > 0.
+  // The asset1_price denominator must be > 0.
   trace_if_false( 
-    @"forward_price denominator not > 0", 
-    for_price_den_ > 0 
+    @"asset1_price denominator not > 0", 
+    asset1_price_den_ > 0 
   ) &&
 
-  // The forward_price must be > 0.
+  // The asset1_price must be > 0.
   trace_if_false(
-    @"forward_price numerator not > 0", 
-    for_price_num_ > 0 
+    @"asset1_price numerator not > 0", 
+    asset1_price_num_ > 0 
   ) &&
 
-  // The reverse_price denominator must be > 0.
+  // The asset2_price denominator must be > 0.
   trace_if_false( 
-    @"reverse_price denominator not > 0", 
-    rev_price_den_ > 0
+    @"asset2_price denominator not > 0", 
+    asset2_price_den_ > 0
   ) &&
 
-  // The reverse_price must be > 0.
+  // The asset2_price must be > 0.
   trace_if_false( 
-    @"reverse_price numerator not > 0", 
-    rev_price_num_ > 0
+    @"asset2_price numerator not > 0", 
+    asset2_price_num_ > 0
   ) &&
 
   // This is just to force the extract_ask_and_offer_quantity function to be executed.
@@ -317,10 +317,10 @@ pub fn beacon_destination_check(
   //      f) `asset2_id` == policy id of asset2 for that trading_pair.
   //      g) `asset2_name` == asset name of asset2 for that trading_pair.
   //      h) `asset2_beacon` == sha2_256(asset2_id ++ asset2_name).
-  //      i) `forward_price` denominator > 0
-  //      j) `forward_price` numerator > 0
-  //      k) `reverse_price` denominator > 0
-  //      l) `reverse_price` numerator > 0
+  //      i) `asset1_price` denominator > 0
+  //      j) `asset1_price` numerator > 0
+  //      k) `asset2_price` denominator > 0
+  //      l) `asset2_price` numerator > 0
   //      m) asset1 < asset2
   //
   // The validator assumes the trading pairs are sorted which is why asset1 must be less than
@@ -458,10 +458,10 @@ pub fn valid_swap(
   asset2_id: PolicyId,
   asset2_name: AssetName,
   asset2_beacon: AssetName,
-  forward_price: Rational,
-  reverse_price: Rational,
+  asset1_price: Rational,
+  asset2_price: Rational,
   outputs: List<Output>,
-  reverse: Bool // Whether the `ReverseSwap` redeemer was used. Simpler than passing the redeemer.
+  taking_asset2: Bool // Whether asset2 is being taken.
 ) -> Bool {
   
   let req_datum =
@@ -474,17 +474,17 @@ pub fn valid_swap(
       asset2_id,
       asset2_name,
       asset2_beacon,
-      forward_price,
-      reverse_price,
+      asset1_price,
+      asset2_price,
       Some(input_ref)
     ) |> InlineDatum
 
   // Which asset is ask/offer and what price should be used.
   let (offer_id,offer_name,offer_beacon,ask_id,ask_name,ask_beacon,Rational(price_num,price_den)) = 
-    if reverse { 
-      (asset1_id,asset1_name,asset1_beacon,asset2_id,asset2_name,asset2_beacon,reverse_price) 
+    if taking_asset2 { 
+      (asset2_id,asset2_name,asset2_beacon,asset1_id,asset1_name,asset1_beacon,asset2_price) 
     } else { 
-      (asset2_id,asset2_name,asset2_beacon,asset1_id,asset1_name,asset1_beacon,forward_price) 
+      (asset1_id,asset1_name,asset1_beacon,asset2_id,asset2_name,asset2_beacon,asset1_price) 
     }
 
   // Get the values in the inputs.

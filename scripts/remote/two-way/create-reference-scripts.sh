@@ -26,16 +26,16 @@ cardano-swaps protocol-params \
   --testnet \
   --out-file "${tmpDir}protocol.json"
 
-initial_change=147545056
+initial_change=$((8180352038))
 
 echo "Building the initial transaction..."
 cardano-cli transaction build-raw \
-  --tx-in 825a452672dff10a4ae463caa9c53cce428658b04a53a299e227fff87286757f#0 \
-  --tx-in 825a452672dff10a4ae463caa9c53cce428658b04a53a299e227fff87286757f#1 \
-  --tx-in 776e817ebe6d4094d0fffba4bd175d90c8c883d5e18061dae2c3263af670c212#2 \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 31000000 lovelace " \
+  --tx-in 38fd18f4ca7c6587eb2703ac3bfd42e1406d089901e2c29f158358fdda5b196a#0 \
+  --tx-in 38fd18f4ca7c6587eb2703ac3bfd42e1406d089901e2c29f158358fdda5b196a#1 \
+  --tx-in 44f58115ad9738de64bb5624b495a2e7abddfdbe055df474d7d980af1244d64e#1 \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 24000000 lovelace " \
   --tx-out-reference-script-file $swapScriptFile \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 19000000 lovelace " \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 22000000 lovelace " \
   --tx-out-reference-script-file $beaconPolicyFile \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + ${initial_change} lovelace " \
   --fee 0 \
@@ -52,12 +52,12 @@ req_fee=$(cardano-cli transaction calculate-min-fee \
 
 echo "Rebuilding the transaction with the required fee..."
 cardano-cli transaction build-raw \
-  --tx-in 825a452672dff10a4ae463caa9c53cce428658b04a53a299e227fff87286757f#0 \
-  --tx-in 825a452672dff10a4ae463caa9c53cce428658b04a53a299e227fff87286757f#1 \
-  --tx-in 776e817ebe6d4094d0fffba4bd175d90c8c883d5e18061dae2c3263af670c212#2 \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 31000000 lovelace " \
+  --tx-in 38fd18f4ca7c6587eb2703ac3bfd42e1406d089901e2c29f158358fdda5b196a#0 \
+  --tx-in 38fd18f4ca7c6587eb2703ac3bfd42e1406d089901e2c29f158358fdda5b196a#1 \
+  --tx-in 44f58115ad9738de64bb5624b495a2e7abddfdbe055df474d7d980af1244d64e#1 \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 24000000 lovelace " \
   --tx-out-reference-script-file $swapScriptFile \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 19000000 lovelace " \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 22000000 lovelace " \
   --tx-out-reference-script-file $beaconPolicyFile \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + $((initial_change-req_fee)) lovelace " \
   --fee "$req_fee" \

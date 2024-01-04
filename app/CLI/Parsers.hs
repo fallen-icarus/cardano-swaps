@@ -101,9 +101,9 @@ pCreateOneWayDatum = CreateDatum <$> pInternalOneWaySwapDatum <*> pOutputFile
     pInternalOneWaySwapDatum :: Parser InternalDatum
     pInternalOneWaySwapDatum = 
       InternalOneWaySwapDatum 
-        <$> (OfferAsset <$> pOneWayAsset "offer")
-        <*> (AskAsset <$> pOneWayAsset "ask")
-        <*> pPrice "price"
+        <$> (OfferAsset <$> pAssetConfig "offer")
+        <*> (AskAsset <$> pAssetConfig "ask")
+        <*> pPrice "offer"
         <*> pPrevInput
 
 pCreateTwoWayDatum :: Parser Command
@@ -112,9 +112,9 @@ pCreateTwoWayDatum = CreateDatum <$> pInternalTwoWaySwapDatum <*> pOutputFile
     pInternalTwoWaySwapDatum :: Parser InternalDatum
     pInternalTwoWaySwapDatum = 
       InternalTwoWaySwapDatum 
-        <$> ((,) <$> pTwoWayAsset "asset1" <*> pTwoWayAsset "asset2")
-        <*> pPrice "forward-price"
-        <*> pPrice "reverse-price"
+        <$> ((,) <$> pAssetConfig "first" <*> pAssetConfig "second")
+        <*> pPrice "first"
+        <*> pPrice "second"
         <*> pPrevInput
 
 -------------------------------------------------
@@ -168,13 +168,13 @@ pCreateTwoWaySpendingRedeemer =
     pKnownTwoWayRedeemer :: Parser InternalTwoWaySwapRedeemer
     pKnownTwoWayRedeemer = 
       KnownTwoWaySwapRedeemer 
-        <$> (pClose <|> pUpdateMint <|> pUpdateStake <|> pForwardSwap <|> pReverseSwap)
+        <$> (pClose <|> pUpdateMint <|> pUpdateStake <|> pTakeAsset1 <|> pTakeAsset2)
 
     pUnknownTwoWaySwapRedeemer :: Parser InternalTwoWaySwapRedeemer
     pUnknownTwoWaySwapRedeemer = 
       UnknownTwoWaySwapRedeemer 
-        <$> (OfferAsset <$> pOneWayAsset "offer") 
-        <*> (AskAsset <$> pOneWayAsset "ask")
+        <$> (OfferAsset <$> pAssetConfig "offer") 
+        <*> (AskAsset <$> pAssetConfig "ask")
 
     pClose :: Parser TwoWaySwapRedeemer
     pClose = flag' TwoWaySpendWithMint
@@ -194,16 +194,16 @@ pCreateTwoWaySpendingRedeemer =
       <> help "Update swap(s) when NOT minting/burning beacons in tx."
       )
 
-    pForwardSwap :: Parser TwoWaySwapRedeemer
-    pForwardSwap = flag' TwoWayForwardSwap
-      (  long "forward-swap" 
-      <> help "Take asset2 from a swap."
+    pTakeAsset1 :: Parser TwoWaySwapRedeemer
+    pTakeAsset1 = flag' TwoWayTakeAsset1
+      (  long "take-asset1" 
+      <> help "Take asset1 from a swap."
       )
 
-    pReverseSwap :: Parser TwoWaySwapRedeemer
-    pReverseSwap = flag' TwoWayReverseSwap
-      (  long "reverse-swap" 
-      <> help "Take asset1 from a swap."
+    pTakeAsset2 :: Parser TwoWaySwapRedeemer
+    pTakeAsset2 = flag' TwoWayTakeAsset2
+      (  long "take-asset2" 
+      <> help "Take asset2 from a swap."
       )
 
 -------------------------------------------------
@@ -282,20 +282,20 @@ pOneWayBeaconInfo = hsubparser $ mconcat
     pOfferName :: Parser Command
     pOfferName = 
       BeaconInfo
-        <$> (OneWayOfferBeaconName <$> (OfferAsset <$> pOneWayAsset "offer"))
+        <$> (OneWayOfferBeaconName <$> (OfferAsset <$> pAssetConfig "offer"))
         <*> pOutput
 
     pAskName :: Parser Command
     pAskName = 
       BeaconInfo
-        <$> (OneWayAskBeaconName <$> (AskAsset <$> pOneWayAsset "ask"))
+        <$> (OneWayAskBeaconName <$> (AskAsset <$> pAssetConfig "ask"))
         <*> pOutput
 
     pPairName :: Parser Command
     pPairName = 
       BeaconInfo
         <$> ( fmap OneWayPairBeaconName . (,) 
-                <$> (OfferAsset <$> pOneWayAsset "offer") <*> (AskAsset <$> pOneWayAsset "ask")
+                <$> (OfferAsset <$> pAssetConfig "offer") <*> (AskAsset <$> pAssetConfig "ask")
             )
         <*> pOutput
 
@@ -316,7 +316,7 @@ pTwoWayBeaconInfo = hsubparser $ mconcat
     pAssetName = 
       BeaconInfo
         <$> ( TwoWayAssetBeaconName 
-                <$> (pTwoWayAsset "asset1" <|> pTwoWayAsset "asset2")
+                <$> (pAssetConfig "first" <|> pAssetConfig "second")
             )
         <*> pOutput
 
@@ -324,7 +324,7 @@ pTwoWayBeaconInfo = hsubparser $ mconcat
     pPairName = 
       BeaconInfo
         <$> ( fmap TwoWayPairBeaconName . (,) 
-                <$> pTwoWayAsset "asset1" <*> pTwoWayAsset "asset2"
+                <$> pAssetConfig "first" <*> pAssetConfig "second"
             )
         <*> pOutput
 
@@ -414,7 +414,7 @@ parseQueryOwnOneWaySwaps = fmap QueryOwnSwaps . hsubparser $ mconcat
         <$> pNetwork
         <*> pEndpoint
         <*> pUserAddress
-        <*> (OfferAsset <$> pOneWayAsset "offer")
+        <*> (OfferAsset <$> pAssetConfig "offer")
         <*> pFormat
         <*> pOutput
 
@@ -424,7 +424,7 @@ parseQueryOwnOneWaySwaps = fmap QueryOwnSwaps . hsubparser $ mconcat
         <$> pNetwork
         <*> pEndpoint
         <*> pUserAddress
-        <*> (AskAsset <$> pOneWayAsset "ask")
+        <*> (AskAsset <$> pAssetConfig "ask")
         <*> pFormat
         <*> pOutput
 
@@ -435,8 +435,8 @@ parseQueryOwnOneWaySwaps = fmap QueryOwnSwaps . hsubparser $ mconcat
         <$> pNetwork
         <*> pEndpoint
         <*> pUserAddress
-        <*> (OfferAsset <$> pOneWayAsset "offer")
-        <*> (AskAsset <$> pOneWayAsset "ask")
+        <*> (OfferAsset <$> pAssetConfig "offer")
+        <*> (AskAsset <$> pAssetConfig "ask")
         <*> pFormat
         <*> pOutput
 
@@ -467,7 +467,7 @@ parseQueryOwnTwoWaySwaps = fmap QueryOwnSwaps . hsubparser $ mconcat
         <$> pNetwork
         <*> pEndpoint
         <*> pUserAddress
-        <*> pOneWayAsset "offer"
+        <*> pAssetConfig "offer"
         <*> pFormat
         <*> pOutput
 
@@ -477,7 +477,7 @@ parseQueryOwnTwoWaySwaps = fmap QueryOwnSwaps . hsubparser $ mconcat
         <$> pNetwork
         <*> pEndpoint
         <*> pUserAddress
-        <*> pOneWayAsset "ask" 
+        <*> pAssetConfig "ask" 
         <*> pFormat
         <*> pOutput
 
@@ -487,7 +487,7 @@ parseQueryOwnTwoWaySwaps = fmap QueryOwnSwaps . hsubparser $ mconcat
         <$> pNetwork
         <*> pEndpoint
         <*> pUserAddress
-        <*> ((,) <$> pTwoWayAsset "asset1" <*> pTwoWayAsset "asset2")
+        <*> ((,) <$> pAssetConfig "first" <*> pAssetConfig "second")
         <*> pFormat
         <*> pOutput
 
@@ -506,7 +506,7 @@ parseQueryAll = fmap QueryAllSwaps . hsubparser $ mconcat
       QueryAllSwapsByOffer
         <$> pNetwork
         <*> pEndpoint
-        <*> (OfferAsset <$> pOneWayAsset "offer")
+        <*> (OfferAsset <$> pAssetConfig "offer")
         <*> pFormat
         <*> pOutput
 
@@ -515,7 +515,7 @@ parseQueryAll = fmap QueryAllSwaps . hsubparser $ mconcat
       QueryAllSwapsByAsk
         <$> pNetwork
         <*> pEndpoint
-        <*> (AskAsset <$> pOneWayAsset "ask")
+        <*> (AskAsset <$> pAssetConfig "ask")
         <*> pFormat
         <*> pOutput
 
@@ -524,8 +524,8 @@ parseQueryAll = fmap QueryAllSwaps . hsubparser $ mconcat
       QueryAllSwapsByTradingPair
         <$> pNetwork
         <*> pEndpoint
-        <*> (OfferAsset <$> pOneWayAsset "offer")
-        <*> (AskAsset <$> pOneWayAsset "ask")
+        <*> (OfferAsset <$> pAssetConfig "offer")
+        <*> (AskAsset <$> pAssetConfig "ask")
         <*> pFormat
         <*> pOutput
 
@@ -540,88 +540,29 @@ pOutputFile = strOption
   <> completer (bashCompleter "file")
   )
 
-pOneWayAsset :: String -> Parser AssetConfig
-pOneWayAsset asset = pLovelace <|> ((,) <$> pSymbol <*> pName)
-  where
-    pLovelace :: Parser AssetConfig
-    pLovelace = flag' (adaSymbol,adaToken)
-      (  long (asset <> "-lovelace")
-      <> help ("The " <> asset <> " asset is lovelace.")
-      )
-
-    pSymbol :: Parser CurrencySymbol
-    pSymbol = option (eitherReader readCurrencySymbol)
-      (  long (asset <> "-policy-id") 
-      <> metavar "STRING" 
-      <> help ("The policy id of the " <> asset <> " asset.")
-      )
-    
-    pName :: Parser TokenName
-    pName = option (eitherReader readTokenName)
-      (  long (asset <> "-token-name")
-      <> metavar "STRING"
-      <> help ("The token name (in hexidecimal) of the " <> asset <> " asset.")
-      )
-
 pPrice :: String -> Parser PlutusRational
-pPrice prefix = unsafeRatio <$> pPriceNum <*> pPriceDen
-  where
-    pPriceNum :: Parser Integer
-    pPriceNum = option auto
-      ( long (prefix <> "-numerator")
-      <> metavar "INT"
-      <> help ("The numerator of the " <> prefix <> ".")
-      )
-
-    pPriceDen :: Parser Integer
-    pPriceDen = option auto
-      ( long (prefix <> "-denominator")
-      <> metavar "INT"
-      <> help ("The denominator of the " <> prefix <> ".")
-      )
+pPrice prefix = option (eitherReader readPlutusRational)
+  (  long (prefix <> "-price")
+  <> metavar "PRICE"
+  <> help ("The price to take the " <> prefix <> " asset (fraction or decimal).")
+  )
 
 pPrevInput :: Parser (Maybe TxOutRef)
-pPrevInput = pTxOutRef <|> pure Nothing 
+pPrevInput = pTxOutRef <|> pure Nothing
   where
     pTxOutRef :: Parser (Maybe TxOutRef)
-    pTxOutRef = Just <$> (TxOutRef <$> pTxId <*> pOutputIndex)
-
-    pTxId :: Parser TxId
-    pTxId = option (eitherReader readTxId)
-      (  long "tx-hash"
+    pTxOutRef = Just <$> option (eitherReader readTxOutRef)
+      (  long "input-swap-ref"
       <> metavar "STRING"
-      <> help "The transaction hash for the corresponding swap input."
+      <> help "The output reference for the corresponding swap input (tx_hash#index)."
       )
 
-    pOutputIndex :: Parser Integer
-    pOutputIndex = option auto
-      (  long "output-index"
-      <> metavar "STRING"
-      <> help "The output index for the corresponding swap input."
-      )
-
-pTwoWayAsset :: String -> Parser AssetConfig
-pTwoWayAsset prefix = pLovelace <|> ((,) <$> pSymbol <*> pName)
-  where
-    pLovelace :: Parser AssetConfig
-    pLovelace = flag' (adaSymbol,adaToken)
-      (  long (prefix <> "-is-lovelace")
-      <> help ("The " <> prefix <> " is lovelace.")
-      )
-
-    pSymbol :: Parser CurrencySymbol
-    pSymbol = option (eitherReader readCurrencySymbol)
-      (  long (prefix <> "-policy-id") 
-      <> metavar "STRING" 
-      <> help ("The policy id of " <> prefix <> ".")
-      )
-    
-    pName :: Parser TokenName
-    pName = option (eitherReader readTokenName)
-      (  long (prefix <> "-token-name")
-      <> metavar "STRING"
-      <> help ("The token name (in hexidecimal) of " <> prefix <> ".")
-      )
+pAssetConfig :: String -> Parser AssetConfig
+pAssetConfig prefix = option (eitherReader readAssetConfig)
+  (  long (prefix <> "-asset")
+  <> metavar "STRING"
+  <> help ("The " <> prefix <> " asset (lovelace or policy_id.asset_name).")
+  )
 
 pOutput :: Parser Output
 pOutput = pStdOut <|> File <$> pOutputFile

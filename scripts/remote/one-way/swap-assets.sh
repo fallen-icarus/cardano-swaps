@@ -4,7 +4,7 @@
 dir="../../../ignored/swap-files/"
 tmpDir="../../../ignored/tmp/"
 
-swapAddr1="addr_test1zrd7gr0cwkclrhxq4p6m7qnwha77sk7adrc873wym5em40eualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqsq4qg4"
+swapAddr1="addr_test1zqql5djxthlrdcnvy87m7uswf0d0es9cdw6nvl72gcqj743ualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aqv7yg2s"
 
 swapDatumFile1="${dir}swapDatum1.json"
 
@@ -19,13 +19,10 @@ cardano-swaps spending-redeemers one-way \
 # Create the swap datum.
 echo "Creating the swap datum..."
 cardano-swaps datums one-way \
-  --ask-lovelace \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 54657374546f6b656e31 \
-  --price-numerator 1000000 \
-  --price-denominator 1 \
-  --tx-hash 397ceab35a092814871ba5bf9a946a55508afee4edc26c8728caa53837b67fcf \
-  --output-index 0 \
+  --ask-asset lovelace \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
+  --offer-price '1000000 / 1' \
+  --input-swap-ref 841f95b65531a8bfe076336a544b62466057848e039ea31e519e2c852add4090#0 \
   --out-file $swapDatumFile1
 
 # Helper beacon variables.
@@ -34,18 +31,16 @@ beaconPolicyId1=$(cardano-swaps beacon-info one-way policy-id \
   --stdout)
 
 pairBeaconName1=$(cardano-swaps beacon-info one-way pair-beacon \
-  --ask-lovelace \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 54657374546f6b656e31 \
+  --ask-asset lovelace \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
   --stdout)
 
 offerBeaconName1=$(cardano-swaps beacon-info one-way offer-beacon \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 54657374546f6b656e31 \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
   --stdout)
 
 askBeaconName1=$(cardano-swaps beacon-info one-way ask-beacon \
-  --ask-lovelace \
+  --ask-asset lovelace \
   --stdout)
 
 pairBeacon1="${beaconPolicyId1}.${pairBeaconName1}"
@@ -58,19 +53,19 @@ cardano-swaps protocol-params \
   --testnet \
   --out-file "${tmpDir}protocol.json"
 
-initial_change=$((12828349-5000000-3000000))
+initial_change=$((8976772040-5000000-3000000))
 
 echo "Building the initial transaction..."
 cardano-cli transaction build-raw \
-  --tx-in 1695863c0e328a072cf268357b8d97da5e8cf4f1f74f416fd0ec4cdfc0c51379#1 \
-  --tx-in 397ceab35a092814871ba5bf9a946a55508afee4edc26c8728caa53837b67fcf#0 \
-  --spending-tx-in-reference edadc501e0da8129a9b6168be85cf4bcafffb79ef5545633028531752949c106#0 \
+  --tx-in 07b2177d87a3e1bcd41548bcf2dca24038dbf09865fae80bf0b511229bf7f2df#1 \
+  --tx-in 841f95b65531a8bfe076336a544b62466057848e039ea31e519e2c852add4090#0 \
+  --spending-tx-in-reference 1ccd7e32ac5b978d6eb3b62b8243a78e192ce56e234892087d567dc33797fc5d#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
   --spending-reference-tx-in-execution-units "(0,0)" \
   --tx-out "$(cat ../../../ignored/wallets/02.addr) + 3000000 lovelace + 5 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
-  --tx-out "${swapAddr1} + 8000000 lovelace + 1 ${pairBeacon1} + 1 ${offerBeacon1} + 1 ${askBeacon1} + 5 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
+  --tx-out "${swapAddr1} + 8000000 lovelace + 1 ${pairBeacon1} + 1 ${offerBeacon1} + 1 ${askBeacon1} + 3 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
   --tx-out-inline-datum-file $swapDatumFile1 \
   --tx-out "$(cat ../../../ignored/wallets/02.addr) + ${initial_change} lovelace" \
   --tx-in-collateral 11ed603b92e6164c6bb0c83e0f4d54a954976db7c39e2a82d3cbf70f098da1e0#0 \
@@ -90,15 +85,15 @@ spend_0_steps=$(echo "$exec_units" | jq '.result | .[] | select(.validator=="spe
 
 echo "Rebuilding the transaction with proper execution budgets..."
 cardano-cli transaction build-raw \
-  --tx-in 1695863c0e328a072cf268357b8d97da5e8cf4f1f74f416fd0ec4cdfc0c51379#1 \
-  --tx-in 397ceab35a092814871ba5bf9a946a55508afee4edc26c8728caa53837b67fcf#0 \
-  --spending-tx-in-reference edadc501e0da8129a9b6168be85cf4bcafffb79ef5545633028531752949c106#0 \
+  --tx-in 07b2177d87a3e1bcd41548bcf2dca24038dbf09865fae80bf0b511229bf7f2df#1 \
+  --tx-in 841f95b65531a8bfe076336a544b62466057848e039ea31e519e2c852add4090#0 \
+  --spending-tx-in-reference 1ccd7e32ac5b978d6eb3b62b8243a78e192ce56e234892087d567dc33797fc5d#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
   --spending-reference-tx-in-execution-units "(${spend_0_steps},${spend_0_mem})" \
   --tx-out "$(cat ../../../ignored/wallets/02.addr) + 3000000 lovelace + 5 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
-  --tx-out "${swapAddr1} + 8000000 lovelace + 1 ${pairBeacon1} + 1 ${offerBeacon1} + 1 ${askBeacon1} + 5 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
+  --tx-out "${swapAddr1} + 8000000 lovelace + 1 ${pairBeacon1} + 1 ${offerBeacon1} + 1 ${askBeacon1} + 3 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
   --tx-out-inline-datum-file $swapDatumFile1 \
   --tx-out "$(cat ../../../ignored/wallets/02.addr) + ${initial_change} lovelace" \
   --tx-in-collateral 11ed603b92e6164c6bb0c83e0f4d54a954976db7c39e2a82d3cbf70f098da1e0#0 \
@@ -119,15 +114,15 @@ req_fee=$((calculated_fee+50000)) # Add 0.05 ADA to be safe since the fee must s
 
 echo "Rebuilding the transaction with the required fee..."
 cardano-cli transaction build-raw \
-  --tx-in 1695863c0e328a072cf268357b8d97da5e8cf4f1f74f416fd0ec4cdfc0c51379#1 \
-  --tx-in 397ceab35a092814871ba5bf9a946a55508afee4edc26c8728caa53837b67fcf#0 \
-  --spending-tx-in-reference edadc501e0da8129a9b6168be85cf4bcafffb79ef5545633028531752949c106#0 \
+  --tx-in 07b2177d87a3e1bcd41548bcf2dca24038dbf09865fae80bf0b511229bf7f2df#1 \
+  --tx-in 841f95b65531a8bfe076336a544b62466057848e039ea31e519e2c852add4090#0 \
+  --spending-tx-in-reference 1ccd7e32ac5b978d6eb3b62b8243a78e192ce56e234892087d567dc33797fc5d#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
   --spending-reference-tx-in-execution-units "(${spend_0_steps},${spend_0_mem})" \
   --tx-out "$(cat ../../../ignored/wallets/02.addr) + 3000000 lovelace + 5 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
-  --tx-out "${swapAddr1} + 8000000 lovelace + 1 ${pairBeacon1} + 1 ${offerBeacon1} + 1 ${askBeacon1} + 5 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
+  --tx-out "${swapAddr1} + 8000000 lovelace + 1 ${pairBeacon1} + 1 ${offerBeacon1} + 1 ${askBeacon1} + 3 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
   --tx-out-inline-datum-file $swapDatumFile1 \
   --tx-out "$(cat ../../../ignored/wallets/02.addr) + $((initial_change-req_fee)) lovelace" \
   --tx-in-collateral 11ed603b92e6164c6bb0c83e0f4d54a954976db7c39e2a82d3cbf70f098da1e0#0 \

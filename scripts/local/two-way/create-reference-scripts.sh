@@ -22,12 +22,12 @@ cardano-swaps scripts two-way beacon-script \
 ## Create and submit the transaction.
 echo "Building the transaction..."
 cardano-cli transaction build \
-  --tx-in 4993b083e08ac565a293140bb737b20035901c8ce8cf026d97a77eace302ada4#0 \
-  --tx-in 4993b083e08ac565a293140bb737b20035901c8ce8cf026d97a77eace302ada4#1 \
-  --tx-in 4e3fbfe9ada401239215fbe680c24fdba029e7c082fb1c16768389733f0eb083#1 \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 31000000 lovelace " \
+  --tx-in 892c8e0c1037403c4a92f6abc991a8e21e0d97e9af68d3a36d8aabe7067ac67a#0 \
+  --tx-in 892c8e0c1037403c4a92f6abc991a8e21e0d97e9af68d3a36d8aabe7067ac67a#1 \
+  --tx-in 9ab26f84b2bab49473216b774b873cf4c6fdeabc8b5780d4d7c4409e522727ff#0 \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 24000000 lovelace " \
   --tx-out-reference-script-file $swapScriptFile \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 19000000 lovelace " \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 22000000 lovelace " \
   --tx-out-reference-script-file $beaconScriptFile \
   --change-address "$(cat ../../../ignored/wallets/01.addr)" \
   --testnet-magic 1 \

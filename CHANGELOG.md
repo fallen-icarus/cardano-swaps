@@ -7,13 +7,15 @@
 - Changed the spending scripts to delegate to the beacon scripts for owner related actions.
 - Split the owner spending redeemers into separate redeemers based on whether the beacon script
 will use a staking execution or a minting execution.
-- Updated the CLI to use the new redeemers.
-- Updated the template scripts to show how to use the new redeemers and staking execution.
+- Renamed the two-way swap redeemers and datum price fields to be more intuitive.
+- Updated the CLI to use the new redeemers and new datum for two-way swaps.
+- Improved the CLI interface to simplify the UX.
+- Updated the template scripts to show how to use the new redeemers, staking execution, and CLI.
 - Update the tests and benchmarks.
 - Updated the documentation.
 - Changed the internal representation of prices from `Rational` to Int. Performance boost.
 - Changed how datums were checked during swap executions. Performance boost.
-- Changed how values are checked. Major performance boost.
+- Changed how values are checked. Major performance boost during swaps.
 
 ## 1.0.0.0rc
 

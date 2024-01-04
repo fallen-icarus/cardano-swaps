@@ -53,8 +53,8 @@ data SwapDatum = SwapDatum
   , asset2Id :: CurrencySymbol
   , asset2Name :: TokenName
   , asset2Beacon :: TokenName
-  , forwardPrice :: PlutusRational
-  , reversePrice :: PlutusRational
+  , asset1Price :: PlutusRational
+  , asset2Price :: PlutusRational
   , prevInput :: Maybe TxOutRef
   }
   deriving (Generic,Show,Eq)
@@ -69,16 +69,16 @@ instance ToJSON SwapDatum where
            , "asset2_id" .= show asset2Id
            , "asset2_name" .= showTokenName asset2Name
            , "asset2_beacon" .= showTokenName asset2Beacon
-           , "forward_price" .= forwardPrice 
-           , "reverse_price" .= reversePrice 
+           , "asset1_price" .= asset1Price 
+           , "asset2_price" .= asset2Price 
            , "prev_input" .= prevInput
            ]
 
 data SwapRedeemer
   = SpendWithMint
   | SpendWithStake
-  | ForwardSwap
-  | ReverseSwap
+  | TakeAsset1
+  | TakeAsset2
   deriving (Generic,Show)
 
 data BeaconRedeemer
@@ -147,7 +147,7 @@ genAssetBeaconName (CurrencySymbol sym,TokenName name) =
 -- | Get the required two-way swap redeemer based on the desired swap direction.
 getRequiredSwapDirection :: OfferAsset -> AskAsset -> SwapRedeemer
 getRequiredSwapDirection (OfferAsset offer) (AskAsset ask)
-  | offer == asset1 = ReverseSwap
-  | otherwise = ForwardSwap
+  | offer == asset1 = TakeAsset1
+  | otherwise = TakeAsset2
   where
     [asset1,_] = sort [offer,ask]

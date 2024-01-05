@@ -1,8 +1,8 @@
 # Getting Started
 
-`cardano-swaps` assumes that all transactions are built and signed using `cardano-cli`. **Access to
-a local node is not necessary**, although it does simplify things. Koios can be used for all steps
-that require access to a node.
+The `cardano-swaps` CLI assumes that all transactions are built and signed using `cardano-cli`.
+**Access to a local node is not necessary**, although it does simplify things. Koios can be used for
+all steps that require access to a node.
 
 Template bash scripts that follow these steps are available [here](scripts/). There are examples
 using a local node and a remote node. Using a remote node requires extra steps since the transaction
@@ -15,8 +15,8 @@ must be manually balanced.
 - [Using Remote Nodes](#using-remote-nodes)
 - [Minting Test Tokens](#minting-test-tokens)
 - [One-Way Swaps](#one-way-swaps)
-  - [Registering The Meta Beacon Script - DEVELOPERS
-  ONLY](#registering-the-meta-beacon-script-developers-only)
+  - [Registering The Beacon Script - DEVELOPERS
+  ONLY](#registering-the-beacon-script---developers-only)
   - [Creating Reference Scripts](#creating-reference-scripts)
   - [Creating A Swap](#creating-a-swap)
   - [Closing A Swap](#closing-a-swap)
@@ -24,8 +24,8 @@ must be manually balanced.
   - [Converting A Swap To A New Trading Pair](#converting-a-swap-to-a-new-trading-pair)
   - [Executing A Swap](#executing-a-swap)
 - [Two-Sway Swaps](#two-way-swaps)
-  - [Registering The Meta Beacon Script - DEVELOPERS
-  ONLY](#registering-the-meta-beacon-script-developers-only-1)
+  - [Registering The Beacon Script - DEVELOPERS
+  ONLY](#registering-the-beacon-script---developers-only-1)
   - [Creating Reference Scripts](#creating-reference-scripts-1)
   - [Creating A Swap](#creating-a-swap-1)
   - [Closing A Swap](#closing-a-swap-1)
@@ -157,7 +157,8 @@ four kinds of tests:
 1) Regression tests - tests for features that should work.
 2) Failure tests - tests for scenarios that are supposed to fail.
 3) Bench tests - tests to check for degraded performance in specific scenarios.
-4) Performance Increase tests - tests to check for improved performance in specific scenarios.
+4) Performance Increase tests - tests to check for improved performance in specific scenarios; these
+tests will fail if performance increases to alert you of the change.
 
 To see the documentation for the tests, you can build the haddocks for the tests using `cabal
 haddock tests`. The documentation may be easier to read than the source code. You can view the
@@ -192,6 +193,8 @@ This command requires the following steps:
    the fee from the change).
 6. Sign the transaction and submit to a remote node.
 
+The `cardano-swaps` CLI uses [Koios](https://koios.rest/) in all scenarios where a node is required.
+
 ##### Exporting protocol parameters
 
 Some of the above steps will require the current protocol parameters. The `cardano-swaps` CLI had
@@ -213,11 +216,11 @@ cardano-swaps evaluate-tx \
   --tx-file tx.body
 ```
 
-The returned budgets will be indexed by the input order and policy id order. **This may not be the
-same order you specified when building the temporary transaction.** The node will reorder them
-base on lexicographical ordering. If you are not sure of the proper ordering, you can view the 
-transaction file that is created with `cardano-cli` using `cardano-cli transaction view`; the
-inputs and policy ids will be properly ordered.
+This action uses Koios. The returned budgets will be indexed by the input order and policy id order.
+**This may not be the same order you specified when building the temporary transaction.** The node
+will reorder them base on lexicographical ordering. If you are not sure of the proper ordering, you
+can view the transaction file that is created with `cardano-cli` using `cardano-cli transaction
+view`; the inputs and policy ids will be properly ordered.
 
 ##### Submitting the final transaction
 
@@ -227,6 +230,8 @@ cardano-swaps submit \
   --testnet \
   --tx-file tx.signed
 ```
+
+The transaction will be submitted through Koios.
 
 ## Minting Test Tokens
 
@@ -243,14 +248,14 @@ To see how to build the transaction using a remote node, refer
 
 ## One-Way Swaps
 
-### Registering The Meta Beacon Script - DEVELOPERS ONLY
+### Registering The Beacon Script - DEVELOPERS ONLY
 
 **This action only needs to be done once for the entire DApp. It does not need to be done by any
 users.** These instructions are for completeness as they may be needed by developers.
 
-Once the script is registered, it can be used as a staking script immediately by all users.
-Registering the script does not require executing the script. Once it is registered, *it cannot be
-deregistered*.
+The beacon script cannot be executed as a staking script until after it is registered. Once the
+script is registered, it can be used as a staking script immediately by all users. Registering the
+script does not require executing the script. Once it is registered, *it cannot be deregistered*.
 
 Registering the beacon script involves:
 1. Exporting the beacon script from the `cardano-swaps` CLI.
@@ -279,6 +284,9 @@ To see how to build the transaction using a remote node, refer
 
 
 ### Creating Reference Scripts
+
+**Don't skip this step!** While beacon tokens to be used to trustlessly share reference scripts,
+this has not been set up for the beta testing. For now, you will need your own reference scripts.
 
 Creating reference scripts involves the following steps:
 1. Export the scripts from the `cardano-swaps` CLI.
@@ -710,14 +718,14 @@ To see how to build the transaction using a remote node, refer
 
 ## Two-Way Swaps
 
-### Registering The Meta Beacon Script - DEVELOPERS ONLY
+### Registering The Beacon Script - DEVELOPERS ONLY
 
 **This action only needs to be done once for the entire DApp. It does not need to be done by any
 users.** These instructions are for completeness as they may be needed by developers.
 
-Once the script is registered, it can be used as a staking script immediately by all users.
-Registering the script does not require executing the script. Once it is registered, *it cannot be
-deregistered*.
+The beacon script cannot be executed as a staking script until after it is registered. Once the
+script is registered, it can be used as a staking script immediately by all users. Registering the
+script does not require executing the script. Once it is registered, *it cannot be deregistered*.
 
 Registering the beacon script involves:
 1. Exporting the beacon script from the `cardano-swaps` CLI.
@@ -746,6 +754,9 @@ To see how to build the transaction using a remote node, refer
 
 
 ### Creating Reference Scripts
+
+**Don't skip this step!** While beacon tokens to be used to trustlessly share reference scripts,
+this has not been set up for the beta testing. For now, you will need your own reference scripts.
 
 Creating reference scripts involves the following steps:
 1. Export the scripts from the `cardano-swaps` CLI.
@@ -853,8 +864,8 @@ cardano-swaps datums two-way \
 are always the amount asked for and the denominator is the amount that is allow to be taken.
 
 Which asset is first or second is irrelevant; all that matters is that the `first-price` corresponds
-to the `first-asset`, the `second-price` corresponds to the `second-asset`. The CLI will handle the
-rest.
+to the `first-asset`, and the `second-price` corresponds to the `second-asset`. The CLI will handle
+the rest.
 
 - `first-price` = second asset / first asset. Therefore, the above example's `first-price` is 1
 native token given for every 1 ADA taken.
@@ -1003,8 +1014,8 @@ cardano-swaps datums two-way \
 are always the amount asked for and the denominator is the amount that is allow to be taken.
 
 Which asset is first or second is irrelevant; all that matters is that the `first-price` corresponds
-to the `first-asset`, the `second-price` corresponds to the `second-asset`. The CLI will handle the
-rest.
+to the `first-asset`, and the `second-price` corresponds to the `second-asset`. The CLI will handle
+the rest.
 
 - `first-price` = second asset / first asset. Therefore, the above example's `first-price` is 2
 native token given for every 1 ADA taken.
@@ -1133,8 +1144,8 @@ cardano-swaps datums two-way \
 are always the amount asked for and the denominator is the amount that is allow to be taken.
 
 Which asset is first or second is irrelevant; all that matters is that the `first-price` corresponds
-to the `first-asset`, the `second-price` corresponds to the `second-asset`. The CLI will handle the
-rest.
+to the `first-asset`, and the `second-price` corresponds to the `second-asset`. The CLI will handle
+the rest.
 
 - `first-price` = second asset / first asset. Therefore, the above example's `first-price` is 2
 native token given for every 1 ADA taken.
@@ -1177,8 +1188,9 @@ cardano-swaps spending-redeemers two-way \
 
 To take asset2, use the `--take-asset2` flag instead.
 
-If you do not know what swap direction is required, you can tell the `cardano-swaps` CLI what the
-offer asset and ask asset are and it can create the proper swap redeemer for you:
+If you do not know what swap direction is required because you do not know the proper
+lexicographical ordering of the assets, you can tell the `cardano-swaps` CLI what the offer asset
+and ask asset are and it can create the proper swap redeemer for you:
 
 ```Bash
 cardano-swaps spending-redeemers two-way \
@@ -1227,9 +1239,9 @@ file. The only difference between the pretty format and the plain format is the 
 ansii escape sequences to highlight certain items with color. The plain format is there as a
 fallback in case the ansii escape sequences are causing issues for a user.
 
-> Note: Currently, `cardano-swaps` CLI will only get the first 1000 UTxOs that satisfy a query. This
-> could be 1000 personal UTxOs or 1000 swap UTxOs, depending on the query. For the beta release,
-> 1000 should be plenty. The CLI will be expanded in the future to remove this cap.
+> Note: Currently, the `cardano-swaps` CLI will only get the first 1000 UTxOs that satisfy a query.
+> This could be 1000 personal UTxOs or 1000 swap UTxOs, depending on the query. For the beta
+> release, 1000 should be plenty. The CLI will be expanded in the future to remove this cap.
 
 ### Personal Address
 
@@ -1328,9 +1340,8 @@ cardano-swaps query own-swaps two-way trading-pair \
   --stdout
 ```
 
-The assets do not need to be properly sorted for this query to work. For example, even though
-ada should always be asset1, this query will still work if ada is set for asset2. The CLI will
-properly query the swaps regardless of the order.
+The assets do not need to be properly sorted for this query to work. The CLI will
+properly query the swaps regardless of which asset is `first` and `second`.
 
 ### All Swaps
 
@@ -1345,8 +1356,8 @@ query. If you think it would be useful, feel free to open an issue.)
 ##### Swaps By Trading Pair 
 
 When querying all swaps by trading pair, a swap direction *must* be specified. The returned swaps
-are sorted based on the prices (taking into account whether that direction requires the
-`asset1Price` or `asset2Price` for two-way swaps).
+are sorted based on the prices from lowest to highest (taking into account whether that
+direction requires the `asset1Price` or `asset2Price` for two-way swaps).
 
 When the pretty format is used, the relevant price is highlighted in Magenta.
 

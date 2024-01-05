@@ -402,7 +402,9 @@ fees since the beacon script will be executed twice where the second execution i
 redundant.
 
 *In order to reclaim the deposit, the beacons must be burned which means the
-`SpendWithMint`+`CreateOrCloseSwaps` combination is required.*
+`SpendWithMint`+`CreateOrCloseSwaps` combination is required.* This combination also allows moving
+swaps to a new swap address in case the owner wants to change the staking credential for the swap
+address. The original staking credential must still aprove the transaction.
 
 ##### Executing a One-Way Swap
 
@@ -669,11 +671,13 @@ fees since the beacon script will be executed twice where the second execution i
 redundant.
 
 *In order to reclaim the deposit, the beacons must be burned which means the
-`SpendWithMint`+`CreateOrCloseSwaps` combination is required.*
+`SpendWithMint`+`CreateOrCloseSwaps` combination is required.* This combination also allows moving
+swaps to a new swap address in case the owner wants to change the staking credential for the swap
+address. The original staking credential must still aprove the transaction.
 
 ##### Executing a Two-Way Swap
 
-Any Cardano user can execute an available swap using either the `TakeAsset1` or `TakeAsset1`
+Any Cardano user can execute an available swap using either the `TakeAsset1` or `TakeAsset2`
 redeemer as long as the swap conditions are met. When `TakeAsset1` is used, the `asset1Price` is
 used, and asset1 is the offer asset while asset2 is the ask asset. When `TakeAsset2` is used, the
 `asset2Price` is used, and asset2 is the offer asset and asset1 is the ask asset.

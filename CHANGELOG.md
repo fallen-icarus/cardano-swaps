@@ -2,20 +2,19 @@
 
 ## 2.0.0.0rc
 
+#### Added
+
+- Added staking execution option to the beacon scripts and changed the spending scripts to delegate
+actions to the staking executions when appropriate.
+
+#### Changed
+
 - Bumped aiken stdlib version to 1.7.0.
-- Added staking execution option to the beacon scripts.
-- Changed the spending scripts to delegate to the beacon scripts for owner related actions.
-- Split the owner spending redeemers into separate redeemers based on whether the beacon script
-will use a staking execution or a minting execution.
-- Renamed the two-way swap redeemers and datum price fields to be more intuitive.
-- Updated the CLI to use the new redeemers and new datum for two-way swaps.
-- Improved the CLI interface to simplify the UX.
-- Updated the template scripts to show how to use the new redeemers, staking execution, and CLI.
-- Update the tests and benchmarks.
-- Updated the documentation.
-- Changed the internal representation of prices from `Rational` to Int. Performance boost.
-- Changed how datums were checked during swap executions. Performance boost.
-- Changed how values are checked. Major performance boost during swaps.
+- Changed the internal representation of prices from `Rational` to Int. (Optimization)
+- Changed how swap output datums were checked during swap executions. (Optimization)
+- Changed how UTxO values were checked. (Optimization)
+- Renamed the two-way swap redeemers and datum price fields to be more intuitive. (UX improvement)
+- Simplified the CLI by merging fields when appropriate. (UX improvement)
 
 ## 1.0.0.0rc
 

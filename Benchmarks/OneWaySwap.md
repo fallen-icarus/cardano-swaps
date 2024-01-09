@@ -4,8 +4,8 @@ The node emulator from [plutus-apps](https://github.com/input-output-hk/plutus-a
 all benchmarking tests. All scripts were used as reference scripts to get the best performance 
 possible.
 
-The universal swap spending script requires about 31 ADA to store on-chain.
-The universal minting policy requires about 16 ADA to be stored on-chain.
+- The universal swap spending script requires about 22 ADA to store on-chain.
+- The universal minting policy requires about 20 ADA to be stored on-chain.
 
 ## Creating swaps
 
@@ -42,49 +42,45 @@ Swaps are validated by checking each output in the transaction. The checks are e
 2) If "Yes" to (1), is this output locked at the address where the input comes from?
 3) If "Yes" to (2), does this output have the proper datum for the corresponding output?
 
-Whenever a question is answered "No", the checks stop for that output and the validator moves on
-to the next output. Because of this, the best possible performance is when all swaps are for unique
-trading pairs (ie, the checks stop after the first question for all but the relevant output). The
-worst possible performance is when all swaps are for the same trading pair AND are all from the
-same address. All other scenarios will fall somewhere in between.
-
-#### WORST CASE SCENARIO: Execute multiple swap UTxOs for the same trading pair and from the same address.
+#### Execute multiple swap UTxOs for the same trading pair and from the same address.
 | Number of Swaps | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
-| 1 | 0.248925 ADA | 0.373388 ADA |
-| 2 | 0.323246 ADA | 0.484869 ADA |
-| 3 | 0.406107 ADA | 0.609161 ADA |
-| 4 | 0.497421 ADA | 0.746132 ADA |
-| 5 | 0.597231 ADA | 0.895847 ADA |
-| 6 | 0.705538 ADA | 1.058307 ADA |
-| 7 | 0.822342 ADA | 1.233513 ADA |
-| 8 | 0.947643 ADA | 1.421465 ADA |
-| 9 | 1.081440 ADA | 1.622160 ADA |
-| 10 | 1.234534 ADA | 2.851801 ADA |
-| 11 | 1.385802 ADA | 2.078703 ADA |
-| 12 | 1.545567 ADA | 2.318251 ADA |
+| 1 | 0.237237 ADA | 0.355856 ADA |
+| 2 | 0.292634 ADA | 0.438951 ADA |
+| 3 | 0.349335 ADA | 0.524003 ADA |
+| 4 | 0.407354 ADA | 0.610881 ADA |
+| 5 | 0.466433 ADA | 0.699650 ADA |
+| 6 | 0.526874 ADA | 0.790311 ADA |
+| 7 | 0.588575 ADA | 0.882863 ADA |
+| 8 | 0.651537 ADA | 0.977306 ADA |
+| 9 | 0.715761 ADA | 1.073642 ADA |
+| 10 | 0.787273 ADA | 1.180910 ADA |
+| 15 | 1.133608 ADA | 1.700412 ADA |
+| 20 | 1.517539 ADA | 2.276309 ADA |
+| 25 | 1.927185 ADA | 2.890778 ADA |
+| 26 | 2.012932 ADA | 3.019398 ADA |
 
-The maximum number of swaps that could fit in the transaction was 12.
+The maximum number of swaps that could fit in the transaction was 26.
 
-#### BEST CASE SCENARIO: Execute multiple swap UTxOs for the different trading pairs.
+#### Execute multiple swap UTxOs for the different trading pairs.
 | Number of Swaps | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
-| 1 | 0.285138 ADA | 0.427707 ADA |
-| 2 | 0.359413 ADA | 0.539120 ADA |
-| 3 | 0.437965 ADA | 0.656948 ADA |
-| 4 | 0.519464 ADA | 0.779196 ADA |
-| 5 | 0.605678 ADA | 0.908517 ADA |
-| 6 | 0.694839 ADA | 1.042259 ADA |
-| 7 | 0.788714 ADA | 1.183071 ADA |
-| 8 | 0.885421 ADA | 1.329632 ADA |
-| 9 | 0.987958 ADA | 1.481937 ADA |
-| 10 | 1.092923 ADA | 1.639385 ADA |
-| 11 | 1.201718 ADA | 1.802577 ADA |
-| 12 | 1.313461 ADA | 1.970192 ADA |
-| 13 | 1.429034 ADA | 2.143551 ADA |
-| 14 | 1.548438 ADA | 2.322657 ADA |
+| 1 | 0.237237 ADA | 0.355856 ADA |
+| 2 | 0.292634 ADA | 0.438951 ADA |
+| 3 | 0.349335 ADA | 0.524003 ADA |
+| 4 | 0.407354 ADA | 0.610881 ADA |
+| 5 | 0.466433 ADA | 0.699650 ADA |
+| 6 | 0.526874 ADA | 0.790311 ADA |
+| 7 | 0.588575 ADA | 0.882863 ADA |
+| 8 | 0.651537 ADA | 0.977306 ADA |
+| 9 | 0.715761 ADA | 1.073642 ADA |
+| 10 | 0.787273 ADA | 1.180910 ADA |
+| 15 | 1.133608 ADA | 1.700412 ADA |
+| 20 | 1.517539 ADA | 2.276309 ADA |
+| 25 | 1.927185 ADA | 2.890778 ADA |
+| 26 | 2.012932 ADA | 3.019398 ADA |
 
-The maximum number of swaps that could fit in the transaction was 14.
+The maximum number of swaps that could fit in the transaction was 26.
 
 
 
@@ -98,9 +94,9 @@ The maximum number of swaps that could fit in the transaction was 14.
 | 30 | 0.810590 ADA | 1.215885 ADA |
 | 40 | 1.114472 ADA | 1.671708 ADA |
 | 50 | 1.465852 ADA | 2.198778 ADA | 
-| 54 | 1.560719 ADA | 2.341079 ADA | 
+| 56 | 1.610740 ADA | 2.416110 ADA | 
 
-The maximum number of swaps that could be closed in the transaction was 54.
+The maximum number of swaps that could be closed in the transaction was 56.
 
 #### Closing swaps for different trading pairs.
 | Number Closed | Tx Fee | Collateral Required |
@@ -111,9 +107,9 @@ The maximum number of swaps that could be closed in the transaction was 54.
 | 30 | 0.853206 ADA | 1.279809 ADA |
 | 40 | 1.172268 ADA | 1.758402 ADA |
 | 50 | 1.539049 ADA | 2.308574 ADA | 
-| 53 | 1.729972 ADA | 2.594958 ADA | 
+| 56 | 1.759106 ADA | 2.638659 ADA | 
 
-The maximum number of swaps that could be closed in the transaction was 53.
+The maximum number of swaps that could be closed in the transaction was 56.
 
 
 
@@ -121,45 +117,51 @@ The maximum number of swaps that could be closed in the transaction was 53.
 #### Updating swaps for the same trading pair.
 | Number Updated | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
-| 1 | 0.234770 ADA | 0.352155 ADA |
-| 2 | 0.337576 ADA | 0.506364 ADA |
-| 3 | 0.489626 ADA | 0.734439 ADA |
-| 4 | 0.690921 ADA | 1.036382 ADA |
-| 5 | 0.941461 ADA | 1.412192 ADA |
-| 6 | 1.241245 ADA | 1.861868 ADA |
+| 1 | 0.201809 ADA | 0.302714 ADA |
+| 5 | 0.425520 ADA | 0.638280 ADA |
+| 10 | 0.715786 ADA | 1.073679 ADA |
+| 15 | 1.017981 ADA | 1.526972 ADA |
+| 20 | 1.332106 ADA | 1.998159 ADA |
+| 25 | 1.658381 ADA | 2.487572 ADA |
+| 30 | 2.002657 ADA | 3.003986 ADA |
+| 31 | 2.071729 ADA | 3.107594 ADA |
 
-The maximum number of swaps that could be updated in the transaction was 6.
+The maximum number of swaps that could be updated in the transaction was 31.
 
 #### Updating swaps for different trading pairs.
 | Number Updated | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
-| 1 | 0.231086 ADA | 0.346629 ADA |
-| 2 | 0.326535 ADA | 0.489803 ADA |
-| 3 | 0.467558 ADA | 0.701337 ADA |
-| 4 | 0.654152 ADA | 0.981228 ADA |
-| 5 | 0.886320 ADA | 1.329480 ADA |
-| 6 | 1.164061 ADA | 1.746092 ADA |
+| 1 | 0.199632 ADA | 0.299448 ADA |
+| 5 | 0.406626 ADA | 0.609939 ADA |
+| 10 | 0.676344 ADA | 1.014516 ADA |
+| 15 | 0.958169 ADA | 1.437254 ADA |
+| 20 | 1.251923 ADA | 1.877885 ADA |
+| 25 | 1.557827 ADA | 2.336741 ADA |
+| 30 | 1.875660 ADA | 2.813490 ADA |
+| 32 | 2.006134 ADA | 3.009201 ADA |
 
-The maximum number of swaps that could be updated in the transaction was 6.
+The maximum number of swaps that could be updated in the transaction was 32.
 
 
 
 ## Changing Swap Trading Pair
-By composing both the `CreateSwap` minting redeemer and the `CloseOrUpdate` spending redeemer, it
-is possible change what trading pair a swap is for in a single transaction (ie, you do not need to
-first close the swap in one tx and then open the new swap in another tx).
+By composing both the `CreateOrCloseSwaps` minting redeemer and the `SpendWithMint` spending
+redeemer, it is possible change what trading pair a swap is for in a single transaction (ie, you do
+not need to first close the swap in one tx and then open the new swap in another tx).
 
 Since there are many different scenarios that are possible, instead of testing all of them only the
-worst possible scenario was benchmarked. All other scenarios should have better performance. If 
-you are aware of a an even worse scenario, please open an issue so its benchmarks can be added.
+worst possible scenario was benchmarked. All other scenarios should have better performance. If you
+are aware of an even worse scenario, please open an issue so its benchmarks can be added.
 
 #### All swaps start as different trading pairs and end as different trading pairs.
 | Number Updated | Tx Fee | Collateral Required |
 |:--:|:--:|:--:|
-| 1 | 0.264537 ADA | 0.396806 ADA |
-| 2 | 0.385547 ADA | 0.578321 ADA |
-| 3 | 0.552130 ADA | 0.828195 ADA |
-| 4 | 0.764286 ADA | 1.146429 ADA |
-| 5 | 1.022015 ADA | 1.533023 ADA |
+| 1 | 0.253238 ADA | 0.379857 ADA |
+| 5 | 0.515147 ADA | 0.772721 ADA |
+| 10 | 0.853314 ADA | 1.279971 ADA |
+| 15 | 1.203367 ADA | 1.805051 ADA |
+| 20 | 1.565349 ADA | 2.348024 ADA |
+| 25 | 1.939481 ADA | 2.909222 ADA |
+| 26 | 2.015739 ADA | 3.023609 ADA |
 
-The maximum number of swaps that could be updated in the transaction was 5.
+The maximum number of swaps that could be updated in the transaction was 26.

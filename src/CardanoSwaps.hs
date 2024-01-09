@@ -123,13 +123,14 @@ instance ToJSON OneWaySwapDatum where
            ]
 
 data OneWaySwapRedeemer
-  = OneWayCloseOrUpdate
+  = OneWaySpendWithMint
+  | OneWaySpendWithStake
   | OneWaySwap
   deriving (Generic,Show)
 
 data OneWayBeaconRedeemer
-  = OneWayCreateSwap 
-  | OneWayBurnBeacons
+  = OneWayCreateOrCloseSwaps
+  | OneWayUpdateSwaps
   deriving (Generic,Show)
 
 PlutusTx.unstableMakeIsData ''OneWaySwapDatum
@@ -145,8 +146,8 @@ data TwoWaySwapDatum = TwoWaySwapDatum
   , twoWayAsset2Id :: CurrencySymbol
   , twoWayAsset2Name :: TokenName
   , twoWayAsset2Beacon :: TokenName
-  , twoWayForwardPrice :: PlutusRational
-  , twoWayReversePrice :: PlutusRational
+  , twoWayAsset1Price :: PlutusRational
+  , twoWayAsset2Price :: PlutusRational
   , twoWayPrevInput :: Maybe TxOutRef
   } deriving (Generic,Show,Eq)
 
@@ -160,20 +161,21 @@ instance ToJSON TwoWaySwapDatum where
            , "asset2_id" .= show twoWayAsset2Id
            , "asset2_name" .= showTokenName twoWayAsset2Name
            , "asset2_beacon" .= showTokenName twoWayAsset2Beacon
-           , "forward_price" .= twoWayForwardPrice 
-           , "reverse_price" .= twoWayReversePrice 
+           , "asset1_price" .= twoWayAsset1Price 
+           , "asset2_price" .= twoWayAsset2Price
            , "prev_input" .= twoWayPrevInput
            ]
 
 data TwoWaySwapRedeemer
-  = TwoWayCloseOrUpdate
-  | TwoWayForwardSwap
-  | TwoWayReverseSwap
+  = TwoWaySpendWithMint
+  | TwoWaySpendWithStake
+  | TwoWayTakeAsset1
+  | TwoWayTakeAsset2
   deriving (Generic,Show)
 
 data TwoWayBeaconRedeemer
-  = TwoWayCreateSwap 
-  | TwoWayBurnBeacons
+  = TwoWayCreateOrCloseSwaps
+  | TwoWayUpdateSwaps
   deriving (Generic,Show)
 
 PlutusTx.unstableMakeIsData ''TwoWaySwapDatum
@@ -231,7 +233,7 @@ twoWayBeaconCurrencySymbol = scriptCurrencySymbol twoWayBeaconMintingPolicy
 -- | Get the required two-way swap redeemer based on the swap direction.
 getRequiredSwapDirection :: OfferAsset -> AskAsset -> TwoWaySwapRedeemer
 getRequiredSwapDirection (OfferAsset offer) (AskAsset ask)
-  | offer == asset1 = TwoWayReverseSwap
-  | otherwise = TwoWayForwardSwap
+  | offer == asset1 = TwoWayTakeAsset1
+  | otherwise = TwoWayTakeAsset2
   where
     [asset1,_] = sort [offer,ask]

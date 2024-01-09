@@ -5,28 +5,28 @@ dir="../../../ignored/swap-files/"
 tmpDir="../../../ignored/tmp/"
 
 swapScriptFile="${dir}oneWaySwap.plutus"
-beaconPolicyFile="${dir}oneWayBeacons.plutus"
+beaconScriptFile="${dir}oneWayBeacons.plutus"
 
-## Export the swap validator script.
-echo "Exporting the swap validator script..."
+## Export the swap script.
+echo "Exporting the swap script..."
 cardano-swaps scripts one-way swap-script \
   --out-file $swapScriptFile
 
-## Export the beacon policy.
-echo "Exporting the beacon policy script..."
-cardano-swaps scripts one-way beacon-policy \
-  --out-file $beaconPolicyFile
+## Export the beacon script.
+echo "Exporting the beacon script..."
+cardano-swaps scripts one-way beacon-script \
+  --out-file $beaconScriptFile
 
 ## Create and submit the transaction.
 echo "Building the transaction..."
 cardano-cli transaction build \
-  --tx-in 621818a50cf676edae641c55d70e06f73c4269af1c9c11d9d1bd52e8f27cea03#1 \
-  --tx-in 64092a335533a4c9b0b85ce6785afe64af2183c7538dfa2c48fe1ebef65b76e3#1 \
-  --tx-in 64092a335533a4c9b0b85ce6785afe64af2183c7538dfa2c48fe1ebef65b76e3#0 \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 26000000 lovelace " \
+  --tx-in edadc501e0da8129a9b6168be85cf4bcafffb79ef5545633028531752949c106#0 \
+  --tx-in edadc501e0da8129a9b6168be85cf4bcafffb79ef5545633028531752949c106#1 \
+  --tx-in d4fbd706c39717ff0391fcb8dec5c643e9156bae98bb2a07cbf60948b05c28db#1 \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 22000000 lovelace " \
   --tx-out-reference-script-file $swapScriptFile \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 18000000 lovelace " \
-  --tx-out-reference-script-file $beaconPolicyFile \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 20000000 lovelace " \
+  --tx-out-reference-script-file $beaconScriptFile \
   --change-address "$(cat ../../../ignored/wallets/01.addr)" \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.body"

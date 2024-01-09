@@ -7,17 +7,17 @@
 dir="../../../ignored/swap-files/"
 tmpDir="../../../ignored/tmp/"
 
-swapScriptFile="${dir}two_way_spend.plutus"
-beaconPolicyFile="${dir}two_way_beacon.plutus"
+swapScriptFile="${dir}twoWaySwap.plutus"
+beaconPolicyFile="${dir}twoWayBeacon.plutus"
 
 ## Export the swap validator script.
 echo "Exporting the swap validator script..."
 cardano-swaps scripts two-way swap-script \
   --out-file $swapScriptFile
 
-## Export the beacon policy.
-echo "Exporting the beacon policy script..."
-cardano-swaps scripts two-way beacon-policy \
+## Export the beacon script.
+echo "Exporting the beacon script..."
+cardano-swaps scripts two-way beacon-script \
   --out-file $beaconPolicyFile
 
 ## Create and submit the transaction.
@@ -26,16 +26,16 @@ cardano-swaps protocol-params \
   --testnet \
   --out-file "${tmpDir}protocol.json"
 
-initial_change=237707298
+initial_change=$((8180352038))
 
 echo "Building the initial transaction..."
 cardano-cli transaction build-raw \
-  --tx-in e0f0122f7cf6ca6dcb79a310886155c771bf825d057396ddb8a9ea80a18b6f7b#0 \
-  --tx-in e0f0122f7cf6ca6dcb79a310886155c771bf825d057396ddb8a9ea80a18b6f7b#1 \
-  --tx-in e0f0122f7cf6ca6dcb79a310886155c771bf825d057396ddb8a9ea80a18b6f7b#2 \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 31000000 lovelace " \
+  --tx-in 38fd18f4ca7c6587eb2703ac3bfd42e1406d089901e2c29f158358fdda5b196a#0 \
+  --tx-in 38fd18f4ca7c6587eb2703ac3bfd42e1406d089901e2c29f158358fdda5b196a#1 \
+  --tx-in 44f58115ad9738de64bb5624b495a2e7abddfdbe055df474d7d980af1244d64e#1 \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 24000000 lovelace " \
   --tx-out-reference-script-file $swapScriptFile \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 19000000 lovelace " \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 22000000 lovelace " \
   --tx-out-reference-script-file $beaconPolicyFile \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + ${initial_change} lovelace " \
   --fee 0 \
@@ -52,12 +52,12 @@ req_fee=$(cardano-cli transaction calculate-min-fee \
 
 echo "Rebuilding the transaction with the required fee..."
 cardano-cli transaction build-raw \
-  --tx-in e0f0122f7cf6ca6dcb79a310886155c771bf825d057396ddb8a9ea80a18b6f7b#0 \
-  --tx-in e0f0122f7cf6ca6dcb79a310886155c771bf825d057396ddb8a9ea80a18b6f7b#1 \
-  --tx-in e0f0122f7cf6ca6dcb79a310886155c771bf825d057396ddb8a9ea80a18b6f7b#2 \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 31000000 lovelace " \
+  --tx-in 38fd18f4ca7c6587eb2703ac3bfd42e1406d089901e2c29f158358fdda5b196a#0 \
+  --tx-in 38fd18f4ca7c6587eb2703ac3bfd42e1406d089901e2c29f158358fdda5b196a#1 \
+  --tx-in 44f58115ad9738de64bb5624b495a2e7abddfdbe055df474d7d980af1244d64e#1 \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 24000000 lovelace " \
   --tx-out-reference-script-file $swapScriptFile \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 19000000 lovelace " \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 22000000 lovelace " \
   --tx-out-reference-script-file $beaconPolicyFile \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + $((initial_change-req_fee)) lovelace " \
   --fee "$req_fee" \

@@ -6,33 +6,52 @@ tmpDir="../../../ignored/tmp/"
 
 ownerPubKeyFile="../../../ignored/wallets/01Stake.vkey"
 
+beaconScriptFile="${dir}twoWayBeacons.plutus"
+beaconAddrFile="${dir}twoWayBeaconStake.addr"
+
 swapAddrFile="${dir}twoWaySwap.addr"
 
 swapDatumFile="${dir}swapDatum.json"
 
-swapRedeemerFile="${dir}closeOrUpdateTwoWaySwap.json"
+swapRedeemerFile="${dir}twoWaySpendingRedeemer.json"
+beaconRedeemerFile="${dir}twoWayBeaconRedeemer.json"
 
 # Generate the hash for the staking verification key.
 echo "Calculating the staking pubkey hash for the borrower..."
 ownerPubKeyHash=$(cardano-cli stake-address key-hash \
   --stake-verification-key-file $ownerPubKeyFile)
 
-# Create the CloseOrUpdate redeemer.
+# Export the beacon script.
+echo "Exporting the beacon script..."
+cardano-swaps scripts two-way beacon-script \
+  --out-file $beaconScriptFile
+
+# Create the meta beacon stake address.
+echo "Creating the beacon reward address..."
+cardano-cli stake-address build \
+  --stake-script-file $beaconScriptFile \
+  --testnet-magic 1 \
+  --out-file $beaconAddrFile
+
+# Create the spending redeemer.
 echo "Creating the spending redeemer..."
 cardano-swaps spending-redeemers two-way \
-  --close-or-update \
+  --update-with-stake \
   --out-file $swapRedeemerFile
+
+# Create the beacon script redeemer.
+echo "Creating the beacon redeemer..."
+cardano-swaps beacon-redeemers two-way \
+  --update-only \
+  --out-file $beaconRedeemerFile
 
 # Create the swap datum.
 echo "Creating the swap datum..."
 cardano-swaps datums two-way \
-  --asset1-is-lovelace \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 4f74686572546f6b656e0a \
-  --forward-price-numerator 1000000 \
-  --forward-price-denominator 1 \
-  --reverse-price-numerator 2 \
-  --reverse-price-denominator 1000000 \
+  --first-asset lovelace \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
+  --first-price '1 / 1000000' \
+  --second-price 3000000 \
   --out-file $swapDatumFile
 
 # Helper beacon variables.
@@ -41,18 +60,16 @@ beaconPolicyId=$(cardano-swaps beacon-info two-way policy-id \
   --stdout)
 
 pairBeaconName=$(cardano-swaps beacon-info two-way pair-beacon \
-  --asset1-is-lovelace \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 4f74686572546f6b656e0a \
+  --first-asset lovelace \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 asset1BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
-  --asset1-is-lovelace \
+  --first-asset lovelace \
   --stdout)
 
 asset2BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 4f74686572546f6b656e0a \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 pairBeacon="${beaconPolicyId}.${pairBeaconName}"
@@ -65,21 +82,26 @@ cardano-swaps protocol-params \
   --testnet \
   --out-file "${tmpDir}protocol.json"
 
-initial_change=$((149820213))
+initial_change=$((8179466356))
 
 echo "Building the initial transaction..."
 cardano-cli transaction build-raw \
-  --tx-in fed59e746ff8b19004f8eb150a954478d420a505ebfb5366b0aa28e20d21c5c1#1 \
-  --tx-in fed59e746ff8b19004f8eb150a954478d420a505ebfb5366b0aa28e20d21c5c1#0 \
-  --spending-tx-in-reference c1d7755d9089bc1a6b85561e1f3eb740935c6a887a15589395bfc36f8b64fa10#0 \
+  --tx-in e44ff771ac294fca630bb4752058cbbde85a97e640bfaf03050ad8bb0c70adf9#1 \
+  --tx-in e44ff771ac294fca630bb4752058cbbde85a97e640bfaf03050ad8bb0c70adf9#0 \
+  --spending-tx-in-reference ec243b6e5c3a1f7de6a0b0d75bf29247009e92596ac13f67b9176a70dcf96915#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-execution-units "(0,0)" \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${asset1Beacon} + 1 ${asset2Beacon} + 11 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --withdrawal "$(cat ${beaconAddrFile})+0" \
+  --withdrawal-tx-in-reference ec243b6e5c3a1f7de6a0b0d75bf29247009e92596ac13f67b9176a70dcf96915#1 \
+  --withdrawal-plutus-script-v2 \
+  --withdrawal-reference-tx-in-execution-units "(0,0)" \
+  --withdrawal-reference-tx-in-redeemer-file $beaconRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${asset1Beacon} + 1 ${asset2Beacon} + 20 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out-inline-datum-file $swapDatumFile \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + ${initial_change} lovelace" \
-  --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
+  --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --tx-total-collateral 21000000 \
   --required-signer-hash "$ownerPubKeyHash" \
   --protocol-params-file "${tmpDir}protocol.json" \
@@ -94,20 +116,27 @@ exec_units=$(cardano-swaps evaluate-tx \
 # MAKE SURE THE INDEXES MATCH THE LEXICOGRAPHICAL ORDERING FOR INPUTS AND POLICY IDS.
 spend_0_mem=$(echo "$exec_units" | jq '.result | .[] | select(.validator=="spend:0") | .budget.memory' )
 spend_0_steps=$(echo "$exec_units" | jq '.result | .[] | select(.validator=="spend:0") | .budget.cpu' )
+stake_0_mem=$(echo "$exec_units" | jq '.result | .[] | select(.validator=="withdrawal:0") | .budget.memory' )
+stake_0_steps=$(echo "$exec_units" | jq '.result | .[] | select(.validator=="withdrawal:0") | .budget.cpu' )
 
 echo "Rebuilding the transaction with proper execution budgets..."
 cardano-cli transaction build-raw \
-  --tx-in fed59e746ff8b19004f8eb150a954478d420a505ebfb5366b0aa28e20d21c5c1#1 \
-  --tx-in fed59e746ff8b19004f8eb150a954478d420a505ebfb5366b0aa28e20d21c5c1#0 \
-  --spending-tx-in-reference c1d7755d9089bc1a6b85561e1f3eb740935c6a887a15589395bfc36f8b64fa10#0 \
+  --tx-in e44ff771ac294fca630bb4752058cbbde85a97e640bfaf03050ad8bb0c70adf9#1 \
+  --tx-in e44ff771ac294fca630bb4752058cbbde85a97e640bfaf03050ad8bb0c70adf9#0 \
+  --spending-tx-in-reference ec243b6e5c3a1f7de6a0b0d75bf29247009e92596ac13f67b9176a70dcf96915#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-execution-units "(${spend_0_steps},${spend_0_mem})" \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${asset1Beacon} + 1 ${asset2Beacon} + 11 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --withdrawal "$(cat ${beaconAddrFile})+0" \
+  --withdrawal-tx-in-reference ec243b6e5c3a1f7de6a0b0d75bf29247009e92596ac13f67b9176a70dcf96915#1 \
+  --withdrawal-plutus-script-v2 \
+  --withdrawal-reference-tx-in-execution-units "(${stake_0_steps},${stake_0_mem})" \
+  --withdrawal-reference-tx-in-redeemer-file $beaconRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${asset1Beacon} + 1 ${asset2Beacon} + 20 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out-inline-datum-file $swapDatumFile \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + ${initial_change} lovelace" \
-  --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
+  --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --tx-total-collateral 21000000 \
   --required-signer-hash "$ownerPubKeyHash" \
   --protocol-params-file "${tmpDir}protocol.json" \
@@ -126,17 +155,22 @@ req_fee=$((calculated_fee+50000)) # Add 0.05 ADA to be safe since the fee must s
 
 echo "Rebuilding the transaction with the required fee..."
 cardano-cli transaction build-raw \
-  --tx-in fed59e746ff8b19004f8eb150a954478d420a505ebfb5366b0aa28e20d21c5c1#1 \
-  --tx-in fed59e746ff8b19004f8eb150a954478d420a505ebfb5366b0aa28e20d21c5c1#0 \
-  --spending-tx-in-reference c1d7755d9089bc1a6b85561e1f3eb740935c6a887a15589395bfc36f8b64fa10#0 \
+  --tx-in e44ff771ac294fca630bb4752058cbbde85a97e640bfaf03050ad8bb0c70adf9#1 \
+  --tx-in e44ff771ac294fca630bb4752058cbbde85a97e640bfaf03050ad8bb0c70adf9#0 \
+  --spending-tx-in-reference ec243b6e5c3a1f7de6a0b0d75bf29247009e92596ac13f67b9176a70dcf96915#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-execution-units "(${spend_0_steps},${spend_0_mem})" \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${asset1Beacon} + 1 ${asset2Beacon} + 11 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --withdrawal "$(cat ${beaconAddrFile})+0" \
+  --withdrawal-tx-in-reference ec243b6e5c3a1f7de6a0b0d75bf29247009e92596ac13f67b9176a70dcf96915#1 \
+  --withdrawal-plutus-script-v2 \
+  --withdrawal-reference-tx-in-execution-units "(${stake_0_steps},${stake_0_mem})" \
+  --withdrawal-reference-tx-in-redeemer-file $beaconRedeemerFile \
+  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${asset1Beacon} + 1 ${asset2Beacon} + 20 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out-inline-datum-file $swapDatumFile \
   --tx-out "$(cat ../../../ignored/wallets/01.addr) + $((initial_change-req_fee)) lovelace " \
-  --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
+  --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --tx-total-collateral 21000000 \
   --required-signer-hash "$ownerPubKeyHash" \
   --protocol-params-file "${tmpDir}protocol.json" \

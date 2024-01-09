@@ -1,6 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -27,9 +25,12 @@ module CardanoSwaps.Utils
 
     -- * Parsing User Inputs
     -- This is just so that certain things do not need to be re-exported.
+  , readAssetConfig
   , readTokenName
   , readCurrencySymbol
   , readTxId
+  , readTxOutRef
+  , readPlutusRational
 
     -- * Misc
   , unsafeFromRight
@@ -59,14 +60,16 @@ import Ledger (Script(..),applyArguments,scriptSize)
 import Cardano.Api hiding (TxId,Script,Address)
 import Cardano.Api.Shelley (PlutusScript (..))
 import Data.ByteString.Lazy (fromStrict,toStrict)
-import Data.Text (Text)
+import Data.Text (Text,unpack,pack,replace)
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Short as SBS
 import Data.String (fromString)
 import Ledger.Bytes (fromHex,bytes,encodeByteString)
 import Ledger.Tx.CardanoAPI.Internal
-import PlutusTx.Ratio (unsafeRatio,numerator,denominator)
+import PlutusTx.Ratio (fromGHC,unsafeRatio,numerator,denominator)
 import Prettyprinter
+import Text.Read (readMaybe)
+import Control.Applicative ((<|>))
 
 -------------------------------------------------
 -- On-Chain Data Types
@@ -134,6 +137,15 @@ toCBOR = encodeByteString . toStrict . serialise
 -------------------------------------------------
 -- Functions for parsing user input.
 -------------------------------------------------
+-- | Parse `AssetConfig` from user supplied `String`. The input is expected to either be
+-- "lovelace" or of the form "policy_id.asset_name".
+readAssetConfig :: String -> Either String AssetConfig
+readAssetConfig s =
+    if s == "lovelace" then Right $ (adaSymbol,adaToken)
+    else (,) <$> readCurrencySymbol policy <*> readTokenName (drop 1 name)
+  where
+    (policy,name) = span (/='.') s
+
 -- | Parse `CurrencySymbol` from user supplied `String`.
 readCurrencySymbol :: String -> Either String CurrencySymbol
 readCurrencySymbol s = case fromHex $ fromString s of
@@ -151,6 +163,32 @@ readTxId :: String -> Either String TxId
 readTxId s = case fromHex $ fromString s of
   Right (LedgerBytes bytes') -> Right $ TxId bytes'
   Left msg                   -> Left $ "could not convert: " <> msg
+
+readTxOutRef :: String -> Either String TxOutRef
+readTxOutRef s = TxOutRef <$> readTxId txHash <*> readIndex (drop 1 index)
+  where
+    (txHash,index) = span (/='#') s
+
+    readIndex :: String -> Either String Integer
+    readIndex i = case readMaybe i of
+      Nothing -> Left $ "could not convert: " <> i
+      Just i' -> Right i'
+
+-- | Parse `PlutusRational` from user supplied `String` of either a decimal or a fraction.
+readPlutusRational :: String -> Either String PlutusRational
+readPlutusRational s = case fromGHC <$> (readMaybeRatio sample <|> readMaybeDouble sample) of
+    Nothing -> Left $ "could not convert: " <> s
+    Just r -> Right r
+  where
+    -- Replace / with % since Haskell fractions use % while humans use /.
+    sample :: String
+    sample = unpack $ replace "/" "%" $ pack s 
+
+    readMaybeRatio :: String -> Maybe Rational
+    readMaybeRatio = readMaybe
+
+    readMaybeDouble :: String -> Maybe Rational
+    readMaybeDouble = fmap toRational . readMaybe @Double
 
 -------------------------------------------------
 -- Misc

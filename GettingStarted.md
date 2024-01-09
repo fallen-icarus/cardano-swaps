@@ -1,8 +1,8 @@
 # Getting Started
 
-`cardano-swaps` assumes that all transactions are built and signed using `cardano-cli`. **Access to
-a local node is not necessary**, although it does simplify things. Koios can be used for all steps
-that require access to a node.
+The `cardano-swaps` CLI assumes that all transactions are built and signed using `cardano-cli`.
+**Access to a local node is not necessary**, although it does simplify things. Koios can be used for
+all steps that require access to a node.
 
 Template bash scripts that follow these steps are available [here](scripts/). There are examples
 using a local node and a remote node. Using a remote node requires extra steps since the transaction
@@ -15,6 +15,8 @@ must be manually balanced.
 - [Using Remote Nodes](#using-remote-nodes)
 - [Minting Test Tokens](#minting-test-tokens)
 - [One-Way Swaps](#one-way-swaps)
+  - [Registering The Beacon Script - DEVELOPERS
+  ONLY](#registering-the-beacon-script---developers-only)
   - [Creating Reference Scripts](#creating-reference-scripts)
   - [Creating A Swap](#creating-a-swap)
   - [Closing A Swap](#closing-a-swap)
@@ -22,6 +24,8 @@ must be manually balanced.
   - [Converting A Swap To A New Trading Pair](#converting-a-swap-to-a-new-trading-pair)
   - [Executing A Swap](#executing-a-swap)
 - [Two-Sway Swaps](#two-way-swaps)
+  - [Registering The Beacon Script - DEVELOPERS
+  ONLY](#registering-the-beacon-script---developers-only-1)
   - [Creating Reference Scripts](#creating-reference-scripts-1)
   - [Creating A Swap](#creating-a-swap-1)
   - [Closing A Swap](#closing-a-swap-1)
@@ -153,7 +157,8 @@ four kinds of tests:
 1) Regression tests - tests for features that should work.
 2) Failure tests - tests for scenarios that are supposed to fail.
 3) Bench tests - tests to check for degraded performance in specific scenarios.
-4) Performance Increase tests - tests to check for improved performance in specific scenarios.
+4) Performance Increase tests - tests to check for improved performance in specific scenarios; these
+tests will fail if performance increases to alert you of the change.
 
 To see the documentation for the tests, you can build the haddocks for the tests using `cabal
 haddock tests`. The documentation may be easier to read than the source code. You can view the
@@ -188,6 +193,8 @@ This command requires the following steps:
    the fee from the change).
 6. Sign the transaction and submit to a remote node.
 
+The `cardano-swaps` CLI uses [Koios](https://koios.rest/) in all scenarios where a node is required.
+
 ##### Exporting protocol parameters
 
 Some of the above steps will require the current protocol parameters. The `cardano-swaps` CLI had
@@ -209,9 +216,11 @@ cardano-swaps evaluate-tx \
   --tx-file tx.body
 ```
 
-The returned budgets will be indexed by the input order and policy id order. **This may not be the
-same order you specified when building the temporary transaction.** The node will reorder them
-base on lexicographical ordering.
+This action uses Koios. The returned budgets will be indexed by the input order and policy id order.
+**This may not be the same order you specified when building the temporary transaction.** The node
+will reorder them base on lexicographical ordering. If you are not sure of the proper ordering, you
+can view the transaction file that is created with `cardano-cli` using `cardano-cli transaction
+view`; the inputs and policy ids will be properly ordered.
 
 ##### Submitting the final transaction
 
@@ -221,6 +230,8 @@ cardano-swaps submit \
   --testnet \
   --tx-file tx.signed
 ```
+
+The transaction will be submitted through Koios.
 
 ## Minting Test Tokens
 
@@ -237,7 +248,45 @@ To see how to build the transaction using a remote node, refer
 
 ## One-Way Swaps
 
+### Registering The Beacon Script - DEVELOPERS ONLY
+
+**This action only needs to be done once for the entire DApp. It does not need to be done by any
+users.** These instructions are for completeness as they may be needed by developers.
+
+The beacon script cannot be executed as a staking script until after it is registered. Once the
+script is registered, it can be used as a staking script immediately by all users. Registering the
+script does not require executing the script. Once it is registered, *it cannot be deregistered*.
+
+Registering the beacon script involves:
+1. Exporting the beacon script from the `cardano-swaps` CLI.
+2. Creating a registration certificate for the beacon script.
+3. Submitting a transaction that also pays the registration deposit (2 ADA).
+
+##### Exporting the beacon script
+```Bash
+cardano-swaps scripts one-way beacon-policy \
+  --out-file oneWayBeacons.plutus
+```
+
+##### Create the registration certificate
+```Bash
+cardano-cli stake-address registration-certificate \
+  --stake-script-file oneWayBeacons.plutus \
+  --out-file registration.cert
+```
+
+##### Building the transaction
+To see how to build the transaction using a local node, refer 
+[here](scripts/local/one-way/register-beacon-script.sh).
+
+To see how to build the transaction using a remote node, refer
+[here](scripts/remote/one-way/register-beacon-script.sh).
+
+
 ### Creating Reference Scripts
+
+**Don't skip this step!** While beacon tokens to be used to trustlessly share reference scripts,
+this has not been set up for the beta testing. For now, you will need your own reference scripts.
 
 Creating reference scripts involves the following steps:
 1. Export the scripts from the `cardano-swaps` CLI.
@@ -245,12 +294,12 @@ Creating reference scripts involves the following steps:
 
 ##### Exporting the scripts
 ```Bash
-# Export the swap validator script.
+# Export the spending script.
 cardano-swaps scripts one-way swap-script \
   --out-file oneWaySwap.plutus
 
-# Export the beacon policy.
-cardano-swaps scripts one-way beacon-policy \
+# Export the beacon script.
+cardano-swaps scripts one-way beacon-script \
   --out-file oneWayBeacons.plutus
 ```
 
@@ -266,13 +315,13 @@ To see how to build the transaction using a remote node, refer
 Creating a swap involves the following steps:
 1. Create your swap address.
 2. Calculate the required beacon names to mint.
-3. Create the required beacon minting redeemer.
+3. Create the required beacon script redeemer.
 4. Create the required swap datum for each swap.
 5. Submit a transaction that creates the swaps.
 
 ##### Creating your swap address
 ```Bash
-# Export the swap validator script.
+# Export the spending script.
 cardano-swaps scripts one-way swap-script \
   --out-file oneWaySwap.plutus
 
@@ -300,20 +349,18 @@ beaconPolicyId=$(cardano-swaps beacon-info one-way policy-id \
 
 # Get the required trading pair beacon name.
 pairBeaconName=$(cardano-swaps beacon-info one-way pair-beacon \
-  --ask-lovelace \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 4f74686572546f6b656e0a \
+  --ask-asset lovelace \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 # Get the required offer beacon name.
 offerBeaconName=$(cardano-swaps beacon-info one-way offer-beacon \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 4f74686572546f6b656e0a \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 # Get the required ask beacon name.
 askBeaconName=$(cardano-swaps beacon-info one-way ask-beacon \
-  --ask-lovelace \
+  --ask-asset lovelace \
   --stdout)
 
 # Create the required full beacon names.
@@ -324,27 +371,29 @@ askBeacon="${beaconPolicyId}.${askBeaconName}"
 
 The above beacons are for a swap that is offering a native token in exchange for ADA.
 
-##### Create the required minting redeemer
+##### Create the required beacon script redeemer
 ```Bash
 cardano-swaps beacon-redeemers one-way \
-  --create-swap \
-  --out-file createOneWaySwap.json
+  --mint-or-burn \
+  --out-file beaconRedeemer.json
 ```
 
 ##### Creating the required swap datum
 ```Bash
 cardano-swaps datums one-way \
-  --ask-lovelace \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 4f74686572546f6b656e0a \
-  --price-numerator 1000000 \
-  --price-denominator 1 \
+  --ask-asset lovelace \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
+  --offer-price '1000000 / 1' \
   --out-file oneWaySwapDatum.json
 ```
 
 **The price is always Ask/Offer.** In the above example, the swap wants 1 ADA per 1 native token
-taken. The `--tx-hash` and `--output-index` flags are only needed when executing a swap; you can
-leave them out here.
+taken. The price can be specified as either a fraction (like above) or a decimal, such as:
+`--offer-price 1000000`. Specifying a decimal may be more convenient but specifying the fraction
+offers more control since it will be used on-chain as is (the decimal must be converted to a
+fraction).
+
+The `--input-swap-ref` flag is only needed when executing a swap; you can leave it out here.
 
 ##### Building the transaction
 To see how to build the transaction using a local node, refer 
@@ -358,9 +407,9 @@ To see how to build the transaction using a remote node, refer
 
 Closing a swap requires the following steps:
 1. Calculate the hash of the swap's staking credential.
-2. Create the required spending redeemer.
+2. Create the required spending script redeemer.
 3. Calculate the required beacon names to burn.
-4. Create the required beacon burning redeemer.
+4. Create the required beacon script redeemer.
 5. Submit the transaction.
 
 ##### Calculate the hash of the swap's staking credential
@@ -377,11 +426,11 @@ ownerStakingScriptHash=$(cardano-cli transaction policyid \
 While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
 creating the hash of *any* script.
 
-##### Create the required spending redeemer
+##### Create the required spending script redeemer
 ```Bash
 cardano-swaps spending-redeemers one-way \
-  --close-or-update \
-  --out-file closeOrUpdateOneWaySwap.json
+  --close \
+  --out-file spendingRedeemer.json
 ```
 
 ##### Calculate the required beacon names to burn
@@ -390,18 +439,16 @@ beaconPolicyId=$(cardano-swaps beacon-info one-way policy-id \
   --stdout)
 
 pairBeaconName=$(cardano-swaps beacon-info one-way pair-beacon \
-  --ask-lovelace \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 4f74686572546f6b656e0a \
+  --ask-asset lovelace \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 offerBeaconName=$(cardano-swaps beacon-info one-way offer-beacon \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 4f74686572546f6b656e0a \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 askBeaconName=$(cardano-swaps beacon-info one-way ask-beacon \
-  --ask-lovelace \
+  --ask-asset lovelace \
   --stdout)
 
 pairBeacon="${beaconPolicyId}.${pairBeaconName}"
@@ -409,11 +456,11 @@ offerBeacon="${beaconPolicyId}.${offerBeaconName}"
 askBeacon="${beaconPolicyId}.${askBeaconName}"
 ```
 
-##### Create the required burning redeemer
+##### Create the required beacon script redeemer
 ```Bash
 cardano-swaps beacon-redeemers one-way \
-  --burn \
-  --out-file burnOneWayBeacons.json
+  --mint-or-burn \
+  --out-file beaconRedeemer.json
 ```
 
 ##### Building the transaction
@@ -426,11 +473,16 @@ To see how to build the transaction using a remote node, refer
 
 ### Updating A Swap
 
+When no beacons need to be minted or burned, the beacon script can be executed as a staking script
+for this action. If you are also converting a swap's pair or closing a swap in the transaction,
+you do not need to use the staking execution; only the minting execution will be needed.
+
 Updating a swap requires the following steps:
 1. Calculate the hash of the swap's staking credential.
-2. Create the required spending redeemer.
-3. Create the new swap datum.
-4. Submit the transaction.
+2. Create the required spending script redeemer.
+3. Create the required beacon script redeemer.
+4. Create the new swap datum.
+5. Submit the transaction.
 
 ##### Calculate the hash of the swap's staking credential
 ```Bash
@@ -446,29 +498,48 @@ ownerStakingScriptHash=$(cardano-cli transaction policyid \
 While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
 creating the hash of *any* script.
 
-##### Create the required spending redeemer
+##### Create the required spending script redeemer
 ```Bash
 cardano-swaps spending-redeemers one-way \
-  --close-or-update \
-  --out-file closeOrUpdateOneWaySwap.json
+  --update-with-stake \
+  --out-file spendingRedeemer.json
 ```
+
+If the beacon script is being executed as a minting policy in this transaction, you can use the
+`--update-with-mint` flag instead.
+
+##### Create the beacon script redeemer.
+```Bash
+cardano-swaps beacon-redeemers one-way \
+  --update-only \
+  --out-file beaconRedeemer.json
+```
+
+If the beacon script is going to be executed as a minting policy, use the `--mint-or-burn` flag
+instead.
 
 ##### Creating the new swap datum
 ```Bash
 cardano-swaps datums one-way \
-  --ask-lovelace \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 4f74686572546f6b656e0a \
-  --price-numerator 1000000 \
-  --price-denominator 2 \
+  --ask-asset lovelace \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
+  --offer-price '1000000 / 2' \
   --out-file oneWaySwapDatum.json
 ```
 
-**The price is always Ask/Offer.** In the above example, the swap wants 1 ADA per 2 native token
-taken. The `--tx-hash` and `--output-index` flags are only needed when executing a swap; you can
-leave them out here.
+**The price is always Ask/Offer.** In the above example, the swap wants 0.5 ADA per 1 native token
+taken. The price can be specified as either a fraction (like above) or a decimal, such as:
+`--offer-price 50000`. Specifying a decimal may be more convenient but specifying the fraction
+offers more control since it will be used on-chain as is (the decimal must be converted to a
+fraction).
+
+The `--input-swap-ref` flag is only needed when executing a swap; you can leave it out here.
 
 ##### Building the transaction
+The following transactions assume you are using a staking execution for the beacons script. If you
+are going to use the minting execution instead, you can model the transactions off of the converting
+swap template transactions.
+
 To see how to build the transaction using a local node, refer 
 [here](scripts/local/one-way/update-price.sh).
 
@@ -480,8 +551,8 @@ To see how to build the transaction using a remote node, refer
 
 Converting a swap requires the following steps:
 1. Calculate the hash of the swap's staking credential.
-2. Create the required spending redeemer.
-3. Create the required minting redeemer.
+2. Create the required spending script redeemer.
+3. Create the required beacon script redeemer.
 4. Calculate the required beacon names to mint. These are for the new pair.
 5. Calculate the required beacon names to burn. These are for the old pair.
 6. Create the new swap datum.
@@ -501,21 +572,19 @@ ownerStakingScriptHash=$(cardano-cli transaction policyid \
 While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
 creating the hash of *any* script.
 
-##### Create the required spending redeemer
+##### Create the required spending script redeemer
 ```Bash
 cardano-swaps spending-redeemers one-way \
-  --close-or-update \
-  --out-file closeOrUpdateOneWaySwap.json
+  --update-with-mint \
+  --out-file spendingRedeemer.json
 ```
 
-##### Create the required minting redeemer
+##### Create the required beacon script redeemer
 ```Bash
 cardano-swaps beacon-redeemers one-way \
-  --create-swap \
-  --out-file createOneWaySwap.json
+  --mint-or-burn \
+  --out-file beaconRedeemer.json
 ```
-
-This redeemer can be used to both burn the old beacons and mint the new ones.
 
 ##### Calculate the required beacon names to mint
 One-way swaps require three beacons: the trading pair beacon, the offer beacon, and the ask beacon.
@@ -527,20 +596,18 @@ beaconPolicyId=$(cardano-swaps beacon-info one-way policy-id \
 
 # Get the required trading pair beacon name.
 newPairBeaconName=$(cardano-swaps beacon-info one-way pair-beacon \
-  --ask-lovelace \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 54657374546f6b656e31 \
+  --ask-asset lovelace \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
   --stdout)
 
 # Get the required offer beacon name.
 newOfferBeaconName=$(cardano-swaps beacon-info one-way offer-beacon \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 54657374546f6b656e31 \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
   --stdout)
 
 # Get the required ask beacon name.
 newAskBeaconName=$(cardano-swaps beacon-info one-way ask-beacon \
-  --ask-lovelace \
+  --ask-asset lovelace \
   --stdout)
 
 # Create the required full beacon names.
@@ -560,20 +627,18 @@ beaconPolicyId=$(cardano-swaps beacon-info one-way policy-id \
 
 # Get the required trading pair beacon name.
 oldPairBeaconName=$(cardano-swaps beacon-info one-way pair-beacon \
-  --ask-lovelace \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 4f74686572546f6b656e0a \
+  --ask-asset lovelace \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 # Get the required offer beacon name.
 oldOfferBeacon=$(cardano-swaps beacon-info one-way offer-beacon \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 4f74686572546f6b656e0a \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 # Get the required ask beacon name.
 oldAskBeaconName=$(cardano-swaps beacon-info one-way ask-beacon \
-  --ask-lovelace \
+  --ask-asset lovelace \
   --stdout)
 
 # Create the required full beacon names.
@@ -588,17 +653,18 @@ burned. This example is just for completeness.
 ##### Creating the new swap datum
 ```Bash
 cardano-swaps datums one-way \
-  --ask-lovelace \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 54657374546f6b656e31 \
-  --price-numerator 1000000 \
-  --price-denominator 2 \
+  --ask-asset lovelace \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
+  --price-numerator 50000 \
   --out-file oneWaySwapDatum.json
 ```
 
-**The price is always Ask/Offer.** In the above example, the swap wants 1 ADA per 2 native token
-taken (a different native token than before). The `--tx-hash` and `--output-index` flags are only
-needed when executing a swap; you can leave them out here.
+**The price is always Ask/Offer.** In the above example, the swap wants 0.5 ADA per 1 native token
+taken. The price can be specified as either a fraction (like above) or a decimal. Specifying a
+decimal may be more convenient but specifying the fraction offers more control since it will be used
+on-chain as is (the decimal must be converted to a fraction).
+
+The `--input-swap-ref` flag is only needed when executing a swap; you can leave it out here.
 
 ##### Building the transaction
 To see how to build the transaction using a local node, refer 
@@ -612,14 +678,14 @@ To see how to build the transaction using a remote node, refer
 ### Executing A Swap
 
 Executing a swap involves the following steps:
-1. Create the spending redeemer.
+1. Create the spending script redeemer.
 2. Create the corresponding swap datum for the target swap.
 3. Submit the transaction.
 
 It may be helpful to also calculate the beacon names and store them as variables since the swap
 output still needs them.
 
-##### Create the spending redeemer
+##### Create the spending script redeemer
 ```Bash
 cardano-swaps spending-redeemers one-way \
   --swap \
@@ -629,19 +695,17 @@ cardano-swaps spending-redeemers one-way \
 ##### Create the corresponding swap datum for the target swap.
 ```Bash
 cardano-swaps datums one-way \
-  --ask-lovelace \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 4f74686572546f6b656e0a \
-  --price-numerator 1 \
-  --price-denominator 50000 \
-  --tx-hash 71ae3f66eead7198a79232ff8f2c032d845d0070d3f066f1b5dec3c2abe99788 \
-  --output-index 0 \
+  --ask-asset lovelace \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
+  --offer-price '50000 / 1' \
+  --input-swap-ref 71ae3f66eead7198a79232ff8f2c032d845d0070d3f066f1b5dec3c2abe99788#0 \
   --out-file oneWaySwapDatum.json
 ```
 
 The datum should be *exactly* the same as the target swap's datum except the new datum should point
-to the swap input: the `--tx-hash` and `--output-index` flags should specify the UTxO of the swap
-being consumed.
+to the swap input: the `--input-swap-ref` flag should specify the UTxO of the swap being consumed.
+
+Since the price in the swap datum must be exact, it is better to specify the price as a fraction.
 
 
 ##### Building the transaction
@@ -654,7 +718,45 @@ To see how to build the transaction using a remote node, refer
 
 ## Two-Way Swaps
 
+### Registering The Beacon Script - DEVELOPERS ONLY
+
+**This action only needs to be done once for the entire DApp. It does not need to be done by any
+users.** These instructions are for completeness as they may be needed by developers.
+
+The beacon script cannot be executed as a staking script until after it is registered. Once the
+script is registered, it can be used as a staking script immediately by all users. Registering the
+script does not require executing the script. Once it is registered, *it cannot be deregistered*.
+
+Registering the beacon script involves:
+1. Exporting the beacon script from the `cardano-swaps` CLI.
+2. Creating a registration certificate for the beacon script.
+3. Submitting a transaction that also pays the registration deposit.
+
+##### Exporting the beacon script
+```Bash
+cardano-swaps scripts two-way beacon-policy \
+  --out-file twoWayBeacons.plutus
+```
+
+##### Create the registration certificate
+```Bash
+cardano-cli stake-address registration-certificate \
+  --stake-script-file twoWayBeacons.plutus \
+  --out-file registration.cert"
+```
+
+##### Building the transaction
+To see how to build the transaction using a local node, refer 
+[here](scripts/local/two-way/register-beacon-script.sh).
+
+To see how to build the transaction using a remote node, refer
+[here](scripts/remote/two-way/register-beacon-script.sh).
+
+
 ### Creating Reference Scripts
+
+**Don't skip this step!** While beacon tokens to be used to trustlessly share reference scripts,
+this has not been set up for the beta testing. For now, you will need your own reference scripts.
 
 Creating reference scripts involves the following steps:
 1. Export the scripts from the `cardano-swaps` CLI.
@@ -662,11 +764,11 @@ Creating reference scripts involves the following steps:
 
 ##### Exporting the scripts
 ```Bash
-# Export the swap validator script.
+# Export the spending script.
 cardano-swaps scripts two-way swap-script \
   --out-file twoWaySwap.plutus
 
-# Export the beacon policy.
+# Export the beacon script.
 cardano-swaps scripts two-way beacon-policy \
   --out-file twoWayBeacons.plutus
 ```
@@ -683,19 +785,13 @@ To see how to build the transaction using a remote node, refer
 Creating a swap involves the following steps:
 1. Create your swap address.
 2. Calculate the required beacon names to mint.
-3. Create the required beacon minting redeemer.
+3. Create the required beacon script redeemer.
 4. Create the required swap datum for each swap.
 5. Submit a transaction that creates the swaps.
 
-:exlamation: Asset1 and asset2 are determined lexicographically: asset1 < asset2. The creation will
-fail if the assets are in the wrong order (you will see the appropriate error message). Ada is
-represented on-chain as the empty string which is always the smallest. Therefore, whenever ada
-is part of a two-way swap, asset1 will always be ada. **If you need to change the order of the
-assets, make sure to also change the prices!**
-
 ##### Creating your swap address
 ```Bash
-# Export the swap validator script.
+# Export the spending script.
 cardano-swaps scripts two-way swap-script \
   --out-file twoWaySwap.plutus
 
@@ -724,20 +820,18 @@ beaconPolicyId=$(cardano-swaps beacon-info two-way policy-id \
 
 # Get the required trading pair beacon name.
 pairBeaconName=$(cardano-swaps beacon-info two-way pair-beacon \
-  --asset1-is-lovelace \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 4f74686572546f6b656e0a \
+  --first-asset lovelace \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 # Get the required asset1 beacon name.
 asset1BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
-  --asset1-is-lovelace \
+  --first-asset lovelace \
   --stdout)
 
 # Get the required asset2 beacon name.
 asset2BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 4f74686572546f6b656e0a \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 # Create the required full beacon names.
@@ -746,41 +840,39 @@ asset1Beacon="${beaconPolicyId}.${asset1BeaconName}"
 asset2Beacon="${beaconPolicyId}.${asset2BeaconName}"
 ```
 
-The above beacons are for a two-way swap between ADA and a native token.
+The above beacons are for a two-way swap between ADA and a native token. Which asset is specified
+as first or second is irrelevant, the CLI will properly create the beacons.
 
-##### Create the required minting redeemer
+##### Create the required beacon script redeemer
 ```Bash
 cardano-swaps beacon-redeemers two-way \
-  --create-swap \
-  --out-file createTwoWaySwap.json
+  --mint-or-burn \
+  --out-file beaconRedeemer.json
 ```
 
 ##### Creating the required swap datum
 ```Bash
 cardano-swaps datums two-way \
-  --asset1-is-lovelace \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 4f74686572546f6b656e0a \
-  --forward-price-numerator 1000000 \
-  --forward-price-denominator 1 \
-  --reverse-price-numerator 2 \
-  --reverse-price-denominator 1000000 \
+  --first-asset lovelace \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
+  --first-price '1 / 1000000' \
+  --second-price '1500000 / 1' \
   --out-file twoWaySwapDatum.json
 ```
 
 **The prices are always Ask/Offer from the perspective of the swap.** In other words, the numerators
 are always the amount asked for and the denominator is the amount that is allow to be taken.
 
-- `forward-price` = Asset1 / Asset2. Therefore, the above example's `forward-price` is 1 ADA given
-for every 1 native asset taken.
-- `reverse-price` = Asset2 / Asset1. Therefore, the above example's `reverse-price` is 2 native
-assets given for every 1 ADA taken.
+Which asset is first or second is irrelevant; all that matters is that the `first-price` corresponds
+to the `first-asset`, and the `second-price` corresponds to the `second-asset`. The CLI will handle
+the rest.
 
-**If you need to change the order of the assets, make sure to also change the prices!** The script
-will tell you if the assets need to be flipped.
+- `first-price` = second asset / first asset. Therefore, the above example's `first-price` is 1
+native token given for every 1 ADA taken.
+- `second-price` = first asset / second asset. Therefore, the above example's `second-price` is 1.5
+ADA given for every 1 native token taken.
 
-The `--tx-hash` and `--output-index` flags are only needed when executing a swap; you can
-leave them out here.
+The `--input-swap-ref` flag is only needed when executing a swap; you can leave it out here.
 
 ##### Building the transaction
 To see how to build the transaction using a local node, refer 
@@ -794,9 +886,9 @@ To see how to build the transaction using a remote node, refer
 
 Closing a swap requires the following steps:
 1. Calculate the hash of the swap's staking credential.
-2. Create the required spending redeemer.
+2. Create the required spending script redeemer.
 3. Calculate the required beacon names to burn.
-4. Create the required beacon burning redeemer.
+4. Create the required beacon script redeemer.
 5. Submit the transaction.
 
 ##### Calculate the hash of the swap's staking credential
@@ -813,11 +905,11 @@ ownerStakingScriptHash=$(cardano-cli transaction policyid \
 While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
 creating the hash of *any* script.
 
-##### Create the required spending redeemer
+##### Create the required spending script redeemer
 ```Bash
 cardano-swaps spending-redeemers two-way \
-  --close-or-update \
-  --out-file closeOrUpdateTwoWaySwap.json
+  --close \
+  --out-file spendingRedeemer.json
 ```
 
 ##### Calculate the required beacon names to burn
@@ -826,18 +918,16 @@ beaconPolicyId=$(cardano-swaps beacon-info two-way policy-id \
   --stdout)
 
 pairBeaconName=$(cardano-swaps beacon-info two-way pair-beacon \
-  --asset1-is-lovelace \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 4f74686572546f6b656e0a \
+  --first-asset lovelace \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 asset1BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
-  --asset1-is-lovelace \
+  --first-asset lovelace \
   --stdout)
 
 asset2BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 4f74686572546f6b656e0a \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 pairBeacon="${beaconPolicyId}.${pairBeaconName}"
@@ -845,10 +935,13 @@ asset1Beacon="${beaconPolicyId}.${asset1BeaconName}"
 asset2Beacon="${beaconPolicyId}.${asset2BeaconName}"
 ```
 
-##### Create the required burning redeemer
+The above beacons are for a two-way swap between ADA and a native token. Which asset is specified
+as first or second is irrelevant, the CLI will properly create the beacons.
+
+##### Create the required beacon script redeemer
 ```Bash
 cardano-swaps beacon-redeemers two-way \
-  --burn \
+  --mint-or-burn \
   --out-file burnTwoWayBeacons.json
 ```
 
@@ -862,11 +955,16 @@ To see how to build the transaction using a remote node, refer
 
 ### Updating A Swap
 
+When no beacons need to be minted or burned, the beacon script can be executed as a staking script
+for this action. If you are also converting a swap's pair or closing a swap in the transaction,
+you do not need to use the staking execution; only the minting execution will be needed.
+
 Updating a swap requires the following steps:
 1. Calculate the hash of the swap's staking credential.
 2. Create the required spending redeemer.
-3. Create the new swap datum.
-4. Submit the transaction.
+3. Create the required beacon script redeemer.
+4. Create the new swap datum.
+5. Submit the transaction.
 
 ##### Calculate the hash of the swap's staking credential
 ```Bash
@@ -882,41 +980,55 @@ ownerStakingScriptHash=$(cardano-cli transaction policyid \
 While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
 creating the hash of *any* script.
 
-##### Create the required spending redeemer
+##### Create the required spending script redeemer
 ```Bash
 cardano-swaps spending-redeemers two-way \
-  --close-or-update \
-  --out-file closeOrUpdateTwoWaySwap.json
+  --update-with-mint \
+  --out-file spendingRedeemer.json
 ```
+
+If the beacon script is being executed as a minting policy in this transaction, you can use the
+`--update-with-mint` flag instead.
+
+##### Create the beacon script redeemer.
+```Bash
+cardano-swaps beacon-redeemers one-way \
+  --update-only \
+  --out-file beaconRedeemer.json
+```
+
+If the beacon script is going to be executed as a minting policy, use the `--mint-or-burn` flag
+instead.
 
 ##### Creating the new swap datum
 ```Bash
 cardano-swaps datums two-way \
-  --asset1-is-lovelace \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 4f74686572546f6b656e0a \
-  --forward-price-numerator 1000000 \
-  --forward-price-denominator 1 \
-  --reverse-price-numerator 2 \
-  --reverse-price-denominator 1000000 \
+  --first-asset lovelace \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
+  --second-price 1000000 \
+  --first-price '2 / 1000000' \
   --out-file twoWaySwapDatum.json
 ```
 
 **The prices are always Ask/Offer from the perspective of the swap.** In other words, the numerators
 are always the amount asked for and the denominator is the amount that is allow to be taken.
 
-- `forward-price` = Asset1 / Asset2. Therefore, the above example's `forward-price` is 1 ADA given
-for every 1 native asset taken.
-- `reverse-price` = Asset2 / Asset1. Therefore, the above example's `reverse-price` is 2 native
-assets given for every 1 ADA taken.
+Which asset is first or second is irrelevant; all that matters is that the `first-price` corresponds
+to the `first-asset`, and the `second-price` corresponds to the `second-asset`. The CLI will handle
+the rest.
 
-**If you need to change the order of the assets, make sure to also change the prices!** The script
-will tell you if the assets need to be flipped.
+- `first-price` = second asset / first asset. Therefore, the above example's `first-price` is 2
+native token given for every 1 ADA taken.
+- `second-price` = first asset / second asset. Therefore, the above example's `second-price` is 1
+ADA given for every 1 native token taken.
 
-The `--tx-hash` and `--output-index` flags are only needed when executing a swap; you can
-leave them out here.
+The `--input-swap-ref` flag is only needed when executing a swap; you can leave it out here.
 
 ##### Building the transaction
+The following transactions assume you are using a staking execution for the beacons script. If you
+are going to use the minting execution instead, you can model the transactions off of the converting
+swap template transactions.
+
 To see how to build the transaction using a local node, refer 
 [here](scripts/local/two-way/update-price.sh).
 
@@ -928,8 +1040,8 @@ To see how to build the transaction using a remote node, refer
 
 Converting a swap requires the following steps:
 1. Calculate the hash of the swap's staking credential.
-2. Create the required spending redeemer.
-3. Create the required minting redeemer.
+2. Create the required spending script redeemer.
+3. Create the required beacon script redeemer.
 4. Calculate the required beacon names to mint. These are for the new pair.
 5. Calculate the required beacon names to burn. These are for the old pair.
 6. Create the new swap datum.
@@ -949,18 +1061,18 @@ ownerStakingScriptHash=$(cardano-cli transaction policyid \
 While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
 creating the hash of *any* script.
 
-##### Create the required spending redeemer
+##### Create the required spending script redeemer
 ```Bash
 cardano-swaps spending-redeemers two-way \
   --close-or-update \
-  --out-file closeOrUpdateTwoWaySwap.json
+  --out-file spendingRedeemer.json
 ```
 
-##### Create the required minting redeemer
+##### Create the required beacon script redeemer
 ```Bash
 cardano-swaps beacon-redeemers two-way \
-  --create-swap \
-  --out-file createTwoWaySwap.json
+  --mint-or-burn \
+  --out-file beaconRedeemer.json
 ```
 
 This redeemer can be used to both burn the old beacons and mint the new ones.
@@ -971,24 +1083,25 @@ beacon.
 
 ```Bash
 newPairBeaconName=$(cardano-swaps beacon-info two-way pair-beacon \
-  --asset1-is-lovelace \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 54657374546f6b656e31 \
+  --first-asset lovelace \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
   --stdout)
 
 newAsset1BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
-  --asset1-is-lovelace \
+  --first-asset lovelace \
   --stdout)
 
 newAsset2BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 54657374546f6b656e31 \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
   --stdout)
 
 newPairBeacon="${beaconPolicyId}.${newPairBeaconName}"
 newAsset1Beacon="${beaconPolicyId}.${newAsset1BeaconName}"
 newAsset1Beacon="${beaconPolicyId}.${newAsset2BeaconName}"
 ```
+
+The above beacons are for a two-way swap between ADA and a native token. Which asset is specified
+as first or second is irrelevant, the CLI will properly create the beacons.
 
 ##### Calculate the required beacon names to burn
 
@@ -997,18 +1110,16 @@ beaconPolicyId=$(cardano-swaps beacon-info two-way policy-id \
   --stdout)
 
 oldPairBeaconName=$(cardano-swaps beacon-info two-way pair-beacon \
-  --asset1-is-lovelace \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 4f74686572546f6b656e0a \
+  --first-asset lovelace \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 oldAsset1BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
-  --asset1-is-lovelace \
+  --first-asset lovelace \
   --stdout)
 
 oldAsset2BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 4f74686572546f6b656e0a \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 oldPairBeacon="${beaconPolicyId}.${oldPairBeaconName}"
@@ -1016,32 +1127,32 @@ oldAsset1Beacon="${beaconPolicyId}.${oldAsset1BeaconName}"
 oldAsset2Beacon="${beaconPolicyId}.${oldAsset2BeaconName}"
 ```
 
+The above beacons are for a two-way swap between ADA and a native token. Which asset is specified
+as first or second is irrelevant, the CLI will properly create the beacons.
+
 ##### Creating the new swap datum
 ```Bash
 cardano-swaps datums two-way \
-  --asset1-is-lovelace \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 54657374546f6b656e31 \
-  --forward-price-numerator 1000000 \
-  --forward-price-denominator 1 \
-  --reverse-price-numerator 2 \
-  --reverse-price-denominator 1000000 \
+  --first-asset lovelace \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
+  --second-price 1000000 \
+  --first-price '2 / 1000000' \
   --out-file twoWaySwapDatum.json
 ```
 
 **The prices are always Ask/Offer from the perspective of the swap.** In other words, the numerators
 are always the amount asked for and the denominator is the amount that is allow to be taken.
 
-- `forward-price` = Asset1 / Asset2. Therefore, the above example's `forward-price` is 1 ADA given
-for every 1 native asset taken.
-- `reverse-price` = Asset2 / Asset1. Therefore, the above example's `reverse-price` is 2 native
-assets given for every 1 ADA taken.
+Which asset is first or second is irrelevant; all that matters is that the `first-price` corresponds
+to the `first-asset`, and the `second-price` corresponds to the `second-asset`. The CLI will handle
+the rest.
 
-**If you need to change the order of the assets, make sure to also change the prices!** The script
-will tell you if the assets need to be flipped.
+- `first-price` = second asset / first asset. Therefore, the above example's `first-price` is 2
+native token given for every 1 ADA taken.
+- `second-price` = first asset / second asset. Therefore, the above example's `second-price` is 1
+ADA given for every 1 native token taken.
 
-The `--tx-hash` and `--output-index` flags are only needed when executing a swap; you can
-leave them out here.
+The `--input-swap-ref` flag is only needed when executing a swap; you can leave it out here.
 
 
 ##### Building the transaction
@@ -1055,33 +1166,36 @@ To see how to build the transaction using a remote node, refer
 ### Executing A Swap
 
 Executing a swap involves the following steps:
-1. Create the spending redeemer.
+1. Create the spending script redeemer.
 2. Create the corresponding swap datum for the target swap.
 3. Submit the transaction.
 
 It may be helpful to also calculate the beacon names and store them as variables since the swap
 output still needs them.
 
-- Forward Swaps mean asset2 is being taken from the swap and asset1 is being deposited.
-- Reverse Swaps mean asset1 is being taken from the swap and asset2 is being deposited.
+- `TakeAsset1` means asset1 is being taken from the swap and asset2 is being deposited.
+- `TakeAsset2` means asset2 is being taken from the swap and asset1 is being deposited.
 
-##### Create the spending redeemer
+**Which asset in the swap is asset1 and which is asset2 depends on the lexicographical ordering of
+the asset names.**
+
+##### Create the spending script redeemer
 ```Bash
 cardano-swaps spending-redeemers two-way \
-  --forward-swap \
+  --take-asset1 \
   --out-file twoWaySwapRedeemer.json
 ```
 
-To execute a reverse swap, use the `--reverse-swap` flag instead.
+To take asset2, use the `--take-asset2` flag instead.
 
-If you do not know what swap direction is required, you can tell the `cardano-swaps` CLI what the
-offer asset and ask asset are and it can create the proper swap redeemer for you:
+If you do not know what swap direction is required because you do not know the proper
+lexicographical ordering of the assets, you can tell the `cardano-swaps` CLI what the offer asset
+and ask asset are and it can create the proper swap redeemer for you:
 
 ```Bash
 cardano-swaps spending-redeemers two-way \
-  --offer-lovelace \
-  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --ask-token-name 54657374546f6b656e31 \
+  --offer-asset lovelace \
+  --ask-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
   --out-file twoWaySwapRedeemer.json
 ```
 
@@ -1093,22 +1207,18 @@ token.
 ##### Create the corresponding swap datum for the target swap.
 ```Bash
 cardano-swaps datums two-way \
-  --asset1-is-lovelace \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 4f74686572546f6b656e0a \
-  --forward-price-numerator 10 \
-  --forward-price-denominator 1000000 \
-  --reverse-price-numerator 10 \
-  --reverse-price-denominator 1000000 \
-  --tx-hash 61e92820c602d7d4b388140174e2ed76a924541b08a57072bc79c003b84d5a01 \
-  --output-index 0 \
+  --first-asset lovelace \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
+  --first-price '10 / 1000000' \
+  --second-price '1500000 / 1' \
+  --input-swap-ref 61e92820c602d7d4b388140174e2ed76a924541b08a57072bc79c003b84d5a01#0 \
   --out-file twoWaySwapDatum.json
 ```
 
 The datum should be *exactly* the same as the target swap's datum except the new datum should point
-to the corresponding swap input: the `--tx-hash` and `--output-index` flags should specify the UTxO
-of the swap being consumed.
+to the swap input: the `--input-swap-ref` flag should specify the UTxO of the swap being consumed.
 
+Since the prices in the swap datum must be exact, it is better to specify the prices as fractions.
 
 ##### Building the transaction
 To see how to build the transaction using a local node, refer 
@@ -1122,15 +1232,16 @@ To see how to build the transaction using a remote node, refer
 
 - All queries use Koios.
 - All query commands are capable of saving results to a file or printing to stdout. 
-- Results can be formatted as JSON, pretty, or plain. The pretty and plain formats are meant for
-printing to the stdout but both can also be saved to a file. The only difference between the pretty
-format and the plain format is the pretty format uses ansii escape sequences to highlight certain
-items with color. The plain format is there as a fallback in case the ansii escape sequences are
-causing issues for a user.
+- Results can be formatted as JSON, pretty, or plain. 
 
-> Note: Currently, `cardano-swaps` CLI will only get the first 1000 UTxOs that satisfy a query. This
-> could be 1000 personal UTxOs or 1000 swap UTxOs, depending on the query. For the beta release,
-> 1000 should be plenty. The CLI will be expanded in the future to remove this cap.
+The pretty and plain formats are meant for printing to the stdout but both can also be saved to a
+file. The only difference between the pretty format and the plain format is the pretty format uses
+ansii escape sequences to highlight certain items with color. The plain format is there as a
+fallback in case the ansii escape sequences are causing issues for a user.
+
+> Note: Currently, the `cardano-swaps` CLI will only get the first 1000 UTxOs that satisfy a query.
+> This could be 1000 personal UTxOs or 1000 swap UTxOs, depending on the query. For the beta
+> release, 1000 should be plenty. The CLI will be expanded in the future to remove this cap.
 
 ### Personal Address
 
@@ -1166,7 +1277,7 @@ when using the one-way query, you may get unexpected results.*
 cardano-swaps query own-swaps one-way offer \
   --testnet \
   --address $(cat oneWaySwap.addr) \
-  --offer-lovelace \
+  --offer-asset lovelace \
   --pretty \
   --stdout
 ```
@@ -1176,7 +1287,7 @@ cardano-swaps query own-swaps one-way offer \
 cardano-swaps query own-swaps two-way offer \
   --testnet \
   --address $(cat twoWaySwap.addr) \
-  --offer-lovelace \
+  --offer-asset lovelace \
   --pretty \
   --stdout
 ```
@@ -1189,7 +1300,7 @@ direction, this query requires you to choose one of the assets to be the offer a
 cardano-swaps query own-swaps one-way offer \
   --testnet \
   --address $(cat oneWaySwap.addr) \
-  --ask-lovelace \
+  --ask-asset lovelace \
   --pretty \
   --stdout
 ```
@@ -1199,7 +1310,7 @@ cardano-swaps query own-swaps one-way offer \
 cardano-swaps query own-swaps two-way ask \
   --testnet \
   --address $(cat twoWaySwap.addr) \
-  --ask-lovelace \
+  --ask-asset lovelace \
   --pretty \
   --stdout
 ```
@@ -1212,9 +1323,8 @@ direction, this query requires you to choose one of the assets to be the ask ass
 cardano-swaps query own-swaps one-way trading-pair \
   --testnet \
   --address $(cat oneWaySwap.addr) \
-  --offer-lovelace \
-  --ask-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --ask-token-name 4f74686572546f6b656e0a \
+  --offer-asset lovelace \
+  --ask-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --pretty \
   --stdout
 ```
@@ -1224,16 +1334,14 @@ cardano-swaps query own-swaps one-way trading-pair \
 cardano-swaps query own-swaps two-way trading-pair \
   --testnet \
   --address $(cat twoWaySwap.addr) \
-  --asset1-is-lovelace \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 4f74686572546f6b656e0a \
+  --first-asset lovelace \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --pretty \
   --stdout
 ```
 
-The assets do not need to be properly sorted for this query to work. For example, even though
-ada should always be asset1, this query will still work if ada is set for asset2. The CLI will
-properly query the swaps regardless of the order.
+The assets do not need to be properly sorted for this query to work. The CLI will
+properly query the swaps regardless of which asset is `first` and `second`.
 
 ### All Swaps
 
@@ -1248,17 +1356,16 @@ query. If you think it would be useful, feel free to open an issue.)
 ##### Swaps By Trading Pair 
 
 When querying all swaps by trading pair, a swap direction *must* be specified. The returned swaps
-are sorted based on the prices (taking into account whether that direction requires the
-`reversePrice` or `forwardPrice` for two-way swaps).
+are sorted based on the prices from lowest to highest (taking into account whether that
+direction requires the `asset1Price` or `asset2Price` for two-way swaps).
 
 When the pretty format is used, the relevant price is highlighted in Magenta.
 
 ```Bash
 cardano-swaps query all-swaps trading-pair \
   --testnet \
-  --ask-lovelace \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 4f74686572546f6b656e0a \
+  --ask-asset lovelace \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --pretty \
   --stdout
 ```
@@ -1270,8 +1377,7 @@ The returned swaps are *not* sorted nor are the prices highlighted in the pretty
 ```Bash
 cardano-swaps query all-swaps offer \
   --testnet \
-  --offer-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --offer-token-name 4f74686572546f6b656e0a \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --pretty \
   --stdout
 ```
@@ -1283,7 +1389,7 @@ The returned swaps are *not* sorted nor are the prices highlighted in the pretty
 ```Bash
 cardano-swaps query all-swaps ask \
   --testnet \
-  --ask-lovelace \
+  --ask-asset lovelace \
   --pretty \
   --stdout
 ```

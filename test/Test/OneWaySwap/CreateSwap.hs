@@ -136,7 +136,7 @@ regressionTest1 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -205,7 +205,7 @@ regressionTest2 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',2),(offerBeacon',2),(askBeacon',2)]
               }
           , TokenMint 
@@ -296,7 +296,7 @@ regressionTest3 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = 
                   [ (pairBeacon1,1),(offerBeacon1,1)
                   , (pairBeacon2,1),(offerBeacon2,1)
@@ -380,7 +380,7 @@ failureTest1 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [("other",1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -450,7 +450,7 @@ failureTest2 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [("other",1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -519,7 +519,7 @@ failureTest3 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',2),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -588,7 +588,7 @@ failureTest4 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',2),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -657,7 +657,7 @@ failureTest5 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),("other",1),(askBeacon',1)]
               }
           , TokenMint 
@@ -726,7 +726,7 @@ failureTest6 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',2),(askBeacon',1)]
               }
           , TokenMint 
@@ -795,7 +795,7 @@ failureTest7 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',2),(askBeacon',1)]
               }
           , TokenMint 
@@ -864,7 +864,7 @@ failureTest8 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),("other",1),(offerBeacon',1)]
               }
           , TokenMint 
@@ -933,7 +933,7 @@ failureTest9 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',2)]
               }
           , TokenMint 
@@ -1002,7 +1002,7 @@ failureTest10 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',2)]
               }
           , TokenMint 
@@ -1071,7 +1071,7 @@ failureTest11 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [("other",1),(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -1141,7 +1141,7 @@ failureTest12 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',2),(offerBeacon',2),(askBeacon',2)]
               }
           , TokenMint 
@@ -1211,7 +1211,7 @@ failureTest13 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',2),(offerBeacon',2),(askBeacon',2)]
               }
           , TokenMint 
@@ -1280,7 +1280,7 @@ failureTest14 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -1349,7 +1349,7 @@ failureTest15 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -1418,7 +1418,7 @@ failureTest16 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -1487,7 +1487,7 @@ failureTest17 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -1556,7 +1556,7 @@ failureTest18 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -1625,7 +1625,7 @@ failureTest19 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -1694,7 +1694,7 @@ failureTest20 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -1763,7 +1763,7 @@ failureTest21 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -1832,7 +1832,7 @@ failureTest22 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -1901,7 +1901,7 @@ failureTest23 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -1970,7 +1970,7 @@ failureTest24 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -2039,7 +2039,7 @@ failureTest25 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -2108,7 +2108,7 @@ failureTest26 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -2177,7 +2177,7 @@ failureTest27 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -2246,7 +2246,7 @@ failureTest28 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -2315,7 +2315,7 @@ failureTest29 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -2385,7 +2385,7 @@ failureTest30 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(offerBeacon',1),(askBeacon',1)]
               }
           , TokenMint 
@@ -2470,7 +2470,7 @@ failureTest31 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = 
                   [ (pairBeacon1,1),(offerBeacon1,1)
                   , (pairBeacon2,1),(offerBeacon2,1)
@@ -2566,7 +2566,7 @@ failureTest32 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = 
                   [ (pairBeacon1,1),(offerBeacon1,1)
                   , (pairBeacon2,1),(offerBeacon2,1)
@@ -2664,7 +2664,7 @@ failureTest33 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = 
                   [ (pairBeacon1,1),(offerBeacon1,1),(askBeacon1,1)
                   , (pairBeacon2,1),(offerBeacon2,1),(askBeacon2,1)
@@ -2759,7 +2759,7 @@ failureTest34 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = 
                   [ (pairBeacon1,1),(offerBeacon1,1)
                   , (pairBeacon2,1),(offerBeacon2,1)
@@ -2855,7 +2855,7 @@ failureTest35 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = 
                   [ (pairBeacon1,1),(offerBeacon1,1)
                   , (pairBeacon2,1),(offerBeacon2,1)
@@ -2939,7 +2939,7 @@ benchTest1 numberCreated = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = 
                   [ (pairBeacon',fromIntegral numberCreated)
                   , (offerBeacon',fromIntegral numberCreated)
@@ -3017,7 +3017,7 @@ benchTest2 numberCreated = do
               ( beaconMintingPolicy
               , Just (refScriptAddress, mintRef)
               )
-          , mintRedeemer = toRedeemer CreateSwap 
+          , mintRedeemer = toRedeemer CreateOrCloseSwaps 
           , mintTokens = 
               concatMap 
                 (\ SwapDatum{..} -> 
@@ -3045,7 +3045,7 @@ benchTrace = runEmulatorTraceIO' def emConfig . benchTest2
 -------------------------------------------------
 -- Test Function
 -------------------------------------------------
--- | A `TestTree` containing all `CreateSwap` scenarios.
+-- | A `TestTree` containing all `CreateOrCloseSwaps` scenarios.
 tests :: TestTree
 tests = do
   let opts = defaultCheckOptions & emulatorConfig .~ emConfig
@@ -3061,25 +3061,25 @@ tests = do
 
       -- Failure Tests
     , checkPredicateOptions opts "failureTest1"
-        (assertEvaluationError "UTxO does not have exactly 1 pair_beacon") failureTest1
+        (assertEvaluationError "UTxO has wrong beacons") failureTest1
     , checkPredicateOptions opts "failureTest2"
         (assertEvaluationError "Wrong pair_beacon") failureTest2
     , checkPredicateOptions opts "failureTest3"
         (assertEvaluationError "One-way swaps must have exactly three kinds of beacons") failureTest3
     , checkPredicateOptions opts "failureTest4"
-        (assertEvaluationError "UTxO does not have exactly 1 pair_beacon") failureTest4
+        (assertEvaluationError "UTxO has wrong beacons") failureTest4
     , checkPredicateOptions opts "failureTest5"
-        (assertEvaluationError "UTxO does not have exactly 1 offer_beacon") failureTest5
+        (assertEvaluationError "UTxO has wrong beacons") failureTest5
     , checkPredicateOptions opts "failureTest6"
         (assertEvaluationError "One-way swaps must have exactly three kinds of beacons") failureTest6
     , checkPredicateOptions opts "failureTest7"
-        (assertEvaluationError "UTxO does not have exactly 1 offer_beacon") failureTest7
+        (assertEvaluationError "UTxO has wrong beacons") failureTest7
     , checkPredicateOptions opts "failureTest8"
-        (assertEvaluationError "UTxO does not have exactly 1 ask_beacon") failureTest8
+        (assertEvaluationError "UTxO has wrong beacons") failureTest8
     , checkPredicateOptions opts "failureTest9"
         (assertEvaluationError "One-way swaps must have exactly three kinds of beacons") failureTest9
     , checkPredicateOptions opts "failureTest10"
-        (assertEvaluationError "UTxO does not have exactly 1 ask_beacon") failureTest10
+        (assertEvaluationError "UTxO has wrong beacons") failureTest10
     , checkPredicateOptions opts "failureTest11"
         (assertEvaluationError "One-way swaps must have exactly three kinds of beacons") failureTest11
     , checkPredicateOptions opts "failureTest12"
@@ -3093,43 +3093,43 @@ tests = do
     , checkPredicateOptions opts "failureTest16"
         (assertEvaluationError "Wrong beacon_id") failureTest16
     , checkPredicateOptions opts "failureTest17"
-        (assertEvaluationError "Wrong pair_beacon") failureTest17
+        (assertEvaluationError "UTxO has wrong beacons") failureTest17
     , checkPredicateOptions opts "failureTest18"
-        (assertEvaluationError "Wrong pair_beacon") failureTest18
+        (assertEvaluationError "No extraneous assets allowed in the UTxO") failureTest18
     , checkPredicateOptions opts "failureTest19"
-        (assertEvaluationError "Wrong pair_beacon") failureTest19
+        (assertEvaluationError "No extraneous assets allowed in the UTxO") failureTest19
     , checkPredicateOptions opts "failureTest20"
-        (assertEvaluationError "Wrong offer_beacon") failureTest20
+        (assertEvaluationError "UTxO has wrong beacons") failureTest20
     , checkPredicateOptions opts "failureTest21"
         (assertEvaluationError "Wrong pair_beacon") failureTest21
     , checkPredicateOptions opts "failureTest22"
         (assertEvaluationError "Wrong pair_beacon") failureTest22
     , checkPredicateOptions opts "failureTest23"
-        (assertEvaluationError "Wrong ask_beacon") failureTest23
+        (assertEvaluationError "UTxO has wrong beacons") failureTest23
     , checkPredicateOptions opts "failureTest24"
         (assertEvaluationError "Offer asset cannot be same as ask asset") failureTest24
     , checkPredicateOptions opts "failureTest25"
-        (assertEvaluationError "swap_price not > 0") failureTest25
+        (assertEvaluationError "swap_price numerator not > 0") failureTest25
     , checkPredicateOptions opts "failureTest26"
-        (assertEvaluationError "swap_price not > 0") failureTest26
+        (assertEvaluationError "swap_price numerator not > 0") failureTest26
     , checkPredicateOptions opts "failureTest27"
         (assertEvaluationError "swap_price denominator not > 0") failureTest27
     , checkPredicateOptions opts "failureTest28"
         (assertEvaluationError "swap_price denominator not > 0") failureTest28
     , checkPredicateOptions opts "failureTest29"
-        (assertEvaluationError "No extraneous assets can be stored in the swap UTxO") failureTest29
+        (assertEvaluationError "No extraneous assets allowed in the UTxO") failureTest29
     , checkPredicateOptions opts "failureTest30"
         (assertEvaluationError "All swap datums must be inline datums") failureTest30
     , checkPredicateOptions opts "failureTest31"
-        (assertEvaluationError "UTxO does not have exactly 1 pair_beacon") failureTest31
+        (assertEvaluationError "UTxO has wrong beacons") failureTest31
     , checkPredicateOptions opts "failureTest32"
-        (assertEvaluationError "UTxO does not have exactly 1 offer_beacon") failureTest32
+        (assertEvaluationError "UTxO has wrong beacons") failureTest32
     , checkPredicateOptions opts "failureTest33"
-        (assertEvaluationError "UTxO does not have exactly 1 ask_beacon") failureTest33
+        (assertEvaluationError "UTxO has wrong beacons") failureTest33
     , checkPredicateOptions opts "failureTest34"
-        (assertEvaluationError "Wrong ask_beacon") failureTest34
+        (assertEvaluationError "UTxO has wrong beacons") failureTest34
     , checkPredicateOptions opts "failureTest35"
-        (assertEvaluationError "Wrong ask_beacon") failureTest35
+        (assertEvaluationError "UTxO has wrong beacons") failureTest35
 
       -- Benchmark tests
     , checkPredicateOptions opts "benchTest1"

@@ -70,13 +70,14 @@ instance ToJSON SwapDatum where
            ]
 
 data SwapRedeemer
-  = CloseOrUpdate
+  = SpendWithMint
+  | SpendWithStake
   | Swap
   deriving (Generic,Show)
 
 data BeaconRedeemer
-  = CreateSwap
-  | BurnBeacons
+  = CreateOrCloseSwaps
+  | UpdateSwaps
   deriving (Generic,Show)
 
 PlutusTx.unstableMakeIsData ''SwapDatum
@@ -87,7 +88,7 @@ PlutusTx.unstableMakeIsData ''BeaconRedeemer
 -- Contracts
 -------------------------------------------------
 swapScript :: Ledger.Script
-swapScript = parseScriptFromCBOR $ blueprints Map.! "one_way_swap.spend"
+swapScript = parseScriptFromCBOR $ blueprints Map.! "one_way_swap.swap_script"
 
 swapValidator :: Validator
 swapValidator = Validator swapScript
@@ -98,7 +99,7 @@ swapValidatorHash = validatorHash swapValidator
 beaconScript :: Ledger.Script
 beaconScript =
   applyArguments
-    (parseScriptFromCBOR $ blueprints Map.! "one_way_swap.mint")
+    (parseScriptFromCBOR $ blueprints Map.! "one_way_swap.beacon_script")
     [toData swapValidatorHash]
 
 beaconMintingPolicy :: MintingPolicy
@@ -116,7 +117,7 @@ beaconCurrencySymbol = scriptCurrencySymbol beaconMintingPolicy
 -- | Generate the beacon asset name by hashing offer ++ ask.
 genOneWayPairBeaconName :: OfferAsset -> AskAsset -> TokenName
 genOneWayPairBeaconName (OfferAsset assetX) (AskAsset assetY) =
-  let [((CurrencySymbol sym1'),(TokenName name1)),((CurrencySymbol sym2'),(TokenName name2))] =
+  let [(CurrencySymbol sym1',TokenName name1),(CurrencySymbol sym2',TokenName name2)] =
         [assetX,assetY]
       sym1 = 
         if sym1' == "" 

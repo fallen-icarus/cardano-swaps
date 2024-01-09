@@ -22,6 +22,7 @@ module Test.TwoWaySwap.Swap
   , regressionTest10
   , regressionTest11
   , regressionTest12
+  , regressionTest13
 
     -- ** Scenarios that should fail
   , failureTest1
@@ -49,6 +50,8 @@ module Test.TwoWaySwap.Swap
   , failureTest23
   , failureTest24
   , failureTest25
+  , failureTest26
+  , failureTest27
 
     -- ** Benchmark Tests
   , benchTest1
@@ -138,8 +141,8 @@ regressionTest1 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -154,7 +157,7 @@ regressionTest1 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -212,7 +215,7 @@ regressionTest1 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -262,8 +265,8 @@ regressionTest2 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -278,7 +281,7 @@ regressionTest2 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -336,7 +339,7 @@ regressionTest2 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ReverseSwap
+              , spendRedeemer = toRedeemer TakeAsset1
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -388,8 +391,8 @@ regressionTest3 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -404,7 +407,7 @@ regressionTest3 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',2),(asset1Beacon',2),(asset2Beacon',2)]
               }
           , TokenMint 
@@ -462,7 +465,7 @@ regressionTest3 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = swaps
               }
@@ -519,8 +522,8 @@ regressionTest4 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -535,7 +538,7 @@ regressionTest4 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',2),(asset1Beacon',2),(asset2Beacon',2)]
               }
           , TokenMint 
@@ -593,7 +596,7 @@ regressionTest4 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ReverseSwap
+              , spendRedeemer = toRedeemer TakeAsset1
               , spendFromAddress = swapAddr
               , spendUtxos = swaps
               }
@@ -657,8 +660,8 @@ regressionTest5 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -673,7 +676,7 @@ regressionTest5 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',2),(asset1Beacon',2),(asset2Beacon',2)]
               }
           , TokenMint 
@@ -738,13 +741,13 @@ regressionTest5 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr1
               , spendUtxos = swaps1
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr2
               , spendUtxos = swaps2
               }
@@ -811,8 +814,8 @@ regressionTest6 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -827,7 +830,7 @@ regressionTest6 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',2),(asset1Beacon',2),(asset2Beacon',2)]
               }
           , TokenMint 
@@ -892,13 +895,13 @@ regressionTest6 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ReverseSwap
+              , spendRedeemer = toRedeemer TakeAsset1
               , spendFromAddress = swapAddr1
               , spendUtxos = swaps1
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ReverseSwap
+              , spendRedeemer = toRedeemer TakeAsset1
               , spendFromAddress = swapAddr2
               , spendUtxos = swaps2
               }
@@ -960,8 +963,8 @@ regressionTest7 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 2 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 2 1
         , prevInput = Nothing
         }
 
@@ -976,7 +979,7 @@ regressionTest7 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -1034,7 +1037,7 @@ regressionTest7 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ReverseSwap
+              , spendRedeemer = toRedeemer TakeAsset1
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -1094,8 +1097,8 @@ regressionTest8 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon1
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -1107,8 +1110,8 @@ regressionTest8 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2Beacon2
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
   
@@ -1123,7 +1126,7 @@ regressionTest8 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = 
                   [ (pairBeacon1,1),(asset1Beacon1,1), (asset2Beacon1,1)
                   , (pairBeacon2,1),(asset1Beacon2,1), (asset2Beacon2,1)
@@ -1191,13 +1194,13 @@ regressionTest8 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr1
               , spendUtxos = [ swap1 ]
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr2
               , spendUtxos = [ swap2 ]
               }
@@ -1269,8 +1272,8 @@ regressionTest9 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon1
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -1282,8 +1285,8 @@ regressionTest9 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2Beacon2
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
   
@@ -1298,7 +1301,7 @@ regressionTest9 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = 
                   [ (pairBeacon1,1),(asset1Beacon1,1), (asset2Beacon1,1)
                   , (pairBeacon2,1),(asset1Beacon2,1), (asset2Beacon2,1)
@@ -1366,13 +1369,13 @@ regressionTest9 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr1
               , spendUtxos = [ swap1 ]
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr2
               , spendUtxos = [ swap2 ]
               }
@@ -1433,8 +1436,8 @@ regressionTest10 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -1449,7 +1452,7 @@ regressionTest10 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -1507,7 +1510,7 @@ regressionTest10 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           ]
@@ -1515,7 +1518,7 @@ regressionTest10 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -1596,8 +1599,8 @@ regressionTest11 = do
         , asset2Id = fst asset21
         , asset2Name = snd asset21
         , asset2Beacon = asset2Beacon1
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -1609,8 +1612,8 @@ regressionTest11 = do
         , asset2Id = fst asset22
         , asset2Name = snd asset22
         , asset2Beacon = asset2Beacon2
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
       swapDatum3 = SwapDatum
@@ -1622,8 +1625,8 @@ regressionTest11 = do
         , asset2Id = fst asset23
         , asset2Name = snd asset23
         , asset2Beacon = asset2Beacon3
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
       swapDatum4 = SwapDatum
@@ -1635,8 +1638,8 @@ regressionTest11 = do
         , asset2Id = fst asset24
         , asset2Name = snd asset24
         , asset2Beacon = asset2Beacon4
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
   
@@ -1651,7 +1654,7 @@ regressionTest11 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = 
                   [ (pairBeacon1,1),(asset1Beacon1,1), (asset2Beacon1,1)
                   , (pairBeacon2,1),(asset1Beacon2,1), (asset2Beacon2,1)
@@ -1835,8 +1838,8 @@ regressionTest12 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 2 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 2 1
         , prevInput = Nothing
         }
 
@@ -1851,8 +1854,8 @@ regressionTest12 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
-              , mintTokens = [(pairBeacon',2),(asset1Beacon',2),(asset2Beacon',2)]
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
+              , mintTokens = [(pairBeacon',3),(asset1Beacon',3),(asset2Beacon',3)]
               }
           , TokenMint 
               { mintWitness =
@@ -1887,6 +1890,13 @@ regressionTest12 = do
                     <> singleton beaconSym asset2Beacon' 1
                     <> uncurry singleton assetX 10
                     )
+                  , ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym pairBeacon' 1
+                    <> singleton beaconSym asset1Beacon' 1
+                    <> singleton beaconSym asset2Beacon' 1
+                    <> uncurry singleton assetX 10
+                    )
                   ]
               }
           ]
@@ -1904,11 +1914,11 @@ regressionTest12 = do
           [ 
             TokenMint 
               { mintWitness =
-                  ( alwaysSucceedPolicy
-                  , Nothing
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress,mintRef)
                   )
               , mintRedeemer = toRedeemer ()
-              , mintTokens = [("Other",1)]
+              , mintTokens = [(pairBeacon',-1),(asset1Beacon',-1),(asset2Beacon',-1)]
               }
           ]
       , inputs = 
@@ -1922,7 +1932,7 @@ regressionTest12 = do
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer CloseOrUpdate
+              , spendRedeemer = toRedeemer SpendWithMint
               , spendFromAddress = swapAddr2
               , spendUtxos = swap2
               }
@@ -1943,12 +1953,135 @@ regressionTest12 = do
           , UtxoOutput
               { toAddress = swapAddr2
               , outputUtxos = 
-                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum{forwardPrice = unsafeRatio 2 1}
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum{asset2Price = unsafeRatio 2 1}
                     , lovelaceValueOf 3_000_000 
                     <> singleton beaconSym pairBeacon' 1
                     <> singleton beaconSym asset1Beacon' 1
                     <> singleton beaconSym asset2Beacon' 1
                     <> uncurry singleton assetX 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | Partially swap with a swap UTxO.
+regressionTest13 :: EmulatorTrace ()
+regressionTest13 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      assetX = testToken1
+      assetY = (adaSymbol,adaToken)
+      [asset1,asset2] = sort [assetX,assetY]
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
+      swapDatum = SwapDatum
+        { beaconId = beaconCurrencySymbol
+        , pairBeacon = pairBeacon'
+        , asset1Id = fst asset1
+        , asset1Name = snd asset1
+        , asset1Beacon = asset1Beacon'
+        , asset2Id = fst asset2
+        , asset2Name = snd asset2
+        , asset2Beacon = asset2Beacon'
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
+        , prevInput = Nothing
+        }
+
+  (mintRef,spendRef) <- initializeScripts
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
+              , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym pairBeacon' 1
+                    <> singleton beaconSym asset1Beacon' 1
+                    <> singleton beaconSym asset2Beacon' 1
+                    <> uncurry singleton assetX 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  swap <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconSym pairBeacon' 1
+            <> singleton beaconSym asset1Beacon' 1
+            <> singleton beaconSym asset2Beacon' 1
+            <> uncurry singleton assetX 10
+            )
+            swapDatum
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [
+            ScriptUtxoInput
+              { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer TakeAsset2
+              , spendFromAddress = swapAddr
+              , spendUtxos = [ swap ]
+              }
+          ]
+      , outputs = 
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum{prevInput = Just swap}
+                    , lovelaceValueOf 8_000_000 
+                    <> singleton beaconSym pairBeacon' 1
+                    <> singleton beaconSym asset1Beacon' 1
+                    <> singleton beaconSym asset2Beacon' 1
+                    <> uncurry singleton assetX 5
                     )
                   ]
               }
@@ -1986,8 +2119,8 @@ failureTest1 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -2002,7 +2135,7 @@ failureTest1 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = []
               }
           , TokenMint 
@@ -2054,7 +2187,7 @@ failureTest1 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -2099,8 +2232,8 @@ failureTest2 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -2115,7 +2248,7 @@ failureTest2 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -2173,7 +2306,7 @@ failureTest2 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -2220,8 +2353,8 @@ failureTest3 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -2236,7 +2369,7 @@ failureTest3 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -2294,7 +2427,7 @@ failureTest3 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -2341,8 +2474,8 @@ failureTest4 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -2357,7 +2490,7 @@ failureTest4 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -2415,7 +2548,7 @@ failureTest4 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -2435,7 +2568,7 @@ failureTest4 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
--- | When using `ForwardSwap`, not enough of the ask asset given.
+-- | When using `TakeAsset2`, not enough of the ask asset given.
 failureTest5 :: EmulatorTrace ()
 failureTest5 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -2462,8 +2595,8 @@ failureTest5 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -2478,7 +2611,7 @@ failureTest5 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -2536,7 +2669,7 @@ failureTest5 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -2557,7 +2690,7 @@ failureTest5 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
--- | When using `ReverseSwap`, not enough of the ask asset given.
+-- | When using `TakeAsset1`, not enough of the ask asset given.
 failureTest6 :: EmulatorTrace ()
 failureTest6 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -2584,8 +2717,8 @@ failureTest6 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -2600,7 +2733,7 @@ failureTest6 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -2658,7 +2791,7 @@ failureTest6 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ReverseSwap
+              , spendRedeemer = toRedeemer TakeAsset1
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -2707,8 +2840,8 @@ failureTest7 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -2723,7 +2856,7 @@ failureTest7 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -2781,7 +2914,7 @@ failureTest7 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -2832,8 +2965,8 @@ failureTest8 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -2848,7 +2981,7 @@ failureTest8 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -2906,7 +3039,7 @@ failureTest8 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -2957,8 +3090,8 @@ failureTest9 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -2973,7 +3106,7 @@ failureTest9 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -3031,7 +3164,7 @@ failureTest9 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -3082,8 +3215,8 @@ failureTest10 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -3098,7 +3231,7 @@ failureTest10 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -3156,7 +3289,7 @@ failureTest10 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -3207,8 +3340,8 @@ failureTest11 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -3223,7 +3356,7 @@ failureTest11 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -3281,7 +3414,7 @@ failureTest11 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -3332,8 +3465,8 @@ failureTest12 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -3348,7 +3481,7 @@ failureTest12 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -3406,7 +3539,7 @@ failureTest12 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -3457,8 +3590,8 @@ failureTest13 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -3473,7 +3606,7 @@ failureTest13 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -3531,7 +3664,7 @@ failureTest13 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -3582,8 +3715,8 @@ failureTest14 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -3598,7 +3731,7 @@ failureTest14 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -3656,7 +3789,7 @@ failureTest14 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -3680,7 +3813,7 @@ failureTest14 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
--- | Output's SwapDatum has wrong forwardPrice.
+-- | Output's SwapDatum has wrong asset2Price.
 failureTest15 :: EmulatorTrace ()
 failureTest15 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -3707,8 +3840,8 @@ failureTest15 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -3723,7 +3856,7 @@ failureTest15 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -3781,7 +3914,7 @@ failureTest15 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -3792,7 +3925,7 @@ failureTest15 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline 
                            $ toDatum swapDatum{ prevInput = Just swap
-                                              , forwardPrice = unsafeRatio 0 1
+                                              , asset2Price = unsafeRatio 0 1
                                               }
                     , lovelaceValueOf 13_000_000 
                     <> singleton beaconSym pairBeacon' 1
@@ -3805,7 +3938,7 @@ failureTest15 = do
       , validityRange = ValidityInterval Nothing Nothing
       }
 
--- | Output's SwapDatum has wrong reversePrice.
+-- | Output's SwapDatum has wrong asset1Price.
 failureTest16 :: EmulatorTrace ()
 failureTest16 = do
   h1 <- activateContractWallet (knownWallet 1) endpoints
@@ -3832,8 +3965,8 @@ failureTest16 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -3848,7 +3981,7 @@ failureTest16 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -3906,7 +4039,7 @@ failureTest16 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -3917,7 +4050,7 @@ failureTest16 = do
               , outputUtxos = 
                   [ ( Just $ TxOutDatumInline 
                            $ toDatum swapDatum{ prevInput = Just swap
-                                              , reversePrice = unsafeRatio 0 1
+                                              , asset1Price = unsafeRatio 0 1
                                               }
                     , lovelaceValueOf 13_000_000 
                     <> singleton beaconSym pairBeacon' 1
@@ -3958,8 +4091,8 @@ failureTest17 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -3974,7 +4107,7 @@ failureTest17 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',2),(asset1Beacon',2),(asset2Beacon',2)]
               }
           , TokenMint 
@@ -4032,7 +4165,7 @@ failureTest17 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = swaps
               }
@@ -4090,8 +4223,8 @@ failureTest18 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon1
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -4103,8 +4236,8 @@ failureTest18 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2Beacon2
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
   
@@ -4119,7 +4252,7 @@ failureTest18 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = 
                   [ (pairBeacon1,1),(asset1Beacon1,1), (asset2Beacon1,1)
                   , (pairBeacon2,1),(asset1Beacon2,1), (asset2Beacon2,1)
@@ -4187,13 +4320,13 @@ failureTest18 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr1
               , spendUtxos = [ swap1 ]
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr2
               , spendUtxos = [ swap2 ]
               }
@@ -4256,8 +4389,8 @@ failureTest19 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon1
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -4269,8 +4402,8 @@ failureTest19 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2Beacon2
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
   
@@ -4285,7 +4418,7 @@ failureTest19 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = 
                   [ (pairBeacon1,1),(asset1Beacon1,1), (asset2Beacon1,1)
                   , (pairBeacon2,1),(asset1Beacon2,1), (asset2Beacon2,1)
@@ -4353,13 +4486,13 @@ failureTest19 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr1
               , spendUtxos = [ swap1 ]
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr2
               , spendUtxos = [ swap2 ]
               }
@@ -4430,8 +4563,8 @@ failureTest20 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon1
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -4443,8 +4576,8 @@ failureTest20 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2Beacon2
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
   
@@ -4459,7 +4592,7 @@ failureTest20 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = 
                   [ (pairBeacon1,1),(asset1Beacon1,1), (asset2Beacon1,1)
                   , (pairBeacon2,1),(asset1Beacon2,1), (asset2Beacon2,1)
@@ -4527,13 +4660,13 @@ failureTest20 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr1
               , spendUtxos = [ swap1 ]
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr2
               , spendUtxos = [ swap2 ]
               }
@@ -4604,8 +4737,8 @@ failureTest21 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon1
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -4617,8 +4750,8 @@ failureTest21 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2Beacon2
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
   
@@ -4633,7 +4766,7 @@ failureTest21 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = 
                   [ (pairBeacon1,1),(asset1Beacon1,1), (asset2Beacon1,1)
                   , (pairBeacon2,1),(asset1Beacon2,1), (asset2Beacon2,1)
@@ -4701,13 +4834,13 @@ failureTest21 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr1
               , spendUtxos = [ swap1 ]
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr2
               , spendUtxos = [ swap2 ]
               }
@@ -4768,8 +4901,8 @@ failureTest22 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -4784,7 +4917,7 @@ failureTest22 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -4842,7 +4975,7 @@ failureTest22 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -4891,8 +5024,8 @@ failureTest23 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 2 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 2 1_000_000
         , prevInput = Nothing
         }
 
@@ -4907,7 +5040,7 @@ failureTest23 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
               }
           , TokenMint 
@@ -4965,7 +5098,7 @@ failureTest23 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = [ swap ]
               }
@@ -5024,8 +5157,8 @@ failureTest24 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon1
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -5037,8 +5170,8 @@ failureTest24 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2Beacon2
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
   
@@ -5053,7 +5186,7 @@ failureTest24 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = 
                   [ (pairBeacon1,1),(asset1Beacon1,1), (asset2Beacon1,1)
                   , (pairBeacon2,1),(asset1Beacon2,1), (asset2Beacon2,1)
@@ -5121,13 +5254,13 @@ failureTest24 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr1
               , spendUtxos = [ swap1 ]
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr2
               , spendUtxos = [ swap2 ]
               }
@@ -5199,8 +5332,8 @@ failureTest25 = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon1
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
       swapDatum2 = SwapDatum
@@ -5212,8 +5345,8 @@ failureTest25 = do
         , asset2Id = fst asset2'
         , asset2Name = snd asset2'
         , asset2Beacon = asset2Beacon2
-        , forwardPrice = unsafeRatio 1 1
-        , reversePrice = unsafeRatio 1 1
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 1 1
         , prevInput = Nothing
         }
   
@@ -5228,7 +5361,7 @@ failureTest25 = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = 
                   [ (pairBeacon1,1),(asset1Beacon1,1), (asset2Beacon1,1)
                   , (pairBeacon2,1),(asset1Beacon2,1), (asset2Beacon2,1)
@@ -5296,13 +5429,13 @@ failureTest25 = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr1
               , spendUtxos = [ swap1 ]
               }
           , ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr2
               , spendUtxos = [ swap2 ]
               }
@@ -5329,6 +5462,255 @@ failureTest25 = do
                     <> singleton beaconCurrencySymbol asset1Beacon2 1
                     <> singleton beaconCurrencySymbol asset2Beacon2 1
                     <> uncurry singleton assetY 9
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | When ADA is not part of the trading pair, withdraw some of it.
+failureTest26 :: EmulatorTrace ()
+failureTest26 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      assetX = testToken1
+      assetY = testToken2
+      [asset1,asset2] = sort [assetX,assetY]
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
+      swapDatum = SwapDatum
+        { beaconId = beaconCurrencySymbol
+        , pairBeacon = pairBeacon'
+        , asset1Id = fst asset1
+        , asset1Name = snd asset1
+        , asset1Beacon = asset1Beacon'
+        , asset2Id = fst asset2
+        , asset2Name = snd asset2
+        , asset2Beacon = asset2Beacon'
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 2 1
+        , prevInput = Nothing
+        }
+
+  (mintRef,spendRef) <- initializeScripts
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
+              , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 5_000_000 
+                    <> singleton beaconSym pairBeacon' 1
+                    <> singleton beaconSym asset1Beacon' 1
+                    <> singleton beaconSym asset2Beacon' 1
+                    <> uncurry singleton assetX 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  swap <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 5_000_000 
+            <> singleton beaconSym pairBeacon' 1
+            <> singleton beaconSym asset1Beacon' 1
+            <> singleton beaconSym asset2Beacon' 1
+            <> uncurry singleton assetX 10
+            )
+            swapDatum
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [
+            ScriptUtxoInput
+              { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer TakeAsset1
+              , spendFromAddress = swapAddr
+              , spendUtxos = [ swap ]
+              }
+          ]
+      , outputs = 
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum{prevInput = Just swap}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconSym pairBeacon' 1
+                    <> singleton beaconSym asset1Beacon' 1
+                    <> singleton beaconSym asset2Beacon' 1
+                    <> uncurry singleton assetY 20
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+-- | When the swap has some of the ask asset already, reverse the swap by depositing some of the
+-- offer asset.
+failureTest27 :: EmulatorTrace ()
+failureTest27 = do
+  h1 <- activateContractWallet (knownWallet 1) endpoints
+  h2 <- activateContractWallet (knownWallet 2) endpoints
+
+  let sellerCred = PubKeyCredential
+                 $ unPaymentPubKeyHash 
+                 $ mockWalletPaymentPubKeyHash 
+                 $ knownWallet 1
+      assetX = testToken1
+      assetY = testToken2
+      [asset1,asset2] = sort [assetX,assetY]
+      swapAddr = Address (ScriptCredential swapValidatorHash) (Just $ StakingHash sellerCred)
+      beaconSym = beaconCurrencySymbol
+      pairBeacon' = genTwoWayPairBeaconName assetX assetY
+      asset1Beacon' = genAssetBeaconName asset1
+      asset2Beacon' = genAssetBeaconName asset2
+      swapDatum = SwapDatum
+        { beaconId = beaconCurrencySymbol
+        , pairBeacon = pairBeacon'
+        , asset1Id = fst asset1
+        , asset1Name = snd asset1
+        , asset1Beacon = asset1Beacon'
+        , asset2Id = fst asset2
+        , asset2Name = snd asset2
+        , asset2Beacon = asset2Beacon'
+        , asset2Price = unsafeRatio 1 1
+        , asset1Price = unsafeRatio 2 1
+        , prevInput = Nothing
+        }
+
+  (mintRef,spendRef) <- initializeScripts
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
+              , mintTokens = [(pairBeacon',1),(asset1Beacon',1),(asset2Beacon',1)]
+              }
+          , TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum
+                    , lovelaceValueOf 3_000_000 
+                    <> singleton beaconSym pairBeacon' 1
+                    <> singleton beaconSym asset1Beacon' 1
+                    <> singleton beaconSym asset2Beacon' 1
+                    <> uncurry singleton assetX 10
+                    <> uncurry singleton assetY 10
+                    )
+                  ]
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  swap <- txOutRefWithValueAndDatum 
+            (lovelaceValueOf 3_000_000 
+            <> singleton beaconSym pairBeacon' 1
+            <> singleton beaconSym asset1Beacon' 1
+            <> singleton beaconSym asset2Beacon' 1
+            <> uncurry singleton assetX 10
+            <> uncurry singleton assetY 10
+            )
+            swapDatum
+
+  callEndpoint @"create-transaction" h2 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness =
+                  ( alwaysSucceedPolicy
+                  , Nothing
+                  )
+              , mintRedeemer = toRedeemer ()
+              , mintTokens = [("Other",1)]
+              }
+          ]
+      , inputs = 
+          [
+            ScriptUtxoInput
+              { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
+              , spendRedeemer = toRedeemer TakeAsset1
+              , spendFromAddress = swapAddr
+              , spendUtxos = [ swap ]
+              }
+          ]
+      , outputs = 
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = 
+                  [ ( Just $ TxOutDatumInline $ toDatum swapDatum{prevInput = Just swap}
+                    , lovelaceValueOf 4_000_000 
+                    <> singleton beaconSym pairBeacon' 1
+                    <> singleton beaconSym asset1Beacon' 1
+                    <> singleton beaconSym asset2Beacon' 1
+                    <> uncurry singleton assetX 20
                     )
                   ]
               }
@@ -5365,8 +5747,8 @@ benchTest1 numberSwapped = do
         , asset2Id = fst asset2
         , asset2Name = snd asset2
         , asset2Beacon = asset2Beacon'
-        , forwardPrice = unsafeRatio 1_000_000 1
-        , reversePrice = unsafeRatio 1 1_000_000
+        , asset2Price = unsafeRatio 1_000_000 1
+        , asset1Price = unsafeRatio 1 1_000_000
         , prevInput = Nothing
         }
 
@@ -5381,7 +5763,39 @@ benchTest1 numberSwapped = do
                   ( beaconMintingPolicy
                   , Just (refScriptAddress, mintRef)
                   )
-              , mintRedeemer = toRedeemer CreateSwap 
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
+              , mintTokens = [(pairBeacon',25),(asset1Beacon',25),(asset2Beacon',25)]
+              }
+          ]
+      , inputs = []
+      , outputs =
+          [ UtxoOutput
+              { toAddress = swapAddr
+              , outputUtxos = replicate 25
+                  ( Just $ TxOutDatumInline $ toDatum swapDatum
+                  , lovelaceValueOf 3_000_000 
+                  <> singleton beaconCurrencySymbol pairBeacon' 1
+                  <> singleton beaconCurrencySymbol asset1Beacon' 1
+                  <> singleton beaconCurrencySymbol asset2Beacon' 1
+                  <> uncurry singleton assetX 10
+                  )
+              }
+          ]
+      , validityRange = ValidityInterval Nothing Nothing
+      }
+
+  void $ waitNSlots 2
+
+  callEndpoint @"create-transaction" h1 $
+    CreateTransactionParams
+      { tokens = 
+          [ 
+            TokenMint 
+              { mintWitness = 
+                  ( beaconMintingPolicy
+                  , Just (refScriptAddress, mintRef)
+                  )
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps 
               , mintTokens = [(pairBeacon',25),(asset1Beacon',25),(asset2Beacon',25)]
               }
           ]
@@ -5413,7 +5827,7 @@ benchTest1 numberSwapped = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ForwardSwap
+              , spendRedeemer = toRedeemer TakeAsset2
               , spendFromAddress = swapAddr
               , spendUtxos = map fst swaps
               }
@@ -5447,8 +5861,8 @@ benchTest2 numberSwapped = do
                  $ unPaymentPubKeyHash 
                  $ mockWalletPaymentPubKeyHash 
                  $ knownWallet 1
-      assetXs = map (\i -> (fst $ testToken1, fromString $ "TestToken" <> show @Int i)) [21..40]
-      assetYs = map (\i -> (fst $ testToken1, fromString $ "TestToken" <> show @Int i)) [1..20]
+      assetXs = repeat ("","")
+      assetYs = map (\i -> (fst $ testToken1, fromString $ "TestToken" <> show @Int i)) [1..30]
       pairs = map (\(x,y) -> if x > y then (y,x) else (x,y)) $ zip assetXs assetYs
       datums = 
         map (\(asset1,asset2) -> 
@@ -5461,8 +5875,8 @@ benchTest2 numberSwapped = do
                 , asset2Id = fst asset2
                 , asset2Name = snd asset2
                 , asset2Beacon = genAssetBeaconName asset2
-                , forwardPrice = unsafeRatio 1 1
-                , reversePrice = unsafeRatio 1 1
+                , asset2Price = unsafeRatio 1 1
+                , asset1Price = unsafeRatio 1 1
                 , prevInput = Nothing
                 }
             ) 
@@ -5490,7 +5904,7 @@ benchTest2 numberSwapped = do
               ( beaconMintingPolicy
               , Just (refScriptAddress, mintRef)
               )
-          , mintRedeemer = toRedeemer CreateSwap 
+          , mintRedeemer = toRedeemer CreateOrCloseSwaps 
           , mintTokens = 
               concatMap 
                 (\ SwapDatum{..} -> 
@@ -5523,7 +5937,7 @@ benchTest2 numberSwapped = do
           [
             ScriptUtxoInput
               { spendWitness = (swapValidator, Just (refScriptAddress,spendRef))
-              , spendRedeemer = toRedeemer ReverseSwap
+              , spendRedeemer = toRedeemer TakeAsset1
               , spendFromAddress = swapAddr
               , spendUtxos = map fst swaps
               }
@@ -5549,7 +5963,7 @@ benchTest2 numberSwapped = do
       }
 
 benchTrace :: Int -> IO ()
-benchTrace = runEmulatorTraceIO' def emConfig . benchTest2
+benchTrace = runEmulatorTraceIO' def emConfig . benchTest1
 
 -------------------------------------------------
 -- Test Function
@@ -5584,71 +5998,77 @@ tests = do
         assertNoFailedTransactions regressionTest11
     , checkPredicateOptions opts "regressionTest12"
         assertNoFailedTransactions regressionTest12
+    , checkPredicateOptions opts "regressionTest13"
+        assertNoFailedTransactions regressionTest13
 
       -- Failure Tests
     , checkPredicateOptions opts "failureTest1"
-        (assertEvaluationError "Swap input missing pair beacon") failureTest1
+        (assertEvaluationError "UTxO has wrong beacons") failureTest1
     , checkPredicateOptions opts "failureTest2"
-        (assertEvaluationError "Corresponding swap output not found") failureTest2
+        (assertEvaluationError "UTxO has wrong beacons") failureTest2
     , checkPredicateOptions opts "failureTest3"
-        (assertEvaluationError "Only the offered asset can leave the swap") failureTest3
+        (assertEvaluationError "UTxO has wrong beacons") failureTest3
     , checkPredicateOptions opts "failureTest4"
-        (assertEvaluationError "Only the offered asset can leave the swap") failureTest4
+        (assertEvaluationError "UTxO has wrong beacons") failureTest4
     , checkPredicateOptions opts "failureTest5"
         (assertEvaluationError "Fail: offer_taken * price <= ask_given") failureTest5
     , checkPredicateOptions opts "failureTest6"
         (assertEvaluationError "Fail: offer_taken * price <= ask_given") failureTest6
     , checkPredicateOptions opts "failureTest7"
-        (assertEvaluationError "Wrong beacon_id") failureTest7
+        (assertEvaluationError "Corresponding swap output not found") failureTest7
     , checkPredicateOptions opts "failureTest8"
-        (assertEvaluationError "Wrong pair_beacon") failureTest8
+        (assertEvaluationError "Corresponding swap output not found") failureTest8
     , checkPredicateOptions opts "failureTest9"
-        (assertEvaluationError "Wrong asset1_id") failureTest9
+        (assertEvaluationError "Corresponding swap output not found") failureTest9
     , checkPredicateOptions opts "failureTest10"
-        (assertEvaluationError "Wrong asset1_name") failureTest10
+        (assertEvaluationError "Corresponding swap output not found") failureTest10
     , checkPredicateOptions opts "failureTest11"
-        (assertEvaluationError "Wrong asset1_beacon") failureTest11
+        (assertEvaluationError "Corresponding swap output not found") failureTest11
     , checkPredicateOptions opts "failureTest12"
-        (assertEvaluationError "Wrong asset2_id") failureTest12
+        (assertEvaluationError "Corresponding swap output not found") failureTest12
     , checkPredicateOptions opts "failureTest13"
-        (assertEvaluationError "Wrong asset2_name") failureTest13
+        (assertEvaluationError "Corresponding swap output not found") failureTest13
     , checkPredicateOptions opts "failureTest14"
-        (assertEvaluationError "Wrong asset2_beacon") failureTest14
+        (assertEvaluationError "Corresponding swap output not found") failureTest14
     , checkPredicateOptions opts "failureTest15"
-        (assertEvaluationError "Wrong forward_price") failureTest15
+        (assertEvaluationError "Corresponding swap output not found") failureTest15
     , checkPredicateOptions opts "failureTest16"
-        (assertEvaluationError "Wrong reverse_price") failureTest16
+        (assertEvaluationError "Corresponding swap output not found") failureTest16
     , checkPredicateOptions opts "failureTest17"
-        (assertEvaluationError "Corresponding swap output not found") failureTest17
+        (assertEvaluationError "UTxO has wrong beacons") failureTest17
     , checkPredicateOptions opts "failureTest18"
-        (assertEvaluationError "Only the asked asset or ada can be deposited into the swap") failureTest18
+        (assertEvaluationError "UTxO has wrong beacons") failureTest18
     , checkPredicateOptions opts "failureTest19"
-        (assertEvaluationError "Corresponding swap output not found") failureTest19
+        (assertEvaluationError "UTxO has wrong beacons") failureTest19
     , checkPredicateOptions opts "failureTest20"
-        (assertEvaluationError "Only the asked asset or ada can be deposited into the swap") failureTest20
+        (assertEvaluationError "UTxO has wrong beacons") failureTest20
     , checkPredicateOptions opts "failureTest21"
-        (assertEvaluationError "Only the asked asset or ada can be deposited into the swap") failureTest21
+        (assertEvaluationError "UTxO has wrong beacons") failureTest21
     , checkPredicateOptions opts "failureTest22"
-        (assertEvaluationError "Only the asked asset or ada can be deposited into the swap") failureTest22
+        (assertEvaluationError "No extraneous assets allowed in the UTxO") failureTest22
     , checkPredicateOptions opts "failureTest23"
-        (assertEvaluationError "All swap datums must be inline datums") failureTest23
+        (assertEvaluationError "Corresponding swap output not found") failureTest23
     , checkPredicateOptions opts "failureTest24"
         (assertEvaluationError "Fail: offer_taken * price <= ask_given") failureTest24
     , checkPredicateOptions opts "failureTest25"
         (assertEvaluationError "Fail: offer_taken * price <= ask_given") failureTest25
+    , checkPredicateOptions opts "failureTest26"
+        (assertEvaluationError "Ada can only be deposited") failureTest26
+    , checkPredicateOptions opts "failureTest27"
+        (assertEvaluationError "The ask asset cannot be taken from the swap") failureTest27
 
       -- Benchmark tests
     , checkPredicateOptions opts "benchTest1"
-        assertNoFailedTransactions $ benchTest1 11
+        assertNoFailedTransactions $ benchTest1 25
     , checkPredicateOptions opts "benchTest2"
-        assertNoFailedTransactions $ benchTest2 14
+        assertNoFailedTransactions $ benchTest2 25
 
       -- Performance Increases tests
     , checkPredicateOptions opts "perfIncreaseTest1"
-        (Test.not assertNoFailedTransactions) $ benchTest1 12
+        (Test.not assertNoFailedTransactions) $ benchTest1 26
     , checkPredicateOptions opts "perfIncreaseTest2"
-        (Test.not assertNoFailedTransactions) $ benchTest2 15
+        (Test.not assertNoFailedTransactions) $ benchTest2 26
     ]
 
 testTrace :: IO ()
-testTrace = runEmulatorTraceIO' def emConfig regressionTest12
+testTrace = runEmulatorTraceIO' def emConfig failureTest24

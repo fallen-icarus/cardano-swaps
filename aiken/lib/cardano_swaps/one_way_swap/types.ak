@@ -1,6 +1,6 @@
 use aiken/transaction.{OutputReference}
 use aiken/transaction/value.{PolicyId,AssetName}
-use aiken/math/rational.{Rational}
+use cardano_swaps/common/types.{Rational}
 
 pub type SwapDatum {
   SwapDatum { 
@@ -18,11 +18,12 @@ pub type SwapDatum {
 }
 
 pub type SwapRedeemer {
-  CloseOrUpdate
+  SpendWithMint
+  SpendWithStake
   Swap
 }
 
 pub type BeaconRedeemer {
-  CreateSwap 
-  BurnBeacons
+  CreateOrCloseSwaps // Minting execution.
+  UpdateSwaps // Staking execution.
 }

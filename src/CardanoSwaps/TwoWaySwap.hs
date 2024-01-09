@@ -53,8 +53,8 @@ data SwapDatum = SwapDatum
   , asset2Id :: CurrencySymbol
   , asset2Name :: TokenName
   , asset2Beacon :: TokenName
-  , forwardPrice :: PlutusRational
-  , reversePrice :: PlutusRational
+  , asset1Price :: PlutusRational
+  , asset2Price :: PlutusRational
   , prevInput :: Maybe TxOutRef
   }
   deriving (Generic,Show,Eq)
@@ -69,20 +69,21 @@ instance ToJSON SwapDatum where
            , "asset2_id" .= show asset2Id
            , "asset2_name" .= showTokenName asset2Name
            , "asset2_beacon" .= showTokenName asset2Beacon
-           , "forward_price" .= forwardPrice 
-           , "reverse_price" .= reversePrice 
+           , "asset1_price" .= asset1Price 
+           , "asset2_price" .= asset2Price 
            , "prev_input" .= prevInput
            ]
 
 data SwapRedeemer
-  = CloseOrUpdate
-  | ForwardSwap
-  | ReverseSwap
+  = SpendWithMint
+  | SpendWithStake
+  | TakeAsset1
+  | TakeAsset2
   deriving (Generic,Show)
 
 data BeaconRedeemer
-  = CreateSwap 
-  | BurnBeacons
+  = CreateOrCloseSwaps 
+  | UpdateSwaps
   deriving (Generic,Show)
 
 PlutusTx.unstableMakeIsData ''SwapDatum
@@ -93,7 +94,7 @@ PlutusTx.unstableMakeIsData ''BeaconRedeemer
 -- Contracts
 -------------------------------------------------
 swapScript :: Ledger.Script
-swapScript = parseScriptFromCBOR $ blueprints Map.! "two_way_swap.spend"
+swapScript = parseScriptFromCBOR $ blueprints Map.! "two_way_swap.swap_script"
 
 swapValidator :: Validator
 swapValidator = Validator swapScript
@@ -104,7 +105,7 @@ swapValidatorHash = validatorHash swapValidator
 beaconScript :: Ledger.Script
 beaconScript =
   applyArguments
-    (parseScriptFromCBOR $ blueprints Map.! "two_way_swap.mint")
+    (parseScriptFromCBOR $ blueprints Map.! "two_way_swap.beacon_script")
     [toData swapValidatorHash]
 
 beaconMintingPolicy :: MintingPolicy
@@ -123,7 +124,7 @@ beaconCurrencySymbol = scriptCurrencySymbol beaconMintingPolicy
 -- sorted so that the beacon name is independent of the ordering. This is used for two-way swaps.
 genTwoWayPairBeaconName :: AssetConfig -> AssetConfig -> TokenName
 genTwoWayPairBeaconName assetX assetY =
-  let (((CurrencySymbol sym1'),(TokenName name1)),((CurrencySymbol sym2'),(TokenName name2))) =
+  let ((CurrencySymbol sym1',TokenName name1),(CurrencySymbol sym2',TokenName name2)) =
        if assetY < assetX then (assetY,assetX) else (assetX,assetY) 
       sym1 = 
         if sym1' == "" 
@@ -137,7 +138,7 @@ genTwoWayPairBeaconName assetX assetY =
 
 -- | Generate the beacon asset name by hashing the ask asset policy id and name.
 genAssetBeaconName :: AssetConfig -> TokenName
-genAssetBeaconName ((CurrencySymbol sym),(TokenName name)) =
+genAssetBeaconName (CurrencySymbol sym,TokenName name) =
   TokenName $ Plutus.sha2_256 $ sym <> name
 
 -------------------------------------------------
@@ -146,7 +147,7 @@ genAssetBeaconName ((CurrencySymbol sym),(TokenName name)) =
 -- | Get the required two-way swap redeemer based on the desired swap direction.
 getRequiredSwapDirection :: OfferAsset -> AskAsset -> SwapRedeemer
 getRequiredSwapDirection (OfferAsset offer) (AskAsset ask)
-  | offer == asset1 = ReverseSwap
-  | otherwise = ForwardSwap
+  | offer == asset1 = TakeAsset1
+  | otherwise = TakeAsset2
   where
     [asset1,_] = sort [offer,ask]

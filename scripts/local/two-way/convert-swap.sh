@@ -10,7 +10,7 @@ swapAddrFile="${dir}twoWaySwap.addr"
 
 swapDatumFile="${dir}swapDatum.json"
 
-swapRedeemerFile="${dir}closeOrUpdateTwoWaySwap.json"
+swapRedeemerFile="${dir}twoWaySpendingRedeemer.json"
 
 beaconRedeemerFile="${dir}twoWayBeaconRedeemer.json"
 
@@ -19,22 +19,19 @@ echo "Calculating the staking pubkey hash for the borrower..."
 ownerPubKeyHash=$(cardano-cli stake-address key-hash \
   --stake-verification-key-file $ownerPubKeyFile)
 
-# Create the CloseOrUpdate redeemer.
+# Create the spending redeemer.
 echo "Creating the spending redeemer..."
 cardano-swaps spending-redeemers two-way \
-  --close-or-update \
+  --update-with-mint \
   --out-file $swapRedeemerFile
 
 # Create the swap datum.
 echo "Creating the swap datum..."
 cardano-swaps datums two-way \
-  --asset1-is-lovelace \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 54657374546f6b656e31 \
-  --forward-price-numerator 1000000 \
-  --forward-price-denominator 1 \
-  --reverse-price-numerator 1 \
-  --reverse-price-denominator 1000000 \
+  --first-asset lovelace \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
+  --second-price 1000000 \
+  --first-price '1 / 1000000' \
   --out-file $swapDatumFile
 
 # Helper beacon variables.
@@ -43,18 +40,16 @@ beaconPolicyId=$(cardano-swaps beacon-info two-way policy-id \
   --stdout)
 
 oldPairBeaconName=$(cardano-swaps beacon-info two-way pair-beacon \
-  --asset1-is-lovelace \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 4f74686572546f6b656e0a \
+  --first-asset lovelace \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
   --stdout)
 
 oldAsset1BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
-  --asset1-is-lovelace \
+  --first-asset lovelace \
   --stdout)
 
 oldAsset2BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 4f74686572546f6b656e0a \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
   --stdout)
 
 oldPairBeacon="${beaconPolicyId}.${oldPairBeaconName}"
@@ -62,48 +57,46 @@ oldAsset1Beacon="${beaconPolicyId}.${oldAsset1BeaconName}"
 oldAsset2Beacon="${beaconPolicyId}.${oldAsset2BeaconName}"
 
 newPairBeaconName=$(cardano-swaps beacon-info two-way pair-beacon \
-  --asset1-is-lovelace \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 54657374546f6b656e31 \
+  --first-asset lovelace \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 newAsset1BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
-  --asset1-is-lovelace \
+  --first-asset lovelace \
   --stdout)
 
 newAsset2BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 54657374546f6b656e31 \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 newPairBeacon="${beaconPolicyId}.${newPairBeaconName}"
 newAsset1Beacon="${beaconPolicyId}.${newAsset1BeaconName}"
 newAsset2Beacon="${beaconPolicyId}.${newAsset2BeaconName}"
 
-# Create the minting redeemer. This redeemer can also burn the old beacons.
+# Create the beacon script redeemer. 
 echo "Creating the minting redeemer..."
 cardano-swaps beacon-redeemers two-way \
-  --create-swap \
+  --mint-or-burn \
   --out-file $beaconRedeemerFile
 
 # Create the transaction.
 cardano-cli transaction build \
-  --tx-in dcf68c0e283ef5a20e79b972e31f730641c6b1295920a5bd408aa5269b5d85f8#0 \
-  --tx-in 5d50f73f784da7c46178d72d4298381a9da44b487a97fb48e27d01a8156217b1#6 \
-  --tx-in 1ac70ea5f71a65add5e3440ca6085c1bd658a2fe3df26f761c32f3d7763bdb8d#0 \
-  --spending-tx-in-reference c1d7755d9089bc1a6b85561e1f3eb740935c6a887a15589395bfc36f8b64fa10#0 \
+  --tx-in 74a88e679036309f21154746ddc813c97f5d5bb0e4ebaa0244997ac13e44eb77#1 \
+  --tx-in 397ceab35a092814871ba5bf9a946a55508afee4edc26c8728caa53837b67fcf#1 \
+  --tx-in 74a88e679036309f21154746ddc813c97f5d5bb0e4ebaa0244997ac13e44eb77#0 \
+  --spending-tx-in-reference 38fd18f4ca7c6587eb2703ac3bfd42e1406d089901e2c29f158358fdda5b196a#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${newPairBeacon} + 1 ${newAsset1Beacon} + 1 ${newAsset2Beacon} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
+  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${newPairBeacon} + 1 ${newAsset1Beacon} + 1 ${newAsset2Beacon} + 20 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out-inline-datum-file $swapDatumFile \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 3000000 lovelace + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 3000000 lovelace + 11 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
   --mint "-1 ${oldPairBeacon} + -1 ${oldAsset1Beacon} + -1 ${oldAsset2Beacon} + 1 ${newPairBeacon} + 1 ${newAsset1Beacon} + 1 ${newAsset2Beacon}" \
-  --mint-tx-in-reference c1d7755d9089bc1a6b85561e1f3eb740935c6a887a15589395bfc36f8b64fa10#1 \
+  --mint-tx-in-reference 38fd18f4ca7c6587eb2703ac3bfd42e1406d089901e2c29f158358fdda5b196a#1 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id "$beaconPolicyId" \
-  --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
+  --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --change-address "$(cat ../../../ignored/wallets/01.addr)" \
   --required-signer-hash "$ownerPubKeyHash" \
   --testnet-magic 1 \

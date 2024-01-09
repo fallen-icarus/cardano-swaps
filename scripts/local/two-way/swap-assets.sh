@@ -4,30 +4,27 @@
 dir="../../../ignored/swap-files/"
 tmpDir="../../../ignored/tmp/"
 
-swapAddr1="addr_test1zzq2x2jgmdjsgkd0xfc4xav754xmfhddyww4d05tx2jn44fualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq0nrmla"
+swapAddr1="addr_test1zzrns8ct7stw9kh8f97nlnvqsl8kw7eukje2aw3kak8c77fualkqngnmdz2w9mv60zuucq0sswtn6lq2lwxwez76x0aq3y05nq"
 
 swapDatumFile1="${dir}swapDatum1.json"
 
-swapRedeemerFile="${dir}swap.json"
+swapRedeemerFile="${dir}oneWaySpendingRedeemer.json"
 
 # Create the Swap redeemer.
 echo "Creating the spending redeemer..."
 cardano-swaps spending-redeemers two-way \
-  --forward-swap \
+  --ask-asset lovelace \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --out-file $swapRedeemerFile
 
 # Create the swap datum.
 echo "Creating the swap datum..."
 cardano-swaps datums two-way \
-  --asset1-is-lovelace \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 4f74686572546f6b656e0a \
-  --forward-price-numerator 10 \
-  --forward-price-denominator 1000000 \
-  --reverse-price-numerator 10 \
-  --reverse-price-denominator 1000000 \
-  --tx-hash 61e92820c602d7d4b388140174e2ed76a924541b08a57072bc79c003b84d5a01 \
-  --output-index 0 \
+  --first-asset lovelace \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
+  --first-price '1 / 1000000' \
+  --second-price 1000000 \
+  --input-swap-ref f6538bb7a6a0365f3c295aed389df29e752df504ebe691e34f45c0ab9f96272c#0 \
   --out-file $swapDatumFile1
 
 # Helper beacon variables.
@@ -36,18 +33,16 @@ beaconPolicyId1=$(cardano-swaps beacon-info two-way policy-id \
   --stdout)
 
 pairBeaconName1=$(cardano-swaps beacon-info two-way pair-beacon \
-  --asset1-is-lovelace \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 4f74686572546f6b656e0a \
+  --first-asset lovelace \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 asset1BeaconName1=$(cardano-swaps beacon-info two-way asset-beacon \
-  --asset1-is-lovelace \
+  --first-asset lovelace \
   --stdout)
 
 asset2BeaconName1=$(cardano-swaps beacon-info two-way asset-beacon \
-  --asset2-policy-id c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d \
-  --asset2-token-name 4f74686572546f6b656e0a \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 pairBeacon1="${beaconPolicyId1}.${pairBeaconName1}"
@@ -56,13 +51,13 @@ asset2Beacon1="${beaconPolicyId1}.${asset2BeaconName1}"
 
 # Create the transaction.
 cardano-cli transaction build \
-  --tx-in b86d8f4ea2982a4b0d28a39e0f18389a190394a28afeeb526c5d6a6133911691#0 \
-  --tx-in 61e92820c602d7d4b388140174e2ed76a924541b08a57072bc79c003b84d5a01#0 \
-  --spending-tx-in-reference 4bc4daeec4044e3a022ac3bad9a19a0ac0d4ac9e3cabfc394716ffa17a8fc52f#0 \
+  --tx-in 8064545d5c06fcd051eedf4f2d5a2e6efdc08b376720f21b1b3457d48bb536e1#2 \
+  --tx-in f6538bb7a6a0365f3c295aed389df29e752df504ebe691e34f45c0ab9f96272c#0 \
+  --spending-tx-in-reference 38fd18f4ca7c6587eb2703ac3bfd42e1406d089901e2c29f158358fdda5b196a#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "${swapAddr1} + 3000000 lovelace + 1 ${pairBeacon1} + 1 ${asset1Beacon1} + 1 ${asset2Beacon1} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-out "${swapAddr1} + 13000000 lovelace + 1 ${pairBeacon1} + 1 ${asset1Beacon1} + 1 ${asset2Beacon1} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out-inline-datum-file $swapDatumFile1 \
   --tx-in-collateral 11ed603b92e6164c6bb0c83e0f4d54a954976db7c39e2a82d3cbf70f098da1e0#0 \
   --change-address "$(cat ../../../ignored/wallets/02.addr)" \

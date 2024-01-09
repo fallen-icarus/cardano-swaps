@@ -14,6 +14,7 @@ import qualified Data.Text.IO as TIO
 import qualified Data.Text as T
 import Data.Text (Text)
 import Data.FileEmbed
+import Data.List (sort)
 
 import CardanoSwaps
 import CLI.Types
@@ -43,9 +44,9 @@ runExportScriptCmd :: Script -> FilePath -> IO ()
 runExportScriptCmd script file = do
   res <- writeScript file $ case script of
     OneWaySwapScript -> oneWaySwapScript
-    OneWayBeaconPolicy -> oneWayBeaconScript
+    OneWayBeaconScript -> oneWayBeaconScript
     TwoWaySwapScript -> twoWaySwapScript
-    TwoWayBeaconPolicy -> twoWayBeaconScript
+    TwoWayBeaconScript -> twoWayBeaconScript
   case res of
     Right _ -> return ()
     Left err -> putStrLn $ "There was an error: " <> show err
@@ -66,7 +67,10 @@ runCreateDatum
       , oneWayPrevInput = mPrev
       }
 runCreateDatum 
-  (InternalTwoWaySwapDatum (asset1,asset2) forwardPrice' reversePrice' mPrev) file = do
+  (InternalTwoWaySwapDatum (firstAsset,secondAsset) firstPrice secondPrice mPrev) file = do
+    let [asset1,asset2] = sort [firstAsset,secondAsset]
+        asset1Price = if asset1 == firstAsset then firstPrice else secondPrice
+        asset2Price = if asset2 == firstAsset then firstPrice else secondPrice
     writeData file $ TwoWaySwapDatum 
         { twoWayBeaconId = twoWayBeaconCurrencySymbol
         , twoWayPairBeacon = genTwoWayPairBeaconName asset1 asset2
@@ -76,8 +80,8 @@ runCreateDatum
         , twoWayAsset2Id = fst asset2
         , twoWayAsset2Name = snd asset2
         , twoWayAsset2Beacon = genAssetBeaconName asset2
-        , twoWayForwardPrice = forwardPrice'
-        , twoWayReversePrice = reversePrice'
+        , twoWayAsset1Price = asset1Price
+        , twoWayAsset2Price = asset2Price
         , twoWayPrevInput = mPrev
         }
 
@@ -145,7 +149,7 @@ runQueryAll queryAll = case queryAll of
   QueryAllSwapsByTradingPair 
     network api offer@(OfferAsset o) ask@(AskAsset a) format output -> do
       results <- runQueryAllSwapsByTradingPair network api offer ask
-      let reqDirection = if o < a then Reverse else Forward
+      let reqDirection = if o < a then TakingAsset1 else TakingAsset2
       case format of
         JSON -> toJSONOutput output results
         Pretty -> 
@@ -237,52 +241,52 @@ runQueryOwn queryOwn = case queryOwn of
 -------------------------------------------------
 intersperseDoc :: Doc ann -> [Doc ann] -> [Doc ann]
 intersperseDoc _ [] = []
-intersperseDoc _ (x:[]) = [x]
+intersperseDoc _ [x] = [x]
 intersperseDoc i (x:xs) = (x <+> i) : intersperseDoc i xs
 
 toAssetName :: CurrencySymbol -> TokenName -> Text
 toAssetName "" _ = "lovelace"
 toAssetName cur tok = T.pack (show cur) <> "." <> T.pack (showTokenName tok)
 
-data TargetDirection = None | Forward | Reverse deriving (Eq)
+data TargetDirection = None | TakingAsset1 | TakingAsset2 deriving (Eq)
 
 prettySwapUTxO :: TargetDirection -> SwapUTxO -> Doc AnsiStyle
 prettySwapUTxO target SwapUTxO{..} = 
-  vsep [ (annotate (color Blue) "swap_ref:") <+> 
-           (pretty $ swapTxHash <> "#" <> T.pack (show swapOutputIndex))
-       , indent 4 $ (annotate (color Green) "address:") <+> pretty swapAddress 
+  vsep [ annotate (color Blue) "swap_ref:" <+> 
+           pretty (swapTxHash <> "#" <> T.pack (show swapOutputIndex))
+       , indent 4 $ annotate (color Green) "address:" <+> pretty swapAddress 
        , indent 4 $ 
            maybe (annotate (color Green) "datum:" <+> "none") prettySwapDatum swapDatum
-       , indent 4 $ (annotate (color Green) "assets:") <+> 
+       , indent 4 $ annotate (color Green) "assets:" <+> 
            align (fillSep $ intersperseDoc "+" $ map pretty swapValue)
        ]
   where
     prettySwapDatum :: SwapDatum -> Doc AnsiStyle
     prettySwapDatum (OneWayDatum OneWaySwapDatum{..}) =
-      vsep [ (annotate (color Green) "type:") <+> pretty @Text "one-way"
-           , (annotate (color Green) "offer:") <+>
-               (pretty $ toAssetName oneWayOfferId oneWayOfferName)
-           , (annotate (color Green) "ask:") <+>
-               (pretty $ toAssetName oneWayAskId oneWayAskName)
-           , (annotate (color Green) "price:") <+> 
+      vsep [ annotate (color Green) "type:" <+> pretty @Text "one-way"
+           , annotate (color Green) "offer:" <+>
+               pretty (toAssetName oneWayOfferId oneWayOfferName)
+           , annotate (color Green) "ask:" <+>
+               pretty (toAssetName oneWayAskId oneWayAskName)
+           , annotate (color Green) "price:" <+> 
                if target /= None then
                  annotate (color Magenta) (pretty oneWaySwapPrice)
                else pretty oneWaySwapPrice
            ]
     prettySwapDatum (TwoWayDatum TwoWaySwapDatum{..}) =
-      vsep [ (annotate (color Green) "type:") <+> pretty @Text "two-way"
-           , (annotate (color Green) "asset1:") <+>
-               (pretty $ toAssetName twoWayAsset1Id twoWayAsset1Name)
-           , (annotate (color Green) "asset2:") <+>
-               (pretty $ toAssetName twoWayAsset2Id twoWayAsset2Name)
-           , (annotate (color Green) "forward_price:") <+> 
-               if target == Forward then
-                 annotate (color Magenta) (pretty twoWayForwardPrice)
-               else pretty twoWayForwardPrice
-           , (annotate (color Green) "reverse_price:") <+>
-               if target == Reverse then
-                 annotate (color Magenta) (pretty twoWayReversePrice)
-               else pretty twoWayReversePrice
+      vsep [ annotate (color Green) "type:" <+> pretty @Text "two-way"
+           , annotate (color Green) "asset1:" <+>
+               pretty (toAssetName twoWayAsset1Id twoWayAsset1Name)
+           , annotate (color Green) "asset2:" <+>
+               pretty (toAssetName twoWayAsset2Id twoWayAsset2Name)
+           , annotate (color Green) "asset1_price:" <+> 
+               if target == TakingAsset1 then
+                 annotate (color Magenta) (pretty twoWayAsset1Price)
+               else pretty twoWayAsset1Price
+           , annotate (color Green) "asset2_price:" <+>
+               if target == TakingAsset2 then
+                 annotate (color Magenta) (pretty twoWayAsset2Price)
+               else pretty twoWayAsset2Price
            ]
 
 prettyPersonalUTxO :: PersonalUTxO -> Doc AnsiStyle

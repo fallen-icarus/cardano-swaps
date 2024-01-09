@@ -191,11 +191,11 @@ own API database).
 (If you are only interested in the high-level aspects of the protocol, feel free to skip to the next
 [section](#benchmarks-and-fee-estimations-ymmv).)
 
-Each type of swap is comprised of a validator / beacon policy pair. This means that each type of
+Each type of swap is comprised of a spending script / beacon script pair. This means that each type of
 swap gets its own universal address. For example, all of Alice's one-way swaps, regardless of the
 trading pair, will be located at address X and all all of Alice's two-way swaps, regardless of the
 trading pair, will be located at address Y. Address X != address Y. Furthermore, since each type
-of swap has its own beacon policy, each type is easily distinguishable off-chain while still being
+of swap has its own beacon script, each type is easily distinguishable off-chain while still being
 easily queryable by end users.
 
 This modular approach of having a separate script pair for each swap makes it easy to add new kinds
@@ -207,9 +207,16 @@ spaces.
 
 ### One-Sway Swaps
 
-One-way swaps use one universal validator script for all swap pairs, and one universal minting
-policy for all one-way beacons. There are three beacons for one-way swaps: the trading pair beacon,
-the offer beacon, and the ask beacon.
+One-way swaps use one universal spending script for all swap pairs, and one universal beacon script
+for all one-way beacons. The beacon script can be executed as either a minting policy or a staking
+script depending on whether beacons must be minted/burned. This flexibility of how the beacon script
+can be executed allows the spending script to delegate certain checks to the beacon script to
+minimize redundant executions.
+
+##### Beacons
+
+There are three beacons for one-way swaps: the trading pair beacon, the offer beacon, and the ask
+beacon.
 
 The offer beacon asset name is `sha2_256( "01" ++ offer_policy_id ++ offer_asset_name )`.
 
@@ -232,38 +239,40 @@ currently open swaps.
 ##### Swap Address
 
 All users get a single swap address where all of their one-way swaps will be located. This universal
-validator can enforce all possible swaps for the user. And since users only need to worry about a
+address can enforce all possible swaps for the user. And since users only need to worry about a
 single address, it keeps the UI simple.
 
-##### Minting Redeemers
+##### Beacon Script Redeemers
 
-Two minting redeemers are introduced here; their usage is explained further below.
+Two beacon script redeemers are introduced here; their usage is explained further below.
 
 ```Haskell
 data BeaconRedeemer
-  = CreateSwap 
-  | BurnBeacons
+  = CreateOrCloseSwaps -- ^ Executes the beacon script as a minting policy.
+  | UpdateSwaps -- ^ Executes the beacon script as a staking script.
 ```
 
-##### Validator Redeemers
+##### Spending Script Redeemers
 
-Two validator redeemers are introduced here; their usage is explained further below.
+Three spending script redeemers are introduced here; their usage is explained further below.
 
 ```Haskell
 data SwapRedeemer
-  = CloseOrUpdate
+  = SpendWithMint -- ^ Delegates checks to the beacon script's minting policy execution.
+  | SpendWithStake -- ^ Delegates checks to the beacon script's staking script execution.
   | Swap
 ```
 
-Only the owner (signified by the address' staking credential) can use the `CloseOrUpdate` redeemer.
-Anyone can use the `Swap` redeemer as long as the swap conditions are met.
+Only the owner (signified by the address' staking credential) can use the `SpendWithMint` and
+`SpendWithStake` redeemers. Anyone can use the `Swap` redeemer as long as the swap conditions are
+met.
 
 ##### Datums
 Inline datums are used for all UTxOs. All UTxOs get the same type of datum:
 
 ``` Haskell
 data SwapDatum = SwapDatum
-  { beaconId :: CurrencySymbol -- ^ Beacon policy id for one-way swaps.
+  { beaconId :: CurrencySymbol -- ^ Beacon script hash for one-way swaps.
   , pairBeacon :: TokenName -- ^ Trading pair beacon asset name for this swap.
   , offerId :: CurrencySymbol -- ^ Offer policy id for this swap.
   , offerName :: TokenName -- ^ Offer asset name for this swap.
@@ -276,10 +285,10 @@ data SwapDatum = SwapDatum
   }
 ```
 
-The beacon information in the datum prevents misuse of beacons. The validator forces all beacons to
-be burned instead of being withdrawn. This ensures that beacons can only ever be located at swap
-addresses. **If the wrong beacon information is supplied to the datum, the resulting Swap UTxO can
-be locked forever.** (See the FAQ for more information on this.)
+The beacon information in the datum prevents misuse of beacons. The spending script forces all
+beacons to be burned instead of being withdrawn. This ensures that beacons can only ever be located
+at swap addresses. **If the wrong beacon information is supplied to the datum, the resulting Swap
+UTxO can be locked forever.** (See the FAQ for more information on this.)
 
 The `Rational` type is a fraction (decimal types do not work on-chain). All prices in Cardano-Swaps
 are relative (similar to limit orders in an order-book exchange). Swaps are always priced in
@@ -297,19 +306,19 @@ emerges where the local bids and asks meet - just like an order-book.
 
 ##### Creating a One-Way Swap
 
-Swap "writers" must first create a swap by using the `CreateSwap` redeemer in the following manner:
+Swap "writers" must first create a swap by using the `CreateOrCloseSwaps` beacon script redeemer. In
+order to mint beacons with this redeemer, **all of the following must be true**:
 
-In order to mint beacons with this redeemer, **all of the following must be true**:
-
-1) The beacons must go to an address protected by the one-way swap validator script.
-2) The beacons must go to an address using a valid staking credential.
-3) The UTxOs with the beacons must have the proper value:
+1) The beacon script must be executed as a minting policy.
+2) The beacons must go to an address protected by the one-way swap spending script.
+3) The beacons must go to an address using a valid staking credential.
+4) The UTxOs with the beacons must have the proper value:
     - Exactly three kinds of beacons: pair beacon, offer beacon, and ask beacon.
     - The beacons must correspond to the beacons in the datum.
     - There must be exactly 1 of each beacon.
     - No extraneous assets are in the UTxO. Ada is always allowed.
-4) The beacons must be stored with the proper inline `SwapDatum`:
-    - `beaconId` == this policy id.
+5) The beacons must be stored with the proper inline `SwapDatum`:
+    - `beaconId` == this beacon script's hash.
     - `pairBeacon` == pair beacon asset name for this swap.
     - `offerId` == policy id of the offer asset.
     - `offerName` == asset name of the offer asset.
@@ -319,7 +328,7 @@ In order to mint beacons with this redeemer, **all of the following must be true
     - `askBeacon` == ask beacon asset name for this swap's ask asset.
     - `swapPrice` denominator > 0
     - `swapPrice` > 0
-5) The offer asset and ask assets must be different assets.
+6) The offer asset and ask assets must be different assets.
 
 Once the beacons are minted to the swap address, the spending script does not allow closing the swap
 *unless* the beacons are being burned. This prevents beacons from being sent to unrelated addresses
@@ -331,33 +340,33 @@ closing the swap so it should be thought of as a deposit. **All open swaps requi
 least 2 ADA.** 
 
 It is possible to open swaps for multiple different trading pairs in a single transaction. The
-minting policy is capable of still ensuring that all beacons are stored properly (with the proper
+beacon script is capable of still ensuring that all beacons are stored properly (with the proper
 value and datum). For example, since each beacon's datum is specific to those beacons, mixing up
 beacons and datums will cause the minting transaction to fail.
-
-The `CreateSwap` allows also burning any beacons to enable composition with the `CloseOrUpdate`
-redeemer. More on this later.
-
 
 ##### Closing or Updating a One-Way Swap
 
 Open Swap UTxOs can be closed or updated by the address owner (signified by the address' staking
-credential).
+credential). After checking that the owner approves the transaction, the spending script will
+delegate the rest of the checks to the beacon script. The spending script's redeemer is used to tell
+the script where to find proof of the beacon script's execution. If the beacon script's execution is
+not found, the transaction is guaranteed to fail.
 
-The `CloseOrUpdate` redeemer allows the owner to recover the deposit stored with the swap. **In
-order to reclaim the deposit, the beacons must be burned.** As the redeemer name suggests, swaps
-can also be updated inplace instead. The requirements for successfully using the `CloseOrUpdate`
-redeemer are:
+The requirements for successfully spending a swap UTxO as the owner are:
 
-1) The beacons must go to an address protected by the one-way swap validator script.
-2) The beacons must go to an address using a valid staking credential.
-3) The UTxOs with the beacons must have the proper value:
+1) If the `SpendWithMint` spending script redeemer is used, the beacon script must be executed as a
+minting policy using the `CreateOrCloseSwaps` beacon script redeemer. If the `SpendWithStake`
+redeemer is used, the beacon script must be executed as a staking script using the `UpdateSwaps`
+beacon script redeemer. 
+2) The beacons must go to an address protected by the one-way swap spending script.
+3) The beacons must go to an address using a valid staking credential.
+4) The UTxOs with the beacons must have the proper value:
     - Exactly three kinds of beacons: pair beacon, offer beacon, and ask beacon.
     - The beacons must correspond to the beacons in the datum.
     - There must be exactly 1 of each beacon.
     - No extraneous assets are in the UTxO. Ada is always allowed.
-4) The beacons must be stored with the proper inline `SwapDatum`:
-    - `beaconId` == this policy id.
+5) The beacons must be stored with the proper inline `SwapDatum`:
+    - `beaconId` == this beacon script's hash id.
     - `pairBeacon` == pair beacon asset name for this swap.
     - `offerId` == policy id of the offer asset.
     - `offerName` == asset name of the offer asset.
@@ -367,17 +376,35 @@ redeemer are:
     - `askBeacon` == ask beacon asset name for this swap's ask asset.
     - `swapPrice` denominator > 0
     - `swapPrice` > 0
-5) The offer asset and ask assets must be different assets.
-6) The address' staking credential must signal approval.
-7) Any unused beacons must be burned.
+6) The offer asset and ask assets must be different assets.
+7) The address' staking credential must signal approval.
+8) Any unused beacons must be burned.
 
-The `CloseOrUpdate` redeemer can be used with either beacon redeemer since both allow burning. If
-beacons only need to be burned, it is cheaper to use the `BurnBeacons` redeemer. However, if even a
-single beacon must be minted, the `CreateSwap` redeemer must be used. This behavior enables the swap
-owner to change what trading pair a swap is for in a single transaction. This is instead of having
-to close the original swap in one transaction only to re-open it in another transaction.
+Requirement 7 guarantees that only the owner can close/update a swap and claim the assets.
 
-Requirement 6 guarantees that only the owner can close/update a swap and claim the assets.
+- The `SpendWithMint`+`CreateOrCloseSwaps` combination allows closing swaps and/or converting swaps to
+new trading pairs.
+- The `SpendWithStake`+`UpdateSwaps` combination allows updating the prices of swaps when no beacons
+need to be minted/burned. 
+
+Delegating the update checks to the beacon script is dramatically more efficient than having
+the spending script do the checks. This difference is due to the redundant executions from spending
+scripts.
+
+**All swap UTxOs being spent by the owner should use the same spending redeemer/beacon redeemer
+combination.** The only time the `SpendWithStake`+`UpdateOnly` combination should be used is when
+all swaps are only having their prices updated (hence the name of the beacon redeemer). If even one
+swap is being closed or converted to another trading pair, then the
+`SpendWithMint`+`CreateOrCloseSwaps` combination should be used for all swap UTxOs being spent. It
+is technically possible to use both combinations in a single transaction but since the checks are
+identical except for the minting/burning, using both combinations is just a waste of transaction
+fees since the beacon script will be executed twice where the second execution is completely
+redundant.
+
+*In order to reclaim the deposit, the beacons must be burned which means the
+`SpendWithMint`+`CreateOrCloseSwaps` combination is required.* This combination also allows moving
+swaps to a new swap address in case the owner wants to change the staking credential for the swap
+address. The original staking credential must still aprove the transaction.
 
 ##### Executing a One-Way Swap
 
@@ -392,7 +419,7 @@ corresponding swap output. The checks are essentially:
 4) If "Yes" to (3), this is the corresponding output.
 
 It then compares the value of that output to the input to determine the swap's asset flux. Since the
-validator first checks for the trading pair beacon, each execution is dedicated to a specific
+spending script first checks for the trading pair beacon, each execution is dedicated to a specific
 trading pair. Any other outputs are ignored in this specific execution. This logic works because a
 script is executed once for every UTxO spent from the address. If input 1 is for beacon XYZ and
 input 2 is for beacon ABC, the first execution can be dedicated to beacon XYZ and the second
@@ -427,10 +454,17 @@ Custom error messages are included to help troubleshoot why a swap failed.
 
 ### Two-Sway Swaps
 
-Two-way swaps use one universal validator script for all swap pairs and one universal minting script
-for all trading pairs. Two-way swaps use three beacons: a trading pair beacon, an asset1 beacon, and
-an asset2 beacon. The asset1 and asset2 beacons serve as both offer and ask beacons since two-way
-swaps can technically go in either direction.
+Two-way swaps use one universal spending script for all swap pairs and one universal beacon script
+for all trading pairs. The beacon script can be executed as either a minting policy or a staking
+script depending on whether beacons must be minted/burned. This flexibility of how the beacon script
+can be executed allows the spending script to delegate certain checks to the beacon script to
+minimize redundant executions.
+
+##### Beacons
+
+Two-way swaps use three beacons: a trading pair beacon, an asset1 beacon, and an asset2 beacon. The
+asset1 and asset2 beacons serve as both offer and ask beacons since two-way swaps can technically go
+in either direction.
 
 The asset1 beacon asset name is `sha2_256( asset1_policy_id ++ asset1_asset_name )`.
 
@@ -462,39 +496,41 @@ currently open swaps.
 ##### Swap Address
 
 All users get a single swap address where all of their two-way swaps will be located. This universal
-validator can enforce all possible swaps for the user. And since users only need to worry about a
+address can enforce all possible swaps for the user. And since users only need to worry about a
 single address, it keeps the UI simple.
 
-##### Minting Redeemers
+##### Beacon Script Redeemers
 
-Two minting redeemers are introduced here; their usage is explained further below.
+Two beacon script redeemers are introduced here; their usage is explained further below.
 
 ```Haskell
 data BeaconRedeemer
-  = CreateSwap 
-  | BurnBeacons
+  = CreateOrCloseSwaps -- ^ Executes the beacon script as a minting policy.
+  | UpdateSwaps -- ^ Executes the beacon script as a staking script.
 ```
 
-##### Validator Redeemers
+##### Spending Script Redeemers
 
-Three validator redeemers are introduced here; their usage is explained further below.
+Four spending script redeemers are introduced here; their usage is explained further below.
 
 ```Haskell
 data SwapRedeemer
-  = CloseOrUpdate
-  | ForwardSwap
-  | ReverseSwap
+  = SpendWithMint -- ^ Delegates checks to the beacon script's minting policy execution.
+  | SpendWithStake -- ^ Delegates checks to the beacon script's staking script execution.
+  | TakeAsset1 -- ^ Take asset 1 from the swap and give asset 2.
+  | TakeAsset2 -- ^ Take asset 2 from the swap and give asset 1.
 ```
 
-Only the owner (signified by the address' staking credential) can use the `CloseOrUpdate` redeemer.
-Anyone can use the `ForwardSwap` or `ReverseSwap` redeemers as long as the swap conditions are met.
+Only the owner (signified by the address' staking credential) can use the `SpendWithMint` and
+`SpendWithStake` redeemers. Anyone can use the `TakeAsset1` or `TakeAsset2` redeemers as long as
+the swap conditions are met.
 
 ##### Datums
 Inline datums are used for all UTxOs. All UTxOs get the same type of datum:
 
 ``` Haskell
 data SwapDatum = SwapDatum
-  { beaconId :: CurrencySymbol -- ^ The beacon policy id for two-way swaps.
+  { beaconId :: CurrencySymbol -- ^ Beacon script hash for two-way swaps.
   , pairBeacon :: TokenName -- ^ The asset name for the beacon for this trading pair.
   , asset1Id :: CurrencySymbol -- ^ The policy id for the first asset in the sorted pair.
   , asset1Name :: TokenName -- ^ The asset name for the first asset in the sorted pair.
@@ -502,16 +538,16 @@ data SwapDatum = SwapDatum
   , asset2Id :: CurrencySymbol -- ^ The policy id for the second asset in the sorted pair.
   , asset2Name :: TokenName -- ^ The asset name for the second asset in the sorted pair.
   , asset2Beacon :: TokenName -- ^ The asset name for the asset2 beacon.
-  , forwardPrice :: Rational -- ^ The swap price as a fraction: Asset1/Asset2.
-  , reversePrice :: Rational -- ^ The swap price as a fraction: Asset2/Asset1.
+  , asset1Price :: Rational -- ^ The swap price to take asset1 as a fraction: Asset2/Asset1.
+  , asset2Price :: Rational -- ^ The swap price to take asset2 as a fraction: Asset1/Asset2.
   , prevInput :: Maybe TxOutRef -- ^ The output reference for the corresponding swap input.
   }
 ```
 
-The beacon information in the datum prevents misuse of beacons. The validator forces all beacons to
-be burned instead of being withdrawn. This ensures that beacons can only ever be located at swap
-addresses. **If the wrong beacon information is supplied to the datum, the resulting Swap UTxO can
-be locked forever.** (See the FAQ for more information on this.)
+The beacon information in the datum prevents misuse of beacons. The spending script forces all
+beacons to be burned instead of being withdrawn. This ensures that beacons can only ever be located
+at swap addresses. **If the wrong beacon information is supplied to the datum, the resulting Swap
+UTxO can be locked forever.** (See the FAQ for more information on this.)
 
 The `Rational` type is a fraction (decimal types do not work on-chain). All prices in Cardano-Swaps
 are relative (similar to limit orders in an order-book exchange). Swaps are always priced in
@@ -519,8 +555,8 @@ askedAsset/offeredAsset. For example, if ADA is being offered for DUST at a pric
 to 3/2), the contract requires that 3 DUST are deposited for every 2 ADA removed from the swap
 address. Ratios of DUST:ADA >= 3/2 will pass, while ratios < 3/2 will fail.
 
-Since all prices are askedAsset/offeredAsset, asset2 is being offered in `forwardPrice` and asset1
-is being offered in `reversePrice`.
+Since all prices are askedAsset/offeredAsset, asset2 is being offered in `asset2Price` and asset1
+is being offered in `asset1Price`.
 
 When engaging in swaps, it is only necessary that the desired swap ratio is met; **not all assets in
 the UTxO must be swapped.** For example, if there is 100 ADA in a swap requesting 2:1 for DUST, a
@@ -532,19 +568,19 @@ emerges where the local bids and asks meet - just like an order-book.
 
 ##### Creating a Two-Way Swap
 
-Swap "writers" must first create a swap by using the `CreateSwap` redeemer in the following manner:
+Swap "writers" must first create a swap by using the `CreateOrCloseSwaps` redeemer. In order to mint
+beacons with this redeemer, **all of the following must be true**:
 
-In order to mint beacons with this redeemer, **all of the following must be true**:
-
-1) The beacons must go to an address protected by the two-way swap validator script.
-2) The beacons must go to an address using a valid staking credential.
-3) The UTxOs with the beacons must have the proper value:
+1) The beacon script must be executed as a minting policy.
+2) The beacons must go to an address protected by the two-way swap spending script.
+3) The beacons must go to an address using a valid staking credential.
+4) The UTxOs with the beacons must have the proper value:
     - Exactly three kinds of beacons: pair beacon, asset1 beacon, and asset2 beacon.
     - The beacons must correspond to the beacons in the datum.
     - There must be exactly 1 of each beacon.
     - No extraneous assets are in the UTxO. Ada is always allowed.
-4) The beacons must be stored with the proper inline `SwapDatum`:
-    - `beaconId` == this policy id.
+5) The beacons must be stored with the proper inline `SwapDatum`:
+    - `beaconId` == this beacon script's hash.
     - `pairBeacon` == trading pair beacon asset name for this swap.
     - `asset1Id` == policy id of asset1 for that trading pair.
     - `asset1Name` == asset name of asset1 for that trading pair.
@@ -552,14 +588,14 @@ In order to mint beacons with this redeemer, **all of the following must be true
     - `asset2Id` == policy id of asset2 for that trading pair.
     - `asset2Name` == asset name of asset2 for that trading pair.
     - `asset2Beacon` == beacon asset name for asset2.
-    - `forwardPrice` denominator > 0
-    - `forwardPrice` > 0
-    - `reversePrice` denominator > 0
-    - `reversePrice` > 0
+    - `asset1Price` denominator > 0
+    - `asset1Price` > 0
+    - `asset2Price` denominator > 0
+    - `asset2Price` > 0
     - asset1 < asset2
 
-The validator will assume that the trading pairs are sorted which is why asset1 must be less than
-asset2. Asset1 and asset2 cannot be the same asset.
+The spending script will assume that the trading pairs are sorted which is why asset1 must be less
+than asset2. Asset1 and asset2 cannot be the same asset.
 
 Once the beacons are minted to the swap address, the spending script does not allow closing the swap
 *unless* the beacons are being burned. This prevents beacons from being sent to unrelated addresses
@@ -571,33 +607,33 @@ closing the swap so it should be thought of as a deposit. **All open swaps requi
 least 2 ADA.** 
 
 It is possible to open swaps for multiple different trading pairs in a single transaction. The
-minting policy is capable of still ensuring that all beacons are stored properly (with the proper
+beacon script is capable of still ensuring that all beacons are stored properly (with the proper
 value and datum). For example, since each beacon's datum is specific to that beacon, mixing up
 beacons and datums will cause the minting transaction to fail.
-
-The `CreateSwap` redeemer allows burning any beacons to enable composition with the `CloseOrUpdate`
-redeemer. More on this later.
-
 
 ##### Closing or Updating a Two-Way Swap
 
 Open Swap UTxOs can be closed or updated by the address owner (signified by the address' staking
-credential).
+credential). After checking that the owner approves the transaction, the spending script will
+delegate the rest of the checks to the beacon script. The spending script's redeemer is used to tell
+the script where to find proof of the beacon script's execution. If the beacon script's execution is
+not found, the transaction is guaranteed to fail.
 
-The `CloseOrUpdate` redeemer allows the owner to recover the deposit stored with the swap. **In
-order to reclaim the deposit, the beacons must be burned.** As the redeemer name suggests, swaps
-can also be updated inplace instead. The requirements for successfully using the `CloseOrUpdate`
-redeemer are:
+The requirements for successfully spending a swap UTxO as the owner are:
 
-1) The beacons must go to an address protected by the two-way swap validator script.
-2) The beacons must go to an address using a valid staking credential.
-3) The UTxOs with the beacons must have the proper value:
+1) If the `SpendWithMint` spending script redeemer is used, the beacon script must be executed as a
+minting policy using the `CreateOrCloseSwaps` beacon script redeemer. If the `SpendWithStake`
+spending script redeemer is used, the beacon script must be executed as a staking script using the
+`UpdateSwaps` beacon script redeemer. 
+2) The beacons must go to an address protected by the two-way swap spending script.
+3) The beacons must go to an address using a valid staking credential.
+4) The UTxOs with the beacons must have the proper value:
     - Exactly three kinds of beacons: pair beacon, asset1 beacon, and asset2 beacon.
     - The beacons must correspond to the beacons in the datum.
     - There must be exactly 1 of each beacon.
     - No extraneous assets are in the UTxO. Ada is always allowed.
-4) The beacons must be stored with the proper inline `SwapDatum`:
-    - `beaconId` == this policy id.
+5) The beacons must be stored with the proper inline `SwapDatum`:
+    - `beaconId` == this beacon script's hash.
     - `pairBeacon` == trading pair beacon asset name for this swap.
     - `asset1Id` == policy id of asset1 for that trading pair.
     - `asset1Name` == asset name of asset1 for that trading pair.
@@ -605,30 +641,48 @@ redeemer are:
     - `asset2Id` == policy id of asset2 for that trading pair.
     - `asset2Name` == asset name of asset2 for that trading pair.
     - `asset2Beacon` == beacon asset name for asset2.
-    - `forwardPrice` denominator > 0
-    - `forwardPrice` > 0
-    - `reversePrice` denominator > 0
-    - `reversePrice` > 0
+    - `asset1Price` denominator > 0
+    - `asset1Price` > 0
+    - `asset2Price` denominator > 0
+    - `asset2Price` > 0
     - asset1 < asset2
-5) The address' staking credential must approve.
-6) Any unused beacons must be burned.
+6) The address' staking credential must approve.
+7) Any unused beacons must be burned.
 
-The `CloseOrUpdate` redeemer can be used with either beacon redeemer since both allow burning. If
-beacons only need to be burned, it is cheaper to use the `BurnBeacons` redeemer. However, if even a
-single beacon must be minted, the `CreateSwap` redeemer must be used. This behavior enables the swap
-owner to change what trading pair a swap is for in a single transaction. This is instead of having
-to close the original swap in one transaction only to re-open it in another transaction. 
+Requirement 6 guarantees only the swap owner can close/update swaps.
 
-Requirement 5 guarantees only the swap owner can close/update swaps.
+- The `SpendWithMint`+`CreateOrCloseSwaps` combination allows closing swaps and/or converting swaps to
+new trading pairs.
+- The `SpendWithStake`+`UpdateSwaps` combination allows updating the prices of swaps when no beacons
+need to be minted/burned. 
+
+Delegating the update checks to the beacon script is dramatically more efficient than having
+the spending script do the checks. This difference is due to the redundant executions from spending
+scripts.
+
+**All swap UTxOs being spent by the owner should use the same spending redeemer/beacon redeemer
+combination.** The only time the `SpendWithStake`+`UpdateOnly` combination should be used is when
+all swaps are only having their prices updated (hence the name of the beacon redeemer). If even one
+swap is being closed or converted to another trading pair, then the
+`SpendWithMint`+`CreateOrCloseSwaps` combination should be used for all swap UTxOs being spent. It
+is technically possible to use both combinations in a single transaction but since the checks are
+identical except for the minting/burning, using both combinations is just a waste of transaction
+fees since the beacon script will be executed twice where the second execution is completely
+redundant.
+
+*In order to reclaim the deposit, the beacons must be burned which means the
+`SpendWithMint`+`CreateOrCloseSwaps` combination is required.* This combination also allows moving
+swaps to a new swap address in case the owner wants to change the staking credential for the swap
+address. The original staking credential must still aprove the transaction.
 
 ##### Executing a Two-Way Swap
 
-Any Cardano user can execute an available swap using either the `ForwardSwap` or `ReverseSwap`
-redeemer as long as the swap conditions are met. When `ForwardSwap` is used, the `forwardPrice` is
-used and asset2 is the offer asset while asset1 is the ask asset. When `ReverseSwap` is used, the
-`reversePrice` is used and asset1 is the offer asset and asset2 is the ask asset.
+Any Cardano user can execute an available swap using either the `TakeAsset1` or `TakeAsset2`
+redeemer as long as the swap conditions are met. When `TakeAsset1` is used, the `asset1Price` is
+used, and asset1 is the offer asset while asset2 is the ask asset. When `TakeAsset2` is used, the
+`asset2Price` is used, and asset2 is the offer asset and asset1 is the ask asset.
 
-At a high level, the validator uses the swap input's output reference and datum to find the
+At a high level, the spending script uses the swap input's output reference and datum to find the
 corresponding swap output. The checks are essentially:
 1) Does this output have the trading pair beacon from the input?
 2) If "Yes" to (1), is this output locked at the address where the input comes from?
@@ -636,13 +690,13 @@ corresponding swap output. The checks are essentially:
 4) If "Yes" to (3), this is the corresponding output.
 
 It then compares the value of that output to the input to determine the swap's asset flux. Since the
-validator first checks for the beacon, each execution is dedicated for a specific trading pair. Any
-other outputs are ignored in this specific execution. This logic works because a script is executed
-once for every UTxO spent from the address. If input 1 is for beacon XYZ and input 2 is for beacon
-ABC, the first execution can be dedicated to beacon XYZ and the second execution can be dedicated to
-ABC. The net transaction will only succeed if all executions succeed. This behavior allows cheaply
-composing swaps of different trading pairs that are located at the same address. In other words, the
-logic takes advantage of the redundant executions.
+spending script first checks for the beacon, each execution is dedicated for a specific trading
+pair. Any other outputs are ignored in this specific execution. This logic works because a script is
+executed once for every UTxO spent from the address. If input 1 is for beacon XYZ and input 2 is for
+beacon ABC, the first execution can be dedicated to beacon XYZ and the second execution can be
+dedicated to ABC. The net transaction will only succeed if all executions succeed. This behavior
+allows cheaply composing swaps of different trading pairs that are located at the same address. In
+other words, the logic takes advantage of the redundant executions.
 
 At a low-level, for a swap execution to be successfull, all of the following must be true:
 
@@ -672,8 +726,8 @@ Custom error messages are included to help troubleshoot why a swap failed.
 
 ## Benchmarks and Fee Estimations (YMMV)
 
-The protocol is capable of handling 11-14 swaps in a single transaction, regardless of the
-composition of one-way and two-way swaps in the transaction.
+The protocol is capable of handling 25 swaps in a single transaction, regardless of the composition
+of one-way and two-way swaps in the transaction.
 
 **No CIPs or hard-forks are needed. This protocol works on the Cardano blockchain, as is.**
 
@@ -780,7 +834,7 @@ into less liquid swap pairs. And since two-way swaps naturally incentivize provi
 major trading pairs (see the next two sub-sections), this requirement for entry and exit liquidity
 is naturally incentivized to be satisfied.
 
-Since the current design is capable of handling 11-14 swaps in a single transaction, there is ample
+Since the current design is capable of handling 25 swaps in a single transaction, there is ample
 flexibility for finding arbitrage opportunities. For example, maybe the 3rd swap is at a slight loss
 but the 5th swap is such a good arbitrage that it more than makes up for it resulting in a net
 profit for the arbitrage.
@@ -822,7 +876,7 @@ example where Sarah paid the transaction fee and got 5 AGIX from the arbitrage. 
 benchmarks, composing 4 swaps requires about a 0.5 ADA transaction fee. This is practically
 equivalent to Sarah paying 0.5 ADA for 5 AGIX. What if the current market rate is 0.66 ADA/AGIX? If
 Sarah immediately sold her new AGIX, she would get 3.3 ADA. That is a 560% yield! Sarah has plenty
-of income to cover a 15% premium if needed. Since the protocol supports chaining up to 14 swaps, it
+of income to cover a 15% premium if needed. Since the protocol supports chaining up to 25 swaps, it
 is actually likely that arbitragers will be able to find opportunities that justify paying this high
 premium. 
 
@@ -926,7 +980,7 @@ the more attractive the buyer makes the arbitrage opportunity, the more arbitrag
 it and the faster their swap will be converted. 
 
 From the perspective of the arbitragers, the only cost to them is the transaction fee which scales
-very slowly relative to the number of swaps in the transaction (14 swaps costs about 1.5 ADA).
+very slowly relative to the number of swaps in the transaction (25 swaps costs about 2 ADA).
 Combine this with the fact that these transactions are risk free for arbitragers (a failed
 transaction is no cost to the arbitrager) and you end up with very healthy incentives for
 arbitragers to *want* to do this and satisfy as many users as possible with each transaction. The
@@ -1002,8 +1056,8 @@ execution, in which case the spending credential is used directly.
 
 > Note: It is possible to execute a staking script even if 0 ADA is withdrawn from a reward address.
 > The only requirement to use staking scripts like this is that the associated stake address must be
-> registered and delegated. Stake addresses can be utilized this way as soon as the
-> registration+delegation transaction is added to the chain. There is no epoch waiting-period.
+> registered; *it does not need to be delegated*. Stake addresses can be utilized this way as soon
+> as the registration transaction is added to the chain. There is no epoch waiting-period.
 
 ### What happens if a Swap UTxO is created at an address without a staking credential?
 

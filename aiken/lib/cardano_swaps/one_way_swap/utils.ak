@@ -1,8 +1,7 @@
 use aiken/bytearray
-use aiken/dict
+use aiken/dict.{Dict}
 use aiken/hash.{Hash,Blake2b_224}
 use aiken/list
-use aiken/math/rational.{Rational} as ratio
 use aiken/option.{is_some}
 use aiken/string.{concat}
 use aiken/transaction.{Datum,InlineDatum,Output,OutputReference} as tx
@@ -13,10 +12,10 @@ use aiken/transaction/credential.{
   }
 use aiken/transaction/value.{PolicyId,AssetName,Value}
 
-use cardano_swaps/common/types.{app_name,AssetConfig} as common_types
+use cardano_swaps/common/types.{app_name,AssetConfig,Rational} as common_types
 use cardano_swaps/common/utils.{
   error_if_false,
-  trace_if_false,
+  trace_if_false
   } as common_utils
 use cardano_swaps/one_way_swap/types.{
   SwapDatum
@@ -76,9 +75,146 @@ pub fn generate_ask_beacon(policy_id: PolicyId, asset_name: AssetName) -> AssetN
   )
 }
 
-// This function is used for creating swaps with either `CloseOrUpdate` or `CreateSwap`. This 
-// function should only be called after the output has been checked for exactly three types of 
-// beacons.
+// This is used to check thath the value of Swap UTxOs are correct. It also returns the amount of
+// the offer asset, ask asset, and ada so that it can be used during swap execution as well. It will
+// crash the script if any Swap UTxOs are malformed.
+fn extract_ask_and_offer_quantity(
+  val: Value,
+  beacon_id: PolicyId,
+  pair_beacon: AssetName,
+  offer_id: PolicyId,
+  offer_name: AssetName,
+  offer_beacon: AssetName,
+  ask_id: PolicyId,
+  ask_name: AssetName,
+  ask_beacon: AssetName
+) -> (Int,Int,Int) {
+  let foo = fn(x: (PolicyId,Dict<AssetName,Int>), acc: (Int,Int,Int,Bool)) {
+    let (cn,tns_dict) = x
+    let (offer,ask,ada,valid_beacons) = acc
+
+    // Check the beacons.
+    if cn == beacon_id {
+      let tns_list = dict.to_list(tns_dict)
+
+      let beacon_check = fn(y: (AssetName,Int), acc: (Bool,Bool,Bool)) {
+        let (tn,n) = y
+        let (pair_check,offer_check,ask_check) = acc
+        if tn == pair_beacon {
+          (n == 1, offer_check, ask_check)
+        } else if tn == offer_beacon {
+          (pair_check, n == 1, ask_check)
+        } else if tn == ask_beacon {
+          (pair_check, offer_check, n == 1)
+        } else {
+          error @"UTxO has wrong beacons"
+        }
+      }
+
+      when list.foldl(tns_list,(False,False,False),beacon_check) is {
+        (True,True,True) -> (offer,ask,ada,True)
+        _ -> acc
+      }
+    } 
+
+    // Check ada.
+    else if cn == #"" {
+      expect Some(n) = dict.get(tns_dict,#"")
+
+      // Also account for when ada is part of the pair.
+      if cn == offer_id {
+        (offer+n,ask,ada+n,valid_beacons)
+      } else if cn == ask_id {
+        (offer,ask+n,ada+n,valid_beacons)
+      } else {
+        (offer,ask,ada+n,valid_beacons)
+      }
+    }
+
+    // Must handle when the offer and ask assets have the same policy id.
+    else if cn == offer_id && cn == ask_id {
+      when dict.to_list(tns_dict) is {
+        // Only one of the assets is present.
+        [(tn,n)] -> {
+          if tn == offer_name {
+            (offer+n,ask,ada,valid_beacons)
+          } else if tn == ask_name {
+            (offer,ask+n,ada,valid_beacons)
+          } else {
+            error @"No extraneous assets allowed in the UTxO"
+          }
+        }
+
+        // They are both present in the UTxO.
+        [(tn1,n1),(tn2,n2)] -> {
+          if tn1 == offer_name {
+            if tn2 == ask_name {
+              (offer+n1,ask+n2,ada,valid_beacons)
+            } else {
+              error @"No extraneous assets allowed in the UTxO"
+            }
+          } else if tn1 == ask_name { 
+            if tn2 == offer_name {
+              (offer+n2,ask+n1,ada,valid_beacons)
+            } else {
+              error @"No extraneous assets allowed in the UTxO"
+            }
+          } else {
+            error @"No extraneous assets allowed in the UTxO"
+          }
+        }
+
+        _ -> error @"No extraneous assets allowed in the UTxO"
+      }
+    }
+
+    // Check the offer asset. If this path is taken, the ask asset and offer asset have different
+    // policy ids.
+    else if cn == offer_id {
+      when dict.to_list(tns_dict) is {
+        [(tn,n)] -> {
+          if tn == offer_name {
+            (offer+n,ask,ada,valid_beacons)
+          } else {
+            error @"No extraneous assets allowed in the UTxO"
+          }
+        }
+        _ -> error @"No extraneous assets allowed in the UTxO"
+      }
+    }
+
+    // Check the ask asset. If this path is taken, the ask asset and offer asset have different
+    // policy ids.
+    else if cn == ask_id {
+      when dict.to_list(tns_dict) is {
+        [(tn,n)] -> {
+          if tn == ask_name {
+            (offer,ask+n,ada,valid_beacons)
+          } else {
+            error @"No extraneous assets allowed in the UTxO"
+          }
+        }
+        _ -> error @"No extraneous assets allowed in the UTxO"
+      }
+    } else {
+      error @"No extraneous assets allowed in the UTxO"
+    }
+  }
+
+  let (offer,ask,ada,valid_beacons) = list.foldl(
+    value.to_dict(val) |> dict.to_list(_),
+    (0,0,0,False),
+    foo
+  )
+
+  if valid_beacons {
+    (offer,ask,ada)
+  } else {
+    error @"UTxO has wrong beacons"
+  }
+}
+
+// This checks the datum and calls extract_ask_and_offer_quantity to check the value.
 fn valid_swap_output(
   beacon_id: PolicyId,
   output_value: Value,
@@ -99,6 +235,20 @@ fn valid_swap_output(
 
   let offer = AssetConfig(offer_id_,offer_name_)
   let ask = AssetConfig(ask_id_,ask_name_)
+  let Rational(price_num_,price_den_) = swap_price_
+
+  let (o,_,_) = 
+    extract_ask_and_offer_quantity(
+      output_value,
+      beacon_id,
+      pair_beacon_,
+      offer_id_,
+      offer_name_,
+      offer_beacon_,
+      ask_id_,
+      ask_name_,
+      ask_beacon_
+    )
 
   // The beacon_id must be the policy id of the beacon policy.
   trace_if_false( @"Wrong beacon_id", beacon_id == beacon_id_ ) &&
@@ -127,58 +277,22 @@ fn valid_swap_output(
   // The swap_price denominator must be > 0.
   trace_if_false( 
     @"swap_price denominator not > 0", 
-    ratio.denominator(swap_price_) > 0 
+    price_den_ > 0 
   ) &&
 
   // The swap_price must be > 0.
   trace_if_false(
-    @"swap_price not > 0", 
-    ratio.compare(swap_price_,ratio.zero()) == Greater 
+    @"swap_price numerator not > 0", 
+    price_num_ > 0 
   ) &&
 
-  // The UTxO must have exactly 1 pair_beacon.
-  trace_if_false(
-    @"UTxO does not have exactly 1 pair_beacon",
-    value.quantity_of( output_value, beacon_id, pair_beacon_ ) == 1
-  ) &&
-
-  // The UTxO must have exactly 1 offer_beacon.
-  trace_if_false(
-    @"UTxO does not have exactly 1 offer_beacon",
-    value.quantity_of( output_value, beacon_id, offer_beacon_ ) == 1
-  ) &&
-
-  // The UTxO must have exactly 1 ask_beacon.
-  trace_if_false(
-    @"UTxO does not have exactly 1 ask_beacon",
-    value.quantity_of( output_value, beacon_id, ask_beacon_ ) == 1
-  ) &&
-
-  // No extraneous assets can be stored in the UTxO.
-  trace_if_false(
-    @"No extraneous assets can be stored in the swap UTxO",
-    list.foldl(
-      value.flatten(output_value),
-      True,
-      fn(x: (PolicyId,AssetName,Int), acc: Bool) {
-        let (cn,tn,_) = x
-        // There is no need to check the beacon name since this UTxO was already checked
-        // for duplicate beacons.
-        acc && 
-          ( cn == beacon_id  // It is a beacon.
-         || (cn == offer_id_ && tn == offer_name_) // It is the offer asset.
-         || (cn == ask_id_ && tn == ask_name_) // It is the ask asset.
-         || cn == value.ada_policy_id // It is ada.
-          )
-      }
-    )
-  ) 
+  // This is just to force the extract_ask_and_offer_quantity function to be executed.
+  o >= 0
 }
 
 // Check if the beacons are locked at the proper address and the UTxO is configured properly.
 // This function will return `True` or `False`. It uses `app_name` in the error message to generate
-// a unique beacon policy for testing. This function is used for both `CloseOrUpdate` and 
-// `CreateSwap`.
+// a unique beacon policy for testing. 
 pub fn beacon_destination_check(
   dapp_hash: Hash<Blake2b_224, Script>,
   beacon_id: PolicyId,
@@ -202,7 +316,7 @@ pub fn beacon_destination_check(
   //      g) `ask_name` == asset name of the ask asset.
   //      h) `ask_beacon` == `sha2_256("02" ++ ask_id ++ ask_name)`
   //      i) `swap_price` denominator > 0
-  //      j) `swap_price` > 0
+  //      j) `swap_price` numerator > 0
   // 5) The offer asset and the ask asset must be different assets.
 
   // A function to map over the list of outputs.
@@ -243,15 +357,10 @@ pub fn beacon_destination_check(
   list.foldl( outputs, True, foo )
 }
 
-// Calculate the swap flux for this specific Swap UTxO. The value is compared againts an output
-// Swap UTxO with the exact same datum except the `prev_input` field is set to the current
-// input's `OutputReference`. Negative values mean the swap gained the asset while positive 
-// values mean the swap lost that asset. This is a recursive function that will terminate when the
-// corresponding output is found or when no corresponding output is found. When no corresponding 
-// output is found, the function will throw an error.
-fn swap_value_diff(
-  input_ref: OutputReference,
-  input_val: Value,
+// This is a recursive function that will terminate when the corresponding output is found or when
+// no corresponding output is found. When no corresponding output is found, the function will throw
+// an error. It looks for the required datum first to minimize the number of checks needed.
+fn swap_output_value(
   swap_addr: Address,
   beacon_id: PolicyId,
   pair_beacon: AssetName,
@@ -261,120 +370,39 @@ fn swap_value_diff(
   ask_id: PolicyId,
   ask_name: AssetName,
   ask_beacon: AssetName,
-  swap_price: Rational,
+  req_datum: Datum,
   outputs: List<Output>
-) -> Value {
+) -> (Int,Int,Int) {
   when outputs is {
     [] -> error @"Corresponding swap output not found"
     [Output(addr,oval,d,_), ..rest] -> {
       // Requirements for a valid corresponding output:
       // 1) The output is to the same swap address where the input originates.
-      // 2) The output has exactly one of the proper trading pair beacon.
+      // 2) The output has exactly one of each of the proper beacons.
       // 3) The output's datum is exactly the same accept the `prev_input` == `Some(input_ref)`.
 
-      // Check if the output has the beacon for this trading pair. It must have exactly one.
-      if value.quantity_of( oval, beacon_id, pair_beacon ) == 1 {
+      // Check if the datum is correct. This is done first to rule out all but the target UTxO.
+      // The rest of the checks will just check if the UTxO is properly configured.
+      if req_datum == d {
         // Check if the output is to this swap address.
         if swap_addr == addr {
-          // Check if the datum is correct.
-          let SwapDatum(
-            beacon_id_,
-            pair_beacon_,
-            offer_id_,
-            offer_name_,
-            offer_beacon_,
-            ask_id_,
-            ask_name_,
-            ask_beacon_,
-            swap_price_,
-            prev_input
-          ) = parse_datum(d)
-
-          // Check if the prev_input field points to this input.
-          if prev_input == Some(input_ref) {
-            // The beacon_id must be the policy id of the beacon policy.
-            expect True = error_if_false( 
-              @"Wrong beacon_id", 
-              beacon_id == beacon_id_ 
-            )
-
-            // The pair_beacon must be the pair_beacon from the input.
-            expect True = error_if_false( 
-              @"Wrong pair_beacon", 
-              pair_beacon == pair_beacon_ 
-            )
-
-            // The offer_id must be the offer_id from the input.
-            expect True = error_if_false( 
-              @"Wrong offer_id", 
-              offer_id == offer_id_
-            )
-
-            // The offer_name must be the offer_name from the input.
-            expect True = error_if_false( 
-              @"Wrong offer_name", 
-              offer_name == offer_name_
-            )
-
-            // The offer_beacon must be the offer_beacon from the input.
-            expect True = error_if_false( 
-              @"Wrong offer_beacon", 
-              offer_beacon == offer_beacon_
-            )
-
-            // The ask_id must be the ask_id from the input.
-            expect True = error_if_false( 
-              @"Wrong ask_id", 
-              ask_id == ask_id_
-            )
-
-            // The ask_name must be the ask_name from the input.
-            expect True = error_if_false( 
-              @"Wrong ask_name", 
-              ask_name == ask_name_
-            )
-
-            // The ask_beacon must be the ask_beacon from the input.
-            expect True = error_if_false( 
-              @"Wrong ask_beacon", 
-              ask_beacon == ask_beacon_
-            )
-
-            // The swap_price must be the swap_price from the input.
-            expect True = error_if_false( 
-              @"Wrong swap_price", 
-              swap_price == swap_price_
-            )
-
-            // Subtract the output value from the input. This stops the recursion.
-            value.merge( input_val, value.negate(oval) )
-          }
-
-          // This cannot be the corresponding output so recurse.
-          else {
-            swap_value_diff(
-              input_ref,
-              input_val,
-              swap_addr,
-              beacon_id,
-              pair_beacon,
-              offer_id,
-              offer_name,
-              offer_beacon,
-              ask_id,
-              ask_name,
-              ask_beacon,
-              swap_price,
-              rest
-            )
-          }
+          // Get the necessary values.
+          extract_ask_and_offer_quantity(
+            oval,
+            beacon_id,
+            pair_beacon,
+            offer_id,
+            offer_name,
+            offer_beacon,
+            ask_id,
+            ask_name,
+            ask_beacon
+          )
         }
 
         // This cannot be the corresponding output so recurse.
         else {
-          swap_value_diff(
-            input_ref,
-            input_val,
+          swap_output_value(
             swap_addr,
             beacon_id,
             pair_beacon,
@@ -384,17 +412,15 @@ fn swap_value_diff(
             ask_id,
             ask_name,
             ask_beacon,
-            swap_price,
+            req_datum,
             rest
           )
         }
       }
-      
+
       // This cannot be the corresponding output so recurse.
       else {
-        swap_value_diff(
-          input_ref,
-          input_val,
+        swap_output_value(
           swap_addr,
           beacon_id,
           pair_beacon,
@@ -404,54 +430,12 @@ fn swap_value_diff(
           ask_id,
           ask_name,
           ask_beacon,
-          swap_price,
+          req_datum,
           rest
         )
       }
     }
   }
-}
-
-// Check that only the offered asset leaves during the swap. It also checks that a swap only
-// gained the ask asset or ada. This helps optimize the beacon querying by contraining UTxO
-// assets to just the relevant assets. 
-fn only_proper_assets_swapped(
-  flux: Value, 
-  offer_id: PolicyId, 
-  offer_name: AssetName, 
-  ask_id: PolicyId, 
-  ask_name: AssetName
-) -> Bool {
-  // Function to map over the value and check that only the offered asset is positive.
-  // Positive values mean the asset was taken.
-  let foo = fn (asset_flux: (PolicyId,AssetName,Int), acc: Bool) {
-    // Extract the information from the asset_flux.
-    let (cn,tn,n) = asset_flux
-
-    // If n > 0, that asset must be the offered asset.
-    if n > 0 {
-      // The previous assets must also be correctly managed.
-      acc && trace_if_false( 
-        @"Only the offered asset can leave the swap",
-        cn == offer_id && tn == offer_name
-      )
-    } 
-    
-    // If n <= 0, then the asset must be the asked asset or ada (if the minUTxO value increased).
-    else {
-      acc && trace_if_false(
-        @"Only the asked asset or ada can be deposited into the swap",
-        (cn == ask_id && tn == ask_name) || cn == value.ada_policy_id
-      )
-    }
-  }
-
-  // Map over the list of assets in flux.
-  list.foldl(
-    value.flatten(flux), // Convert the `Value` to `List<(PolicyId,AssetName,Int)>`
-    True,
-    foo
-  )
 }
 
 // Compare the input and output to check that the swap is valid.
@@ -470,46 +454,80 @@ pub fn valid_swap(
   swap_price: Rational,
   outputs: List<Output>,
 ) -> Bool {
-  // Get the swap flux for this address.
-  let swap_flux = swap_value_diff(
-    input_ref,
-    input_val,
-    swap_addr,
-    beacon_id,
-    pair_beacon,
-    offer_id,
-    offer_name,
-    offer_beacon,
-    ask_id,
-    ask_name,
-    ask_beacon,
-    swap_price,
-    outputs
-  )
+  let req_datum = 
+    SwapDatum(
+      beacon_id,
+      pair_beacon,
+      offer_id,
+      offer_name,
+      offer_beacon,
+      ask_id,
+      ask_name,
+      ask_beacon,
+      swap_price,
+      Some(input_ref)
+    ) |> InlineDatum
 
-  // Calculate the quantity of the ask asset in flux.
-  let ask_given = 
-    value.quantity_of( swap_flux, ask_id, ask_name )
-    |> fn(x) {-x} // Must negate the number since negative means the asset was received.
-    |> ratio.from_int(_) // Convert it to a `Rational`.
+  let Rational(price_num,price_den) = swap_price
 
-  // Calculate the quantity of the offer asset in flux.
-  let offer_taken =
-    value.quantity_of( swap_flux, offer_id, offer_name )
-    |> ratio.from_int(_) // Convert it to a `Rational`.
+  // Get the values in the inputs.
+  let (offer_i,ask_i,ada_i) =
+    extract_ask_and_offer_quantity(
+      input_val,
+      beacon_id,
+      pair_beacon,
+      offer_id,
+      offer_name,
+      offer_beacon,
+      ask_id,
+      ask_name,
+      ask_beacon
+    )
 
-  // Compare the ask and offer quantities.
-  let swap_ratio = 
-    ratio.mul(offer_taken, swap_price) // Convert the offer asset to units of the ask asset.
-    |> ratio.compare(_, ask_given) // Compare it against the amount of ask given.
+  // Get the values in the outputs.
+  let (offer_o,ask_o,ada_o) =
+    swap_output_value(
+      swap_addr,
+      beacon_id,
+      pair_beacon,
+      offer_id,
+      offer_name,
+      offer_beacon,
+      ask_id,
+      ask_name,
+      ask_beacon,
+      req_datum,
+      outputs
+    )
 
-  // The swap_ratio must be `Less` or `Equal`. Using `!= Greater` had a performance regression...
+  // Calculate the quantity of the ask asset in flux. Output - Input.
+  let ask_given = ask_o - ask_i
+
+  // Calculate the quantity of the offer asset in flux. Input - Output.
+  let offer_taken = offer_i - offer_o
+
+  // Ada can always be deposited if not part of the pair.
+  expect True = 
+    if offer_id == #"" || ask_id == #"" {
+      True
+    } else {
+      error_if_false(
+       @"Ada can only be deposited",
+       ada_o - ada_i >= 0
+      )
+    }
+
+  // The swap_ratio must be correct. To avoid rounding issues, the ask_given is multiplied
+  // by the price_den. This is mathematically equivalent to:
+  // offer_taken * price_num / price_den <= ask_given
   trace_if_false( 
     @"Fail: offer_taken * price <= ask_given",
-    swap_ratio == Less || swap_ratio == Equal 
+    offer_taken * price_num <= ask_given * price_den
   ) &&
 
-  // Only the offer asset can leave and only the ask asset can be deposited. 
-  // This has its own error message.
-  only_proper_assets_swapped( swap_flux, offer_id, offer_name, ask_id, ask_name )
+  // The ask asset cannot be taken. This would allow the swap to go in reverse.
+  trace_if_false(
+    @"The ask asset cannot be taken from the swap",
+    ask_given >= 0 // Negative would mean it was taken.
+  )
 }

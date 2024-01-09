@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE StrictData #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 
 {-# OPTIONS_GHC -Wno-orphans -Wno-missing-signatures #-}
@@ -242,7 +241,7 @@ convertToPersonalUTxO KoiosUTxO{..} =
   PersonalUTxO
     { personalTxHash = koiosUtxoTxHash
     , personalOutputIndex = koiosUtxoOutputIndex
-    , personalValue = (Asset "" "" koiosUtxoLovelaceValue) : koiosUtxoAssetList
+    , personalValue = Asset "" "" koiosUtxoLovelaceValue : koiosUtxoAssetList
     , personalDatumHash = koiosUtxoDatumHash
     , personalReferenceScriptHash = koiosUtxoReferenceScriptHash
     }
@@ -253,12 +252,12 @@ convertToSwapUTxO KoiosUTxO{..} =
       { swapAddress = koiosUtxoAddress
       , swapTxHash = koiosUtxoTxHash 
       , swapOutputIndex = koiosUtxoOutputIndex
-      , swapValue = (Asset "" "" koiosUtxoLovelaceValue) : koiosUtxoAssetList
+      , swapValue = Asset "" "" koiosUtxoLovelaceValue : koiosUtxoAssetList
       , swapDatum = datum
       }
   where
-    oneWaySwapDatum = join $ fmap (decodeDatum @OneWaySwapDatum) koiosUtxoInlineDatum
-    twoWaySwapDatum = join $ fmap (decodeDatum @TwoWaySwapDatum) koiosUtxoInlineDatum
+    oneWaySwapDatum = (decodeDatum @OneWaySwapDatum) =<< koiosUtxoInlineDatum
+    twoWaySwapDatum = (decodeDatum @TwoWaySwapDatum) =<< koiosUtxoInlineDatum
     datum = case (oneWaySwapDatum,twoWaySwapDatum) of
       (Nothing,Nothing) -> Nothing
       (Just oneDatum,Nothing) -> Just $ OneWayDatum oneDatum
@@ -276,6 +275,6 @@ assetToQueryParam (currSym,tokName) =
 prices :: OfferAsset -> AskAsset -> SwapUTxO -> PlutusRational
 prices _ _ SwapUTxO{swapDatum = Just (OneWayDatum OneWaySwapDatum{..})} = oneWaySwapPrice
 prices (OfferAsset offer) (AskAsset ask) SwapUTxO{swapDatum = Just (TwoWayDatum TwoWaySwapDatum{..})}
-  | offer < ask = twoWayReversePrice
-  | otherwise = twoWayForwardPrice
+  | offer < ask = twoWayAsset1Price
+  | otherwise = twoWayAsset2Price
 prices _ _ _ = error "CLI.Query.Koios.prices used on swap without datum"

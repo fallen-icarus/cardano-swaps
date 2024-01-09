@@ -1,5 +1,21 @@
 # Revision history for cardano-swaps
 
+## 2.0.0.0rc
+
+#### Added
+
+- Added staking execution option to the beacon scripts and changed the spending scripts to delegate
+actions to the staking executions when appropriate.
+
+#### Changed
+
+- Bumped aiken stdlib version to 1.7.0.
+- Changed the internal representation of prices from `Rational` to Int. (Optimization)
+- Changed how swap output datums were checked during swap executions. (Optimization)
+- Changed how UTxO values were checked. (Optimization)
+- Renamed the two-way swap redeemers and datum price fields to be more intuitive. (UX improvement)
+- Simplified the CLI by merging fields when appropriate. (UX improvement)
+
 ## 1.0.0.0rc
 
 - Added two-way swaps to provide a mechanism to naturally incentivize liquidity providers.

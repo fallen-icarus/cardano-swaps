@@ -8,7 +8,9 @@ import Data.Text (Text)
 import Prettyprinter
 import Control.Monad (mzero)
 
-import CardanoSwaps
+import CardanoSwaps.Utils
+import qualified CardanoSwaps.OneWaySwap as OneWay
+import qualified CardanoSwaps.TwoWaySwap as TwoWay
 
 data Command
   = ExportScript Script FilePath
@@ -41,17 +43,17 @@ data InternalDatum
       (Maybe TxOutRef)
 
 data SpendingRedeemer
-  = OneWaySpendingRedeemer OneWaySwapRedeemer
+  = OneWaySpendingRedeemer OneWay.SwapRedeemer
   | TwoWaySpendingRedeemer InternalTwoWaySwapRedeemer
 
 data InternalTwoWaySwapRedeemer
-  = KnownTwoWaySwapRedeemer TwoWaySwapRedeemer
+  = KnownTwoWaySwapRedeemer TwoWay.SwapRedeemer
   | UnknownTwoWaySwapRedeemer OfferAsset AskAsset 
       -- ^ For when the swap direction is unknown (eg, ForwardSwap vs ReverseSwap)
 
 data MintingRedeemer
-  = OneWayMintingRedeemer OneWayBeaconRedeemer
-  | TwoWayMintingRedeemer TwoWayBeaconRedeemer
+  = OneWayMintingRedeemer OneWay.BeaconRedeemer
+  | TwoWayMintingRedeemer TwoWay.BeaconRedeemer
 
 data BeaconInfo 
   = OneWayPolicyId
@@ -147,8 +149,8 @@ instance ToJSON PersonalUTxO where
            ]
 
 data SwapDatum
-  = OneWayDatum OneWaySwapDatum
-  | TwoWayDatum TwoWaySwapDatum
+  = OneWayDatum OneWay.SwapDatum
+  | TwoWayDatum TwoWay.SwapDatum
   deriving (Show)
 
 instance ToJSON SwapDatum where

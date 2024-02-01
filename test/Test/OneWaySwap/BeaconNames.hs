@@ -14,48 +14,54 @@ module Test.OneWaySwap.BeaconNames
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Test.Config
-
 import CardanoSwaps.OneWaySwap
 import CardanoSwaps.Utils
+
+import Test.Prelude (testTokenSymbol)
+
+testToken1 :: (CurrencySymbol,TokenName)
+testToken1 = (testTokenSymbol,"TestToken1")
+
+testToken2 :: (CurrencySymbol,TokenName)
+testToken2 = (testTokenSymbol,"TestToken2")
 
 -- | The reverse direction of a swap yields a different pair beacon name.
 uniquenessTest1 :: TestTree
 uniquenessTest1 = 
   testCase "uniquenessTest1" $ assertBool "Fail OneWaySwap.uniquenessTest1" $
-    genOneWayPairBeaconName (OfferAsset testToken1) (AskAsset (adaSymbol,adaToken)) /=
-      genOneWayPairBeaconName (OfferAsset (adaSymbol,adaToken)) (AskAsset testToken1)
+    genPairBeaconName (OfferAsset testToken1) (AskAsset (adaSymbol,adaToken)) /=
+      genPairBeaconName (OfferAsset (adaSymbol,adaToken)) (AskAsset testToken1)
     
 -- | The offer beacon is different than the trading pair beacon.
 uniquenessTest2 :: TestTree
 uniquenessTest2 = 
   testCase "uniquenessTest2" $ assertBool "Fail OneWaySwap.uniquenessTest2" $
-    genOneWayPairBeaconName (OfferAsset testToken1) (AskAsset (adaSymbol,adaToken)) /=
+    genPairBeaconName (OfferAsset testToken1) (AskAsset (adaSymbol,adaToken)) /=
       genOfferBeaconName (OfferAsset testToken1) &&
 
-    genOneWayPairBeaconName (OfferAsset testToken1) (AskAsset (adaSymbol,adaToken)) /=
+    genPairBeaconName (OfferAsset testToken1) (AskAsset (adaSymbol,adaToken)) /=
       genOfferBeaconName (OfferAsset (adaSymbol,adaToken)) &&
 
-    genOneWayPairBeaconName (OfferAsset (adaSymbol,adaToken)) (AskAsset testToken1) /= 
+    genPairBeaconName (OfferAsset (adaSymbol,adaToken)) (AskAsset testToken1) /= 
       genOfferBeaconName (OfferAsset testToken1) &&
 
-    genOneWayPairBeaconName (OfferAsset (adaSymbol,adaToken)) (AskAsset testToken1) /= 
+    genPairBeaconName (OfferAsset (adaSymbol,adaToken)) (AskAsset testToken1) /= 
       genOfferBeaconName (OfferAsset (adaSymbol,adaToken))
 
 -- | The ask beacon is different than the trading pair beacon.
 uniquenessTest3 :: TestTree
 uniquenessTest3 = 
   testCase "uniquenessTest3" $ assertBool "Fail OneWaySwap.uniquenessTest3" $
-    genOneWayPairBeaconName (OfferAsset testToken1) (AskAsset (adaSymbol,adaToken)) /=
+    genPairBeaconName (OfferAsset testToken1) (AskAsset (adaSymbol,adaToken)) /=
       genAskBeaconName (AskAsset testToken1) &&
 
-    genOneWayPairBeaconName (OfferAsset testToken1) (AskAsset (adaSymbol,adaToken)) /=
+    genPairBeaconName (OfferAsset testToken1) (AskAsset (adaSymbol,adaToken)) /=
       genAskBeaconName (AskAsset (adaSymbol,adaToken)) &&
 
-    genOneWayPairBeaconName (OfferAsset (adaSymbol,adaToken)) (AskAsset testToken1) /= 
+    genPairBeaconName (OfferAsset (adaSymbol,adaToken)) (AskAsset testToken1) /= 
       genAskBeaconName (AskAsset testToken1) &&
 
-    genOneWayPairBeaconName (OfferAsset (adaSymbol,adaToken)) (AskAsset testToken1) /= 
+    genPairBeaconName (OfferAsset (adaSymbol,adaToken)) (AskAsset testToken1) /= 
       genAskBeaconName (AskAsset (adaSymbol,adaToken))
 
 -- | The ask beacon is different than the offer beacon.

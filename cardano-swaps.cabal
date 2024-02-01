@@ -1,4 +1,4 @@
-cabal-version:      2.4
+cabal-version:      3.0
 name:               cardano-swaps
 version:            1.0.0.0
 
@@ -14,9 +14,16 @@ extra-source-files:
   mainnet-params.json
 
 common lang
-  build-depends: base ^>=4.14
+  build-depends: base
   default-language: Haskell2010
   ghc-options: -Wall -Wredundant-constraints
+  default-extensions:
+    DeriveGeneric
+    FlexibleContexts
+    NamedFieldPuns
+    NumericUnderscores
+    TupleSections
+    TypeApplications
 
 common internals
   build-depends:
@@ -24,32 +31,30 @@ common internals
     , plutus-ledger
     , plutus-ledger-api
     , plutus-tx
+    , plutus-core
     , plutus-script-utils
     , containers
+    , aeson
+    , text
+    , bytestring
+    , prettyprinter
 
 library
   import:
       lang
     , internals
   exposed-modules: 
-      CardanoSwaps
-    , CardanoSwaps.Blueprints
+      CardanoSwaps.Blueprints
     , CardanoSwaps.OneWaySwap
     , CardanoSwaps.TwoWaySwap
     , CardanoSwaps.Utils
   build-depends:
-      bytestring
-    , serialise
-    , aeson
-    , text
+      serialise
     , file-embed
-    , prettyprinter
+    , base16-bytestring
+    , relude
+    , microlens
   hs-source-dirs: src
-  ghc-options:
-    -fobject-code 
-    -fno-ignore-interface-pragmas 
-    -fno-omit-interface-pragmas 
-    -fno-specialise
 
 test-suite cardano-swaps-tests
   import: 
@@ -60,37 +65,37 @@ test-suite cardano-swaps-tests
   hs-source-dirs: test
   ghc-options:
     -threaded -rtsopts -with-rtsopts=-N
-    -Wno-deprecations -Wno-unused-matches
-    -Wno-unused-local-binds -Wno-unused-top-binds
+    -Wno-unused-matches -Wno-unused-local-binds 
+    -Wno-unused-top-binds
   other-modules:
-      Test.Internal
-    , Test.Config
+      Test.Prelude
     , Test.OneWaySwap
     , Test.OneWaySwap.BeaconNames
-    , Test.OneWaySwap.CloseOrUpdate
+    , Test.OneWaySwap.CloseSwap
     , Test.OneWaySwap.CreateSwap
     , Test.OneWaySwap.Swap
-    , Test.OneWaySwap.Utils
+    , Test.OneWaySwap.UpdateSwap
+    , Test.OneWaySwap.UnsafeDatum
     , Test.TwoWaySwap
     , Test.TwoWaySwap.BeaconNames
-    , Test.TwoWaySwap.CloseOrUpdate
+    , Test.TwoWaySwap.CloseSwap
     , Test.TwoWaySwap.CreateSwap
     , Test.TwoWaySwap.Swap
-    , Test.TwoWaySwap.Utils
+    , Test.TwoWaySwap.UpdateSwap
+    , Test.TwoWaySwap.UnsafeDatum
   build-depends:
       cardano-swaps
-    , plutus-contract
-    , cardano-node-emulator
-    , plutus-tx-constraints
-    , aeson
-    , text
     , data-default
     , tasty
-    , lens
     , tasty-hunit
+    , microlens
+    , mtl
+    , cardano-node-emulator
 
 executable cardano-swaps
-    import: lang
+    import: 
+      lang,
+      internals
     main-is: Main.hs
     other-modules:
         CLI.Types
@@ -102,21 +107,14 @@ executable cardano-swaps
       cardano-swaps,
       optparse-applicative,
       servant,
-      aeson,
       servant-client,
       http-client,
       http-client-tls,
-      text,
-      containers,
       vector,
       aeson-pretty,
-      bytestring,
-      text,
       file-embed,
-      prettyprinter,
       prettyprinter-ansi-terminal
     hs-source-dirs: app
     default-extensions:
       OverloadedStrings
-      TypeApplications
       RecordWildCards

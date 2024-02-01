@@ -5,7 +5,9 @@ module CLI.Parsers
 
 import Options.Applicative
 
-import CardanoSwaps
+import CardanoSwaps.Utils
+import qualified CardanoSwaps.OneWaySwap as OneWay
+import qualified CardanoSwaps.TwoWaySwap as TwoWay
 import CLI.Types
 
 -------------------------------------------------
@@ -134,27 +136,27 @@ pCreateOneWaySpendingRedeemer =
       <$> (OneWaySpendingRedeemer <$> (pClose <|> pUpdateMint <|> pUpdateStake <|> pSwap))
       <*> pOutputFile
   where
-    pClose :: Parser OneWaySwapRedeemer
-    pClose = flag' OneWaySpendWithMint
+    pClose :: Parser OneWay.SwapRedeemer
+    pClose = flag' OneWay.SpendWithMint
       (  long "close"
       <> help "Close swap(s)."
       )
 
-    pUpdateMint :: Parser OneWaySwapRedeemer
-    pUpdateMint = flag' OneWaySpendWithMint
+    pUpdateMint :: Parser OneWay.SwapRedeemer
+    pUpdateMint = flag' OneWay.SpendWithMint
       (  long "update-with-mint"
       <> help "Update swap(s) when minting/burning beacons in tx."
       )
 
-    pUpdateStake :: Parser OneWaySwapRedeemer
-    pUpdateStake = flag' OneWaySpendWithStake
+    pUpdateStake :: Parser OneWay.SwapRedeemer
+    pUpdateStake = flag' OneWay.SpendWithStake
       (  long "update-with-stake"
       <> help "Update swap(s) when NOT minting/burning beacons in tx."
       )
 
 
-    pSwap :: Parser OneWaySwapRedeemer
-    pSwap = flag' OneWaySwap
+    pSwap :: Parser OneWay.SwapRedeemer
+    pSwap = flag' OneWay.Swap
       (  long "swap" 
       <> help "Swap with assets at a swap address."
       )
@@ -176,32 +178,32 @@ pCreateTwoWaySpendingRedeemer =
         <$> (OfferAsset <$> pAssetConfig "offer") 
         <*> (AskAsset <$> pAssetConfig "ask")
 
-    pClose :: Parser TwoWaySwapRedeemer
-    pClose = flag' TwoWaySpendWithMint
+    pClose :: Parser TwoWay.SwapRedeemer
+    pClose = flag' TwoWay.SpendWithMint
       (  long "close"
       <> help "Close swap(s)."
       )
 
-    pUpdateMint :: Parser TwoWaySwapRedeemer
-    pUpdateMint = flag' TwoWaySpendWithMint
+    pUpdateMint :: Parser TwoWay.SwapRedeemer
+    pUpdateMint = flag' TwoWay.SpendWithMint
       (  long "update-with-mint"
       <> help "Update swap(s) when minting/burning beacons in tx."
       )
 
-    pUpdateStake :: Parser TwoWaySwapRedeemer
-    pUpdateStake = flag' TwoWaySpendWithStake
+    pUpdateStake :: Parser TwoWay.SwapRedeemer
+    pUpdateStake = flag' TwoWay.SpendWithStake
       (  long "update-with-stake"
       <> help "Update swap(s) when NOT minting/burning beacons in tx."
       )
 
-    pTakeAsset1 :: Parser TwoWaySwapRedeemer
-    pTakeAsset1 = flag' TwoWayTakeAsset1
+    pTakeAsset1 :: Parser TwoWay.SwapRedeemer
+    pTakeAsset1 = flag' TwoWay.TakeAsset1
       (  long "take-asset1" 
       <> help "Take asset1 from a swap."
       )
 
-    pTakeAsset2 :: Parser TwoWaySwapRedeemer
-    pTakeAsset2 = flag' TwoWayTakeAsset2
+    pTakeAsset2 :: Parser TwoWay.SwapRedeemer
+    pTakeAsset2 = flag' TwoWay.TakeAsset2
       (  long "take-asset2" 
       <> help "Take asset2 from a swap."
       )
@@ -224,13 +226,13 @@ pCreateOneWayBeaconRedeemer =
       <*> pOutputFile
   where
     pMint :: Parser MintingRedeemer
-    pMint = flag' (OneWayMintingRedeemer OneWayCreateOrCloseSwaps)
+    pMint = flag' (OneWayMintingRedeemer OneWay.CreateOrCloseSwaps)
       (  long "mint-or-burn"
       <> help "Mint/burn the beacons for a swap."
       )
 
     pStake :: Parser MintingRedeemer
-    pStake = flag' (OneWayMintingRedeemer OneWayUpdateSwaps)
+    pStake = flag' (OneWayMintingRedeemer OneWay.UpdateSwaps)
       (  long "update-only"
       <> help "Update swaps without minting/burning."
       )
@@ -242,13 +244,13 @@ pCreateTwoWayBeaconRedeemer =
       <*> pOutputFile
   where
     pMint :: Parser MintingRedeemer
-    pMint = flag' (TwoWayMintingRedeemer TwoWayCreateOrCloseSwaps)
+    pMint = flag' (TwoWayMintingRedeemer TwoWay.CreateOrCloseSwaps)
       (  long "mint-or-burn"
       <> help "Mint/burn the beacons for a swap."
       )
 
     pStake :: Parser MintingRedeemer
-    pStake = flag' (TwoWayMintingRedeemer TwoWayUpdateSwaps)
+    pStake = flag' (TwoWayMintingRedeemer TwoWay.UpdateSwaps)
       (  long "update-only"
       <> help "Update swaps without minting/burning."
       )

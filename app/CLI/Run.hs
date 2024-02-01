@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+
 {-# LANGUAGE TemplateHaskell #-}
 
 module CLI.Run
@@ -14,9 +16,10 @@ import qualified Data.Text.IO as TIO
 import qualified Data.Text as T
 import Data.Text (Text)
 import Data.FileEmbed
-import Data.List (sort)
 
-import CardanoSwaps
+import CardanoSwaps.Utils
+import qualified CardanoSwaps.OneWaySwap as OneWay
+import qualified CardanoSwaps.TwoWaySwap as TwoWay
 import CLI.Types
 import CLI.Query
 
@@ -43,53 +46,30 @@ runCommand cmd = case cmd of
 runExportScriptCmd :: Script -> FilePath -> IO ()
 runExportScriptCmd script file = do
   res <- writeScript file $ case script of
-    OneWaySwapScript -> oneWaySwapScript
-    OneWayBeaconScript -> oneWayBeaconScript
-    TwoWaySwapScript -> twoWaySwapScript
-    TwoWayBeaconScript -> twoWayBeaconScript
+    OneWaySwapScript -> OneWay.swapScript
+    OneWayBeaconScript -> OneWay.beaconScript
+    TwoWaySwapScript -> TwoWay.swapScript
+    TwoWayBeaconScript -> TwoWay.beaconScript
   case res of
     Right _ -> return ()
     Left err -> putStrLn $ "There was an error: " <> show err
 
 runCreateDatum :: InternalDatum -> FilePath -> IO ()
 runCreateDatum 
-  (InternalOneWaySwapDatum o@(OfferAsset offerCfg) a@(AskAsset askCfg) swapPrice' mPrev) file = do
-    writeData file $ OneWaySwapDatum 
-      { oneWayBeaconId = oneWayBeaconCurrencySymbol
-      , oneWayPairBeacon = genOneWayPairBeaconName o a
-      , oneWayOfferId = fst offerCfg
-      , oneWayOfferName = snd offerCfg
-      , oneWayOfferBeacon = genOfferBeaconName o
-      , oneWayAskId = fst askCfg
-      , oneWayAskName = snd askCfg
-      , oneWayAskBeacon = genAskBeaconName a
-      , oneWaySwapPrice = swapPrice'
-      , oneWayPrevInput = mPrev
-      }
+  (InternalOneWaySwapDatum offer ask swapPrice mPrev) file = do
+    writeData file $ 
+      OneWay.genSwapDatum offer ask swapPrice mPrev
 runCreateDatum 
   (InternalTwoWaySwapDatum (firstAsset,secondAsset) firstPrice secondPrice mPrev) file = do
-    let [asset1,asset2] = sort [firstAsset,secondAsset]
-        asset1Price = if asset1 == firstAsset then firstPrice else secondPrice
-        asset2Price = if asset2 == firstAsset then firstPrice else secondPrice
-    writeData file $ TwoWaySwapDatum 
-        { twoWayBeaconId = twoWayBeaconCurrencySymbol
-        , twoWayPairBeacon = genTwoWayPairBeaconName asset1 asset2
-        , twoWayAsset1Id = fst asset1
-        , twoWayAsset1Name = snd asset1
-        , twoWayAsset1Beacon = genAssetBeaconName asset1
-        , twoWayAsset2Id = fst asset2
-        , twoWayAsset2Name = snd asset2
-        , twoWayAsset2Beacon = genAssetBeaconName asset2
-        , twoWayAsset1Price = asset1Price
-        , twoWayAsset2Price = asset2Price
-        , twoWayPrevInput = mPrev
-        }
+    writeData file $ 
+      TwoWay.genSwapDatum (firstAsset,secondAsset) firstPrice secondPrice mPrev
 
 runCreateSpendingRedeemer :: SpendingRedeemer -> FilePath -> IO ()
 runCreateSpendingRedeemer (OneWaySpendingRedeemer r) file = writeData file r
 runCreateSpendingRedeemer (TwoWaySpendingRedeemer r) file = case r of
   KnownTwoWaySwapRedeemer r' -> writeData file r'
-  UnknownTwoWaySwapRedeemer offer ask -> writeData file $ getRequiredSwapDirection offer ask
+  UnknownTwoWaySwapRedeemer offer ask -> 
+    writeData file $ TwoWay.getRequiredSwapDirection offer ask
 
 runCreateMintingRedeemer :: MintingRedeemer -> FilePath -> IO ()
 runCreateMintingRedeemer (OneWayMintingRedeemer r) file = writeData file r
@@ -104,19 +84,19 @@ runBeaconInfo info output = case output of
     name = 
       case info of
         OneWayPolicyId -> 
-          show oneWayBeaconCurrencySymbol
+          show OneWay.beaconCurrencySymbol
         OneWayOfferBeaconName offer -> 
-          drop 2 $ show $ genOfferBeaconName offer
+          drop 2 $ show $ OneWay.genOfferBeaconName offer
         OneWayAskBeaconName ask -> 
-          drop 2 $ show $ genAskBeaconName ask
+          drop 2 $ show $ OneWay.genAskBeaconName ask
         OneWayPairBeaconName (offer, ask) ->
-          drop 2 $ show $ genOneWayPairBeaconName offer ask
+          drop 2 $ show $ OneWay.genPairBeaconName offer ask
         TwoWayPolicyId -> 
-          show twoWayBeaconCurrencySymbol
+          show TwoWay.beaconCurrencySymbol
         TwoWayAssetBeaconName cfg -> 
-          drop 2 $ show $ genAssetBeaconName cfg
+          drop 2 $ show $ TwoWay.genAssetBeaconName cfg
         TwoWayPairBeaconName (assetX,assetY) ->
-          drop 2 $ show $ genTwoWayPairBeaconName assetX assetY
+          drop 2 $ show $ TwoWay.genPairBeaconName assetX assetY
 
 runExportParams :: Network -> Output -> IO ()
 runExportParams network output = case (network,output) of
@@ -183,7 +163,7 @@ runQueryOwn queryOwn = case queryOwn of
   QueryOwnOneWaySwapsByOffer 
     network api addr cfg format output ->
       runQueryOwnSwapsByBeacon 
-        network api addr oneWayBeaconCurrencySymbol (genOfferBeaconName cfg) >>= 
+        network api addr OneWay.beaconCurrencySymbol (OneWay.genOfferBeaconName cfg) >>= 
       case format of
         JSON -> toJSONOutput output
         Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None) 
@@ -191,7 +171,7 @@ runQueryOwn queryOwn = case queryOwn of
   QueryOwnOneWaySwapsByAsk
     network api addr cfg format output ->
       runQueryOwnSwapsByBeacon 
-        network api addr oneWayBeaconCurrencySymbol (genAskBeaconName cfg) >>= 
+        network api addr OneWay.beaconCurrencySymbol (OneWay.genAskBeaconName cfg) >>= 
       case format of
         JSON -> toJSONOutput output
         Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None) 
@@ -199,7 +179,7 @@ runQueryOwn queryOwn = case queryOwn of
   QueryOwnOneWaySwapsByTradingPair 
     network api addr offer ask format output ->
       runQueryOwnSwapsByBeacon 
-        network api addr oneWayBeaconCurrencySymbol (genOneWayPairBeaconName offer ask) >>= 
+        network api addr OneWay.beaconCurrencySymbol (OneWay.genPairBeaconName offer ask) >>= 
       case format of
         JSON -> toJSONOutput output
         Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None) 
@@ -214,7 +194,7 @@ runQueryOwn queryOwn = case queryOwn of
   QueryOwnTwoWaySwapsByOffer 
     network api addr cfg format output ->
       runQueryOwnSwapsByBeacon 
-        network api addr twoWayBeaconCurrencySymbol (genAssetBeaconName cfg) >>= 
+        network api addr TwoWay.beaconCurrencySymbol (TwoWay.genAssetBeaconName cfg) >>= 
       case format of
         JSON -> toJSONOutput output
         Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None) 
@@ -222,7 +202,7 @@ runQueryOwn queryOwn = case queryOwn of
   QueryOwnTwoWaySwapsByAsk
     network api addr cfg format output ->
       runQueryOwnSwapsByBeacon 
-        network api addr twoWayBeaconCurrencySymbol (genAssetBeaconName cfg) >>= 
+        network api addr TwoWay.beaconCurrencySymbol (TwoWay.genAssetBeaconName cfg) >>= 
       case format of
         JSON -> toJSONOutput output
         Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None) 
@@ -230,7 +210,7 @@ runQueryOwn queryOwn = case queryOwn of
   QueryOwnTwoWaySwapsByTradingPair 
     network api addr (assetX,assetY) format output ->
       runQueryOwnSwapsByBeacon 
-        network api addr twoWayBeaconCurrencySymbol (genTwoWayPairBeaconName assetX assetY) >>= 
+        network api addr TwoWay.beaconCurrencySymbol (TwoWay.genPairBeaconName assetX assetY) >>= 
       case format of
         JSON -> toJSONOutput output
         Pretty -> toPrettyOutput output . (<> hardline) . vsep . map (prettySwapUTxO None)
@@ -250,6 +230,9 @@ toAssetName cur tok = T.pack (show cur) <> "." <> T.pack (showTokenName tok)
 
 data TargetDirection = None | TakingAsset1 | TakingAsset2 deriving (Eq)
 
+prettyPrice :: PlutusRational -> Doc ann
+prettyPrice num = pretty (numerator num) <> " / " <> pretty (denominator num)
+
 prettySwapUTxO :: TargetDirection -> SwapUTxO -> Doc AnsiStyle
 prettySwapUTxO target SwapUTxO{..} = 
   vsep [ annotate (color Blue) "swap_ref:" <+> 
@@ -262,31 +245,31 @@ prettySwapUTxO target SwapUTxO{..} =
        ]
   where
     prettySwapDatum :: SwapDatum -> Doc AnsiStyle
-    prettySwapDatum (OneWayDatum OneWaySwapDatum{..}) =
+    prettySwapDatum (OneWayDatum OneWay.SwapDatum{..}) =
       vsep [ annotate (color Green) "type:" <+> pretty @Text "one-way"
            , annotate (color Green) "offer:" <+>
-               pretty (toAssetName oneWayOfferId oneWayOfferName)
+               pretty (toAssetName offerId offerName)
            , annotate (color Green) "ask:" <+>
-               pretty (toAssetName oneWayAskId oneWayAskName)
+               pretty (toAssetName askId askName)
            , annotate (color Green) "price:" <+> 
                if target /= None then
-                 annotate (color Magenta) (pretty oneWaySwapPrice)
-               else pretty oneWaySwapPrice
+                 annotate (color Magenta) (prettyPrice swapPrice)
+               else prettyPrice swapPrice
            ]
-    prettySwapDatum (TwoWayDatum TwoWaySwapDatum{..}) =
+    prettySwapDatum (TwoWayDatum TwoWay.SwapDatum{..}) =
       vsep [ annotate (color Green) "type:" <+> pretty @Text "two-way"
            , annotate (color Green) "asset1:" <+>
-               pretty (toAssetName twoWayAsset1Id twoWayAsset1Name)
+               pretty (toAssetName asset1Id asset1Name)
            , annotate (color Green) "asset2:" <+>
-               pretty (toAssetName twoWayAsset2Id twoWayAsset2Name)
+               pretty (toAssetName asset2Id asset2Name)
            , annotate (color Green) "asset1_price:" <+> 
                if target == TakingAsset1 then
-                 annotate (color Magenta) (pretty twoWayAsset1Price)
-               else pretty twoWayAsset1Price
+                 annotate (color Magenta) (prettyPrice asset1Price)
+               else prettyPrice asset1Price
            , annotate (color Green) "asset2_price:" <+>
                if target == TakingAsset2 then
-                 annotate (color Magenta) (pretty twoWayAsset2Price)
-               else pretty twoWayAsset2Price
+                 annotate (color Magenta) (prettyPrice asset2Price)
+               else prettyPrice asset2Price
            ]
 
 prettyPersonalUTxO :: PersonalUTxO -> Doc AnsiStyle
@@ -342,4 +325,3 @@ toPrettyOutput (File file) xs =
 toJSONOutput :: (ToJSON a) => Output -> [a] -> IO ()
 toJSONOutput Stdout xs = LBS.putStr $ encode xs
 toJSONOutput (File file) xs = LBS.writeFile file $ encode xs
-

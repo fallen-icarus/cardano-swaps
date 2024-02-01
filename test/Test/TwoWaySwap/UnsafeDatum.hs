@@ -1,21 +1,11 @@
-{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE StrictData #-}
 
-module Test.TwoWaySwap.Utils where
+module Test.TwoWaySwap.UnsafeDatum where
 
 import qualified PlutusTx
-import PlutusTx.Prelude hiding (Semigroup (..))
-import Plutus.Script.Utils.Value
-import Plutus.V2.Ledger.Api (TxOutRef)
 
--- | 24 ADA is the default. This is what the cardano-swaps spending validator requires.
-minUTxOSpendRef :: Integer
-minUTxOSpendRef = 24_000_000
-
--- | 22 ADA is the default. This is what the cardano-swaps minting policy requires.
-minUTxOMintRef :: Integer
-minUTxOMintRef = 22_000_000
+import CardanoSwaps.Utils
 
 data UnsafeDatum = UnsafeDatum
   { unsafeBeaconId :: CurrencySymbol

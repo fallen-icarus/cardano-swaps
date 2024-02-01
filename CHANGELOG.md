@@ -1,5 +1,12 @@
 # Revision history for cardano-swaps
 
+## 2.1.0.0rc
+
+- Updated off-chain code to allow building with ghc-9.x. The new default ghc version is set to
+9.6.4. 
+- Refactored the CardanoSwaps haskell library to make it easier to maintain separate versions
+going forward.
+
 ## 2.0.0.0rc
 
 #### Added

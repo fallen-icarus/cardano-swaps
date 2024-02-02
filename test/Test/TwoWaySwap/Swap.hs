@@ -2,7 +2,6 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TupleSections #-}
 
 module Test.TwoWaySwap.Swap
   ( 

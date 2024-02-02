@@ -123,7 +123,7 @@ source $HOME/.bashrc
 
 ### Build the executable - this may take about 30 minutes
 ```bash
-cd ../ # Leave the bslt directory.
+cd ../ # Leave the blst directory.
 git clone https://github.com/fallen-icarus/cardano-swaps
 cd cardano-swaps
 cabal clean

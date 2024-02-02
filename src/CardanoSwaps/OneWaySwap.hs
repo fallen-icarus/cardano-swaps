@@ -48,7 +48,7 @@ data SwapDatum = SwapDatum
   , askId :: CurrencySymbol -- ^ The `CurrencySymbol` for the ask asset.
   , askName :: TokenName -- ^ The `TokenName` for the ask asset.
   , askBeacon :: TokenName -- ^ The ask beacon's `TokenName`.
-  , swapPrice :: PlutusRational -- ^ Thw price to take the offer asset as a fraction (Ask/Offer).
+  , swapPrice :: PlutusRational -- ^ The price to take the offer asset as a fraction (Ask/Offer).
   , prevInput :: Maybe TxOutRef -- ^ The corresponding swap input's output reference.
   } deriving (Generic,Show,Eq)
 

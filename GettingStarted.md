@@ -41,7 +41,7 @@ must be manually balanced.
 ## Installing
 
 Make sure `cardano-cli` is also installed. You can get the most up-to-date copy from IOG's
-cardano-node repo [here](https://github.com/input-output-hk/cardano-node). It will be in the
+cardano-node repo [here](https://github.com/IntersectMBO/cardano-node/releases). It will be in the
 cardano-node tarball under the latest release.
 
 ### Install the necessary packages - similar to cardano-node
@@ -65,12 +65,12 @@ window.
 
 ```
 source $HOME/.bashrc
-ghcup install ghc 8.10.7
+ghcup install ghc 9.6.4
 ```
 
 ### Install libsodium and scep256k1
 ```
-git clone https://github.com/input-output-hk/libsodium
+git clone https://github.com/intersectmbo/libsodium
 cd libsodium
 git checkout dbb48cc
 ./autogen.sh
@@ -109,7 +109,7 @@ cabal build exe:cardano-swaps
 ```
 
 The `cardano-swaps` CLI program should now be at
-`dist-newstyle/build/x86_64-linux/ghc-8.10.7/cardano-swaps-1.0.0.0/x/cardano-swaps/build/cardano-swaps/cardano-swaps`.
+`dist-newstyle/build/x86_64-linux/ghc-9.6.4/cardano-swaps-1.0.0.0/x/cardano-swaps/build/cardano-swaps/cardano-swaps`.
 Move the program to somewhere in your `$PATH`.
 
 All `cardano-swaps` subcommands have an associated `--help` option. The functionality is meant to

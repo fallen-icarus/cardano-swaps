@@ -22,7 +22,7 @@ import Data.Aeson (decode,Value)
 
 import CLI.Query.Koios as Koios
 import CLI.Types
-import CardanoSwaps
+import CardanoSwaps.Utils
 
 runQueryAllSwapsByTradingPair 
   :: Network 

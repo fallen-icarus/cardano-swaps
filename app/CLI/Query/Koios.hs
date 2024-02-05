@@ -1,9 +1,9 @@
+{-# OPTIONS_GHC -Wno-orphans -Wno-missing-signatures #-}
+
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE RecordWildCards #-}
-
-{-# OPTIONS_GHC -Wno-orphans -Wno-missing-signatures #-}
 
 module CLI.Query.Koios
   (
@@ -27,7 +27,9 @@ import qualified Data.Text as T
 import Data.List (sortOn)
 
 import CLI.Types
-import CardanoSwaps
+import CardanoSwaps.Utils
+import qualified CardanoSwaps.OneWaySwap as OneWay
+import qualified CardanoSwaps.TwoWaySwap as TwoWay
 
 -------------------------------------------------
 -- Core Types
@@ -67,9 +69,11 @@ instance FromJSON KoiosUTxO where
       <*> o .: "tx_hash"
       <*> o .: "tx_index"
       <*> o .: "value"
-      <*> (o .: "inline_datum" >>= maybe (pure Nothing) (\(Object o') -> o' .: "value"))
+      <*> (o .: "inline_datum" >>= 
+            maybe (pure Nothing) (withObject "inline_datum" $ \o' -> o' .: "value"))
       <*> o .: "datum_hash"
-      <*> (o .: "reference_script" >>= maybe (pure Nothing) (\(Object o') -> o' .: "hash"))
+      <*> (o .: "reference_script" >>= 
+            maybe (pure Nothing) (withObject "reference_script" $ \o' -> o' .: "hash"))
       <*> o .: "asset_list"
   parseJSON _ = mzero
 
@@ -135,8 +139,8 @@ submitApi :<|> evaluateApi :<|> assetUTxOsApi :<|> addressUTxOsApi = client api
 -------------------------------------------------
 queryAllSwapsByTradingPair :: OfferAsset -> AskAsset -> ClientM [SwapUTxO]
 queryAllSwapsByTradingPair o@(OfferAsset offer@(currSym,_)) a@(AskAsset ask) = do
-  let oneWayBeacon = (oneWayBeaconCurrencySymbol, genOneWayPairBeaconName o a)
-      twoWayBeacon = (twoWayBeaconCurrencySymbol, genTwoWayPairBeaconName offer ask)
+  let oneWayBeacon = (OneWay.beaconCurrencySymbol, OneWay.genPairBeaconName o a)
+      twoWayBeacon = (TwoWay.beaconCurrencySymbol, TwoWay.genPairBeaconName offer ask)
       offerFilter = if currSym == "" then Nothing else Just $ "cs." <> assetToQueryParam offer
   oneWayUTxOs <- 
     assetUTxOsApi 
@@ -154,10 +158,10 @@ queryAllSwapsByTradingPair o@(OfferAsset offer@(currSym,_)) a@(AskAsset ask) = d
 
 queryAllSwapsByOffer :: OfferAsset -> ClientM [SwapUTxO]
 queryAllSwapsByOffer offer@(OfferAsset asset@(currSym,_))  = do
-  let oneWayOfferBeaconName = genOfferBeaconName offer
-      twoWayOfferBeaconName = genAssetBeaconName asset
-      oneWayBeacon = (oneWayBeaconCurrencySymbol, oneWayOfferBeaconName)
-      twoWayBeacon = (twoWayBeaconCurrencySymbol, twoWayOfferBeaconName)
+  let oneWayOfferBeaconName = OneWay.genOfferBeaconName offer
+      twoWayOfferBeaconName = TwoWay.genAssetBeaconName asset
+      oneWayBeacon = (OneWay.beaconCurrencySymbol, oneWayOfferBeaconName)
+      twoWayBeacon = (TwoWay.beaconCurrencySymbol, twoWayOfferBeaconName)
       offerFilter = if currSym == "" then Nothing else Just $ "cs." <> assetToQueryParam asset
   oneWayUTxOs <- 
     assetUTxOsApi 
@@ -175,10 +179,10 @@ queryAllSwapsByOffer offer@(OfferAsset asset@(currSym,_))  = do
 
 queryAllSwapsByAsk :: AskAsset -> ClientM [SwapUTxO]
 queryAllSwapsByAsk ask@(AskAsset asset)  = do
-  let oneWayAskBeaconName = genAskBeaconName ask
-      twoWayAskBeaconName = genAssetBeaconName asset
-      oneWayBeacon = (oneWayBeaconCurrencySymbol, oneWayAskBeaconName)
-      twoWayBeacon = (twoWayBeaconCurrencySymbol, twoWayAskBeaconName)
+  let oneWayAskBeaconName = OneWay.genAskBeaconName ask
+      twoWayAskBeaconName = TwoWay.genAssetBeaconName asset
+      oneWayBeacon = (OneWay.beaconCurrencySymbol, oneWayAskBeaconName)
+      twoWayBeacon = (TwoWay.beaconCurrencySymbol, twoWayAskBeaconName)
   oneWayUTxOs <- 
     assetUTxOsApi 
       "is_spent,tx_hash,tx_index,address,value,datum_hash,inline_datum,asset_list,reference_script"
@@ -256,8 +260,8 @@ convertToSwapUTxO KoiosUTxO{..} =
       , swapDatum = datum
       }
   where
-    oneWaySwapDatum = (decodeDatum @OneWaySwapDatum) =<< koiosUtxoInlineDatum
-    twoWaySwapDatum = (decodeDatum @TwoWaySwapDatum) =<< koiosUtxoInlineDatum
+    oneWaySwapDatum = (decodeDatum @OneWay.SwapDatum) =<< koiosUtxoInlineDatum
+    twoWaySwapDatum = (decodeDatum @TwoWay.SwapDatum) =<< koiosUtxoInlineDatum
     datum = case (oneWaySwapDatum,twoWaySwapDatum) of
       (Nothing,Nothing) -> Nothing
       (Just oneDatum,Nothing) -> Just $ OneWayDatum oneDatum
@@ -273,8 +277,8 @@ assetToQueryParam (currSym,tokName) =
 -- Get the prices from a SwapUTxO based on the swap direction. This should only be used on beacon
 -- query results since they are guaranteed to have a datum.
 prices :: OfferAsset -> AskAsset -> SwapUTxO -> PlutusRational
-prices _ _ SwapUTxO{swapDatum = Just (OneWayDatum OneWaySwapDatum{..})} = oneWaySwapPrice
-prices (OfferAsset offer) (AskAsset ask) SwapUTxO{swapDatum = Just (TwoWayDatum TwoWaySwapDatum{..})}
-  | offer < ask = twoWayAsset1Price
-  | otherwise = twoWayAsset2Price
+prices _ _ SwapUTxO{swapDatum = Just (OneWayDatum OneWay.SwapDatum{..})} = swapPrice
+prices (OfferAsset offer) (AskAsset ask) SwapUTxO{swapDatum = Just (TwoWayDatum TwoWay.SwapDatum{..})}
+  | offer < ask = asset1Price
+  | otherwise = asset2Price
 prices _ _ _ = error "CLI.Query.Koios.prices used on swap without datum"

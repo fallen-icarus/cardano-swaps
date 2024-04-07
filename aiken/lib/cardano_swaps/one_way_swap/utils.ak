@@ -8,7 +8,7 @@ use aiken/transaction.{Datum,InlineDatum,Output,OutputReference} as tx
 use aiken/transaction/credential.{
   Address,
   Script,
-  ScriptCredential,
+  ScriptCredential
   }
 use aiken/transaction/value.{PolicyId,AssetName,Value}
 
@@ -78,7 +78,7 @@ pub fn generate_ask_beacon(policy_id: PolicyId, asset_name: AssetName) -> AssetN
 // This is used to check thath the value of Swap UTxOs are correct. It also returns the amount of
 // the offer asset, ask asset, and ada so that it can be used during swap execution as well. It will
 // crash the script if any Swap UTxOs are malformed.
-fn extract_ask_and_offer_quantity(
+pub fn extract_ask_and_offer_quantity(
   val: Value,
   beacon_id: PolicyId,
   pair_beacon: AssetName,
@@ -230,7 +230,8 @@ fn valid_swap_output(
     ask_name_,
     ask_beacon_,
     swap_price_,
-    _ // prev_input does not need to be check.
+    _, // destination does not need to be checked
+    _ // prev_input does not need to be checked
   ) = parse_datum(output_datum)
 
   let offer = AssetConfig(offer_id_,offer_name_)
@@ -357,6 +358,33 @@ pub fn beacon_destination_check(
   list.foldl( outputs, True, foo )
 }
 
+// Check if the whether swap is completed by ensuring there are no beacons in the output
+pub fn is_swap_completed(
+  beacon_id: PolicyId,
+  outputs: List<Output>
+) -> Bool {
+  let foo = fn (out: Output, acc: Bool) {
+    // Extract out the output's information.
+    let Output(Address(_,_),val,..) = out
+
+    // Get the beacons in this UTxO and save it as a list for pattern matching.
+    let beacon_list = value.tokens(val,beacon_id) |> dict.to_list()
+
+    // Check if beacon_list is empty
+    let hasNoBeacons = beacon_list == []
+
+  trace_if_false(
+    @"UTxO output contains beacon tokens, swap cannot be completed",
+    hasNoBeacons == True
+  ) &&
+    // Return true if beacon_list is empty and all previous outputs are valid
+    acc && hasNoBeacons
+  }
+
+  // Map over the list. This will only return True if all the outputs have empty beacon lists.
+  list.foldl(outputs, True, foo)
+}
+
 // This is a recursive function that will terminate when the corresponding output is found or when
 // no corresponding output is found. When no corresponding output is found, the function will throw
 // an error. It looks for the required datum first to minimize the number of checks needed.
@@ -452,6 +480,7 @@ pub fn valid_swap(
   ask_name: AssetName,
   ask_beacon: AssetName,
   swap_price: Rational,
+  destination: ByteArray,
   outputs: List<Output>,
 ) -> Bool {
   let req_datum = 
@@ -465,6 +494,7 @@ pub fn valid_swap(
       ask_name,
       ask_beacon,
       swap_price,
+      destination,
       Some(input_ref)
     ) |> InlineDatum
 

@@ -1,6 +1,9 @@
 use aiken/hash.{Hash,Blake2b_224}
 use aiken/transaction.{ScriptContext,Transaction,Input,Output} as tx
-use aiken/transaction/credential.{Script,ScriptCredential,Inline}
+use aiken/transaction/credential.{Script,ScriptCredential,Inline,VerificationKeyCredential}
+use aiken/list
+use aiken/transaction/value
+use aiken/dict
 
 use cardano_swaps/one_way_swap/types.{ 
   BeaconRedeemer,
@@ -10,7 +13,8 @@ use cardano_swaps/one_way_swap/types.{
   UpdateSwaps,
   Swap,
   SwapDatum,
-  SwapRedeemer
+  SwapRedeemer,
+  CloseCompletedSwap
 }
 use cardano_swaps/common/utils.{trace_if_false} as common_utils
 use cardano_swaps/one_way_swap/utils as utils
@@ -117,6 +121,7 @@ validator() {
           ask_name,
           ask_beacon,
           swap_price,
+          destination,
           _ // prev_input is not needed.
         ) = datum
 
@@ -134,8 +139,84 @@ validator() {
           ask_name,
           ask_beacon,
           swap_price,
+          destination,
           outputs
         )
+      }
+
+      CloseCompletedSwap -> {
+        // 1) The offer token balance is zero
+        // 2) There no are beacons in the output
+        // 3) The destination address matches the destination in datum
+
+        // Get required information for script context.
+         expect ScriptContext( 
+          Transaction(inputs,_,outputs,_,mint,..), 
+          tx.Spend(input_ref)
+        ) = ctx
+        expect Some(Input(_, Output(_,val,..))) = tx.find_input(inputs,input_ref)
+
+        // Extract out the information from this datum.
+        let SwapDatum(
+          beacon_id, 
+          pair_beacon,
+          offer_id,
+          offer_name,
+          offer_beacon,
+          ask_id,
+          ask_name,
+          ask_beacon,
+          _, //swap_price is not needed
+          destination,
+          _ // prev_input is not needed.
+        ) = datum
+
+        // Get the values in the inputs.
+         let (offer_i,_,_) =
+          utils.extract_ask_and_offer_quantity(
+            val,
+            beacon_id,
+            pair_beacon,
+            offer_id,
+            offer_name,
+            offer_beacon,
+            ask_id,
+            ask_name,
+            ask_beacon
+          )
+
+        let filteredOutputs = outputs
+          |> list.filter(
+            fn(output) {
+            // Check if the output has the desired destination and contains the desired token
+            output.address.payment_credential == VerificationKeyCredential(destination) &&
+            (list.length((value.tokens(output.value, ask_id) |> dict.to_list())) > 0)
+          }
+        )
+
+        let destination_output_present = filteredOutputs != []
+
+        trace_if_false(
+          @"Output to destination not found",
+          destination_output_present == True
+        ) &&
+
+        // The beacon_script was not executed as a minting policy.
+        trace_if_false(
+          @"Beacon script not executed as minting policy",
+          common_utils.has_beacon_script_minting_execution(beacon_id,mint)
+        ) &&
+
+        trace_if_false( 
+          @"UTxO has offer tokens, swap is incomplete",
+           offer_i == 0
+        ) &&
+
+        utils.is_swap_completed(
+          beacon_id,
+          outputs
+        ) 
+
       }
     }
   }

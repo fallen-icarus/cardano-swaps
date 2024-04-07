@@ -13,6 +13,7 @@ pub type SwapDatum {
     ask_name: AssetName, // The asset name for the ask asset.
     ask_beacon: AssetName, // The asset name for the ask beacon.
     swap_price: Rational, // The swap price as a fraction: Ask/Offer.
+    destination: ByteArray, // The address where the ask token is intended to be deposited on completion
     prev_input: Option<OutputReference>
   }
 }
@@ -21,6 +22,7 @@ pub type SwapRedeemer {
   SpendWithMint
   SpendWithStake
   Swap
+  CloseCompletedSwap
 }
 
 pub type BeaconRedeemer {

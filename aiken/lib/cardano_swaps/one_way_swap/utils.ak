@@ -9,6 +9,7 @@ use aiken/transaction/credential.{
   Address,
   Script,
   ScriptCredential,
+  StakeCredential,
   }
 use aiken/transaction/value.{PolicyId,AssetName,Value}
 
@@ -230,7 +231,7 @@ fn valid_swap_output(
     ask_name_,
     ask_beacon_,
     swap_price_,
-    _ // prev_input does not need to be check.
+    ..
   ) = parse_datum(output_datum)
 
   let offer = AssetConfig(offer_id_,offer_name_)
@@ -453,6 +454,7 @@ pub fn valid_swap(
   ask_beacon: AssetName,
   swap_price: Rational,
   outputs: List<Output>,
+  extension: Option<StakeCredential>
 ) -> Bool {
   let req_datum = 
     SwapDatum(
@@ -465,7 +467,8 @@ pub fn valid_swap(
       ask_name,
       ask_beacon,
       swap_price,
-      Some(input_ref)
+      Some(input_ref),
+      extension
     ) |> InlineDatum
 
   let Rational(price_num,price_den) = swap_price

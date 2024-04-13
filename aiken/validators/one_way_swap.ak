@@ -1,10 +1,18 @@
+use aiken/dict
 use aiken/hash.{Hash,Blake2b_224}
-use aiken/transaction.{ScriptContext,Transaction,Input,Output} as tx
-use aiken/transaction/credential.{Script,ScriptCredential,Inline}
+use aiken/list
+use aiken/transaction.{ScriptContext,Transaction,Input,Output,Spend} as tx
+use aiken/transaction/credential.{
+  Inline,
+  Script,
+  ScriptCredential,
+  VerificationKeyCredential
+}
 
 use cardano_swaps/one_way_swap/types.{ 
   BeaconRedeemer,
   CreateOrCloseSwaps,
+  SpendWithExtension,
   SpendWithMint,
   SpendWithStake,
   UpdateSwaps,
@@ -76,6 +84,68 @@ validator() {
         )
       }
 
+      SpendWithExtension -> {
+        // Requirements:
+        // 1) The UTXO must be spent
+        // 2) The datum has a non-empty `extension` value
+        // representing a StakeCredential
+        // 3) The `extension` staking credential has been
+        // executed in this transaction
+        // 4) The beacon script must be executed as a minting
+        // policy
+
+        let ScriptContext( 
+          Transaction {
+            mint,
+            withdrawals: wtdr,
+            extra_signatories,
+            ..
+          }, 
+          purpose
+        ) = ctx
+        let SwapDatum { beacon_id, extension, .. } = datum
+
+        and {
+          when purpose is {
+            Spend(_) -> True
+            _ -> {
+              trace @"The UTXO must be spent"
+              False
+            }
+          },
+
+          when extension is {
+            Some(Inline(VerificationKeyCredential(skey))) -> {
+              if list.has(extra_signatories, skey) {
+                True
+              } else {
+                trace @"Extension key must sign the transaction"
+                False
+              }
+            }
+            Some(svh) -> {
+              if dict.has_key(wtdr, svh) {
+                True
+              } else {
+                trace @"Extension script must approve transaction"
+                False
+              }
+            }
+            None -> {
+              trace @"Extension stake credential must be present in datum"
+              False
+            }
+          },
+
+          if common_utils.has_beacon_script_minting_execution(beacon_id, mint) {
+            True
+          } else {
+            trace @"Beacon script not executed as minting policy"
+            False
+          }
+        }
+      }
+
       Swap -> {
         // Requirements:
         // 1) The input must contain the beacons for that trading pair.
@@ -117,7 +187,8 @@ validator() {
           ask_name,
           ask_beacon,
           swap_price,
-          _ // prev_input is not needed.
+          _, // prev_input is not needed.
+          extension
         ) = datum
 
         // The following checks requirements 1,2,3,4. It has its own error messages.
@@ -134,7 +205,8 @@ validator() {
           ask_name,
           ask_beacon,
           swap_price,
-          outputs
+          outputs,
+          extension
         )
       }
     }

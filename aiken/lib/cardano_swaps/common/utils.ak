@@ -1,17 +1,12 @@
 use aiken/bytearray
 use aiken/dict.{Dict}
-use aiken/hash.{Hash,Blake2b_224}
+use aiken/hash.{Blake2b_224, Hash}
 use aiken/list
 use aiken/transaction/credential.{
-  Address,
-  Inline,
-  StakeCredential,
-  ScriptCredential,
-  VerificationKey,
-  VerificationKeyCredential
-  }
-use aiken/transaction/value.{PolicyId,MintedValue}
-
+  Address, Inline, ScriptCredential, StakeCredential, VerificationKey,
+  VerificationKeyCredential,
+}
+use aiken/transaction/value.{MintedValue, PolicyId}
 use cardano_swaps/common/types.{AssetConfig}
 
 pub fn trace_if_false(msg: String, predicate: Bool) {
@@ -25,7 +20,7 @@ pub fn trace_if_false(msg: String, predicate: Bool) {
 
 pub fn error_if_false(msg: String, predicate: Bool) {
   if !predicate {
-    error msg
+    fail msg
   } else {
     predicate
   }
@@ -33,52 +28,49 @@ pub fn error_if_false(msg: String, predicate: Bool) {
 
 // Check that either the staking pubkey signed or the staking script was executed.
 pub fn staking_credential_approves(
-  swap_addr: Address, 
+  swap_addr: Address,
   withdrawals: Dict<StakeCredential, Int>,
-  extra_signatories: List<Hash<Blake2b_224, VerificationKey>>
+  extra_signatories: List<Hash<Blake2b_224, VerificationKey>>,
 ) -> Bool {
-  let Address(_,staking_cred) = swap_addr
+  let Address(_, staking_cred) = swap_addr
   when staking_cred is {
     // This is to prevent permanent locking of funds. Beacons can never be minted to an address
     // without a valid staking credential.
     None -> True
 
     // If the address uses a staking pubkey, it must have signed the tx.
-    Some(Inline(VerificationKeyCredential(skey))) -> {
-      list.has(extra_signatories,skey)
-    }
+    Some(Inline(VerificationKeyCredential(skey))) ->
+      list.has(extra_signatories, skey)
 
     // If the address uses a staking script, it must have been executed in the tx. In order for
     // the staking credential to show up in this dictionary, it must be registered.
-    Some(svh) -> {
-      dict.has_key(withdrawals,svh)
-    }
+    Some(svh) -> dict.has_key(withdrawals, svh)
   }
 }
 
-pub fn compare_asset_config(asset1: AssetConfig, asset2: AssetConfig) -> Ordering {
-  let AssetConfig(asset1_id,asset1_name) = asset1
-  let AssetConfig(asset2_id,asset2_name) = asset2
-  when bytearray.compare(asset1_id,asset2_id) is {
+pub fn compare_asset_config(
+  asset1: AssetConfig,
+  asset2: AssetConfig,
+) -> Ordering {
+  let AssetConfig(asset1_id, asset1_name) = asset1
+  let AssetConfig(asset2_id, asset2_name) = asset2
+  when bytearray.compare(asset1_id, asset2_id) is {
     Less -> Less
     Greater -> Greater
-    Equal -> bytearray.compare(asset1_name,asset2_name)
+    Equal -> bytearray.compare(asset1_name, asset2_name)
   }
 }
 
 pub fn has_beacon_script_minting_execution(
   beacon_id: PolicyId,
-  mint: MintedValue
+  mint: MintedValue,
 ) -> Bool {
-  !(value.from_minted_value(mint) |> value.tokens(_,beacon_id) |> dict.is_empty(_))
+  !dict.is_empty(value.from_minted_value(mint) |> value.tokens(beacon_id))
 }
 
 pub fn has_beacon_script_staking_execution(
   beacon_id: PolicyId,
   withdrawals: Dict<StakeCredential, Int>,
 ) -> Bool {
-  dict.has_key(
-    withdrawals,
-    Inline(ScriptCredential(beacon_id))
-  )
+  dict.has_key(withdrawals, Inline(ScriptCredential(beacon_id)))
 }

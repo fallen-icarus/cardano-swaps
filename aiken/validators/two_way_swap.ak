@@ -1,47 +1,45 @@
-use aiken/hash.{Hash,Blake2b_224}
-use aiken/transaction.{ScriptContext,Transaction,Input,Output} as tx
-use aiken/transaction/credential.{Script,ScriptCredential,Inline}
-
-use cardano_swaps/two_way_swap/types.{ 
-  BeaconRedeemer,
-  UpdateSwaps,
-  CreateOrCloseSwaps,
-  SpendWithMint,
-  SpendWithStake,
-  TakeAsset1,
-  TakeAsset2,
-  SwapDatum,
-  SwapRedeemer
-}
+use aiken/hash.{Blake2b_224, Hash}
+use aiken/transaction.{Input, Output, ScriptContext, Transaction} as tx
+use aiken/transaction/credential.{Inline, Script, ScriptCredential}
 use cardano_swaps/common/utils.{trace_if_false} as common_utils
+use cardano_swaps/two_way_swap/types.{
+  BeaconRedeemer, CreateOrCloseSwaps, SpendWithMint, SpendWithStake, SwapDatum,
+  SwapRedeemer, TakeAsset1, TakeAsset2, UpdateSwaps,
+}
 use cardano_swaps/two_way_swap/utils as utils
 
-validator() {
-  fn swap_script(datum: SwapDatum, redeemer: SwapRedeemer, ctx: ScriptContext) -> Bool {
+validator {
+  fn swap_script(
+    datum: SwapDatum,
+    redeemer: SwapRedeemer,
+    ctx: ScriptContext,
+  ) -> Bool {
     when redeemer is {
       SpendWithMint -> {
         // 1) The address' staking credential must signal approval.
         // 2) The beacon script must be executed as a minting policy.
 
         // Get required information for script context.
-        expect ScriptContext( 
-          Transaction(inputs,_,_,_,mint,_,wtdr,_,sigs,..), 
-          tx.Spend(input_ref)
+        expect ScriptContext(
+          Transaction(inputs, _, _, _, mint, _, wtdr, _, sigs, ..),
+          tx.Spend(input_ref),
         ) = ctx
-        expect Some(Input(_, Output(addr,..))) = tx.find_input(inputs,input_ref)
-        let SwapDatum(beacon_id,..) = datum
+        expect Some(Input(_, Output(addr, ..))) =
+          tx.find_input(inputs, input_ref)
+        let SwapDatum(beacon_id, ..) = datum
 
-        // The address' staking credential must signal approval (Requirement 1).
-        trace_if_false( 
-          @"Staking credential did not approve", 
-          common_utils.staking_credential_approves( addr, wtdr, sigs)
-        ) &&
-        
-        // The beacon_script was not executed as a minting policy.
-        trace_if_false(
-          @"Beacon script not executed as minting policy",
-          common_utils.has_beacon_script_minting_execution(beacon_id,mint)
-        )
+        and {
+          // The address' staking credential must signal approval (Requirement 1).
+          trace_if_false(
+            @"Staking credential did not approve",
+            common_utils.staking_credential_approves(addr, wtdr, sigs),
+          ),
+          // The beacon_script was not executed as a minting policy.
+          trace_if_false(
+            @"Beacon script not executed as minting policy",
+            common_utils.has_beacon_script_minting_execution(beacon_id, mint),
+          ),
+        }
       }
 
       SpendWithStake -> {
@@ -49,24 +47,26 @@ validator() {
         // 2) The beacon script must be executed as a staking script.
 
         // Get required information for script context.
-        expect ScriptContext( 
-          Transaction(inputs,_,_,_,_,_,wtdr,_,sigs,..), 
-          tx.Spend(input_ref)
+        expect ScriptContext(
+          Transaction(inputs, _, _, _, _, _, wtdr, _, sigs, ..),
+          tx.Spend(input_ref),
         ) = ctx
-        expect Some(Input(_, Output(addr,..))) = tx.find_input(inputs,input_ref)
-        let SwapDatum(beacon_id,..) = datum
+        expect Some(Input(_, Output(addr, ..))) =
+          tx.find_input(inputs, input_ref)
+        let SwapDatum(beacon_id, ..) = datum
 
-        // The address' staking credential must signal approval (Requirement 1).
-        trace_if_false( 
-          @"Staking credential did not approve", 
-          common_utils.staking_credential_approves( addr, wtdr, sigs)
-        ) &&
-        
-        // The beacon_script was not executed as a staking script.
-        trace_if_false(
-          @"Beacon script not executed as staking script",
-          common_utils.has_beacon_script_staking_execution(beacon_id,wtdr)
-        )
+        and {
+          // The address' staking credential must signal approval (Requirement 1).
+          trace_if_false(
+            @"Staking credential did not approve",
+            common_utils.staking_credential_approves(addr, wtdr, sigs),
+          ),
+          // The beacon_script was not executed as a staking script.
+          trace_if_false(
+            @"Beacon script not executed as staking script",
+            common_utils.has_beacon_script_staking_execution(beacon_id, wtdr),
+          ),
+        }
       }
 
       // Take asset1 and deposit asset2. It compares the input value against the corresponding output
@@ -94,15 +94,16 @@ validator() {
         // possible size.
 
         // Get required information for script context.
-        expect ScriptContext( 
-          Transaction(inputs,_,outputs,..), 
-          tx.Spend(input_ref)
+        expect ScriptContext(
+          Transaction(inputs, _, outputs, ..),
+          tx.Spend(input_ref),
         ) = ctx
-        expect Some(Input(_, Output(addr,val,..))) = tx.find_input(inputs,input_ref)
+        expect Some(Input(_, Output(addr, val, ..))) =
+          tx.find_input(inputs, input_ref)
 
         // Extract out the information from this datum.
         let SwapDatum(
-          beacon_id, 
+          beacon_id,
           pair_beacon,
           asset1_id,
           asset1_name,
@@ -112,14 +113,18 @@ validator() {
           asset2_beacon,
           asset1_price,
           asset2_price,
-          _ // prev_input is not needed.
-        ) = datum
+          _,
+        ) =
+          // prev_input is not needed.
+          datum
 
         // The following checks requirements 1,2,3,4. It has its own error messages.
         utils.valid_swap(
           input_ref,
-          val, // Input's value.
-          addr, // This address.
+          val,
+          // Input's value.
+          addr,
+          // This address.
           beacon_id,
           pair_beacon,
           asset1_id,
@@ -131,10 +136,11 @@ validator() {
           asset1_price,
           asset2_price,
           outputs,
-          False // Not taking asset2.
+          False,
         )
       }
 
+      // Not taking asset2.
       // Take asset2 and deposit asset1. It compares the input value against the corresponding output
       // value to determine the value flux. 
       TakeAsset2 -> {
@@ -160,15 +166,16 @@ validator() {
         // possible size.
 
         // Get required information for script context.
-        expect ScriptContext( 
-          Transaction(inputs,_,outputs,..), 
-          tx.Spend(input_ref)
+        expect ScriptContext(
+          Transaction(inputs, _, outputs, ..),
+          tx.Spend(input_ref),
         ) = ctx
-        expect Some(Input(_, Output(addr,val,..))) = tx.find_input(inputs,input_ref)
+        expect Some(Input(_, Output(addr, val, ..))) =
+          tx.find_input(inputs, input_ref)
 
         // Extract out the information from this datum.
         let SwapDatum(
-          beacon_id, 
+          beacon_id,
           pair_beacon,
           asset1_id,
           asset1_name,
@@ -178,14 +185,18 @@ validator() {
           asset2_beacon,
           asset1_price,
           asset2_price,
-          _ // prev_input is not needed.
-        ) = datum
+          _,
+        ) =
+          // prev_input is not needed.
+          datum
 
         // The following checks requirements 1,2,3,4. It has its own error messages.
         utils.valid_swap(
           input_ref,
-          val, // Input's value.
-          addr, // This address.
+          val,
+          // Input's value.
+          addr,
+          // This address.
           beacon_id,
           pair_beacon,
           asset1_id,
@@ -197,10 +208,11 @@ validator() {
           asset1_price,
           asset2_price,
           outputs,
-          True // Taking asset2.
+          True,
         )
       }
     }
+    // Taking asset2.
   }
 }
 
@@ -236,18 +248,15 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
         // asset2. Asset1 and asset2 cannot be the same asset.
 
         // Get required information from the script context.
-        let ScriptContext( Transaction(_,_,outputs,..), purpose) = ctx
+        let ScriptContext(Transaction(_, _, outputs, ..), purpose) = ctx
 
-        let policy_id = when purpose is {
-          tx.Mint(policy_id) -> policy_id
-          _ -> error @"Redeemer not used with minting execution"
-        }
+        let policy_id =
+          when purpose is {
+            tx.Mint(policy_id) -> policy_id
+            _ -> fail @"Redeemer not used with minting execution"
+          }
 
-        utils.beacon_destination_check(
-          dapp_hash,
-          policy_id,
-          outputs
-        )
+        utils.beacon_destination_check(dapp_hash, policy_id, outputs)
       }
 
       UpdateSwaps -> {
@@ -279,18 +288,15 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
         // asset2. Asset1 and asset2 cannot be the same asset.
 
         // Get required information from the script context.
-        let ScriptContext( Transaction(_,_,outputs,..), purpose) = ctx
+        let ScriptContext(Transaction(_, _, outputs, ..), purpose) = ctx
 
-        let policy_id = when purpose is {
-          tx.WithdrawFrom(Inline(ScriptCredential(policy_id))) -> policy_id
-          _ -> error @"Redeemer not used with staking execution"
-        }
+        let policy_id =
+          when purpose is {
+            tx.WithdrawFrom(Inline(ScriptCredential(policy_id))) -> policy_id
+            _ -> fail @"Redeemer not used with staking execution"
+          }
 
-        utils.beacon_destination_check(
-          dapp_hash,
-          policy_id,
-          outputs
-        )
+        utils.beacon_destination_check(dapp_hash, policy_id, outputs)
       }
     }
   }

@@ -4439,6 +4439,102 @@ failureTest28 = do
       , referenceInputs = [spendRef]
       }
 
+-- | All beacons withdrawn during swap.
+failureTest29 :: MonadEmulator m => m ()
+failureTest29 = do
+  let -- Seller Info
+      sellerWallet = Mock.knownMockWallet 1
+      sellerPersonalAddr = Mock.mockWalletAddress sellerWallet
+      sellerPayPrivKey = Mock.paymentPrivateKey sellerWallet
+      sellerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash sellerWallet
+      swapAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash swapScript) 
+                    (Just $ PV2.StakingHash $ PV2.PubKeyCredential sellerPubKey)
+
+      -- Swap Info
+      offer1 = (testTokenSymbol,"TestToken1")
+      ask1 = (adaSymbol,adaToken)
+      pairBeacon1 = genPairBeaconName offer1 ask1
+      offerBeacon1 = genAssetBeaconName offer1
+      askBeacon1 = genAssetBeaconName ask1
+      swapDatum1 = 
+        genSwapDatum (offer1,ask1) (unsafeRatio 1_000_000 1) (unsafeRatio 2 1_000_000) Nothing
+
+      -- Buyer Info
+      buyerWallet = Mock.knownMockWallet 2
+      buyerPersonalAddr = Mock.mockWalletAddress buyerWallet
+      buyerPayPrivKey = Mock.paymentPrivateKey buyerWallet
+      buyerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash buyerWallet
+
+  -- Initialize scenario
+  (mintRef,spendRef) <- initializeReferenceScripts 
+  mintTestTokens sellerWallet 10_000_000 [("TestToken1",1000)]
+  mintTestTokens buyerWallet 10_000_000 [("TestToken1",1000)]
+
+  -- Create the swap UTxO.
+  void $ transact sellerPersonalAddr [refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [(pairBeacon1,1),(offerBeacon1,1),(askBeacon1,1)]
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps
+              , mintPolicy = toVersionedMintingPolicy beaconScript
+              , mintReference = Just mintRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon1 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon1 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon1 1
+                  , uncurry PV2.singleton offer1 10
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum1
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [mintRef]
+      }
+
+  swapRef <- 
+    txOutRefWithValue $ 
+      utxoValue 3_000_000 $ mconcat
+        [ PV2.singleton beaconCurrencySymbol pairBeacon1 1
+        , PV2.singleton beaconCurrencySymbol offerBeacon1 1
+        , PV2.singleton beaconCurrencySymbol askBeacon1 1
+        , uncurry PV2.singleton offer1 10
+        ]
+
+  -- Try to swap with the swap UTxO.
+  void $ transact buyerPersonalAddr [swapAddress,refScriptAddress] [buyerPayPrivKey] $
+    emptyTxParams
+      { inputs =
+          [ Input
+              { inputId = swapRef
+              , inputWitness = 
+                  SpendWithPlutusReference spendRef InlineDatum $ toRedeemer $
+                    getRequiredSwapDirection (OfferAsset offer1) (AskAsset ask1)
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon1 0
+                  , PV2.singleton beaconCurrencySymbol offerBeacon1 0
+                  , PV2.singleton beaconCurrencySymbol askBeacon1 0
+                  , uncurry PV2.singleton offer1 5
+                  , uncurry PV2.singleton ask1 5_000_000
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum1{prevInput = Just swapRef}
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [spendRef]
+      }
+
 -------------------------------------------------
 -- Benchmark Tests
 -------------------------------------------------
@@ -4740,6 +4836,9 @@ tests =
     , scriptMustFailWithError "failureTest28"
         "Ada can only be deposited"
         failureTest28
+    , scriptMustFailWithError "failureTest29"
+        "UTxO has wrong beacons"
+        failureTest29
 
       -- Benchmark Tests
     , mustSucceed "benchTest1" $ benchTest1 24

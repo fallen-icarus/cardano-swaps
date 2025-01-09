@@ -228,14 +228,14 @@ This command requires the following steps:
 
 The `cardano-swaps` CLI uses [Koios](https://koios.rest/) in all scenarios where a node is required.
 
-##### Exporting protocol parameters
+##### Querying protocol parameters
 
-Some of the above steps will require the current protocol parameters. The `cardano-swaps` CLI had
-the preproduction testnet and mainnet protocol parameters compiled into the executable when it was
-built with `cabal build exe:cardano-swaps`. The parameters are already formatted in the way
-`cardano-cli` requires. To export the parameters, you can use:
+Some of the above steps will require the current protocol parameters. The `cardano-swaps` CLI
+can be used to fetch the current protocol parameters using Koios. The parameters are already
+formatted in the way `cardano-cli` requires. To fetch the parameters, you can use:
+
 ```bash
-cardano-swaps protocol-params \
+cardano-swaps query protocol-params \
   --testnet \
   --out-file protocolParams.json
 ```

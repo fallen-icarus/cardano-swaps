@@ -65,7 +65,7 @@ cardano-swaps datums one-way \
 
 # Create the transaction.
 echo "Exporting the current protocol parameters..."
-cardano-swaps protocol-params \
+cardano-swaps query protocol-params \
   --testnet \
   --out-file "${tmpDir}protocol.json"
 

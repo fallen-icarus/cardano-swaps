@@ -29,8 +29,6 @@ parseCommand = hsubparser $ mconcat
       info parseQuery $ progDesc "Query the blockchain."
   , command "submit" $
       info pSubmit $ progDesc "Submit a transaction to the blockchain."
-  , command "protocol-params" $
-      info pExportParams $ progDesc "Export the current protocol parameters."
   , command "evaluate-tx" $
       info pEvaluateTx $ progDesc "Estimate script execution units for a transaction."
   ]
@@ -351,15 +349,6 @@ pEvaluateTx =
     <*> pTxFile
 
 -------------------------------------------------
--- ExportParams Parser
--------------------------------------------------
-pExportParams :: Parser Command
-pExportParams =
-  ExportParams
-    <$> pNetwork
-    <*> pOutput
-
--------------------------------------------------
 -- Query Parser
 -------------------------------------------------
 parseQuery :: Parser Command
@@ -370,6 +359,8 @@ parseQuery = fmap Query . hsubparser $ mconcat
       info parseQueryAll $ progDesc "Query all swaps." 
   , command "personal-address" $
       info pQueryPersonal $ progDesc "Query your personal address." 
+  , command "protocol-params" $
+      info pQueryParams $ progDesc "Query the current protocol parameters."
   ]
 
 pQueryPersonal :: Parser Query
@@ -379,6 +370,12 @@ pQueryPersonal =
     <*> pEndpoint
     <*> pUserAddress
     <*> pFormat
+    <*> pOutput
+
+pQueryParams :: Parser Query
+pQueryParams =
+  QueryParameters
+    <$> pNetwork
     <*> pOutput
 
 parseQueryOwnSwaps :: Parser Query

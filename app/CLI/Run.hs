@@ -8,26 +8,19 @@ module CLI.Run
 ) where
 
 import Data.Aeson
+import qualified Data.Aeson.Encoding as Aeson
 import qualified Data.ByteString.Lazy as LBS
-import qualified Data.ByteString as SBS
 import Prettyprinter
 import Prettyprinter.Render.Terminal
 import qualified Data.Text.IO as TIO
 import qualified Data.Text as T
 import Data.Text (Text)
-import Data.FileEmbed
 
 import CardanoSwaps.Utils
 import qualified CardanoSwaps.OneWaySwap as OneWay
 import qualified CardanoSwaps.TwoWaySwap as TwoWay
 import CLI.Types
 import CLI.Query
-
-preprodParams :: SBS.ByteString
-preprodParams = $(embedFile "preprod-params.json")
-
-mainnetParams :: SBS.ByteString
-mainnetParams = $(embedFile "mainnet-params.json")
 
 runCommand :: Command -> IO ()
 runCommand cmd = case cmd of
@@ -41,7 +34,6 @@ runCommand cmd = case cmd of
     runSubmit network api txFile >>= LBS.putStr . encode
   EvaluateTx network api txFile -> 
     runEvaluateTx network api txFile >>= LBS.putStr . encode
-  ExportParams network output -> runExportParams network output
 
 runExportScriptCmd :: Script -> FilePath -> IO ()
 runExportScriptCmd script file = do
@@ -98,15 +90,13 @@ runBeaconInfo info output = case output of
         TwoWayPairBeaconName (assetX,assetY) ->
           drop 2 $ show $ TwoWay.genPairBeaconName assetX assetY
 
-runExportParams :: Network -> Output -> IO ()
-runExportParams network output = case (network,output) of
-  (PreProdTestnet,Stdout) -> SBS.putStr preprodParams
-  (PreProdTestnet,File file) -> SBS.writeFile file preprodParams
-  (Mainnet,Stdout) -> SBS.putStr mainnetParams
-  (Mainnet,File file) -> SBS.writeFile file mainnetParams
-
 runQuery :: Query -> IO ()
 runQuery query = case query of
+  QueryParameters network output -> runGetParams network >>= \params -> do
+    let toByte = Aeson.encodingToLazyByteString . Aeson.value
+    case output of
+      Stdout -> LBS.putStr $ toByte params
+      File file -> LBS.writeFile file $ toByte params
   QueryAllSwaps queryAll -> runQueryAll queryAll
   QueryOwnSwaps queryOwn -> runQueryOwn queryOwn
   QueryPersonal network api addr format output ->

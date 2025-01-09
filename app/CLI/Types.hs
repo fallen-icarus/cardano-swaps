@@ -21,7 +21,6 @@ data Command
   | Query Query
   | Submit Network Endpoint FilePath
   | EvaluateTx Network Endpoint FilePath
-  | ExportParams Network Output
 
 data Script 
   = OneWayBeaconScript
@@ -92,6 +91,8 @@ data Query
   = QueryOwnSwaps QueryOwnSwaps
   | QueryAllSwaps QueryAll
   | QueryPersonal Network Endpoint UserAddress Format Output
+  -- | Query the current protocol parameters.
+  | QueryParameters Network Output
 
 data QueryOwnSwaps
   = QueryOwnOneWaySwaps Network Endpoint UserAddress Format Output

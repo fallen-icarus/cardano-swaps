@@ -14,6 +14,7 @@ module CLI.Query.Koios
   , queryOwnSwapsByBeacon
   , submitTx
   , evaluateTx
+  , getParams
   , queryPersonalAddress
   ) where
 
@@ -115,6 +116,9 @@ type KoiosApi
   :<|>  ReqBody '[JSON] EvaluateTxCBOR
      :> Post '[JSON] Value
 
+  :<|>  "cli_protocol_params"
+     :> Get '[JSON] Value
+
   :<|>  "asset_utxos"
      :> QueryParam' '[Required] "select" Text
      :> QueryParam' '[Required] "is_spent" Text
@@ -129,7 +133,7 @@ type KoiosApi
      :> ReqBody '[JSON] AddressList
      :> Post '[JSON] [KoiosUTxO]
 
-submitApi :<|> evaluateApi :<|> assetUTxOsApi :<|> addressUTxOsApi = client api
+submitApi :<|> evaluateApi :<|> paramsApi :<|> assetUTxOsApi :<|> addressUTxOsApi = client api
   where
     api :: Proxy KoiosApi
     api = Proxy
@@ -202,6 +206,9 @@ submitTx = submitApi . SubmitTxCBOR
 
 evaluateTx :: TxCBOR -> ClientM Value
 evaluateTx = evaluateApi . EvaluateTxCBOR
+
+getParams :: ClientM Value
+getParams = paramsApi
 
 queryPersonalAddress :: UserAddress -> ClientM [PersonalUTxO]
 queryPersonalAddress addr =

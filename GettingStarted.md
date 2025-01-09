@@ -155,6 +155,16 @@ Make sure you instal verison 1.0.20-alpha. Newer versions may change some things
 code may not compile or may result in a different script. As aiken stabilizes, the code will be
 updated to the latest version.
 
+> [!TIP] 
+> If the above command doesn't work, you can build aiken from source:
+> ```bash
+> git clone https://github.com/aiken-lang/aiken
+> cd aiken
+> git checkout v1.0.20-alpha
+> cargo build
+> ```
+> The executable should now be located at `target/debug/aiken`.
+
 When building the protocol's blueprints, make sure to use
 
 ```bash

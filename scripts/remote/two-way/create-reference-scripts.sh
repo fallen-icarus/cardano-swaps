@@ -1,14 +1,25 @@
 #!/bin/sh
 
-# A helper script for showing how to store reference scripts on-chain without having to rely
-# on a local node.
+# The reference scripts may already be locked on-chain. Check the two-way swap address without a
+# staking credential. Both the spending script and the beacon script will be permanently locked in
+# this address.
+#
+# cardano-cli conway address build \
+#   --payment-script-file $swapScriptFile \
+#   --testnet-magic 1 \
+#   --out-file $swapAddrFile
+#
+# Preprod: addr_test1wzrns8ct7stw9kh8f97nlnvqsl8kw7eukje2aw3kak8c77g25nluj
+# Mainnet: addr1wxrns8ct7stw9kh8f97nlnvqsl8kw7eukje2aw3kak8c77g3u8rnh
 
-## Variables
-dir="../../../ignored/swap-files/"
-tmpDir="../../../ignored/tmp/"
+# Variables
+tmpDir="/tmp/cardano-swaps/"
 
-swapScriptFile="${dir}twoWaySwap.plutus"
-beaconPolicyFile="${dir}twoWayBeacon.plutus"
+# Make the tmpDir if it doesn't already exist.
+mkdir -p $tmpDir
+
+swapScriptFile="${tmpDir}twoWaySwap.plutus"
+beaconPolicyFile="${tmpDir}twoWayBeacon.plutus"
 
 ## Export the swap validator script.
 echo "Exporting the swap validator script..."
@@ -29,44 +40,41 @@ cardano-swaps query protocol-params \
 initial_change=$((8180352038))
 
 echo "Building the initial transaction..."
-cardano-cli transaction build-raw \
+cardano-cli conway build-raw \
   --tx-in 38fd18f4ca7c6587eb2703ac3bfd42e1406d089901e2c29f158358fdda5b196a#0 \
   --tx-in 38fd18f4ca7c6587eb2703ac3bfd42e1406d089901e2c29f158358fdda5b196a#1 \
   --tx-in 44f58115ad9738de64bb5624b495a2e7abddfdbe055df474d7d980af1244d64e#1 \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 24000000 lovelace " \
+  --tx-out "$(cat $HOME/wallets/01.addr) + 24000000 lovelace " \
   --tx-out-reference-script-file $swapScriptFile \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 22000000 lovelace " \
+  --tx-out "$(cat $HOME/wallets/01.addr) + 22000000 lovelace " \
   --tx-out-reference-script-file $beaconPolicyFile \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + ${initial_change} lovelace " \
-  --fee 0 \
+  --tx-out "$(cat $HOME/wallets/01.addr) + ${initial_change} lovelace " \
+  --fee 5000000 \
   --out-file "${tmpDir}tx.body"
 
 echo "Calculating the required fee..."
-req_fee=$(cardano-cli transaction calculate-min-fee \
+req_fee=$(cardano-cli conway transaction calculate-min-fee \
   --tx-body-file "${tmpDir}tx.body" \
-  --testnet-magic 1 \
   --protocol-params-file "${tmpDir}protocol.json" \
-  --tx-in-count 3 \
-  --tx-out-count 3 \
   --witness-count 1 | cut -d' ' -f1)
 
 echo "Rebuilding the transaction with the required fee..."
-cardano-cli transaction build-raw \
+cardano-cli conway build-raw \
   --tx-in 38fd18f4ca7c6587eb2703ac3bfd42e1406d089901e2c29f158358fdda5b196a#0 \
   --tx-in 38fd18f4ca7c6587eb2703ac3bfd42e1406d089901e2c29f158358fdda5b196a#1 \
   --tx-in 44f58115ad9738de64bb5624b495a2e7abddfdbe055df474d7d980af1244d64e#1 \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 24000000 lovelace " \
+  --tx-out "$(cat $HOME/wallets/01.addr) + 24000000 lovelace " \
   --tx-out-reference-script-file $swapScriptFile \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + 22000000 lovelace " \
+  --tx-out "$(cat $HOME/wallets/01.addr) + 22000000 lovelace " \
   --tx-out-reference-script-file $beaconPolicyFile \
-  --tx-out "$(cat ../../../ignored/wallets/01.addr) + $((initial_change-req_fee)) lovelace " \
+  --tx-out "$(cat $HOME/wallets/01.addr) + $((initial_change-req_fee)) lovelace " \
   --fee "$req_fee" \
   --out-file "${tmpDir}tx.body"
 
 echo "Signing the transaction..."
-cardano-cli transaction sign \
+cardano-cli conway transaction sign \
   --tx-body-file "${tmpDir}tx.body" \
-  --signing-key-file ../../../ignored/wallets/01.skey \
+  --signing-key-file $HOME/wallets/01.skey \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.signed"
 
@@ -74,3 +82,6 @@ echo "Submitting the transaction..."
 cardano-swaps submit \
   --testnet \
   --tx-file "${tmpDir}tx.signed"
+
+# Add a newline after the submission response.
+echo ""

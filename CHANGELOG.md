@@ -1,5 +1,16 @@
 # Revision history for cardano-swaps
 
+## Next
+
+#### Off-Chain Changes
+
+- Updated off-chain CLI to lookup the current protocol parameters from Koios instead of them
+being hard-coded into the executable.
+- Added GettingStarted instructions for building required aiken compiler from source. **The same
+compiler version must be used by everyone.**
+- Added two more failure test cases to the smart contract unit tests.
+- Simplified and updated example scripts for conway era.
+
 ## 2.1.0.0rc
 
 - Updated off-chain code to allow building with ghc-9.x. The new default ghc version is set to

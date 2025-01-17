@@ -205,17 +205,17 @@ properly add the change *before* estimating the execution budgets for the transa
 results in it under-estimating the required execution units needed by the scripts. There are open
 issues about this [here](https://github.com/input-output-hk/cardano-node/issues/5386) and
 [here](https://github.com/input-output-hk/cardano-api/issues/302). If you ever see a very long and
-confusing error message about overspending budgets while using `cardano-cli transaction build`, this
-is probably the issue.
+confusing error message about overspending budgets while using `cardano-cli conway transaction
+build`, this is probably the issue.
 
-As a work around, whenever you build a transaction using `cardano-cli transaction build` where
-scripts are being executed, you must manually create an output that has all of the native tokens
-that would normally go into the change output. You can let the auto-balancer balance the ada.
+As a work around, whenever you build a transaction using `cardano-cli conway transaction build`
+where scripts are being executed, you must manually create an output that has all of the native
+tokens that would normally go into the change output. You can let the auto-balancer balance the ada.
 
 ## Using Remote Nodes
 
-`cardano-cli transaction build` requires a local node for the auto-balancer which means it cannot be
-used to build a transaction. Instead, the `cardano-cli transaction build-raw` command is required.
+`cardano-cli conway transaction build` requires a local node for the auto-balancer which means it cannot be
+used to build a transaction. Instead, the `cardano-cli conway transaction build-raw` command is required.
 This command requires the following steps:
 1. Build a temporary transaction that is missing the execution units and transaciton fee but is
    properly balanced. You can assume a fee of zero for this transaction.
@@ -252,7 +252,7 @@ cardano-swaps evaluate-tx \
 This action uses Koios. The returned budgets will be indexed by the input order and policy id order.
 **This may not be the same order you specified when building the temporary transaction.** The node
 will reorder them base on lexicographical ordering. If you are not sure of the proper ordering, you
-can view the transaction file that is created with `cardano-cli` using `cardano-cli transaction
+can view the transaction file that is created with `cardano-cli` using `cardano-cli conway transaction
 view`; the inputs and policy ids will be properly ordered.
 
 ##### Submitting the final transaction
@@ -303,7 +303,7 @@ cardano-swaps scripts one-way beacon-policy \
 
 ##### Create the registration certificate
 ```bash
-cardano-cli stake-address registration-certificate \
+cardano-cli conway stake-address registration-certificate \
   --stake-script-file oneWayBeacons.plutus \
   --out-file registration.cert
 ```
@@ -359,7 +359,7 @@ cardano-swaps scripts one-way swap-script \
   --out-file oneWaySwap.plutus
 
 # Create the swap address.
-cardano-cli address build \
+cardano-cli conway address build \
   --payment-script-file oneWaySwap.plutus \
   --stake-verification-key-file ownerStake.vkey \
   --testnet-magic 1 \
@@ -448,15 +448,15 @@ Closing a swap requires the following steps:
 ##### Calculate the hash of the swap's staking credential
 ```bash
 # Generate the hash for a staking verification key.
-ownerPubKeyHash=$(cardano-cli stake-address key-hash \
+ownerPubKeyHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file ownerStake.vkey)
 
 # Generate the hash for a staking script.
-ownerStakingScriptHash=$(cardano-cli transaction policyid \
+ownerStakingScriptHash=$(cardano-cli conway transaction policyid \
   --script-file ownerStake.plutus)
 ```
 
-While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
+While the `cardano-cli conway transaction policyid` command is meant for minting policies, it works for
 creating the hash of *any* script.
 
 ##### Create the required spending script redeemer
@@ -520,15 +520,15 @@ Updating a swap requires the following steps:
 ##### Calculate the hash of the swap's staking credential
 ```bash
 # Generate the hash for a staking verification key.
-ownerPubKeyHash=$(cardano-cli stake-address key-hash \
+ownerPubKeyHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file ownerStake.vkey)
 
 # Generate the hash for a staking script.
-ownerStakingScriptHash=$(cardano-cli transaction policyid \
+ownerStakingScriptHash=$(cardano-cli conway transaction policyid \
   --script-file ownerStake.plutus)
 ```
 
-While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
+While the `cardano-cli conway transaction policyid` command is meant for minting policies, it works for
 creating the hash of *any* script.
 
 ##### Create the required spending script redeemer
@@ -594,15 +594,15 @@ Converting a swap requires the following steps:
 ##### Calculate the hash of the swap's staking credential
 ```bash
 # Generate the hash for a staking verification key.
-ownerPubKeyHash=$(cardano-cli stake-address key-hash \
+ownerPubKeyHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file ownerStake.vkey)
 
 # Generate the hash for a staking script.
-ownerStakingScriptHash=$(cardano-cli transaction policyid \
+ownerStakingScriptHash=$(cardano-cli conway transaction policyid \
   --script-file ownerStake.plutus)
 ```
 
-While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
+While the `cardano-cli conway transaction policyid` command is meant for minting policies, it works for
 creating the hash of *any* script.
 
 ##### Create the required spending script redeemer
@@ -773,7 +773,7 @@ cardano-swaps scripts two-way beacon-policy \
 
 ##### Create the registration certificate
 ```bash
-cardano-cli stake-address registration-certificate \
+cardano-cli conway stake-address registration-certificate \
   --stake-script-file twoWayBeacons.plutus \
   --out-file registration.cert"
 ```
@@ -829,7 +829,7 @@ cardano-swaps scripts two-way swap-script \
   --out-file twoWaySwap.plutus
 
 # Create the swap address.
-cardano-cli address build \
+cardano-cli conway address build \
   --payment-script-file twoWaySwap.plutus \
   --stake-verification-key-file ownerStake.vkey \
   --testnet-magic 1 \
@@ -927,15 +927,15 @@ Closing a swap requires the following steps:
 ##### Calculate the hash of the swap's staking credential
 ```bash
 # Generate the hash for a staking verification key.
-ownerPubKeyHash=$(cardano-cli stake-address key-hash \
+ownerPubKeyHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file ownerStake.vkey)
 
 # Generate the hash for a staking script.
-ownerStakingScriptHash=$(cardano-cli transaction policyid \
+ownerStakingScriptHash=$(cardano-cli conway transaction policyid \
   --script-file ownerStake.plutus)
 ```
 
-While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
+While the `cardano-cli conway transaction policyid` command is meant for minting policies, it works for
 creating the hash of *any* script.
 
 ##### Create the required spending script redeemer
@@ -1002,15 +1002,15 @@ Updating a swap requires the following steps:
 ##### Calculate the hash of the swap's staking credential
 ```bash
 # Generate the hash for a staking verification key.
-ownerPubKeyHash=$(cardano-cli stake-address key-hash \
+ownerPubKeyHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file ownerStake.vkey)
 
 # Generate the hash for a staking script.
-ownerStakingScriptHash=$(cardano-cli transaction policyid \
+ownerStakingScriptHash=$(cardano-cli conway transaction policyid \
   --script-file ownerStake.plutus)
 ```
 
-While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
+While the `cardano-cli conway transaction policyid` command is meant for minting policies, it works for
 creating the hash of *any* script.
 
 ##### Create the required spending script redeemer
@@ -1083,15 +1083,15 @@ Converting a swap requires the following steps:
 ##### Calculate the hash of the swap's staking credential
 ```bash
 # Generate the hash for a staking verification key.
-ownerPubKeyHash=$(cardano-cli stake-address key-hash \
+ownerPubKeyHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file ownerStake.vkey)
 
 # Generate the hash for a staking script.
-ownerStakingScriptHash=$(cardano-cli transaction policyid \
+ownerStakingScriptHash=$(cardano-cli conway transaction policyid \
   --script-file ownerStake.plutus)
 ```
 
-While the `cardano-cli transaction policyid` command is meant for minting policies, it works for
+While the `cardano-cli conway transaction policyid` command is meant for minting policies, it works for
 creating the hash of *any* script.
 
 ##### Create the required spending script redeemer

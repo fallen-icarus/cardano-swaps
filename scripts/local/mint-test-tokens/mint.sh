@@ -8,22 +8,14 @@ tmpDir="/tmp/cardano-swaps/"
 # Make the tmpDir if it doesn't already exist.
 mkdir -p $tmpDir
 
-cardano-cli query protocol-parameters \
-  --testnet-magic 1 \
-  --out-file "${tmpDir}protocol.json"
-
 cardano-cli conway transaction build \
-  --tx-in f0ff75deb465f9bfb00b164329462297afba04243ed56a72e77430ef86c0e24a#1 \
+  --tx-in b9ede1a18cac5e771fcdcf9012f0005ee9f8baca7d4210a89d796646a52ee586#1 \
   --tx-out "$(cat $HOME/wallets/01.addr) 2000000 lovelace + 1000 ${alwaysSucceedSymbol}.${tokenName1}" \
-  --tx-out "$(cat $HOME/wallets/01.addr) 2000000 lovelace + 1000 ${alwaysSucceedSymbol}.${tokenName2}" \
-  --tx-out "$(cat $HOME/wallets/01.addr) 2000000 lovelace + 1000 ${alwaysSucceedSymbol}.${tokenName3}" \
-  --tx-out "$(cat $HOME/wallets/01.addr) 2000000 lovelace + 1000 ${alwaysSucceedSymbol}.${tokenName4}" \
   --mint "1000 ${alwaysSucceedSymbol}.${tokenName1} + 1000 ${alwaysSucceedSymbol}.${tokenName2} + 1000 ${alwaysSucceedSymbol}.${tokenName3} + 1000 ${alwaysSucceedSymbol}.${tokenName4}" \
   --mint-script-file alwaysSucceedsMintingPolicy.plutus \
   --mint-redeemer-file unit.json \
-  --tx-in-collateral 80b6d884296198d7eaa37f97a13e2d8ac4b38990d8419c99d6820bed435bbe82#0 \
+  --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --change-address $(cat $HOME/wallets/01.addr) \
-  --protocol-params-file "${tmpDir}protocol.json" \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.body"
 

@@ -75,6 +75,7 @@ cardano-cli conway transaction build-raw \
   --tx-out "$(cat $HOME/wallets/02.addr) + ${initial_change} lovelace" \
   --tx-in-collateral 11ed603b92e6164c6bb0c83e0f4d54a954976db7c39e2a82d3cbf70f098da1e0#0 \
   --tx-total-collateral 21000000 \
+  --tx-out-return-collateral "$(cat $HOME/wallets/02.addr) 21000000 lovelace" \
   --protocol-params-file "${tmpDir}protocol.json" \
   --fee 5000000 \
   --out-file "${tmpDir}tx.body"
@@ -105,6 +106,7 @@ cardano-cli conway transaction build-raw \
   --tx-out "$(cat $HOME/wallets/02.addr) + ${initial_change} lovelace" \
   --tx-in-collateral 11ed603b92e6164c6bb0c83e0f4d54a954976db7c39e2a82d3cbf70f098da1e0#0 \
   --tx-total-collateral 21000000 \
+  --tx-out-return-collateral "$(cat $HOME/wallets/02.addr) 21000000 lovelace" \
   --protocol-params-file "${tmpDir}protocol.json" \
   --fee 5000000 \
   --out-file "${tmpDir}tx.body"
@@ -116,6 +118,7 @@ calculated_fee=$(cardano-cli conway transaction calculate-min-fee \
   --reference-script-size $((spendingScriptSize)) \
   --witness-count 2 | cut -d' ' -f1)
 req_fee=$((calculated_fee+50000)) # Add 0.05 ADA to be safe since the fee must still be updated.
+req_collateral=$(printf %.0f $(echo "${req_fee}*1.5" | bc))
 
 echo "Rebuilding the transaction with the required fee..."
 cardano-cli conway transaction build-raw \
@@ -131,7 +134,8 @@ cardano-cli conway transaction build-raw \
   --tx-out-inline-datum-file $swapDatumFile1 \
   --tx-out "$(cat $HOME/wallets/02.addr) + $((initial_change-req_fee)) lovelace" \
   --tx-in-collateral 11ed603b92e6164c6bb0c83e0f4d54a954976db7c39e2a82d3cbf70f098da1e0#0 \
-  --tx-total-collateral 21000000 \
+  --tx-total-collateral $req_collateral \
+  --tx-out-return-collateral "$(cat $HOME/wallets/02.addr) $((21000000-$req_collateral)) lovelace" \
   --protocol-params-file "${tmpDir}protocol.json" \
   --fee "$req_fee" \
   --out-file "${tmpDir}tx.body"

@@ -10,6 +10,7 @@ being hard-coded into the executable.
 compiler version must be used by everyone.**
 - Added two more failure test cases to the smart contract unit tests.
 - Simplified and updated example scripts for conway era.
+- Added missing `--tx-out-return-collateral` fields to example remote scripts.
 
 ## 2.1.0.0rc
 

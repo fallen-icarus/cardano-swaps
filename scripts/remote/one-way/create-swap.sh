@@ -92,6 +92,7 @@ cardano-cli conway transaction build-raw \
   --protocol-params-file "${tmpDir}protocol.json" \
   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --tx-total-collateral 21000000 \
+  --tx-out-return-collateral "$(cat $HOME/wallets/01.addr) 21000000 lovelace" \
   --fee 5000000 \
   --out-file "${tmpDir}tx.body"
 
@@ -122,6 +123,7 @@ cardano-cli conway transaction build-raw \
   --protocol-params-file "${tmpDir}protocol.json" \
   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --tx-total-collateral 21000000 \
+  --tx-out-return-collateral "$(cat $HOME/wallets/01.addr) 21000000 lovelace" \
   --fee 5000000 \
   --out-file "${tmpDir}tx.body"
 
@@ -132,6 +134,7 @@ calculated_fee=$(cardano-cli conway transaction calculate-min-fee \
   --reference-script-size $((beaconScriptSize)) \
   --witness-count 1 | cut -d' ' -f1)
 req_fee=$((calculated_fee+50000)) # Add 0.05 ADA to be safe since the fee must still be updated.
+req_collateral=$(printf %.0f $(echo "${req_fee}*1.5" | bc))
 
 echo "Rebuilding the transaction with proper transaction fee..."
 cardano-cli conway transaction build-raw \
@@ -148,7 +151,8 @@ cardano-cli conway transaction build-raw \
   --policy-id "$beaconPolicyId" \
   --protocol-params-file "${tmpDir}protocol.json" \
   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
-  --tx-total-collateral 21000000 \
+  --tx-total-collateral $req_collateral \
+  --tx-out-return-collateral "$(cat $HOME/wallets/01.addr) $((21000000-$req_collateral)) lovelace" \
   --fee "$req_fee" \
   --out-file "${tmpDir}tx.body"
 

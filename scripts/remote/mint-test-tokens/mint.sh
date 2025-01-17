@@ -11,11 +11,11 @@ cardano-swaps query protocol-params \
   --testnet \
   --out-file "${tmpDir}protocol.json"
 
-initial_change=$((115687055-2000000))
+initial_change=$((19759481-2000000))
 
 echo "Building the initial transaction..."
 cardano-cli conway transaction build-raw \
-  --tx-in 8e543433e93f01a5cce45d0c441d69035865851afab78a9f740142c1a441bf6c#1 \
+  --tx-in b6b5bd23fa762b2630dc9dedc10d0bac61d6ffa3617f451df8a8ee31a83c441f#1 \
   --tx-out "$(cat $HOME/wallets/01.addr) 2000000 lovelace + 1000 ${alwaysSucceedSymbol}.${tokenName1}" \
   --tx-out "$(cat $HOME/wallets/01.addr) ${initial_change} lovelace" \
   --mint "1000 ${alwaysSucceedSymbol}.${tokenName1}" \
@@ -25,6 +25,7 @@ cardano-cli conway transaction build-raw \
   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --protocol-params-file "${tmpDir}protocol.json" \
   --tx-total-collateral 21000000 \
+  --tx-out-return-collateral "$(cat $HOME/wallets/01.addr) 21000000 lovelace" \
   --fee 5000000 \
   --out-file "${tmpDir}tx.body"
 
@@ -38,7 +39,7 @@ mint_steps=$(echo $exec_units | jq '.result | .[] | select(.validator.purpose=="
 
 echo "Rebuilding the transaction with proper executions budgets..."
 cardano-cli conway transaction build-raw \
-  --tx-in 8e543433e93f01a5cce45d0c441d69035865851afab78a9f740142c1a441bf6c#1 \
+  --tx-in b6b5bd23fa762b2630dc9dedc10d0bac61d6ffa3617f451df8a8ee31a83c441f#1 \
   --tx-out "$(cat $HOME/wallets/01.addr) 2000000 lovelace + 1000 ${alwaysSucceedSymbol}.${tokenName1}" \
   --tx-out "$(cat $HOME/wallets/01.addr) ${initial_change} lovelace" \
   --mint "1000 ${alwaysSucceedSymbol}.${tokenName1}" \
@@ -48,6 +49,7 @@ cardano-cli conway transaction build-raw \
   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --protocol-params-file "${tmpDir}protocol.json" \
   --tx-total-collateral 21000000 \
+  --tx-out-return-collateral "$(cat $HOME/wallets/01.addr) 21000000 lovelace" \
   --fee 5000000 \
   --out-file "${tmpDir}tx.body"
 
@@ -57,10 +59,11 @@ calculated_fee=$(cardano-cli conway transaction calculate-min-fee \
   --protocol-params-file "${tmpDir}protocol.json" \
   --witness-count 1 | cut -d' ' -f1)
 req_fee=$(($calculated_fee+50000)) # Add 0.05 ADA to be safe since the fee must still be updated.
+req_collateral=$(printf %.0f $(echo "${req_fee}*1.5" | bc))
 
 echo "Rebuilding the transaction with required transaction fee..."
 cardano-cli conway transaction build-raw \
-  --tx-in 8e543433e93f01a5cce45d0c441d69035865851afab78a9f740142c1a441bf6c#1 \
+  --tx-in b6b5bd23fa762b2630dc9dedc10d0bac61d6ffa3617f451df8a8ee31a83c441f#1 \
   --tx-out "$(cat $HOME/wallets/01.addr) 2000000 lovelace + 1000 ${alwaysSucceedSymbol}.${tokenName1}" \
   --tx-out "$(cat $HOME/wallets/01.addr) + $(($initial_change-$req_fee)) lovelace " \
   --mint "1000 ${alwaysSucceedSymbol}.${tokenName1}" \
@@ -69,7 +72,8 @@ cardano-cli conway transaction build-raw \
   --mint-execution-units "(${mint_steps},${mint_mem})" \
   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --protocol-params-file "${tmpDir}protocol.json" \
-  --tx-total-collateral 21000000 \
+  --tx-total-collateral $req_collateral \
+  --tx-out-return-collateral "$(cat $HOME/wallets/01.addr) $((21000000-$req_collateral)) lovelace" \
   --fee $req_fee \
   --out-file "${tmpDir}tx.body"
 

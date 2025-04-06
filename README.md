@@ -205,7 +205,7 @@ of swaps in the future.
 two-way swap datums and redeemers *they are distinct data types*. Imagine they are in separate name
 spaces.
 
-### One-Sway Swaps
+### One-Way Swaps
 
 One-way swaps use one universal spending script for all swap pairs, and one universal beacon script
 for all one-way beacons. The beacon script can be executed as either a minting policy or a staking
@@ -452,7 +452,7 @@ single Tx as well as how easily the beacons can be queried.
 Custom error messages are included to help troubleshoot why a swap failed.
 
 
-### Two-Sway Swaps
+### Two-Way Swaps
 
 Two-way swaps use one universal spending script for all swap pairs and one universal beacon script
 for all trading pairs. The beacon script can be executed as either a minting policy or a staking

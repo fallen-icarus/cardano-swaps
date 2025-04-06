@@ -23,7 +23,7 @@ must be manually balanced.
   - [Updating A Swap](#updating-a-swap)
   - [Converting A Swap To A New Trading Pair](#converting-a-swap-to-a-new-trading-pair)
   - [Executing A Swap](#executing-a-swap)
-- [Two-Sway Swaps](#two-way-swaps)
+- [Two-Way Swaps](#two-way-swaps)
   - [Registering The Beacon Script - DEVELOPERS
   ONLY](#registering-the-beacon-script---developers-only-1)
   - [Creating Reference Scripts](#creating-reference-scripts-1)

@@ -33,7 +33,7 @@ name is:
 ```txt
 sha2_256( offer_id ++ offer_name ++ ask_id ++ ask_name )
 
-But if ADA is part of the pair, swap it's policy id with "00".
+But if ADA is part of the pair, replace it's policy id with "00".
 ```
 
 So for the direction ADA -> TestDJED, ADA is the offer asset and TestDJED is the ask asset so the
@@ -99,7 +99,7 @@ sha2_256( asset1_id ++ asset1_name ++ asset2_id ++ asset2_name )
 Sort the two assets in the trading pair lexicographically: the smaller asset is asset1 and the
 larger one is asset2.
 
-If ADA is part of the pair, swap it's policy id with "00" AFTER SORTING.
+If ADA is part of the pair, replace it's policy id with "00" AFTER SORTING.
 ```
 
 So unlike with One-Way swaps, the beacons for Two-Way swaps is independent of the swap direction.

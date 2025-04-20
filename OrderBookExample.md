@@ -7,7 +7,7 @@ preproduction endpoints will be used.
 ## Target Order Book
 
 I'm going to assume you know what trading pair you want. You will need to know each assets' on-chain
-name (eg, policy ID and hexidecimal asset name). For this example, we will use ADA -> TestDJED (a
+name (eg, policy ID and hexadecimal asset name). For this example, we will use ADA -> TestDJED (a
 test token I created using the always succeeding minting policy). These are their on-chain names:
 
 ```bash
@@ -50,6 +50,12 @@ sha2_256( "00c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d4f746865725
 ```
 
 Hashing this gives: `5e23340d7a9c22745a2f2f907c8c17a8962cfac2292a4cb1d3832b4b88cdee95`
+
+> [!IMPORTANT]
+> The input to the hashing algorithm must be hexadecimally encoded. The above pre-hash is already in
+> hexadecimal, but if you copy/paste it into the terminal it will likely be encoded as something
+> else. You can test it with this [website](https://emn178.github.io/online-tools/sha256.html), but
+> make sure to set the input encoding to 'Hex'.
 
 So the One-Way swap beacon for ADA -> TestDJED is:
 
@@ -117,6 +123,12 @@ sha2_256( "00c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d4f746865725
 ```
 
 Hashing this gives: `5e23340d7a9c22745a2f2f907c8c17a8962cfac2292a4cb1d3832b4b88cdee95`
+
+> [!IMPORTANT]
+> The input to the hashing algorithm must be hexadecimally encoded. The above pre-hash is already in
+> hexadecimal, but if you copy/paste it into the terminal it will likely be encoded as something
+> else. You can test it with this [website](https://emn178.github.io/online-tools/sha256.html), but
+> make sure to set the input encoding to 'Hex'.
 
 Finaly, the Two-Way swap beacon for ADA <--> TestDJED is:
 

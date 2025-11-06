@@ -12,8 +12,10 @@ module CardanoSwaps.OneWaySwap
 
     -- * Contracts
   , swapScript
+  , swapScriptSize
   , swapValidatorHash
   , beaconScript
+  , beaconScriptSize
   , beaconCurrencySymbol
     
     -- * Beacon Names
@@ -50,6 +52,7 @@ data SwapDatum = SwapDatum
   , askBeacon :: TokenName -- ^ The ask beacon's `TokenName`.
   , swapPrice :: PlutusRational -- ^ The price to take the offer asset as a fraction (Ask/Offer).
   , prevInput :: Maybe TxOutRef -- ^ The corresponding swap input's output reference.
+  , expiration :: Maybe POSIXTime -- ^ The order's expiration.
   } deriving (Generic,Show,Eq)
 
 instance ToJSON SwapDatum where
@@ -64,6 +67,7 @@ instance ToJSON SwapDatum where
            , "ask_beacon" .= showTokenName askBeacon
            , "price" .= swapPrice 
            , "prev_input" .= prevInput
+           , "expiration" .= expiration
            ]
 
 data SwapRedeemer
@@ -77,8 +81,11 @@ data SwapRedeemer
   deriving (Generic,Show)
 
 data BeaconRedeemer
+  -- | Register the beacon script for staking execution. This can only be done once. The credential
+  -- connat be de-registered or delegated.
+  = RegisterBeaconScript
   -- | Execute the beacon script as a minting policy. Used anytime beacons must be minted or burned.
-  = CreateOrCloseSwaps
+  | CreateOrCloseSwaps
   -- | Execute the beacon script as a staking validtor. Used anytime beacons do not need to be
   -- minted or burned.
   | UpdateSwaps
@@ -94,6 +101,9 @@ PlutusTx.unstableMakeIsData ''BeaconRedeemer
 swapScript :: SerialisedScript
 swapScript = parseScriptFromCBOR $ blueprints Map.! "one_way_swap.swap_script"
 
+swapScriptSize :: Integer
+swapScriptSize = getScriptSize swapScript
+
 swapValidatorHash :: PV2.ValidatorHash
 swapValidatorHash = PV2.ValidatorHash $ PV2.getScriptHash $ scriptHash swapScript
 
@@ -102,6 +112,9 @@ beaconScript =
   applyArguments
     (parseScriptFromCBOR $ blueprints Map.! "one_way_swap.beacon_script")
     [PlutusTx.toData swapValidatorHash]
+
+beaconScriptSize :: Integer
+beaconScriptSize = getScriptSize beaconScript
 
 beaconCurrencySymbol :: PV2.CurrencySymbol
 beaconCurrencySymbol = PV2.CurrencySymbol $ PV2.getScriptHash $ scriptHash beaconScript
@@ -144,8 +157,14 @@ genAskBeaconName (AskAsset (CurrencySymbol sym,TokenName name)) =
 -------------------------------------------------
 -- Datums
 -------------------------------------------------
-genSwapDatum :: OfferAsset -> AskAsset -> PlutusRational -> Maybe TxOutRef -> SwapDatum
-genSwapDatum o@(OfferAsset offerCfg) a@(AskAsset askCfg) price mPrev =
+genSwapDatum 
+  :: OfferAsset 
+  -> AskAsset 
+  -> PlutusRational 
+  -> Maybe TxOutRef 
+  -> Maybe POSIXTime 
+  -> SwapDatum
+genSwapDatum o@(OfferAsset offerCfg) a@(AskAsset askCfg) price mPrev mExpir =
   SwapDatum
     { beaconId = beaconCurrencySymbol
     , pairBeacon = genPairBeaconName o a
@@ -157,4 +176,5 @@ genSwapDatum o@(OfferAsset offerCfg) a@(AskAsset askCfg) price mPrev =
     , askBeacon = genAskBeaconName a
     , swapPrice = price
     , prevInput = mPrev
+    , expiration = mExpir
     }

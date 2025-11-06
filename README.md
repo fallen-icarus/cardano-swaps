@@ -435,6 +435,19 @@ impractical.
 > The `minUTxOValue` requirement is a core feature of Cardano's security and is not at risk of being
 > removed.
 
+##### Batcherless by Default
+
+The protocol's peer-to-peer design completely eliminates centralized batchers as a required
+component. Any user can create/close/execute any open swap directly from the blockchain, ensuring
+they are never reliant on a third-party intermediary.
+
+As will be explained in the next section, this architecture gives rise to a free market for
+execution: users who need guaranteed, direct execution can bypass UTxO contention by choosing an
+order with a slightly less favorable price. While the protocol is fundamentally batcherless, it
+still allows for batching to exist as an emergent service. Arbitrageurs are naturally incentivized
+to act as on-demand batchers, providing this functionality to users who desire it without building
+it in as a centralizing chokepoint.
+
 ### The Economic Engine: Market Roles and Trading Strategies
 
 The protocol's liquidity and efficiency emerge from the interplay of two key roles: Market Makers

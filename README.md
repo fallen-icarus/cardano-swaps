@@ -372,6 +372,7 @@ This process requires a deposit of **~2 ADA** per swap UTxO, which is reclaimabl
 
 > [!NOTE]
 > **On 1-Minute Expiration Intervals**
+>
 > The requirement for expirations to fall on a 1-minute interval is a deliberate design choice. As
 > this protocol is a settlement layer and not a high-frequency trading (HFT) venue, sub-second
 > precision is unnecessary. This interval strikes a crucial balance: it is slow enough for light
@@ -445,6 +446,7 @@ A market maker's primary strategy is to use Two-Way Swaps to provide liquidity a
 from the spread.
 
 > **Strategy**
+>
 > To manage risk on a blockchain with slower block times, market makers should not compete on speed
 > but instead **price in the time-based risk**. A sophisticated provider will calculate the expected
 > price volatility over a transaction's confirmation window (e.g., 5-10 blocks) and set their spread

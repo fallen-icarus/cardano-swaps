@@ -2,8 +2,8 @@
 {-# LANGUAGE StrictData #-}
 
 module CLI.Query
-  (
-    runQueryAllSwapsByOffer
+  ( runQuerySlotTip
+  , runQueryAllSwapsByOffer
   , runQueryAllSwapsByAsk
   , runQueryAllSwapsByTradingPair
   , runQueryOwnSwaps
@@ -24,6 +24,17 @@ import Data.Aeson (decode,Value)
 import CLI.Query.Koios as Koios
 import CLI.Types
 import CardanoSwaps.Utils
+
+runQuerySlotTip :: Network -> Endpoint -> IO Integer
+runQuerySlotTip network api = do
+  manager' <- newManager tlsManagerSettings
+  either throw return =<< case (network,api) of
+    (PreProdTestnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1")
+      runClientM Koios.querySlotTip env
+    (Mainnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1")
+      runClientM Koios.querySlotTip env
 
 runQueryAllSwapsByTradingPair 
   :: Network 

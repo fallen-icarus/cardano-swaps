@@ -4,6 +4,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE LambdaCase #-}
 
 module CLI.Query.Koios
   (
@@ -16,6 +17,7 @@ module CLI.Query.Koios
   , evaluateTx
   , getParams
   , queryPersonalAddress
+  , querySlotTip
   ) where
 
 import Servant.API
@@ -35,6 +37,13 @@ import qualified CardanoSwaps.TwoWaySwap as TwoWay
 -------------------------------------------------
 -- Core Types
 -------------------------------------------------
+newtype SlotTip = SlotTip { _unSlotTip :: Integer }
+  deriving (Show)
+
+instance FromJSON SlotTip where
+  parseJSON (Object o) = SlotTip <$> o .: "abs_slot"
+  parseJSON _ = mzero
+
 instance FromJSON Asset where
   parseJSON (Object o) =
     Asset
@@ -133,7 +142,16 @@ type KoiosApi
      :> ReqBody '[JSON] AddressList
      :> Post '[JSON] [KoiosUTxO]
 
-submitApi :<|> evaluateApi :<|> paramsApi :<|> assetUTxOsApi :<|> addressUTxOsApi = client api
+  :<|>  "tip"
+     :> Get '[JSON] [SlotTip]
+
+submitApi 
+  :<|> evaluateApi 
+  :<|> paramsApi 
+  :<|> assetUTxOsApi 
+  :<|> addressUTxOsApi 
+  :<|> slotTipApi
+  = client api
   where
     api :: Proxy KoiosApi
     api = Proxy
@@ -141,6 +159,11 @@ submitApi :<|> evaluateApi :<|> paramsApi :<|> assetUTxOsApi :<|> addressUTxOsAp
 -------------------------------------------------
 -- Koios Query Functions
 -------------------------------------------------
+querySlotTip :: ClientM Integer
+querySlotTip = slotTipApi >>= \case
+  [(SlotTip t)] -> return t
+  _ -> error "slotTipApi error"
+
 queryAllSwapsByTradingPair :: OfferAsset -> AskAsset -> ClientM [SwapUTxO]
 queryAllSwapsByTradingPair o@(OfferAsset offer@(currSym,_)) a@(AskAsset ask) = do
   let oneWayBeacon = (OneWay.beaconCurrencySymbol, OneWay.genPairBeaconName o a)

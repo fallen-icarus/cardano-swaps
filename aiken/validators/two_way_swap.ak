@@ -1,9 +1,11 @@
 use aiken/hash.{Hash,Blake2b_224}
 use aiken/transaction.{ScriptContext,Transaction,Input,Output} as tx
 use aiken/transaction/credential.{Script,ScriptCredential,Inline}
+use aiken/transaction/certificate.{CredentialRegistration}
 
 use cardano_swaps/two_way_swap/types.{ 
   BeaconRedeemer,
+  RegisterBeaconScript,
   UpdateSwaps,
   CreateOrCloseSwaps,
   SpendWithMint,
@@ -95,7 +97,7 @@ validator() {
 
         // Get required information for script context.
         expect ScriptContext( 
-          Transaction(inputs,_,outputs,..), 
+          Transaction{inputs,outputs,validity_range,..}, 
           tx.Spend(input_ref)
         ) = ctx
         expect Some(Input(_, Output(addr,val,..))) = tx.find_input(inputs,input_ref)
@@ -112,13 +114,15 @@ validator() {
           asset2_beacon,
           asset1_price,
           asset2_price,
-          _ // prev_input is not needed.
+          _, // prev_input is not needed.
+          expiration,
         ) = datum
 
         // The following checks requirements 1,2,3,4. It has its own error messages.
         utils.valid_swap(
           input_ref,
           val, // Input's value.
+          utils.get_upper_bound(validity_range),
           addr, // This address.
           beacon_id,
           pair_beacon,
@@ -130,6 +134,7 @@ validator() {
           asset2_beacon,
           asset1_price,
           asset2_price,
+          expiration,
           outputs,
           False // Not taking asset2.
         )
@@ -161,7 +166,7 @@ validator() {
 
         // Get required information for script context.
         expect ScriptContext( 
-          Transaction(inputs,_,outputs,..), 
+          Transaction{inputs,outputs,validity_range,..}, 
           tx.Spend(input_ref)
         ) = ctx
         expect Some(Input(_, Output(addr,val,..))) = tx.find_input(inputs,input_ref)
@@ -178,13 +183,15 @@ validator() {
           asset2_beacon,
           asset1_price,
           asset2_price,
-          _ // prev_input is not needed.
+          _, // prev_input is not needed.
+          expiration,
         ) = datum
 
         // The following checks requirements 1,2,3,4. It has its own error messages.
         utils.valid_swap(
           input_ref,
           val, // Input's value.
+          utils.get_upper_bound(validity_range),
           addr, // This address.
           beacon_id,
           pair_beacon,
@@ -196,6 +203,7 @@ validator() {
           asset2_beacon,
           asset1_price,
           asset2_price,
+          expiration,
           outputs,
           True // Taking asset2.
         )
@@ -207,6 +215,16 @@ validator() {
 validator(dapp_hash: Hash<Blake2b_224, Script>) {
   fn beacon_script(redeemer: BeaconRedeemer, ctx: ScriptContext) -> Bool {
     when redeemer is {
+      RegisterBeaconScript -> {
+        // Only allow registering the script. It cannot be delegated or deregistered.
+        // The staking execution allows updating order UTxOs in place (without changing the beacon
+        // tokens).
+        when ctx is {
+          ScriptContext(_, tx.Publish(CredentialRegistration(_))) -> True
+          _ -> error "This redeemer can only be used to register the beacon script"
+        }
+      }
+
       CreateOrCloseSwaps -> {
         // Requirements:
         // 1) Must be executed as a minting script.
@@ -231,12 +249,16 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
         //      k) `asset2_price` denominator > 0
         //      l) `asset2_price` numerator > 0
         //      m) asset1 < asset2
+        //      n) `expiration` >= invalid-hereafter && `expiration` % 60000 == 0 if expiration used
         //
         // The validator assumes the trading pairs are sorted which is why asset1 must be less than
         // asset2. Asset1 and asset2 cannot be the same asset.
+        //
+        // To enable real-time front-ends, the expirations are set to 1-min intervals. This way
+        // front-ends will not struggle to keep up with the on-chain order book.
 
         // Get required information from the script context.
-        let ScriptContext( Transaction(_,_,outputs,..), purpose) = ctx
+        let ScriptContext(Transaction{outputs,validity_range,..}, purpose) = ctx
 
         let policy_id = when purpose is {
           tx.Mint(policy_id) -> policy_id
@@ -246,6 +268,7 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
         utils.beacon_destination_check(
           dapp_hash,
           policy_id,
+          utils.get_upper_bound(validity_range),
           outputs
         )
       }
@@ -274,12 +297,16 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
         //      k) `asset2_price` denominator > 0
         //      l) `asset2_price` numerator > 0
         //      m) asset1 < asset2
+        //      n) `expiration` >= invalid-hereafter && `expiration` % 60000 == 0 if expiration used
         //
         // The validator assumes the trading pairs are sorted which is why asset1 must be less than
         // asset2. Asset1 and asset2 cannot be the same asset.
+        //
+        // To enable real-time front-ends, the expirations are set to 1-min intervals. This way
+        // front-ends will not struggle to keep up with the on-chain order book.
 
         // Get required information from the script context.
-        let ScriptContext( Transaction(_,_,outputs,..), purpose) = ctx
+        let ScriptContext(Transaction{outputs,validity_range,..}, purpose) = ctx
 
         let policy_id = when purpose is {
           tx.WithdrawFrom(Inline(ScriptCredential(policy_id))) -> policy_id
@@ -289,6 +316,7 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
         utils.beacon_destination_check(
           dapp_hash,
           policy_id,
+          utils.get_upper_bound(validity_range),
           outputs
         )
       }

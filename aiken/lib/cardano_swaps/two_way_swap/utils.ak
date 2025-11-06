@@ -1,10 +1,12 @@
 use aiken/bytearray
 use aiken/dict.{Dict}
 use aiken/hash.{Hash,Blake2b_224}
+use aiken/interval.{Interval,IntervalBound,Finite}
 use aiken/list
 use aiken/option.{is_some}
 use aiken/string.{concat}
-use aiken/transaction.{Datum,InlineDatum,Output,OutputReference} as tx
+use aiken/time.{PosixTime}
+use aiken/transaction.{ValidityRange,Datum,InlineDatum,Output,OutputReference} as tx
 use aiken/transaction/credential.{
   Address,
   Script,
@@ -31,6 +33,18 @@ fn parse_datum(raw_datum: Datum) -> SwapDatum {
       swap_datum
     }
     _ -> error @"All swap datums must be inline datums"
+  }
+}
+
+// Get the time from the tx's invalid-hereafter setting. The invalid-hereafter setting is used for
+// expiration times since it guarantees that the specified time has NOT passed yet; the transaction
+// would fail otherwise. By having users set the invalid-hereafter to the closest expiration time,
+// users can assert to the plutus script that the expiration indeed has not passed. This returns an
+// Option in case the expiration is not actually used.
+pub fn get_upper_bound(val_range: ValidityRange) -> Option<PosixTime> {
+  when val_range is {
+    Interval(_,IntervalBound(Finite(x),_)) -> Some(x)
+    _ -> None
   }
 }
 
@@ -203,7 +217,8 @@ fn extract_ask_and_offer_quantity(
 fn valid_swap_output(
   beacon_id: PolicyId,
   output_value: Value,
-  output_datum: Datum
+  output_datum: Datum,
+  invalid_hereafter: Option<PosixTime>,
 ) -> Bool {
   let SwapDatum(
     beacon_id_,
@@ -216,7 +231,8 @@ fn valid_swap_output(
     asset2_beacon_,
     asset1_price_,
     asset2_price_,
-    _ // prev_input does not need to be check.
+    _, // prev_input does not need to be checked.
+    expiration_,
   ) = parse_datum(output_datum)
 
   let asset1 = AssetConfig(asset1_id_,asset1_name_)
@@ -236,6 +252,18 @@ fn valid_swap_output(
       asset2_name_,
       asset2_beacon_
     )
+
+  // The order must not be expired. If the order does not have a set expiration, this check
+  // can be skipped. There is no need for invalid-hereafter if the order does not expire. If an
+  // expiration is set, it must fall on a 1-min interval. invalid-hereafter is used to prove to the
+  // smart contract that the expiration time has not passed.
+  expect True = when (expiration_,invalid_hereafter) is {
+    (None,_) -> True
+    (Some(expir),Some(hereafter)) -> 
+      error_if_false(@"Expiration must be >= invalid-hereafter", hereafter <= expir) &&
+      error_if_false(@"Must use 1-min expiration intervals", expir % 60000 == 0)
+    (Some(_),None) -> error "invalid-hereafter required but not set"
+  }
 
   // The beacon_id must be the policy id of the beacon policy.
   trace_if_false( @"Wrong beacon_id", beacon_id == beacon_id_ ) &&
@@ -298,6 +326,7 @@ fn valid_swap_output(
 pub fn beacon_destination_check(
   dapp_hash: Hash<Blake2b_224, Script>,
   beacon_id: PolicyId,
+  invalid_hereafter: Option<PosixTime>,
   outputs: List<Output>
 ) -> Bool {
   // Checks:
@@ -322,6 +351,7 @@ pub fn beacon_destination_check(
   //      k) `asset2_price` denominator > 0
   //      l) `asset2_price` numerator > 0
   //      m) asset1 < asset2
+  //      n) `expiration` >= invalid-hereafter if expiration used
   //
   // The validator assumes the trading pairs are sorted which is why asset1 must be less than
   // asset2. Asset1 and asset2 cannot be the same asset.
@@ -351,7 +381,7 @@ pub fn beacon_destination_check(
         ) &&
 
         // The output must be properly configured. This has its own trace messages.
-        valid_swap_output(beacon_id,val,d)
+        valid_swap_output(beacon_id,val,d,invalid_hereafter)
       }
 
       // This path can only be taken if the above two matches failed which means the UTxO
@@ -449,6 +479,7 @@ fn swap_output_value(
 pub fn valid_swap(
   input_ref: OutputReference,
   input_val: Value,
+  invalid_hereafter: Option<PosixTime>,
   swap_addr: Address,
   beacon_id: PolicyId,
   pair_beacon: AssetName,
@@ -460,6 +491,7 @@ pub fn valid_swap(
   asset2_beacon: AssetName,
   asset1_price: Rational,
   asset2_price: Rational,
+  expiration: Option<PosixTime>,
   outputs: List<Output>,
   taking_asset2: Bool // Whether asset2 is being taken.
 ) -> Bool {
@@ -476,8 +508,17 @@ pub fn valid_swap(
       asset2_beacon,
       asset1_price,
       asset2_price,
-      Some(input_ref)
+      Some(input_ref),
+      expiration
     ) |> InlineDatum
+
+  // Make sure the swap is not already expired.
+  expect True = when (expiration, invalid_hereafter) is {
+    (None, _) -> True
+    (Some(expir), Some(hereafter)) -> 
+      error_if_false(@"invalid-hereafter must be <= expiration", hereafter <= expir)
+    (Some(_),None) -> error "invalid-hereafter required but not set"
+  }
 
   // Which asset is ask/offer and what price should be used.
   let (offer_id,offer_name,offer_beacon,ask_id,ask_name,ask_beacon,Rational(price_num,price_den)) = 

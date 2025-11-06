@@ -1,9 +1,11 @@
 use aiken/hash.{Hash,Blake2b_224}
 use aiken/transaction.{ScriptContext,Transaction,Input,Output} as tx
 use aiken/transaction/credential.{Script,ScriptCredential,Inline}
+use aiken/transaction/certificate.{CredentialRegistration}
 
 use cardano_swaps/one_way_swap/types.{ 
   BeaconRedeemer,
+  RegisterBeaconScript,
   CreateOrCloseSwaps,
   SpendWithMint,
   SpendWithStake,
@@ -101,7 +103,7 @@ validator() {
 
         // Get required information for script context.
         expect ScriptContext( 
-          Transaction(inputs,_,outputs,..), 
+          Transaction{inputs,outputs,validity_range,..}, 
           tx.Spend(input_ref)
         ) = ctx
         expect Some(Input(_, Output(addr,val,..))) = tx.find_input(inputs,input_ref)
@@ -117,13 +119,15 @@ validator() {
           ask_name,
           ask_beacon,
           swap_price,
-          _ // prev_input is not needed.
+          _, // prev_input is not needed.
+          expiration,
         ) = datum
 
         // The following checks requirements 1,2,3,4. It has its own error messages.
         utils.valid_swap(
           input_ref,
           val, // Input's value.
+          utils.get_upper_bound(validity_range),
           addr, // This address.
           beacon_id,
           pair_beacon,
@@ -134,6 +138,7 @@ validator() {
           ask_name,
           ask_beacon,
           swap_price,
+          expiration,
           outputs
         )
       }
@@ -147,6 +152,16 @@ validator() {
 validator(dapp_hash: Hash<Blake2b_224, Script>) {
   fn beacon_script(redeemer: BeaconRedeemer, ctx: ScriptContext) -> Bool {
     when redeemer is {
+      RegisterBeaconScript -> {
+        // Only allow registering the script. It cannot be delegated or deregistered.
+        // The staking execution allows updating order UTxOs in place (without changing the beacon
+        // tokens).
+        when ctx is {
+          ScriptContext(_, tx.Publish(CredentialRegistration(_))) -> True
+          _ -> error "This redeemer can only be used to register the beacon script"
+        }
+      }
+
       CreateOrCloseSwaps -> {
         // Requirements:
         // 1) Must be executed as a minting script.
@@ -168,20 +183,26 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
         //      h) `ask_beacon` == `sha2_256("02" ++ ask_id ++ ask_name)`
         //      i) `swap_price` denominator > 0
         //      j) `swap_price` numerator > 0
+        //      k) `expiration` >= invalid-hereafter && `expiration` % 60000 == 0 if expiration used
         // 6) The offer asset and the ask asset must be different assets.
         // 7) Any unused beacons must be burned.
+        //
+        // To enable real-time front-ends, the expirations are set to 1-min intervals. This way
+        // front-ends will not struggle to keep up with the on-chain order book.
 
         // Get required information from the script context.
-        let ScriptContext( Transaction(_,_,outputs,..), purpose) = ctx
+        let ScriptContext(Transaction{outputs,validity_range,..}, purpose) = ctx
 
         let policy_id = when purpose is {
           tx.Mint(policy_id) -> policy_id
+          tx.WithdrawFrom(Inline(ScriptCredential(policy_id))) -> policy_id
           _ -> error @"Redeemer not used with minting execution"
         }
 
         utils.beacon_destination_check(
           dapp_hash,
           policy_id,
+          utils.get_upper_bound(validity_range),
           outputs
         )
       }
@@ -207,10 +228,15 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
         //      h) `ask_beacon` == `sha2_256("02" ++ ask_id ++ ask_name)`
         //      i) `swap_price` denominator > 0
         //      j) `swap_price` numerator > 0
+        //      k) `expiration` >= invalid-hereafter && `expiration` % 60000 == 0 if expiration used
         // 6) The offer asset and the ask asset must be different assets.
+        // 7) Any unused beacons must be burned.
+        //
+        // To enable real-time front-ends, the expirations are set to 1-min intervals. This way
+        // front-ends will not struggle to keep up with the on-chain order book.
 
         // Get required information from the script context.
-        let ScriptContext( Transaction(_,_,outputs,..), purpose) = ctx
+        let ScriptContext(Transaction{outputs,validity_range,..}, purpose) = ctx
 
         let policy_id = when purpose is {
           tx.WithdrawFrom(Inline(ScriptCredential(policy_id))) -> policy_id
@@ -220,6 +246,7 @@ validator(dapp_hash: Hash<Blake2b_224, Script>) {
         utils.beacon_destination_check(
           dapp_hash,
           policy_id,
+          utils.get_upper_bound(validity_range),
           outputs
         )
       }

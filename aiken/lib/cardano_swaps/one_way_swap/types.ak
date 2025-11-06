@@ -1,3 +1,4 @@
+use aiken/time.{PosixTime}
 use aiken/transaction.{OutputReference}
 use aiken/transaction/value.{PolicyId,AssetName}
 use cardano_swaps/common/types.{Rational}
@@ -13,7 +14,8 @@ pub type SwapDatum {
     ask_name: AssetName, // The asset name for the ask asset.
     ask_beacon: AssetName, // The asset name for the ask beacon.
     swap_price: Rational, // The swap price as a fraction: Ask/Offer.
-    prev_input: Option<OutputReference>
+    prev_input: Option<OutputReference>,
+    expiration: Option<PosixTime>
   }
 }
 
@@ -24,6 +26,7 @@ pub type SwapRedeemer {
 }
 
 pub type BeaconRedeemer {
+  RegisterBeaconScript // Register the beacon script for staking execution.
   CreateOrCloseSwaps // Minting execution.
   UpdateSwaps // Staking execution.
 }

@@ -29,6 +29,7 @@ runCommand cmd = case cmd of
   CreateSpendingRedeemer r file -> runCreateSpendingRedeemer r file
   CreateMintingRedeemer r file -> runCreateMintingRedeemer r file
   BeaconInfo info output -> runBeaconInfo info output
+  Time time -> runTimeCommand time
   Query query -> runQuery query
   Submit network api txFile -> 
     runSubmit network api txFile >>= LBS.putStr . encode
@@ -48,13 +49,13 @@ runExportScriptCmd script file = do
 
 runCreateDatum :: InternalDatum -> FilePath -> IO ()
 runCreateDatum 
-  (InternalOneWaySwapDatum offer ask swapPrice mPrev) file = do
+  (InternalOneWaySwapDatum offer ask swapPrice mPrev mExpr) file = do
     writeData file $ 
-      OneWay.genSwapDatum offer ask swapPrice mPrev
+      OneWay.genSwapDatum offer ask swapPrice mPrev mExpr
 runCreateDatum 
-  (InternalTwoWaySwapDatum (firstAsset,secondAsset) firstPrice secondPrice mPrev) file = do
+  (InternalTwoWaySwapDatum (firstAsset,secondAsset) firstPrice secondPrice mPrev mExpir) file = do
     writeData file $ 
-      TwoWay.genSwapDatum (firstAsset,secondAsset) firstPrice secondPrice mPrev
+      TwoWay.genSwapDatum (firstAsset,secondAsset) firstPrice secondPrice mPrev mExpir
 
 runCreateSpendingRedeemer :: SpendingRedeemer -> FilePath -> IO ()
 runCreateSpendingRedeemer (OneWaySpendingRedeemer r) file = writeData file r
@@ -90,8 +91,23 @@ runBeaconInfo info output = case output of
         TwoWayPairBeaconName (assetX,assetY) ->
           drop 2 $ show $ TwoWay.genPairBeaconName assetX assetY
 
+runTimeCommand :: Time -> IO ()
+runTimeCommand (ConvertTime convert network) = runTimeConversion convert network
+runTimeCommand (RoundToMinute time) = print $ getPOSIXTime$ toNearestMinute time
+
+runTimeConversion :: ConvertTime -> Network -> IO ()
+runTimeConversion time network =
+    case time of
+      (POSIXTimeToSlot p) -> print $ getSlot $ posixTimeToSlot config p
+      (SlotToPOSIXTime s) -> print $ getPOSIXTime $ slotToPOSIXTime config s
+  where
+    config = case network of
+      Mainnet -> mainnetTimeConfig
+      PreProdTestnet -> preprodTimeConfig
+
 runQuery :: Query -> IO ()
 runQuery query = case query of
+  QueryCurrentSlot network api -> runQuerySlotTip network api >>= print
   QueryParameters network output -> runGetParams network >>= \params -> do
     let toByte = Aeson.encodingToLazyByteString . Aeson.value
     case output of
@@ -245,6 +261,8 @@ prettySwapUTxO target SwapUTxO{..} =
                if target /= None then
                  annotate (color Magenta) (prettyPrice swapPrice)
                else prettyPrice swapPrice
+           , annotate (color Green) "expiration:" <+> (flip (maybe "none") expiration $ 
+               \(POSIXTime time) -> pretty time <+> "(PosixTime)")
            ]
     prettySwapDatum (TwoWayDatum TwoWay.SwapDatum{..}) =
       vsep [ annotate (color Green) "type:" <+> pretty @Text "two-way"
@@ -260,6 +278,8 @@ prettySwapUTxO target SwapUTxO{..} =
                if target == TakingAsset2 then
                  annotate (color Magenta) (prettyPrice asset2Price)
                else prettyPrice asset2Price
+           , annotate (color Green) "expiration:" <+> (flip (maybe "none") expiration $ 
+               \(POSIXTime time) -> pretty time <+> "(PosixTime)")
            ]
 
 prettyPersonalUTxO :: PersonalUTxO -> Doc AnsiStyle

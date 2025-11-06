@@ -21,6 +21,11 @@ data Command
   | Query Query
   | Submit Network Endpoint FilePath
   | EvaluateTx Network Endpoint FilePath
+  | Time Time
+
+data Time
+  = ConvertTime ConvertTime Network
+  | RoundToMinute POSIXTime
 
 data Script 
   = OneWayBeaconScript
@@ -35,11 +40,13 @@ data InternalDatum
       AskAsset
       PlutusRational -- ^ Swap price
       (Maybe TxOutRef)
+      (Maybe POSIXTime) -- ^ Expiration
   | InternalTwoWaySwapDatum
       TwoWayPair
       PlutusRational -- ^ ForwardSwap price.
       PlutusRational -- ^ reverseSwap price.
       (Maybe TxOutRef)
+      (Maybe POSIXTime) -- ^ Expiration
 
 data SpendingRedeemer
   = OneWaySpendingRedeemer OneWay.SwapRedeemer
@@ -65,6 +72,10 @@ data BeaconInfo
 
 -- | For when saving to file is optional
 data Output = Stdout | File FilePath
+
+data ConvertTime
+  = POSIXTimeToSlot POSIXTime
+  | SlotToPOSIXTime Slot
 
 data Network
   = PreProdTestnet
@@ -93,6 +104,8 @@ data Query
   | QueryPersonal Network Endpoint UserAddress Format Output
   -- | Query the current protocol parameters.
   | QueryParameters Network Output
+  -- | Query the latest slot number.
+  | QueryCurrentSlot Network Endpoint
 
 data QueryOwnSwaps
   = QueryOwnOneWaySwaps Network Endpoint UserAddress Format Output

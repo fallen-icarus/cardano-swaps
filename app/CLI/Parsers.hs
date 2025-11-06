@@ -16,15 +16,17 @@ import CLI.Types
 parseCommand :: Parser Command
 parseCommand = hsubparser $ mconcat
   [ command "scripts" $
-      info parseExportScript $ progDesc "Export a DApp plutus script."
+      info parseExportScript $ progDesc "Export a protocol script."
   , command "datums" $
-      info parseCreateDatum $ progDesc "Create a datum for the DApp."
+      info parseCreateDatum $ progDesc "Create a datum for the protocol."
   , command "spending-redeemers" $
       info  parseCreateSpendingRedeemer $ progDesc "Create a spending redeemer."
   , command "beacon-redeemers" $
       info parseCreateMintingRedeemer $ progDesc "Create a redeemer for the beacon policy."
   , command "beacon-info" $
       info parseBeaconInfo $ progDesc "Calculate a beacon policy id or asset name."
+  , command "time" $
+      info pTimeCommand $ progDesc "Work with time formats."
   , command "query" $
       info parseQuery $ progDesc "Query the blockchain."
   , command "submit" $
@@ -105,6 +107,7 @@ pCreateOneWayDatum = CreateDatum <$> pInternalOneWaySwapDatum <*> pOutputFile
         <*> (AskAsset <$> pAssetConfig "ask")
         <*> pPrice "offer"
         <*> pPrevInput
+        <*> pSwapExpiration
 
 pCreateTwoWayDatum :: Parser Command
 pCreateTwoWayDatum = CreateDatum <$> pInternalTwoWaySwapDatum <*> pOutputFile
@@ -116,6 +119,7 @@ pCreateTwoWayDatum = CreateDatum <$> pInternalTwoWaySwapDatum <*> pOutputFile
         <*> pPrice "first"
         <*> pPrice "second"
         <*> pPrevInput
+        <*> pSwapExpiration
 
 -------------------------------------------------
 -- Spending Redeemer Parser
@@ -220,7 +224,7 @@ parseCreateMintingRedeemer = hsubparser $ mconcat
 pCreateOneWayBeaconRedeemer :: Parser Command
 pCreateOneWayBeaconRedeemer = 
     CreateMintingRedeemer
-      <$> (pMint <|> pStake)
+      <$> (pMint <|> pStake <|> pRegister)
       <*> pOutputFile
   where
     pMint :: Parser MintingRedeemer
@@ -235,10 +239,16 @@ pCreateOneWayBeaconRedeemer =
       <> help "Update swaps without minting/burning."
       )
 
+    pRegister :: Parser MintingRedeemer
+    pRegister = flag' (OneWayMintingRedeemer OneWay.RegisterBeaconScript)
+      (  long "register"
+      <> help "Register the one-way beacon script."
+      )
+
 pCreateTwoWayBeaconRedeemer :: Parser Command
 pCreateTwoWayBeaconRedeemer = 
     CreateMintingRedeemer
-      <$> (pMint <|> pStake)
+      <$> (pMint <|> pStake <|> pRegister)
       <*> pOutputFile
   where
     pMint :: Parser MintingRedeemer
@@ -251,6 +261,12 @@ pCreateTwoWayBeaconRedeemer =
     pStake = flag' (TwoWayMintingRedeemer TwoWay.UpdateSwaps)
       (  long "update-only"
       <> help "Update swaps without minting/burning."
+      )
+
+    pRegister :: Parser MintingRedeemer
+    pRegister = flag' (TwoWayMintingRedeemer TwoWay.RegisterBeaconScript)
+      (  long "register"
+      <> help "Register the two-way beacon script."
       )
 
 -------------------------------------------------
@@ -329,6 +345,50 @@ pTwoWayBeaconInfo = hsubparser $ mconcat
         <*> pOutput
 
 -------------------------------------------------
+-- Time Parser
+-------------------------------------------------
+pTimeCommand :: Parser Command
+pTimeCommand = hsubparser $ mconcat
+    [ command "convert-time" $
+        info pConvertTime $ progDesc "Convert POSIXTime <---> Slot."
+    , command "round-to-min" $
+        info pRoundTime $ progDesc "Round POSIXTime to nearest minute."
+    ]
+
+pConvertTime :: Parser Command
+pConvertTime = Time <$> pConvert
+  where
+    pConvert :: Parser Time
+    pConvert = ConvertTime <$> (pPOSIXTime <|> pSlot) <*> pNetwork
+
+    pPOSIXTime :: Parser ConvertTime
+    pPOSIXTime = POSIXTimeToSlot . POSIXTime <$> option auto
+      (  long "posix-time"
+      <> metavar "INT"
+      <> help "Convert POSIX time (in milliseconds) to slot number."
+      )
+
+    pSlot :: Parser ConvertTime
+    pSlot = SlotToPOSIXTime . Slot <$> option auto
+      (  long "slot"
+      <> metavar "INT"
+      <> help "Convert slot number to POSIX time."
+      )
+
+pRoundTime :: Parser Command
+pRoundTime = Time <$> pRound
+  where
+    pRound :: Parser Time
+    pRound = RoundToMinute <$> pPOSIXTime
+
+    pPOSIXTime :: Parser POSIXTime
+    pPOSIXTime = POSIXTime <$> option auto
+      (  long "posix-time"
+      <> metavar "INT"
+      <> help "Round POSIX time (in milliseconds) to nearest minute."
+      )
+
+-------------------------------------------------
 -- Submit Parser
 -------------------------------------------------
 pSubmit :: Parser Command
@@ -361,7 +421,15 @@ parseQuery = fmap Query . hsubparser $ mconcat
       info pQueryPersonal $ progDesc "Query your personal address." 
   , command "protocol-params" $
       info pQueryParams $ progDesc "Query the current protocol parameters."
+  , command "current-slot" $
+      info pQueryCurrentSlot $ progDesc "Query the current slot number."
   ]
+
+pQueryCurrentSlot :: Parser Query
+pQueryCurrentSlot =
+  QueryCurrentSlot
+    <$> pNetwork
+    <*> pEndpoint
 
 pQueryPersonal :: Parser Query
 pQueryPersonal =
@@ -578,12 +646,12 @@ pNetwork = pPreProdTestnet <|> pMainnet
     pPreProdTestnet :: Parser Network
     pPreProdTestnet = flag' PreProdTestnet
       (  long "testnet"
-      <> help "Query the preproduction testnet.")
+      <> help "For preproduction testnet.")
 
     pMainnet :: Parser Network
     pMainnet = flag' Mainnet
       (  long "mainnet"
-      <> help "Query the mainnet.")
+      <> help "For mainnet.")
 
 pEndpoint :: Parser Endpoint
 pEndpoint = pure Koios
@@ -628,3 +696,13 @@ pTxFile = strOption
   <> metavar "STRING"
   <> help "Transaction file path."
   )
+
+pSwapExpiration :: Parser (Maybe POSIXTime)
+pSwapExpiration = pExpr <|> pure Nothing
+  where
+    pExpr :: Parser (Maybe POSIXTime)
+    pExpr = Just . POSIXTime <$> option auto
+      (  long "expiration"
+      <> metavar "TIME"
+      <> help "The expiration time for the order in POSIX time (milliseconds)."
+      )

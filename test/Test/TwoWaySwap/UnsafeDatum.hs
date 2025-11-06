@@ -19,6 +19,7 @@ data UnsafeDatum = UnsafeDatum
   , unsafeAsset1Price :: (Integer,Integer)
   , unsafeAsset2Price :: (Integer,Integer)
   , unsafePrevInput :: Maybe TxOutRef
+  , unsafeExpiration :: Maybe TxOutRef
   }
 
 instance PlutusTx.ToData UnsafeDatum where
@@ -35,4 +36,5 @@ instance PlutusTx.ToData UnsafeDatum where
       , PlutusTx.toData unsafeAsset1Price
       , PlutusTx.toData unsafeAsset2Price
       , PlutusTx.toData unsafePrevInput
+      , PlutusTx.toData unsafeExpiration
       ]

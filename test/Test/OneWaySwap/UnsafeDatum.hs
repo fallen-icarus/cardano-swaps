@@ -18,6 +18,7 @@ data UnsafeDatum = UnsafeDatum
   , unsafeAskBeacon :: TokenName
   , unsafeSwapPrice :: (Integer,Integer)
   , unsafePrevInput :: Maybe TxOutRef
+  , unsafeExpiration :: Maybe POSIXTime
   }
 
 instance PlutusTx.ToData UnsafeDatum where
@@ -33,4 +34,5 @@ instance PlutusTx.ToData UnsafeDatum where
       , PlutusTx.toData unsafeAskBeacon
       , PlutusTx.toData unsafeSwapPrice
       , PlutusTx.toData unsafePrevInput
+      , PlutusTx.toData unsafeExpiration
       ]

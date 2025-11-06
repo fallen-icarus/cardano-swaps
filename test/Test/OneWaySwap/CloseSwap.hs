@@ -10,6 +10,7 @@ module Test.OneWaySwap.CloseSwap
     regressionTest1
   , regressionTest2
   , regressionTest3
+  , regressionTest4
 
     -- ** Scenarios that should fail
   , failureTest1
@@ -38,7 +39,7 @@ import Data.String (fromString)
 import Control.Monad (replicateM_,forM_)
 
 import CardanoSwaps.OneWaySwap
-import CardanoSwaps.Utils 
+import CardanoSwaps.Utils hiding (posixTimeToSlot)
 
 import Test.Prelude
 
@@ -54,7 +55,7 @@ initializeReferenceScripts = do
       { outputs =
           [ Output
               { outputAddress = refScriptAddress
-              , outputValue = LV.lovelaceToValue 20_000_000
+              , outputValue = LV.lovelaceToValue 21_000_000
               , outputDatum = NoOutputDatum
               , outputReferenceScript = toReferenceScript $ Just beaconScript
               }
@@ -118,7 +119,7 @@ regressionTest1 = do
       pairBeacon = genPairBeaconName offer ask
       offerBeacon = genOfferBeaconName offer
       askBeacon = genAskBeaconName ask
-      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
 
   -- Initialize scenario
   (mintRef,spendRef) <- initializeReferenceScripts 
@@ -200,7 +201,7 @@ regressionTest2 = do
       pairBeacon = genPairBeaconName offer ask
       offerBeacon = genOfferBeaconName offer
       askBeacon = genAskBeaconName ask
-      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
 
   -- Initialize scenario
   (mintRef,spendRef) <- initializeReferenceScripts 
@@ -274,7 +275,7 @@ regressionTest3 = do
       pairBeacon1 = genPairBeaconName offer1 ask1
       offerBeacon1 = genOfferBeaconName offer1
       askBeacon1 = genAskBeaconName ask1
-      swapDatum1 = genSwapDatum offer1 ask1 (unsafeRatio 1_000_000 1) Nothing
+      swapDatum1 = genSwapDatum offer1 ask1 (unsafeRatio 1_000_000 1) Nothing Nothing
 
       -- Swap2 Info
       offer2 = OfferAsset (testTokenSymbol,"TestToken2")
@@ -282,7 +283,7 @@ regressionTest3 = do
       pairBeacon2 = genPairBeaconName offer2 ask2
       offerBeacon2 = genOfferBeaconName offer2
       askBeacon2 = genAskBeaconName ask2
-      swapDatum2 = genSwapDatum offer2 ask2 (unsafeRatio 1_000_000 1) Nothing
+      swapDatum2 = genSwapDatum offer2 ask2 (unsafeRatio 1_000_000 1) Nothing Nothing
 
       -- Swap3 Info
       offer3 = OfferAsset (testTokenSymbol,"TestToken3")
@@ -290,7 +291,7 @@ regressionTest3 = do
       pairBeacon3 = genPairBeaconName offer3 ask3
       offerBeacon3 = genOfferBeaconName offer3
       askBeacon3 = genAskBeaconName ask3
-      swapDatum3 = genSwapDatum offer3 ask3 (unsafeRatio 1_000_000 1) Nothing
+      swapDatum3 = genSwapDatum offer3 ask3 (unsafeRatio 1_000_000 1) Nothing Nothing
 
   -- Initialize scenario
   (mintRef,spendRef) <- initializeReferenceScripts 
@@ -380,6 +381,96 @@ regressionTest3 = do
       , extraKeyWitnesses = [sellerPubKey]
       }
 
+-- | Close an expired swap.
+regressionTest4 :: MonadEmulator m => m ()
+regressionTest4 = do
+  let -- Seller Info
+      sellerWallet = Mock.knownMockWallet 1
+      sellerPersonalAddr = Mock.mockWalletAddress sellerWallet
+      sellerPayPrivKey = Mock.paymentPrivateKey sellerWallet
+      sellerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash sellerWallet
+      swapAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash swapScript) 
+                    (Just $ PV2.StakingHash $ PV2.PubKeyCredential sellerPubKey)
+
+      -- Swap Info
+      offer = OfferAsset (testTokenSymbol,"TestToken1")
+      ask = AskAsset (adaSymbol,adaToken)
+      pairBeacon = genPairBeaconName offer ask
+      offerBeacon = genOfferBeaconName offer
+      askBeacon = genAskBeaconName ask
+
+  -- Initialize scenario
+  (mintRef,spendRef) <- initializeReferenceScripts 
+  mintTestTokens sellerWallet 10_000_000 [("TestToken1",1000)]
+
+  let expir = toNearestMin $ slotToPosixTime 60
+  let swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing (Just expir)
+
+  -- Try to create the swap UTxO.
+  void $ transact sellerPersonalAddr [refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [(pairBeacon,1),(offerBeacon,1),(askBeacon,1)]
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps
+              , mintPolicy = toVersionedMintingPolicy beaconScript
+              , mintReference = Just mintRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon 1
+                  , uncurry PV2.singleton (unOfferAsset offer) 10
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [mintRef]
+      , validityRange = ValidityRange
+          { validityRangeLowerBound = Nothing
+          , validityRangeUpperBound = Just $ posixTimeToSlot expir
+          }
+      }
+
+  awaitTime $ expir + 10
+
+  swapRef <- 
+    txOutRefWithValue $ 
+      utxoValue 3_000_000 $ mconcat
+        [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+        , PV2.singleton beaconCurrencySymbol offerBeacon 1
+        , PV2.singleton beaconCurrencySymbol askBeacon 1
+        , uncurry PV2.singleton (unOfferAsset offer) 10
+        ]
+
+  -- Try to close the swap UTxO.
+  void $ transact sellerPersonalAddr [swapAddress,refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [(pairBeacon,-1),(offerBeacon,-1),(askBeacon,-1)]
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps
+              , mintPolicy = toVersionedMintingPolicy beaconScript
+              , mintReference = Just mintRef
+              }
+          ]
+      , inputs =
+          [ Input
+              { inputId = swapRef
+              , inputWitness = 
+                  SpendWithPlutusReference spendRef InlineDatum (toRedeemer SpendWithMint)
+              }
+          ]
+      , referenceInputs = [mintRef,spendRef]
+      , extraKeyWitnesses = [sellerPubKey]
+      }
+
 -------------------------------------------------
 -- Failure Tests
 -------------------------------------------------
@@ -401,7 +492,7 @@ failureTest1 = do
       pairBeacon = genPairBeaconName offer ask
       offerBeacon = genOfferBeaconName offer
       askBeacon = genAskBeaconName ask
-      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
 
   -- Initialize scenario
   (mintRef,spendRef) <- initializeReferenceScripts 
@@ -483,7 +574,7 @@ failureTest2 = do
       pairBeacon = genPairBeaconName offer ask
       offerBeacon = genOfferBeaconName offer
       askBeacon = genAskBeaconName ask
-      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
 
   -- Initialize scenario
   (mintRef,spendRef) <- initializeReferenceScripts 
@@ -565,7 +656,7 @@ failureTest3 = do
       pairBeacon = genPairBeaconName offer ask
       offerBeacon = genOfferBeaconName offer
       askBeacon = genAskBeaconName ask
-      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
 
   -- Initialize scenario
   (mintRef,spendRef) <- initializeReferenceScripts 
@@ -647,7 +738,7 @@ failureTest4 = do
       pairBeacon = genPairBeaconName offer ask
       offerBeacon = genOfferBeaconName offer
       askBeacon = genAskBeaconName ask
-      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
 
   -- Initialize scenario
   (mintRef,spendRef) <- initializeReferenceScripts 
@@ -730,7 +821,7 @@ failureTest5 = do
       pairBeacon = genPairBeaconName offer ask
       offerBeacon = genOfferBeaconName offer
       askBeacon = genAskBeaconName ask
-      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
 
   -- Initialize scenario
   (mintRef,spendRef) <- initializeReferenceScripts 
@@ -813,7 +904,7 @@ failureTest6 = do
       pairBeacon = genPairBeaconName offer ask
       offerBeacon = genOfferBeaconName offer
       askBeacon = genAskBeaconName ask
-      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
 
   -- Initialize scenario
   (mintRef,spendRef) <- initializeReferenceScripts 
@@ -895,7 +986,7 @@ failureTest7 = do
       pairBeacon = genPairBeaconName offer ask
       offerBeacon = genOfferBeaconName offer
       askBeacon = genAskBeaconName ask
-      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
 
   -- Initialize scenario
   (mintRef,spendRef) <- initializeReferenceScripts 
@@ -977,7 +1068,7 @@ failureTest8 = do
       pairBeacon = genPairBeaconName offer ask
       offerBeacon = genOfferBeaconName offer
       askBeacon = genAskBeaconName ask
-      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
 
       -- Other Info
       otherWallet = Mock.knownMockWallet 2
@@ -1068,7 +1159,7 @@ benchTest1 number = do
       pairBeacon = genPairBeaconName offer ask
       offerBeacon = genOfferBeaconName offer
       askBeacon = genAskBeaconName ask
-      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
 
   -- Initialize scenario
   (mintRef,spendRef) <- initializeReferenceScripts 
@@ -1144,15 +1235,15 @@ benchTest2 number = do
                     (Just $ PV2.StakingHash $ PV2.PubKeyCredential sellerPubKey)
 
       -- Other Info
-      assetNames = map (\i -> fromString $ "TestToken" <> show @Int i) [1..120]
+      assetNames = map (\i -> fromString $ "TestToken" <> show @Int i) [1..130]
 
       -- Swap Info
-      offers = map (\name -> OfferAsset (testTokenSymbol,name)) $ drop 60 assetNames
-      asks = map (\name -> AskAsset (testTokenSymbol,name)) $ take 60 assetNames
+      offers = map (\name -> OfferAsset (testTokenSymbol,name)) $ drop 65 assetNames
+      asks = map (\name -> AskAsset (testTokenSymbol,name)) $ take 65 assetNames
       pairs = zip offers asks
       datums = 
         flip map pairs $ \(offer,ask) -> 
-          genSwapDatum offer ask (unsafeRatio 1 1) Nothing
+          genSwapDatum offer ask (unsafeRatio 1 1) Nothing Nothing
 
       sampleOutputs ds = flip map ds $ \datum@SwapDatum{..} ->
           Output
@@ -1229,6 +1320,7 @@ tests =
       mustSucceed "regressionTest1" regressionTest1
     , mustSucceed "regressionTest2" regressionTest2
     , mustSucceed "regressionTest3" regressionTest3
+    , mustSucceed "regressionTest4" regressionTest4
 
       -- Failure Tests
     , scriptMustFailWithError "failureTest1" 
@@ -1255,10 +1347,10 @@ tests =
         failureTest8
 
       -- Benchmark Tests
-    , mustSucceed "benchTest1" $ benchTest1 56
-    , mustSucceed "benchTest2" $ benchTest2 56
+    , mustSucceed "benchTest1" $ benchTest1 60
+    , mustSucceed "benchTest2" $ benchTest2 60
 
       -- Performance Increase Tests
-    , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 57
-    , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 57
+    , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 61
+    , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 61
     ]

@@ -14,16 +14,25 @@ swapDatumFile="${tmpDir}swapDatum.json"
 swapRedeemerFile="${tmpDir}twoWaySpendingRedeemer.json"
 beaconRedeemerFile="${tmpDir}twoWayBeaconRedeemer.json"
 
-# The reference scripts are permanently locked in the swap address without a staking credential!
+# The reference scripts may already be locked on-chain. Check the two-way swap address without a
+# staking credential. Both the spending script and the beacon script will be permanently locked in
+# this address.
+#
+# cardano-cli conway address build \
+#   --payment-script-file $swapScriptFile \
+#   --testnet-magic 1 \
+#   --out-file $swapAddrFile
+#
 # You can use the `cardano-swaps query personal-address` command to see them.
-beaconScriptPreprodTestnetRef="115c9ebb9928b8ec6e0c9d1420c43421cfb323639dd9fdcf1e7155e73bec13c5#1"
-# beaconScriptSize=4707
 
-spendingScriptPreprodTestnetRef="115c9ebb9928b8ec6e0c9d1420c43421cfb323639dd9fdcf1e7155e73bec13c5#0"
-# spendingScriptSize=5343
+beaconScriptPreprodTestnetRef="9415db73d8d374572a58ad167e3051110251aff802987f8627b27e060dcd673f#1"
+# beaconScriptSize=4804
+
+spendingScriptPreprodTestnetRef="9415db73d8d374572a58ad167e3051110251aff802987f8627b27e060dcd673f#0"
+# spendingScriptSize=5007
 
 # Generate the hash for the staking verification key.
-echo "Calculating the staking pubkey hash for the borrower..."
+echo "Calculating the staking pubkey hash for the owner..."
 ownerPubKeyHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file $ownerPubKeyFile)
 
@@ -53,11 +62,24 @@ cardano-swaps beacon-redeemers two-way \
 
 # Create the swap datum.
 echo "Creating the swap datum..."
+
+# The expiration will be set 1 hr from now:
+currentSlot=$(cardano-swaps query current-slot --testnet)
+tmpExpirationSlot=$((currentSlot + 3600))
+tmpExpirationTime=$(cardano-swaps time convert-time --slot $tmpExpirationSlot --testnet)
+
+# The time must be rounded to the nearest minute.
+expirationTime=$(cardano-swaps time round-to-min --posix-time $tmpExpirationTime)
+# We need the corresponding slot to the rounded time for tx validity interval.
+expirationSlot=$(cardano-swaps time convert-time --posix-time $expirationTime --testnet)
+
+# Create the datum. The expiration field is optional.
 cardano-swaps datums two-way \
   --second-asset lovelace \
   --first-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
   --second-price '2 / 1000000' \
   --first-price 2000000 \
+  --expiration $expirationTime \
   --out-file $swapDatumFile
 
 # Helper beacon variables.
@@ -82,7 +104,8 @@ pairBeacon="${beaconPolicyId}.${pairBeaconName}"
 asset1Beacon="${beaconPolicyId}.${asset1BeaconName}"
 asset2Beacon="${beaconPolicyId}.${asset2BeaconName}"
 
-# Create the transaction.
+# Create the transaction. If you are creating a swap that expires, you must set
+# `invalid-hereafter` to the nearest expiration slot.
 cardano-cli conway transaction build \
   --tx-in 22e60774851d6db2c2e4600e3c6daebe3b68d52e1d9d7070f6c2fc6ee8c8efcf#1 \
   --tx-in 22e60774851d6db2c2e4600e3c6daebe3b68d52e1d9d7070f6c2fc6ee8c8efcf#0 \
@@ -99,6 +122,7 @@ cardano-cli conway transaction build \
   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --change-address "$(cat $HOME/wallets/01.addr)" \
   --required-signer-hash "$ownerPubKeyHash" \
+  --invalid-hereafter $expirationSlot \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.body"
 
@@ -112,6 +136,3 @@ cardano-cli conway transaction sign \
 cardano-cli conway transaction submit \
   --testnet-magic 1 \
   --tx-file "${tmpDir}tx.signed"
-
-# Add a newline after the submission response.
-echo ""

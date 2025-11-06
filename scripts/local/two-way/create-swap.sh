@@ -12,10 +12,19 @@ swapAddrFile="${tmpDir}twoWaySwap.addr"
 swapDatumFile="${tmpDir}swapDatum.json"
 beaconRedeemerFile="${tmpDir}twoWaySwapBeaconRedeemer.json"
 
-# The reference scripts are permanently locked in the swap address without a staking credential!
+# The reference scripts may already be locked on-chain. Check the two-way swap address without a
+# staking credential. Both the spending script and the beacon script will be permanently locked in
+# this address.
+#
+# cardano-cli conway address build \
+#   --payment-script-file $swapScriptFile \
+#   --testnet-magic 1 \
+#   --out-file $swapAddrFile
+#
 # You can use the `cardano-swaps query personal-address` command to see them.
-beaconScriptPreprodTestnetRef="115c9ebb9928b8ec6e0c9d1420c43421cfb323639dd9fdcf1e7155e73bec13c5#1"
-# beaconScriptSize=4707
+
+beaconScriptPreprodTestnetRef="9415db73d8d374572a58ad167e3051110251aff802987f8627b27e060dcd673f#1"
+# beaconScriptSize=4804
 
 # Export the swap validator script.
 echo "Exporting the swap validator script..."
@@ -30,7 +39,7 @@ cardano-cli conway address build \
   --testnet-magic 1 \
   --out-file $swapAddrFile
 
-echo "$(cat $swapAddrFile)"
+cat $swapAddrFile
 
 # Helper beacon variables.
 echo "Calculating the beacon names..."
@@ -39,7 +48,7 @@ beaconPolicyId=$(cardano-swaps beacon-info two-way policy-id \
 
 pairBeaconName=$(cardano-swaps beacon-info two-way pair-beacon \
   --first-asset lovelace \
-  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 asset1BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
@@ -47,7 +56,7 @@ asset1BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
   --stdout)
 
 asset2BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
-  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 pairBeacon="${beaconPolicyId}.${pairBeaconName}"
@@ -62,20 +71,34 @@ cardano-swaps beacon-redeemers two-way \
 
 # Create the swap datum.
 echo "Creating the swap datum..."
+
+# The expiration will be set 1 hr from now:
+currentSlot=$(cardano-swaps query current-slot --testnet)
+tmpExpirationSlot=$((currentSlot + 3600))
+tmpExpirationTime=$(cardano-swaps time convert-time --slot $tmpExpirationSlot --testnet)
+
+# The time must be rounded to the nearest minute.
+expirationTime=$(cardano-swaps time round-to-min --posix-time $tmpExpirationTime)
+# We need the corresponding slot to the rounded time for tx validity interval.
+expirationSlot=$(cardano-swaps time convert-time --posix-time $expirationTime --testnet)
+
+# Create the datum. The expiration field is optional.
 cardano-swaps datums two-way \
   --first-asset lovelace \
-  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
+  --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --first-price '1 / 1000000' \
   --second-price 2000000 \
+  --expiration $expirationTime \
   --out-file $swapDatumFile
 
-# Create the transaction.
+# Create the transaction. If you are creating a swap that expires, you must set
+# `invalid-hereafter` to the nearest expiration slot.
 echo "Building the transaction..."
 cardano-cli conway transaction build \
-  --tx-in 38fd18f4ca7c6587eb2703ac3bfd42e1406d089901e2c29f158358fdda5b196a#2 \
-  --tx-in 338945b8cc6d4c49aa0b94452b2f99c29c4b68efa89fcda8ed691e6fc81c97b0#0 \
-  --tx-in 44f58115ad9738de64bb5624b495a2e7abddfdbe055df474d7d980af1244d64e#0 \
-  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${asset1Beacon} + 1 ${asset2Beacon} + 11 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
+  --tx-in 96244b62d74ba9cfd8f1ad9094be8a5f729c300183637f49d40a2c8c84e12673#0 \
+  --tx-in 95e9112380578f7a7e8144346206de56f2144e45c58da6580fa8bcdaa65fd4ab#1 \
+  --tx-in 94cc87dc7ec40a8cd88cb8770d7b04096dd8a9ab17428cc2e1980f3f616dc213#0 \
+  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${asset1Beacon} + 1 ${asset2Beacon} + 11 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out-inline-datum-file $swapDatumFile \
   --mint "1 ${pairBeacon} + 1 ${asset1Beacon} + 1 ${asset2Beacon}" \
   --mint-tx-in-reference $beaconScriptPreprodTestnetRef \
@@ -84,6 +107,7 @@ cardano-cli conway transaction build \
   --policy-id "$beaconPolicyId" \
   --change-address "$(cat $HOME/wallets/01.addr)" \
   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
+  --invalid-hereafter $expirationSlot \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.body"
 
@@ -96,6 +120,3 @@ cardano-cli conway transaction sign \
 cardano-cli conway transaction submit \
   --testnet-magic 1 \
   --tx-file "${tmpDir}tx.signed"
-
-# Add a newline after the submission response.
-echo ""

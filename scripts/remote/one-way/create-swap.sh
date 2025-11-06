@@ -12,10 +12,19 @@ swapAddrFile="${tmpDir}oneWaySwap.addr"
 swapDatumFile="${tmpDir}swapDatum.json"
 beaconRedeemerFile="${tmpDir}oneWayBeaconRedeemer.json"
 
-# The reference scripts are permanently locked in the swap address without a staking credential!
+# The reference scripts may already be locked on-chain. Check the one-way swap address without a
+# staking credential. Both the spending script and the beacon script will be permanently locked in
+# this address.
+#
+# cardano-cli conway address build \
+#   --payment-script-file $swapScriptFile \
+#   --testnet-magic 1 \
+#   --out-file $swapAddrFile
+#
 # You can use the `cardano-swaps query personal-address` command to see them.
-beaconScriptPreprodTestnetRef="9fecc1d2cf99088facad02aeccbedb6a4f783965dc6c02bd04dc8b348e9a0858#1"
-beaconScriptSize=4432
+
+beaconScriptPreprodTestnetRef="b1d92732ba5392ba76129360bb838f80c0177a71f757dcec58e3f15b8aa1b3fe#1"
+beaconScriptSize=4614
 
 # Export the swap validator script.
 echo "Exporting the swap validator script..."
@@ -62,10 +71,23 @@ cardano-swaps beacon-redeemers one-way \
 
 # Create the swap datum.
 echo "Creating the swap datum..."
+
+# The expiration will be set 1 hr from now:
+currentSlot=$(cardano-swaps query current-slot --testnet)
+tmpExpirationSlot=$((currentSlot + 3600))
+tmpExpirationTime=$(cardano-swaps time convert-time --slot $tmpExpirationSlot --testnet)
+
+# The time must be rounded to the nearest minute.
+expirationTime=$(cardano-swaps time round-to-min --posix-time $tmpExpirationTime)
+# We need the corresponding slot to the rounded time for tx validity interval.
+expirationSlot=$(cardano-swaps time convert-time --posix-time $expirationTime --testnet)
+
+# Create the datum. The expiration field is optional.
 cardano-swaps datums one-way \
   --ask-asset lovelace \
   --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --offer-price '1000000 / 1' \
+  --expiration $expirationTime \
   --out-file $swapDatumFile
 
 # Create the transaction.
@@ -74,13 +96,13 @@ cardano-swaps query protocol-params \
   --testnet \
   --out-file "${tmpDir}protocol.json"
 
-initial_change=$((21607098))
+initial_change=$((99010391))
 
 echo "Building the initial transaction..."
 cardano-cli conway transaction build-raw \
-  --tx-in e95a73a1e03afdf74b86d10e504b64285f7afdfab7f7021a41054ae4b377ca9f#1 \
-  --tx-in ee55fa696e5e7dd29dafef7c47e36e37207e88b0a120a1156a709c429fe08c8f#3 \
-  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${offerBeacon} + 1 ${askBeacon} + 3 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-in d99bafc4242e7fc1df7337c44d93734e04879a199c9e4f70cdb54f3005cf56ae#0 \
+  --tx-in f6a5b6357b72a93829921978f0ddb212b0ca49839a48eebb123c58fdc95a823f#0 \
+  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${offerBeacon} + 1 ${askBeacon} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out-inline-datum-file $swapDatumFile \
   --tx-out "$(cat $HOME/wallets/01.addr) + ${initial_change} lovelace " \
   --mint "1 ${pairBeacon} + 1 ${offerBeacon} + 1 ${askBeacon}" \
@@ -93,6 +115,7 @@ cardano-cli conway transaction build-raw \
   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --tx-total-collateral 21000000 \
   --tx-out-return-collateral "$(cat $HOME/wallets/01.addr) 21000000 lovelace" \
+  --invalid-hereafter $expirationSlot \
   --fee 5000000 \
   --out-file "${tmpDir}tx.body"
 
@@ -109,9 +132,9 @@ mint_steps=$(echo $exec_units | jq '.result | .[] | select(.validator.purpose=="
 
 echo "Rebuilding the transaction with proper executions budgets..."
 cardano-cli conway transaction build-raw \
-  --tx-in e95a73a1e03afdf74b86d10e504b64285f7afdfab7f7021a41054ae4b377ca9f#1 \
-  --tx-in ee55fa696e5e7dd29dafef7c47e36e37207e88b0a120a1156a709c429fe08c8f#3 \
-  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${offerBeacon} + 1 ${askBeacon} + 3 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-in d99bafc4242e7fc1df7337c44d93734e04879a199c9e4f70cdb54f3005cf56ae#0 \
+  --tx-in f6a5b6357b72a93829921978f0ddb212b0ca49839a48eebb123c58fdc95a823f#0 \
+  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${offerBeacon} + 1 ${askBeacon} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out-inline-datum-file $swapDatumFile \
   --tx-out "$(cat $HOME/wallets/01.addr) + ${initial_change} lovelace " \
   --mint "1 ${pairBeacon} + 1 ${offerBeacon} + 1 ${askBeacon}" \
@@ -124,6 +147,7 @@ cardano-cli conway transaction build-raw \
   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --tx-total-collateral 21000000 \
   --tx-out-return-collateral "$(cat $HOME/wallets/01.addr) 21000000 lovelace" \
+  --invalid-hereafter $expirationSlot \
   --fee 5000000 \
   --out-file "${tmpDir}tx.body"
 
@@ -138,9 +162,9 @@ req_collateral=$(printf %.0f $(echo "${req_fee}*1.5" | bc))
 
 echo "Rebuilding the transaction with proper transaction fee..."
 cardano-cli conway transaction build-raw \
-  --tx-in e95a73a1e03afdf74b86d10e504b64285f7afdfab7f7021a41054ae4b377ca9f#1 \
-  --tx-in ee55fa696e5e7dd29dafef7c47e36e37207e88b0a120a1156a709c429fe08c8f#3 \
-  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${offerBeacon} + 1 ${askBeacon} + 3 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
+  --tx-in d99bafc4242e7fc1df7337c44d93734e04879a199c9e4f70cdb54f3005cf56ae#0 \
+  --tx-in f6a5b6357b72a93829921978f0ddb212b0ca49839a48eebb123c58fdc95a823f#0 \
+  --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${offerBeacon} + 1 ${askBeacon} + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --tx-out-inline-datum-file $swapDatumFile \
   --tx-out "$(cat $HOME/wallets/01.addr) + $((initial_change-req_fee)) lovelace " \
   --mint "1 ${pairBeacon} + 1 ${offerBeacon} + 1 ${askBeacon}" \
@@ -153,6 +177,7 @@ cardano-cli conway transaction build-raw \
   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --tx-total-collateral $req_collateral \
   --tx-out-return-collateral "$(cat $HOME/wallets/01.addr) $((21000000-$req_collateral)) lovelace" \
+  --invalid-hereafter $expirationSlot \
   --fee "$req_fee" \
   --out-file "${tmpDir}tx.body"
 

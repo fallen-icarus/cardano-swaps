@@ -3,11 +3,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
--- | The emulator is currently unable to test staking validators. However, the logic of the 
--- staking execution for the beacon script is identical to the minting policy execution so this
--- is not an obstacle. Once the emulator is able to test staking validators, this module will
--- be finished. For now, this module uses the minting execution just to get the beacon script
--- to be executed by the emulator.
 module Test.OneWaySwap.UpdateSwap
   ( 
     -- * Scenarios Tested
@@ -37,7 +32,7 @@ import Data.String (fromString)
 import Control.Monad (replicateM_,forM_)
 
 import CardanoSwaps.OneWaySwap
-import CardanoSwaps.Utils 
+import CardanoSwaps.Utils hiding (posixTimeToSlot)
 
 import Test.Prelude
 
@@ -53,7 +48,7 @@ initializeReferenceScripts = do
       { outputs =
           [ Output
               { outputAddress = refScriptAddress
-              , outputValue = LV.lovelaceToValue 20_000_000
+              , outputValue = LV.lovelaceToValue 21_000_000
               , outputDatum = NoOutputDatum
               , outputReferenceScript = toReferenceScript $ Just beaconScript
               }
@@ -127,7 +122,7 @@ regressionTest1 = do
       pairBeacon = genPairBeaconName offer ask
       offerBeacon = genOfferBeaconName offer
       askBeacon = genAskBeaconName ask
-      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
 
   -- Initialize scenario
   (mintRef,spendRef) <- initializeReferenceScripts 
@@ -237,7 +232,7 @@ regressionTest2 = do
       pairBeacon = genPairBeaconName offer ask
       offerBeacon = genOfferBeaconName offer
       askBeacon = genAskBeaconName ask
-      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
 
   -- Initialize scenario
   (mintRef,spendRef) <- initializeReferenceScripts 
@@ -352,7 +347,7 @@ regressionTest3 = do
       pairBeacon1 = genPairBeaconName offer1 ask1
       offerBeacon1 = genOfferBeaconName offer1
       askBeacon1 = genAskBeaconName ask1
-      swapDatum1 = genSwapDatum offer1 ask1 (unsafeRatio 1_000_000 1) Nothing
+      swapDatum1 = genSwapDatum offer1 ask1 (unsafeRatio 1_000_000 1) Nothing Nothing
 
       -- Swap2 Info
       offer2 = OfferAsset (testTokenSymbol,"TestToken2")
@@ -360,7 +355,7 @@ regressionTest3 = do
       pairBeacon2 = genPairBeaconName offer2 ask2
       offerBeacon2 = genOfferBeaconName offer2
       askBeacon2 = genAskBeaconName ask2
-      swapDatum2 = genSwapDatum offer2 ask2 (unsafeRatio 1_000_000 1) Nothing
+      swapDatum2 = genSwapDatum offer2 ask2 (unsafeRatio 1_000_000 1) Nothing Nothing
 
   -- Initialize scenario
   (mintRef,spendRef) <- initializeReferenceScripts 
@@ -462,7 +457,7 @@ regressionTest4 = do
       pairBeacon = genPairBeaconName offer ask
       offerBeacon = genOfferBeaconName offer
       askBeacon = genAskBeaconName ask
-      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
 
   -- Initialize scenario
   (mintRef,spendRef) <- initializeReferenceScripts 
@@ -575,7 +570,7 @@ benchTest1 number = do
       pairBeacon1= genPairBeaconName offer1 ask1
       offerBeacon1 = genOfferBeaconName offer1
       askBeacon1 = genAskBeaconName ask1
-      swapDatum1 = genSwapDatum offer1 ask1 (unsafeRatio 1_000_000 1) Nothing
+      swapDatum1 = genSwapDatum offer1 ask1 (unsafeRatio 1_000_000 1) Nothing Nothing
 
   -- Initialize scenario
   (mintRef,spendRef) <- initializeReferenceScripts 
@@ -685,7 +680,7 @@ benchTest2 number = do
       pairs = zip offers asks
       datums = 
         flip map pairs $ \(offer,ask) -> 
-          genSwapDatum offer ask (unsafeRatio 1 1) Nothing
+          genSwapDatum offer ask (unsafeRatio 1 1) Nothing Nothing
 
       sampleOutputs ds = flip map ds $ \datum@SwapDatum{..} ->
           Output
@@ -797,7 +792,7 @@ benchTest3 number = do
       pairs = zip offers asks
       datums = 
         flip map pairs $ \(offer,ask) -> 
-          genSwapDatum offer ask (unsafeRatio 1 1) Nothing
+          genSwapDatum offer ask (unsafeRatio 1 1) Nothing Nothing
 
       beforeDatums = take 40 datums
       afterDatums = drop 40 datums
@@ -891,7 +886,7 @@ benchTest3 number = do
 -- | A `TestTree` containing all swap close scenarios.
 tests :: TestTree
 tests =
-  testGroup "Close Swap(s)"
+  testGroup "Update Swap(s)"
     [ -- Success Tests (Regression Tests)
       mustSucceed "regressionTest1" regressionTest1
     , mustSucceed "regressionTest2" regressionTest2

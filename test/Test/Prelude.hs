@@ -16,6 +16,7 @@ module Test.Prelude
   , Certificate(..)
   , CertificateAction(..)
   , Output(..)
+  , ValidityRange(..)
   , TransactionParams(..)
   , emptyTxParams
   , transact
@@ -42,6 +43,9 @@ module Test.Prelude
   , txOutRefsAndDatumsAtAddress
   , toVersioned
   , testTraceLastLogs
+  , posixTimeToSlot
+  , slotToPosixTime
+  , toNearestMin
   , grouped
   , testTrace
 
@@ -50,6 +54,7 @@ module Test.Prelude
   , E.defaultOptions
   , E.MonadEmulator
   , E.nextSlot
+  , E.awaitTime
   , PV2.OutputDatum(..)
   , void
   , alwaysSucceedValidator
@@ -89,8 +94,9 @@ import Test.Tasty (TestName,TestTree)
 import Test.Tasty.HUnit (testCase,assertFailure)
 import Control.Monad.Except (runExceptT)
 import Control.Monad.RWS.Strict (runRWS)
+import Data.Default (def)
 
-import CardanoSwaps.Utils
+import CardanoSwaps.Utils hiding (posixTimeToSlot)
 
 -------------------------------------------------
 -- Core Test Framework
@@ -161,6 +167,11 @@ data Certificate = Certificate
   , certificateAction :: CertificateAction
   } deriving (Generic,Show,Eq)
 
+data ValidityRange = ValidityRange
+  { validityRangeLowerBound :: Maybe L.Slot
+  , validityRangeUpperBound :: Maybe L.Slot
+  } deriving (Generic,Show,Eq)
+
 -- | Used to create a transaction with the specified constraints.
 data TransactionParams = TransactionParams
   { tokens :: [TokenMint]
@@ -171,10 +182,11 @@ data TransactionParams = TransactionParams
   -- ^ In order for a plutus script to see a pubkey, it must be present in this list.
   , withdrawals :: [Withdrawal] 
   , certificates :: [Certificate] 
+  , validityRange :: ValidityRange
   } deriving (Generic,Show,Eq)
 
 emptyTxParams :: TransactionParams
-emptyTxParams = TransactionParams [] [] [] [] [] [] []
+emptyTxParams = TransactionParams [] [] [] [] [] [] [] (ValidityRange Nothing Nothing)
 
 transact 
   :: (E.MonadEmulator m) 
@@ -283,6 +295,15 @@ transact mainAddress extraAddresses privKeys TransactionParams{..} = do
                       (C.toCardanoScriptData $ PV2.getRedeemer redeemer)
                       LTx.zeroExecutionUnits -- The autobalancer will set these.
            )
+      (lowerBound,upperBound) =
+        let (ValidityRange mLowerBound mUpperBound) = validityRange
+        in ( maybe 
+                C.TxValidityNoLowerBound 
+                (C.TxValidityLowerBound C.AllegraEraOnwardsBabbage . toCardanoSlotNo)
+                mLowerBound
+           , C.TxValidityUpperBound C.shelleyBasedEra $ 
+               fmap toCardanoSlotNo mUpperBound
+           )
       tx =
         C.CardanoBuildTx $ E.emptyTxBodyContent
           { C.txMintValue = C.TxMintValue C.MaryEraOnwardsBabbage mintValue mintWitnessMap
@@ -294,6 +315,8 @@ transact mainAddress extraAddresses privKeys TransactionParams{..} = do
           , C.txWithdrawals = C.TxWithdrawals C.ShelleyBasedEraBabbage wdrls
           , C.txCertificates = C.TxCertificates C.ShelleyBasedEraBabbage certs $
               C.BuildTxWith $ Map.fromList certWits
+          , C.txValidityLowerBound = lowerBound
+          , C.txValidityUpperBound = upperBound
           }
   E.submitTxConfirmed utxos mainAddress privKeys tx
 
@@ -485,6 +508,22 @@ toCardanoApiKeyHash (PV2.PubKeyHash bs) =
   let bsx = PV2.fromBuiltin bs
       tg = "toCardanoApiKeyHash (" <> show (B.length bsx) <> " bytes)"
    in LTx.tag tg $ LTx.deserialiseFromRawBytes (C.AsHash C.AsPaymentKey) bsx
+
+toCardanoSlotNo :: L.Slot -> C.SlotNo
+toCardanoSlotNo (L.Slot i) = C.SlotNo (fromInteger i)
+
+posixTimeToSlot :: POSIXTime -> L.Slot
+posixTimeToSlot = E.posixTimeToEnclosingSlot def
+
+slotToPosixTime :: L.Slot -> POSIXTime
+slotToPosixTime = E.slotToBeginPOSIXTime def
+
+toNearestMin :: POSIXTime -> POSIXTime
+toNearestMin time =
+  let remainder = time `mod` 60_000
+  in if remainder >= 30_000
+     then time + (60_000 - remainder)
+     else time - remainder
 
 grouped :: Int -> [a] -> [[a]]
 grouped _ [] = []

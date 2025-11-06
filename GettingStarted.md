@@ -11,7 +11,6 @@ must be manually balanced.
 ## Table of Contents
 - [Installing](#installing)
 - [Aiken For Developers](#aiken-for-developers)
-- [Overspent Budget](#overspent-budget)
 - [Using Remote Nodes](#using-remote-nodes)
 - [Minting Test Tokens](#minting-test-tokens)
 - [One-Way Swaps](#one-way-swaps)
@@ -36,6 +35,10 @@ must be manually balanced.
   - [Personal Address](#personal-address)
   - [Own Swaps](#own-swaps)
   - [All Swaps](#all-swaps)
+  - [Current Slot](#current-slot)
+- [Time](#time)
+  - [Conversions](#conversions)
+  - [Rounding to Nearest Minute](#rounding-to-nearest-minute)
 
 
 ## Installing
@@ -51,7 +54,7 @@ sudo apt upgrade
 sudo apt-get install autoconf automake build-essential curl g++ git jq libffi-dev libgmp-dev libncursesw5 libssl-dev libsystemd-dev libtinfo-dev libtool make pkg-config wget zlib1g-dev liblzma-dev libpq-dev
 ```
 
-### Install GHC 8.10.7 and cabal
+### Install GHC and cabal
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
 ```
@@ -148,7 +151,7 @@ the compiled scripts yourself, you will also need to install `aiken`. You can in
 cargo like this:
 
 ```bash
-cargo install aiken --version 1.0.20-alpha
+cargo install aiken --version 1.0.26-alpha
 ```
 
 Make sure you instal verison 1.0.20-alpha. Newer versions may change some things and so the source
@@ -160,7 +163,7 @@ updated to the latest version.
 > ```bash
 > git clone https://github.com/aiken-lang/aiken
 > cd aiken
-> git checkout v1.0.20-alpha
+> git checkout v1.0.26-alpha
 > cargo build
 > ```
 > The executable should now be located at `target/debug/aiken`.
@@ -168,7 +171,7 @@ updated to the latest version.
 When building the protocol's blueprints, make sure to use
 
 ```bash
-aiken build --keep-traces
+aiken build -f user-defined -t verbose
 ```
 
 or else the user friendly error messages will be stripped from the smart contracts and the resulting
@@ -196,21 +199,6 @@ tests will fail if performance increases to alert you of the change.
 To see the documentation for the tests, you can build the haddocks for the tests using `cabal
 haddock tests`. The documentation may be easier to read than the source code. You can view the
 documentation in any browser.
-
-## Overspent Budget
-
-While `cardano-cli` is able to auto-balance transactions, the auto-balancer does not work when
-scripts are executed in a transaction where native tokens must go to the change address. It does not
-properly add the change *before* estimating the execution budgets for the transaction which always
-results in it under-estimating the required execution units needed by the scripts. There are open
-issues about this [here](https://github.com/input-output-hk/cardano-node/issues/5386) and
-[here](https://github.com/input-output-hk/cardano-api/issues/302). If you ever see a very long and
-confusing error message about overspending budgets while using `cardano-cli conway transaction
-build`, this is probably the issue.
-
-As a work around, whenever you build a transaction using `cardano-cli conway transaction build`
-where scripts are being executed, you must manually create an output that has all of the native
-tokens that would normally go into the change output. You can let the auto-balancer balance the ada.
 
 ## Using Remote Nodes
 
@@ -417,6 +405,7 @@ cardano-swaps datums one-way \
   --ask-asset lovelace \
   --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --offer-price '1000000 / 1' \
+  --expiration 1762192262000 \
   --out-file oneWaySwapDatum.json
 ```
 
@@ -425,6 +414,26 @@ taken. The price can be specified as either a fraction (like above) or a decimal
 `--offer-price 1000000`. Specifying a decimal may be more convenient but specifying the fraction
 offers more control since it will be used on-chain as is (the decimal must be converted to a
 fraction).
+
+The `--expiration` flag is optional, but if it is used, the POSIX time supplied must be a whole
+minute. You can use the following example commands to easily come up with an expiration time:
+
+```bash
+# The expiration will be set 1 hr from now:
+currentSlot=$(cardano-swaps query current-slot --testnet)
+tmpExpirationSlot=$((currentSlot + 3600))
+tmpExpirationTime=$(cardano-swaps time convert-time --slot $tmpExpirationSlot --testnet)
+
+# The time must be rounded to the nearest minute.
+expirationTime=$(cardano-swaps time round-to-min --posix-time $tmpExpirationTime)
+# We need the corresponding slot to the rounded time for tx validity interval.
+expirationSlot=$(cardano-swaps time convert-time --posix-time $expirationTime --testnet)
+```
+
+You will need to use the `expirationSlot` variable for the `invalid-hereafter` bound in the
+transaction. If you are creating multiple swaps in the tx, use the nearest `expirationSlot` for the
+`invalid-hereafter` bound. If no swaps have expirations set, you can omit the `invalid-hereafter`
+bound.
 
 The `--input-swap-ref` flag is only needed when executing a swap; you can leave it out here.
 
@@ -557,6 +566,7 @@ cardano-swaps datums one-way \
   --ask-asset lovelace \
   --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --offer-price '1000000 / 2' \
+  --expiration 1762192262000 \
   --out-file oneWaySwapDatum.json
 ```
 
@@ -565,6 +575,26 @@ taken. The price can be specified as either a fraction (like above) or a decimal
 `--offer-price 50000`. Specifying a decimal may be more convenient but specifying the fraction
 offers more control since it will be used on-chain as is (the decimal must be converted to a
 fraction).
+
+The `--expiration` flag is optional, but if it is used, the POSIX time supplied must be a whole
+minute. You can use the following example commands to easily come up with an expiration time:
+
+```bash
+# The expiration will be set 1 hr from now:
+currentSlot=$(cardano-swaps query current-slot --testnet)
+tmpExpirationSlot=$((currentSlot + 3600))
+tmpExpirationTime=$(cardano-swaps time convert-time --slot $tmpExpirationSlot --testnet)
+
+# The time must be rounded to the nearest minute.
+expirationTime=$(cardano-swaps time round-to-min --posix-time $tmpExpirationTime)
+# We need the corresponding slot to the rounded time for tx validity interval.
+expirationSlot=$(cardano-swaps time convert-time --posix-time $expirationTime --testnet)
+```
+
+You will need to use the `expirationSlot` variable for the `invalid-hereafter` bound in the
+transaction. If you are creating multiple swaps in the tx, use the nearest `expirationSlot` for the
+`invalid-hereafter` bound. If no swaps have expirations set, you can omit the `invalid-hereafter`
+bound.
 
 The `--input-swap-ref` flag is only needed when executing a swap; you can leave it out here.
 
@@ -688,7 +718,8 @@ burned. This example is just for completeness.
 cardano-swaps datums one-way \
   --ask-asset lovelace \
   --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
-  --price-numerator 50000 \
+  --offer-price '1000000 / 1' \
+  --expiration 1762192262000 \
   --out-file oneWaySwapDatum.json
 ```
 
@@ -696,6 +727,26 @@ cardano-swaps datums one-way \
 taken. The price can be specified as either a fraction (like above) or a decimal. Specifying a
 decimal may be more convenient but specifying the fraction offers more control since it will be used
 on-chain as is (the decimal must be converted to a fraction).
+
+The `--expiration` flag is optional, but if it is used, the POSIX time supplied must be a whole
+minute. You can use the following example commands to easily come up with an expiration time:
+
+```bash
+# The expiration will be set 1 hr from now:
+currentSlot=$(cardano-swaps query current-slot --testnet)
+tmpExpirationSlot=$((currentSlot + 3600))
+tmpExpirationTime=$(cardano-swaps time convert-time --slot $tmpExpirationSlot --testnet)
+
+# The time must be rounded to the nearest minute.
+expirationTime=$(cardano-swaps time round-to-min --posix-time $tmpExpirationTime)
+# We need the corresponding slot to the rounded time for tx validity interval.
+expirationSlot=$(cardano-swaps time convert-time --posix-time $expirationTime --testnet)
+```
+
+You will need to use the `expirationSlot` variable for the `invalid-hereafter` bound in the
+transaction. If you are creating multiple swaps in the tx, use the nearest `expirationSlot` for the
+`invalid-hereafter` bound. If no swaps have expirations set, you can omit the `invalid-hereafter`
+bound.
 
 The `--input-swap-ref` flag is only needed when executing a swap; you can leave it out here.
 
@@ -705,8 +756,6 @@ To see how to build the transaction using a local node, refer
 
 To see how to build the transaction using a remote node, refer
 [here](scripts/remote/one-way/convert-swap.sh).
-
-
 
 ### Executing A Swap
 
@@ -731,6 +780,7 @@ cardano-swaps datums one-way \
   --ask-asset lovelace \
   --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --offer-price '50000 / 1' \
+  --expiration 1762192262000 \
   --input-swap-ref 71ae3f66eead7198a79232ff8f2c032d845d0070d3f066f1b5dec3c2abe99788#0 \
   --out-file oneWaySwapDatum.json
 ```
@@ -742,6 +792,10 @@ Since the price in the swap datum must be exact, it is better to specify the pri
 
 
 ##### Building the transaction
+If an swaps in the tx have an expiration set, you will need to set the `invalid-hereafter` bound to
+the nearest expiration slot. You can use `cardano-swaps time convert-time` to convert the datum's
+POSIX time to a slot number.
+
 To see how to build the transaction using a local node, refer 
 [here](scripts/local/one-way/swap-assets.sh).
 
@@ -890,6 +944,7 @@ cardano-swaps datums two-way \
   --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --first-price '1 / 1000000' \
   --second-price '1500000 / 1' \
+  --expiration 1762192262000 \
   --out-file twoWaySwapDatum.json
 ```
 
@@ -904,6 +959,26 @@ the rest.
 native token given for every 1 ADA taken.
 - `second-price` = first asset / second asset. Therefore, the above example's `second-price` is 1.5
 ADA given for every 1 native token taken.
+
+The `--expiration` flag is optional, but if it is used, the POSIX time supplied must be a whole
+minute. You can use the following example commands to easily come up with an expiration time:
+
+```bash
+# The expiration will be set 1 hr from now:
+currentSlot=$(cardano-swaps query current-slot --testnet)
+tmpExpirationSlot=$((currentSlot + 3600))
+tmpExpirationTime=$(cardano-swaps time convert-time --slot $tmpExpirationSlot --testnet)
+
+# The time must be rounded to the nearest minute.
+expirationTime=$(cardano-swaps time round-to-min --posix-time $tmpExpirationTime)
+# We need the corresponding slot to the rounded time for tx validity interval.
+expirationSlot=$(cardano-swaps time convert-time --posix-time $expirationTime --testnet)
+```
+
+You will need to use the `expirationSlot` variable for the `invalid-hereafter` bound in the
+transaction. If you are creating multiple swaps in the tx, use the nearest `expirationSlot` for the
+`invalid-hereafter` bound. If no swaps have expirations set, you can omit the `invalid-hereafter`
+bound.
 
 The `--input-swap-ref` flag is only needed when executing a swap; you can leave it out here.
 
@@ -1040,6 +1115,7 @@ cardano-swaps datums two-way \
   --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --second-price 1000000 \
   --first-price '2 / 1000000' \
+  --expiration 1762192262000 \
   --out-file twoWaySwapDatum.json
 ```
 
@@ -1054,6 +1130,26 @@ the rest.
 native token given for every 1 ADA taken.
 - `second-price` = first asset / second asset. Therefore, the above example's `second-price` is 1
 ADA given for every 1 native token taken.
+
+The `--expiration` flag is optional, but if it is used, the POSIX time supplied must be a whole
+minute. You can use the following example commands to easily come up with an expiration time:
+
+```bash
+# The expiration will be set 1 hr from now:
+currentSlot=$(cardano-swaps query current-slot --testnet)
+tmpExpirationSlot=$((currentSlot + 3600))
+tmpExpirationTime=$(cardano-swaps time convert-time --slot $tmpExpirationSlot --testnet)
+
+# The time must be rounded to the nearest minute.
+expirationTime=$(cardano-swaps time round-to-min --posix-time $tmpExpirationTime)
+# We need the corresponding slot to the rounded time for tx validity interval.
+expirationSlot=$(cardano-swaps time convert-time --posix-time $expirationTime --testnet)
+```
+
+You will need to use the `expirationSlot` variable for the `invalid-hereafter` bound in the
+transaction. If you are creating multiple swaps in the tx, use the nearest `expirationSlot` for the
+`invalid-hereafter` bound. If no swaps have expirations set, you can omit the `invalid-hereafter`
+bound.
 
 The `--input-swap-ref` flag is only needed when executing a swap; you can leave it out here.
 
@@ -1170,6 +1266,7 @@ cardano-swaps datums two-way \
   --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
   --second-price 1000000 \
   --first-price '2 / 1000000' \
+  --expiration 1762192262000 \
   --out-file twoWaySwapDatum.json
 ```
 
@@ -1184,6 +1281,26 @@ the rest.
 native token given for every 1 ADA taken.
 - `second-price` = first asset / second asset. Therefore, the above example's `second-price` is 1
 ADA given for every 1 native token taken.
+
+The `--expiration` flag is optional, but if it is used, the POSIX time supplied must be a whole
+minute. You can use the following example commands to easily come up with an expiration time:
+
+```bash
+# The expiration will be set 1 hr from now:
+currentSlot=$(cardano-swaps query current-slot --testnet)
+tmpExpirationSlot=$((currentSlot + 3600))
+tmpExpirationTime=$(cardano-swaps time convert-time --slot $tmpExpirationSlot --testnet)
+
+# The time must be rounded to the nearest minute.
+expirationTime=$(cardano-swaps time round-to-min --posix-time $tmpExpirationTime)
+# We need the corresponding slot to the rounded time for tx validity interval.
+expirationSlot=$(cardano-swaps time convert-time --posix-time $expirationTime --testnet)
+```
+
+You will need to use the `expirationSlot` variable for the `invalid-hereafter` bound in the
+transaction. If you are creating multiple swaps in the tx, use the nearest `expirationSlot` for the
+`invalid-hereafter` bound. If no swaps have expirations set, you can omit the `invalid-hereafter`
+bound.
 
 The `--input-swap-ref` flag is only needed when executing a swap; you can leave it out here.
 
@@ -1244,6 +1361,7 @@ cardano-swaps datums two-way \
   --second-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --first-price '10 / 1000000' \
   --second-price '1500000 / 1' \
+  --expiration 1762192262000 \
   --input-swap-ref 61e92820c602d7d4b388140174e2ed76a924541b08a57072bc79c003b84d5a01#0 \
   --out-file twoWaySwapDatum.json
 ```
@@ -1254,6 +1372,10 @@ to the swap input: the `--input-swap-ref` flag should specify the UTxO of the sw
 Since the prices in the swap datum must be exact, it is better to specify the prices as fractions.
 
 ##### Building the transaction
+If an swaps in the tx have an expiration set, you will need to set the `invalid-hereafter` bound to
+the nearest expiration slot. You can use `cardano-swaps time convert-time` to convert the datum's
+POSIX time to a slot number.
+
 To see how to build the transaction using a local node, refer 
 [here](scripts/local/two-way/swap-assets.sh).
 
@@ -1425,4 +1547,29 @@ cardano-swaps query all-swaps ask \
   --ask-asset lovelace \
   --pretty \
   --stdout
+```
+
+##### Current Slot
+
+You can query the most recent slot number using the `cardano-swaps query current-slot` command.
+
+### Time
+
+##### Conversions
+Since plutus scripts use POSIX time (in milliseconds) while cardano-cli uses slot numbers for the
+transaction validity intervals, you need a way to convert between the two units.
+
+``` Bash
+cardano-swaps time convert-time --testnet --slot 26668590
+
+cardano-swaps time convert-time --testnet --posix-time 1682351790000
+```
+
+##### Rounding to Nearest Minute
+
+All swap expirations must fall on 1-min intervals. You can round a desired expiration POSIX time to
+the nearest minute using:
+
+```bash
+cardano-swaps time round-to-min --posix-time 1682351790000
 ```

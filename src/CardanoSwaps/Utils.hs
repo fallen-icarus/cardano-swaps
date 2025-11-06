@@ -40,6 +40,16 @@ module CardanoSwaps.Utils
   , toVersionedLedgerScript
   , wrapVersionedLedgerScript
   , toCardanoApiScript
+  , getScriptSize
+
+    -- * Time
+  , PV2.POSIXTime(..)
+  , L.Slot(..)
+  , slotToPOSIXTime
+  , posixTimeToSlot
+  , preprodTimeConfig
+  , mainnetTimeConfig
+  , toNearestMinute
 
   -- * Re-exports
   , applyArguments
@@ -188,6 +198,59 @@ readPlutusRational s = case fromGHC <$> (readMaybeRatio sample <|> readMaybeDoub
     readMaybeDouble = fmap toRational . readMaybe @Double
 
 -------------------------------------------------
+-- Time
+-------------------------------------------------
+-- | Datatype to configure the length (ms) of one slot and the beginning of the
+-- first slot.
+data SlotConfig = SlotConfig
+  { scSlotLength :: !Integer
+  -- ^ Length (number of milliseconds) of one slot
+  , scSlotZeroTime :: !PV2.POSIXTime
+  -- ^ Beginning of slot 0 (in milliseconds)
+  } deriving (Eq, Show)
+
+-- | Get the starting 'POSIXTime' of a 'Slot' given a 'SlotConfig'.
+slotToBeginPOSIXTime :: SlotConfig -> L.Slot -> PV2.POSIXTime
+slotToBeginPOSIXTime SlotConfig{scSlotLength, scSlotZeroTime} (L.Slot n) =
+  let msAfterBegin = n * scSlotLength
+   in PV2.POSIXTime $ PV2.getPOSIXTime scSlotZeroTime + msAfterBegin
+
+-- | Convert a 'POSIXTime' to 'Slot' given a 'SlotConfig'.
+posixTimeToEnclosingSlot :: SlotConfig -> PV2.POSIXTime -> L.Slot
+posixTimeToEnclosingSlot SlotConfig{scSlotLength, scSlotZeroTime} (PV2.POSIXTime t) =
+  let timePassed = t - PV2.getPOSIXTime scSlotZeroTime
+      slotsPassed = PlutusTx.divide timePassed scSlotLength
+   in L.Slot slotsPassed
+
+slotToPOSIXTime :: SlotConfig -> L.Slot -> PV2.POSIXTime
+slotToPOSIXTime = slotToBeginPOSIXTime
+
+posixTimeToSlot :: SlotConfig -> PV2.POSIXTime -> L.Slot
+posixTimeToSlot = posixTimeToEnclosingSlot
+
+-- | The preproduction testnet has not always had 1 second slots. Therefore, the default settings
+-- for SlotConfig are not usable on the testnet. To fix this, the proper SlotConfig must be
+-- normalized to "pretend" that the testnet has always used 1 second slot intervals.
+--
+-- The normalization is done by taking a slot time and subtracting the slot number from it.
+-- For example, slot 56919374 occurred at 1712602574 POSIXTime. So subtracting the slot number 
+-- from the time yields the normalized 0 time. The final number needs to be converted to
+-- milliseconds.
+preprodTimeConfig :: SlotConfig
+preprodTimeConfig = SlotConfig 1000 $ PV2.POSIXTime $ (1712603045 - 56919845) * 1000
+
+-- | The mainnet config must also be normalized.
+mainnetTimeConfig :: SlotConfig
+mainnetTimeConfig = SlotConfig 1000 $ PV2.POSIXTime $ (1712661664 - 121095373) * 1000
+
+toNearestMinute :: PV2.POSIXTime -> PV2.POSIXTime
+toNearestMinute time =
+  let remainder = time `mod` 60_000
+  in if remainder >= 30_000
+     then time + (60_000 - remainder)
+     else time - remainder
+
+-------------------------------------------------
 -- Misc
 -------------------------------------------------
 toCardanoApiScript :: PV2.SerialisedScript -> Api.Script Api.PlutusScriptV2
@@ -233,3 +296,7 @@ unsafeToBuiltinByteString = (\(PV2.LedgerBytes bytes') -> bytes')
                           . unsafeFromRight
                           . fromHex
                           . fromString
+
+getScriptSize :: PV2.SerialisedScript -> Integer
+getScriptSize = UPLC.serialisedSize
+

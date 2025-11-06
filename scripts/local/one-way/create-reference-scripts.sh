@@ -9,8 +9,7 @@
 #   --testnet-magic 1 \
 #   --out-file $swapAddrFile
 #
-# Preprod: addr_test1wqql5djxthlrdcnvy87m7uswf0d0es9cdw6nvl72gcqj74s38ksy4
-# Mainnet: addr1wyql5djxthlrdcnvy87m7uswf0d0es9cdw6nvl72gcqj74s20zvts
+# You can use the `cardano-swaps query personal-address` command to see them.
 
 # Variables
 tmpDir="/tmp/cardano-swaps/"
@@ -34,12 +33,12 @@ cardano-swaps scripts one-way beacon-script \
 ## Create and submit the transaction.
 echo "Building the transaction..."
 cardano-cli conway transaction build \
-  --tx-in edadc501e0da8129a9b6168be85cf4bcafffb79ef5545633028531752949c106#0 \
-  --tx-in edadc501e0da8129a9b6168be85cf4bcafffb79ef5545633028531752949c106#1 \
-  --tx-in d4fbd706c39717ff0391fcb8dec5c643e9156bae98bb2a07cbf60948b05c28db#1 \
+  --tx-in d40c0194ed824eb61eda38fabbc3d3afd08f3877617e57e02435347f7749fac1#0 \
+  --tx-in d40c0194ed824eb61eda38fabbc3d3afd08f3877617e57e02435347f7749fac1#1 \
+  --tx-in 283ccf650ce7dbfa6062fcfaa1df3d875dfceca64512e9fa1329abea64a845c8#0 \
   --tx-out "$(cat $HOME/wallets/01.addr) + 22000000 lovelace " \
   --tx-out-reference-script-file $swapScriptFile \
-  --tx-out "$(cat $HOME/wallets/01.addr) + 20000000 lovelace " \
+  --tx-out "$(cat $HOME/wallets/01.addr) + 21000000 lovelace " \
   --tx-out-reference-script-file $beaconScriptFile \
   --change-address "$(cat $HOME/wallets/01.addr)" \
   --testnet-magic 1 \
@@ -56,6 +55,3 @@ echo "Submitting the transaction..."
 cardano-cli conway transaction submit \
   --testnet-magic 1 \
   --tx-file "${tmpDir}tx.signed"
-
-# Add a newline after the submission response.
-echo ""

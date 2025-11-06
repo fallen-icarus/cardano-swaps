@@ -28,6 +28,3 @@ cardano-cli conway transaction sign \
 cardano-cli conway transaction submit \
   --testnet-magic 1 \
   --tx-file "${tmpDir}tx.signed"
-
-# Add a newline after the submission response.
-echo ""

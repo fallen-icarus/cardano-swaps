@@ -11,11 +11,11 @@ cardano-swaps query protocol-params \
   --testnet \
   --out-file "${tmpDir}protocol.json"
 
-initial_change=$((19759481-2000000))
+initial_change=$((22176510-2000000))
 
 echo "Building the initial transaction..."
 cardano-cli conway transaction build-raw \
-  --tx-in b6b5bd23fa762b2630dc9dedc10d0bac61d6ffa3617f451df8a8ee31a83c441f#1 \
+  --tx-in d99bafc4242e7fc1df7337c44d93734e04879a199c9e4f70cdb54f3005cf56ae#1 \
   --tx-out "$(cat $HOME/wallets/01.addr) 2000000 lovelace + 1000 ${alwaysSucceedSymbol}.${tokenName1}" \
   --tx-out "$(cat $HOME/wallets/01.addr) ${initial_change} lovelace" \
   --mint "1000 ${alwaysSucceedSymbol}.${tokenName1}" \
@@ -39,7 +39,7 @@ mint_steps=$(echo $exec_units | jq '.result | .[] | select(.validator.purpose=="
 
 echo "Rebuilding the transaction with proper executions budgets..."
 cardano-cli conway transaction build-raw \
-  --tx-in b6b5bd23fa762b2630dc9dedc10d0bac61d6ffa3617f451df8a8ee31a83c441f#1 \
+  --tx-in d99bafc4242e7fc1df7337c44d93734e04879a199c9e4f70cdb54f3005cf56ae#1 \
   --tx-out "$(cat $HOME/wallets/01.addr) 2000000 lovelace + 1000 ${alwaysSucceedSymbol}.${tokenName1}" \
   --tx-out "$(cat $HOME/wallets/01.addr) ${initial_change} lovelace" \
   --mint "1000 ${alwaysSucceedSymbol}.${tokenName1}" \
@@ -63,7 +63,7 @@ req_collateral=$(printf %.0f $(echo "${req_fee}*1.5" | bc))
 
 echo "Rebuilding the transaction with required transaction fee..."
 cardano-cli conway transaction build-raw \
-  --tx-in b6b5bd23fa762b2630dc9dedc10d0bac61d6ffa3617f451df8a8ee31a83c441f#1 \
+  --tx-in d99bafc4242e7fc1df7337c44d93734e04879a199c9e4f70cdb54f3005cf56ae#1 \
   --tx-out "$(cat $HOME/wallets/01.addr) 2000000 lovelace + 1000 ${alwaysSucceedSymbol}.${tokenName1}" \
   --tx-out "$(cat $HOME/wallets/01.addr) + $(($initial_change-$req_fee)) lovelace " \
   --mint "1000 ${alwaysSucceedSymbol}.${tokenName1}" \
@@ -87,6 +87,3 @@ echo "Submitting the transaction..."
 cardano-swaps submit \
   --testnet \
   --tx-file "${tmpDir}tx.signed"
-
-# Add a newline after the submission response.
-echo ""

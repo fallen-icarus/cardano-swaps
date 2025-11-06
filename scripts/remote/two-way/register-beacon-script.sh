@@ -1,12 +1,8 @@
 #!/bin/sh
 
-# WARNING
-# It is no longer possible to register the beacon scripts as written since they do not allow
-# certificate executions. Prior to the conway error, scripts did not need to be executed to register
-# them. Now, they do. The beacon scripts for the current cardano-swaps version were registered prior
-# to the conway era. They cannot be de-registered.
-#
-# This template script is for explanatory purposes only based off the new conway era rules.
+# A helper script for showing how to register the scripts for staking executions.
+# The scripts may already be registered! Once registered, they cannot be delegated or
+# de-registered.
 
 # Variables
 tmpDir="/tmp/cardano-swaps/"
@@ -17,10 +13,19 @@ mkdir -p $tmpDir
 beaconScriptFile="${tmpDir}twoWayBeacons.plutus"
 beaconRedeemer="${tmpDir}registerTwoWayBeacons.plutus"
 
-# The reference scripts are permanently locked in the swap address without a staking credential!
+# The reference scripts may already be locked on-chain. Check the two-way swap address without a
+# staking credential. Both the spending script and the beacon script will be permanently locked in
+# this address.
+#
+# cardano-cli conway address build \
+#   --payment-script-file $swapScriptFile \
+#   --testnet-magic 1 \
+#   --out-file $swapAddrFile
+#
 # You can use the `cardano-swaps query personal-address` command to see them.
-beaconScriptPreprodTestnetRef="115c9ebb9928b8ec6e0c9d1420c43421cfb323639dd9fdcf1e7155e73bec13c5#1"
-beaconScriptSize=4707
+
+beaconScriptPreprodTestnetRef="9415db73d8d374572a58ad167e3051110251aff802987f8627b27e060dcd673f#1"
+beaconScriptSize=4804
 
 # Export the beacon script.
 echo "Exporting the beacon script..."

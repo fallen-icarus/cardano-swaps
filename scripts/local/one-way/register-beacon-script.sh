@@ -1,12 +1,8 @@
 #!/bin/sh
 
-# WARNING
-# It is no longer possible to register the beacon scripts as written since they do not allow
-# certificate executions. Prior to the conway error, scripts did not need to be executed to register
-# them. Now, they do. The beacon scripts for the current cardano-swaps version were registered prior
-# to the conway era. They cannot be de-registered.
-#
-# This template script is for explanatory purposes only based off the new conway era rules.
+# A helper script for showing how to register the scripts for staking executions.
+# The scripts may already be registered! Once registered, they cannot be delegated or
+# de-registered.
 
 # Variables
 tmpDir="/tmp/cardano-swaps/"
@@ -17,15 +13,29 @@ mkdir -p $tmpDir
 beaconScriptFile="${tmpDir}oneWayBeacons.plutus"
 beaconRedeemer="${tmpDir}registerOneWayBeacons.plutus"
 
-# The reference scripts are permanently locked in the swap address without a staking credential!
+# The reference scripts may already be locked on-chain. Check the one-way swap address without a
+# staking credential. Both the spending script and the beacon script will be permanently locked in
+# this address.
+#
+# cardano-cli conway address build \
+#   --payment-script-file $swapScriptFile \
+#   --testnet-magic 1 \
+#   --out-file $swapAddrFile
+#
 # You can use the `cardano-swaps query personal-address` command to see them.
-beaconScriptPreprodTestnetRef="9fecc1d2cf99088facad02aeccbedb6a4f783965dc6c02bd04dc8b348e9a0858#1"
-# beaconScriptSize=4432
+
+beaconScriptPreprodTestnetRef="b1d92732ba5392ba76129360bb838f80c0177a71f757dcec58e3f15b8aa1b3fe#1"
+# beaconScriptSize=4614
 
 # Export the beacon script.
 echo "Exporting the beacon script..."
 cardano-swaps scripts one-way beacon-script \
   --out-file $beaconScriptFile
+
+echo "Exporting the redeemers..."
+cardano-swaps beacon-redeemers one-way \
+  --register \
+  --out-file $beaconRedeemer
 
 # Create the registration certificate
 cardano-cli conway stake-address registration-certificate \
@@ -35,8 +45,7 @@ cardano-cli conway stake-address registration-certificate \
 
 # Create the transaction.
 cardano-cli conway transaction build \
-  --tx-in 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#1 \
-  --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
+  --tx-in b1d92732ba5392ba76129360bb838f80c0177a71f757dcec58e3f15b8aa1b3fe#2 \
   --change-address "$(cat $HOME/wallets/01.addr)" \
   --certificate-file "${tmpDir}registration.cert" \
   --certificate-tx-in-reference $beaconScriptPreprodTestnetRef \
@@ -55,6 +64,3 @@ cardano-cli conway transaction sign \
 cardano-cli conway transaction submit \
   --testnet-magic 1 \
   --tx-file "${tmpDir}tx.signed"
-
-# Add a newline after the submission response.
-echo ""

@@ -10,16 +10,25 @@ ownerPubKeyFile="$HOME/wallets/01Stake.vkey"
 swapRedeemerFile="${tmpDir}oneWaySpendingRedeemer.json"
 beaconRedeemerFile="${tmpDir}oneWayBeaconRedeemer.json"
 
-# The reference scripts are permanently locked in the swap address without a staking credential!
+# The reference scripts may already be locked on-chain. Check the one-way swap address without a
+# staking credential. Both the spending script and the beacon script will be permanently locked in
+# this address.
+#
+# cardano-cli conway address build \
+#   --payment-script-file $swapScriptFile \
+#   --testnet-magic 1 \
+#   --out-file $swapAddrFile
+#
 # You can use the `cardano-swaps query personal-address` command to see them.
-beaconScriptPreprodTestnetRef="9fecc1d2cf99088facad02aeccbedb6a4f783965dc6c02bd04dc8b348e9a0858#1"
-# beaconScriptSize=4432
 
-spendingScriptPreprodTestnetRef="9fecc1d2cf99088facad02aeccbedb6a4f783965dc6c02bd04dc8b348e9a0858#0"
-# spendingScriptSize=4842
+beaconScriptPreprodTestnetRef="b1d92732ba5392ba76129360bb838f80c0177a71f757dcec58e3f15b8aa1b3fe#1"
+# beaconScriptSize=4614
+
+spendingScriptPreprodTestnetRef="b1d92732ba5392ba76129360bb838f80c0177a71f757dcec58e3f15b8aa1b3fe#0"
+# spendingScriptSize=4523
 
 # Generate the hash for the staking verification key.
-echo "Calculating the staking pubkey hash for the borrower..."
+echo "Calculating the staking pubkey hash for the owner..."
 ownerPubKeyHash=$(cardano-cli conway stake-address key-hash \
   --stake-verification-key-file $ownerPubKeyFile)
 
@@ -36,11 +45,11 @@ beaconPolicyId=$(cardano-swaps beacon-info one-way policy-id \
 
 pairBeaconName=$(cardano-swaps beacon-info one-way pair-beacon \
   --ask-asset lovelace \
-  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 offerBeaconName=$(cardano-swaps beacon-info one-way offer-beacon \
-  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
+  --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
 askBeaconName=$(cardano-swaps beacon-info one-way ask-beacon \
@@ -59,13 +68,13 @@ cardano-swaps beacon-redeemers one-way \
 
 # Create the transaction.
 cardano-cli conway transaction build \
-  --tx-in 44101845b0301455ec2a3dd7b98a3b22623011fb38a6216ae1fa78358c5a61fc#1 \
-  --tx-in 4cbb75a3ee32c6d6b0a79bb3fff90c009e13f20772c21a8c668c8e94e02d0212#0 \
+  --tx-in 702770033d7f4bf0b99161b3858d677c71147c5eb5423de306b355a419564aec#1 \
+  --tx-in 1b39c6f7529a0614d99ac8edadf6e89721ff95d864758534aa6d2bacf3d3940c#0 \
   --spending-tx-in-reference $spendingScriptPreprodTestnetRef \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
-  --tx-out "$(cat $HOME/wallets/01.addr) + 3000000 lovelace + 8 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
+  --tx-out "$(cat $HOME/wallets/01.addr) + 3000000 lovelace + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --mint "-1 ${pairBeacon} + -1 ${offerBeacon} + -1 ${askBeacon}" \
   --mint-tx-in-reference $beaconScriptPreprodTestnetRef \
   --mint-plutus-script-v2 \
@@ -87,6 +96,3 @@ cardano-cli conway transaction sign \
 cardano-cli conway transaction submit \
   --testnet-magic 1 \
   --tx-file "${tmpDir}tx.signed"
-
-# Add a newline after the submission response.
-echo ""

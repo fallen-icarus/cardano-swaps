@@ -10,10 +10,23 @@ swapAddr1="addr_test1zqql5djxthlrdcnvy87m7uswf0d0es9cdw6nvl72gcqj743ualkqngnmdz2
 swapDatumFile1="${tmpDir}swapDatum1.json"
 swapRedeemerFile="${tmpDir}oneWaySpendingRedeemer.json"
 
-# The reference scripts are permanently locked in the swap address without a staking credential!
+# The time the swap expires.
+expirationTime=1761838800000
+expirationSlot=$(cardano-swaps time convert-time --testnet --posix-time $expirationTime)
+
+# The reference scripts may already be locked on-chain. Check the one-way swap address without a
+# staking credential. Both the spending script and the beacon script will be permanently locked in
+# this address.
+#
+# cardano-cli conway address build \
+#   --payment-script-file $swapScriptFile \
+#   --testnet-magic 1 \
+#   --out-file $swapAddrFile
+#
 # You can use the `cardano-swaps query personal-address` command to see them.
-spendingScriptPreprodTestnetRef="9fecc1d2cf99088facad02aeccbedb6a4f783965dc6c02bd04dc8b348e9a0858#0"
-spendingScriptSize=4842
+
+spendingScriptPreprodTestnetRef="b1d92732ba5392ba76129360bb838f80c0177a71f757dcec58e3f15b8aa1b3fe#0"
+spendingScriptSize=4523
 
 # Create the Swap redeemer.
 echo "Creating the spending redeemer..."
@@ -28,6 +41,7 @@ cardano-swaps datums one-way \
   --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31 \
   --offer-price '1000000 / 1' \
   --input-swap-ref 841f95b65531a8bfe076336a544b62466057848e039ea31e519e2c852add4090#0 \
+  --expiration $expirationTime \
   --out-file $swapDatumFile1
 
 # Helper beacon variables.
@@ -77,6 +91,7 @@ cardano-cli conway transaction build-raw \
   --tx-total-collateral 21000000 \
   --tx-out-return-collateral "$(cat $HOME/wallets/02.addr) 21000000 lovelace" \
   --protocol-params-file "${tmpDir}protocol.json" \
+  --invalid-hereafter $expirationSlot \
   --fee 5000000 \
   --out-file "${tmpDir}tx.body"
 
@@ -108,6 +123,7 @@ cardano-cli conway transaction build-raw \
   --tx-total-collateral 21000000 \
   --tx-out-return-collateral "$(cat $HOME/wallets/02.addr) 21000000 lovelace" \
   --protocol-params-file "${tmpDir}protocol.json" \
+  --invalid-hereafter $expirationSlot \
   --fee 5000000 \
   --out-file "${tmpDir}tx.body"
 
@@ -137,6 +153,7 @@ cardano-cli conway transaction build-raw \
   --tx-total-collateral $req_collateral \
   --tx-out-return-collateral "$(cat $HOME/wallets/02.addr) $((21000000-$req_collateral)) lovelace" \
   --protocol-params-file "${tmpDir}protocol.json" \
+  --invalid-hereafter $expirationSlot \
   --fee "$req_fee" \
   --out-file "${tmpDir}tx.body"
 

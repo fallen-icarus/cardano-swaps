@@ -9,8 +9,7 @@
 #   --testnet-magic 1 \
 #   --out-file $swapAddrFile
 #
-# Preprod: addr_test1wqql5djxthlrdcnvy87m7uswf0d0es9cdw6nvl72gcqj74s38ksy4
-# Mainnet: addr1wyql5djxthlrdcnvy87m7uswf0d0es9cdw6nvl72gcqj74s20zvts
+# You can use the `cardano-swaps query personal-address` command to see them.
 
 # Variables
 tmpDir="/tmp/cardano-swaps/"

@@ -24,7 +24,7 @@ asset_name="4f74686572546f6b656e0a"
 
 One-Way swap beacons all have the same policy id:
 ```bash
-policy_id="47cec2a1404ed91fc31124f29db15dc1aae77e0617868bcef351b8fd"
+v1_policy_id="47cec2a1404ed91fc31124f29db15dc1aae77e0617868bcef351b8fd"
 ```
 
 We just need to derive the `asset_names`. According to the One-Way Swap specification, the asset
@@ -60,7 +60,7 @@ Hashing this gives: `5e23340d7a9c22745a2f2f907c8c17a8962cfac2292a4cb1d3832b4b88c
 So the One-Way swap beacon for ADA -> TestDJED is:
 
 ```bash
-policy_id="47cec2a1404ed91fc31124f29db15dc1aae77e0617868bcef351b8fd"
+v1_policy_id="47cec2a1404ed91fc31124f29db15dc1aae77e0617868bcef351b8fd"
 asset_name="5e23340d7a9c22745a2f2f907c8c17a8962cfac2292a4cb1d3832b4b88cdee95"
 ```
 
@@ -70,7 +70,7 @@ to switch which asset is the offer and the ask in the `sha2_256` hash formula.
 Here is the One-Way swap beacon for TestDJED -> ADA:
 
 ```bash
-policy_id="47cec2a1404ed91fc31124f29db15dc1aae77e0617868bcef351b8fd"
+v1_policy_id="47cec2a1404ed91fc31124f29db15dc1aae77e0617868bcef351b8fd"
 asset_name="5e09a478610895febe6afe42db300dd3bb985f3ff2e26125dbd4bf966d473350"
 ```
 
@@ -93,7 +93,7 @@ But the process to query them is the same as with One-Way swaps.
 
 Two-Way swap beacons all have the same policy id:
 ```bash
-policy_id="84662c22dc5c0cadad7b2ebf9757ce9ea61dbd8fe64bc8c43c112a40"
+v1_policy_id="84662c22dc5c0cadad7b2ebf9757ce9ea61dbd8fe64bc8c43c112a40"
 ```
 
 Again, we just need to derive the `asset_names`. According to the Two-Way Swap specification, the asset
@@ -133,7 +133,7 @@ Hashing this gives: `5e23340d7a9c22745a2f2f907c8c17a8962cfac2292a4cb1d3832b4b88c
 Finaly, the Two-Way swap beacon for ADA <--> TestDJED is:
 
 ```bash
-policy_id="84662c22dc5c0cadad7b2ebf9757ce9ea61dbd8fe64bc8c43c112a40"
+v1_policy_id="84662c22dc5c0cadad7b2ebf9757ce9ea61dbd8fe64bc8c43c112a40"
 asset_name="5e23340d7a9c22745a2f2f907c8c17a8962cfac2292a4cb1d3832b4b88cdee95"
 ```
 

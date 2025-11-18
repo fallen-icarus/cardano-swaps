@@ -9,6 +9,7 @@ be found [here](./Benchmarks/).
 - [Motivation](#motivation)
 - [How It Works: Core Concepts](#how-it-works-core-concepts)
 - [Specification](#specification)
+- [Audit History](#audit-history)
 - [Benchmarks and Fee Estimations](#benchmarks-and-fee-estimations-ymmv)
 - [Protocol Discussion: Implications and Strategies](#protocol-discussion-implications-and-strategies)
 - [Conclusion](#conclusion)
@@ -394,6 +395,23 @@ minting new ones. To reclaim the ~2 ADA deposit, the beacons **must be burned**.
 > When spending multiple swap UTxOs as the owner, use the same redeemer combination for all of them.
 > If even one swap is being closed, use the `CreateOrCloseSwaps` combination for all inputs to avoid
 > redundant script executions and save on fees.
+
+## Audit History
+
+The [protocol versions](./VERSIONS.md) have undergone the following security audits:
+
+### Protocol v2
+
+> [!WARNING]
+> Although the changes are
+> [minor](https://github.com/fallen-icarus/cardano-swaps/commit/927444439f04ed5f00aa09d0eefcc3dc1f29251d),
+> this protocol version has not been audited yet.
+
+### Protocol v1
+
+| Date | Auditor | Report |
+|:--:|:--:|:--:|
+| October 2025 | Cypher Enterprises | [View Full Report][5] |
 
 ## Benchmarks and Fee Estimations (YMMV)
 

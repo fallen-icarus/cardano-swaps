@@ -16,7 +16,7 @@ This version introduces the optional order `expiration` feature to both one-way 
 > A `RegisterScript` redeemer was added for the beacon scripts since the conway hardfork now
 > enforces script execution when registering a staking credential.
 
--   **Status:** 🟡 **Planned**
+-   **Status:** 🟡 **LIVE but not audited**
 -   **Plutus Version:** Plutus V2
 -   **Commit Hash:** [`046456b84eca2c830e0be1e7e33cc73f49f62388`](https://github.com/fallen-icarus/cardano-swaps/commit/046456b84eca2c830e0be1e7e33cc73f49f62388)
 -   **Script Hashes:**

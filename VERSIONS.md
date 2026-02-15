@@ -18,7 +18,7 @@ This version introduces the optional order `expiration` feature to both one-way 
 
 -   **Status:** 🟡 **LIVE but not audited**
 -   **Plutus Version:** Plutus V2
--   **Commit Hash:** [`046456b84eca2c830e0be1e7e33cc73f49f62388`](https://github.com/fallen-icarus/cardano-swaps/commit/046456b84eca2c830e0be1e7e33cc73f49f62388)
+-   **Commit Hash:** [`ecbf5daf8f28ac6e56adc8cc28d2a0931e01194a`](https://github.com/fallen-icarus/cardano-swaps/commit/ecbf5daf8f28ac6e56adc8cc28d2a0931e01194a)
 -   **Script Hashes:**
     - **One-Way:**
         -   Swap: `1d6cff26bcab91d2061aad0bd259cbb7d76d25ced2eeaed5926a42ad`

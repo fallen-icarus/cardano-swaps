@@ -1,4 +1,4 @@
-use aiken/transaction/value.{PolicyId,AssetName}
+use cardano/assets.{PolicyId,AssetName}
 
 // Allows creating unique minting policies for testing purposes.
 pub const app_name = @""

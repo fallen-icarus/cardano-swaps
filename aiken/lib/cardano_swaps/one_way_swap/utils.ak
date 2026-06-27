@@ -1,18 +1,17 @@
-use aiken/bytearray
-use aiken/dict.{Dict}
-use aiken/hash.{Hash,Blake2b_224}
+use aiken/primitive/bytearray
+use aiken/collection/dict.{Dict}
 use aiken/interval.{Interval,IntervalBound,Finite}
-use aiken/list
+use aiken/collection/list
+use aiken/collection/pairs
 use aiken/option.{is_some}
-use aiken/string.{concat}
-use aiken/time.{PosixTime}
-use aiken/transaction.{ValidityRange,Datum,InlineDatum,Output,OutputReference} as tx
-use aiken/transaction/credential.{
+use aiken/primitive/string.{concat}
+use cardano/transaction.{ValidityRange,Datum,InlineDatum,Output,OutputReference} as tx
+use cardano/address.{
   Address,
   Script,
-  ScriptCredential,
   }
-use aiken/transaction/value.{PolicyId,AssetName,Value}
+use aiken/crypto.{ScriptHash}
+use cardano/assets.{PolicyId,Value,AssetName}
 
 use cardano_swaps/common/types.{app_name,AssetConfig,Rational} as common_types
 use cardano_swaps/common/utils.{
@@ -40,9 +39,9 @@ fn parse_datum(raw_datum: Datum) -> SwapDatum {
 // would fail otherwise. By having users set the invalid-hereafter to the closest expiration time,
 // users can assert to the plutus script that the expiration indeed has not passed. This returns an
 // Option in case the expiration is not actually used.
-pub fn get_upper_bound(val_range: ValidityRange) -> Option<PosixTime> {
+pub fn get_upper_bound(val_range: ValidityRange) -> Option<Int> {
   when val_range is {
-    Interval(_,IntervalBound(Finite(x),_)) -> Some(x)
+    Interval{upper_bound: IntervalBound{bound_type: Finite(x), ..}, ..} -> Some(x)
     _ -> None
   }
 }
@@ -52,13 +51,13 @@ pub fn get_upper_bound(val_range: ValidityRange) -> Option<PosixTime> {
 // When ada is part of the pair, the empty bytestring is replaced so that the beacon is distinct 
 // for each direction when ada is part of the pair.
 pub fn generate_pair_beacon(asset1: AssetConfig, asset2: AssetConfig) -> AssetName {
-  let AssetConfig(asset1_id_,asset1_name) = asset1
-  let AssetConfig(asset2_id_,asset2_name) = asset2
+  let AssetConfig{asset_id: asset1_id_,asset_name: asset1_name} = asset1
+  let AssetConfig{asset_id: asset2_id_,asset_name: asset2_name} = asset2
 
   let asset1_id = if asset1_id_ == #"" { #"00" } else { asset1_id_ }
   let asset2_id = if asset2_id_ == #"" { #"00" } else { asset2_id_ }
 
-  hash.sha2_256(
+  crypto.sha2_256(
     bytearray.concat(asset1_id,asset1_name)
     |> bytearray.concat(_,asset2_id)
     |> bytearray.concat(_,asset2_name)
@@ -69,7 +68,7 @@ pub fn generate_pair_beacon(asset1: AssetConfig, asset2: AssetConfig) -> AssetNa
 // for the asset. It uses the sha2_256 hash algorithm. The pre-hash is prefixed with "01" to keep
 // it distinct from the other beacons.
 pub fn generate_offer_beacon(policy_id: PolicyId, asset_name: AssetName) -> AssetName {
-  hash.sha2_256(
+  crypto.sha2_256(
     bytearray.concat( 
       #"01",
       bytearray.concat( policy_id, asset_name )
@@ -81,7 +80,7 @@ pub fn generate_offer_beacon(policy_id: PolicyId, asset_name: AssetName) -> Asse
 // for the asset. It uses the sha2_256 hash algorithm. The pre-hash is prefixed with "02" to keep
 // it distinct from the other beacons.
 pub fn generate_ask_beacon(policy_id: PolicyId, asset_name: AssetName) -> AssetName {
-  hash.sha2_256(
+  crypto.sha2_256(
     bytearray.concat( 
       #"02",
       bytearray.concat( policy_id, asset_name )
@@ -103,16 +102,15 @@ fn extract_ask_and_offer_quantity(
   ask_name: AssetName,
   ask_beacon: AssetName
 ) -> (Int,Int,Int) {
-  let foo = fn(x: (PolicyId,Dict<AssetName,Int>), acc: (Int,Int,Int,Bool)) {
-    let (cn,tns_dict) = x
+  let foo = fn(x: Pair<PolicyId,Dict<AssetName,Int>>, acc: (Int,Int,Int,Bool)) {
+    let Pair(cn,tns_dict) = x
     let (offer,ask,ada,valid_beacons) = acc
 
     // Check the beacons.
     if cn == beacon_id {
-      let tns_list = dict.to_list(tns_dict)
+      let tns_list = dict.to_pairs(tns_dict)
 
-      let beacon_check = fn(y: (AssetName,Int), acc: (Bool,Bool,Bool)) {
-        let (tn,n) = y
+      let beacon_check = fn(tn: AssetName, n: Int, acc: (Bool,Bool,Bool)) {
         let (pair_check,offer_check,ask_check) = acc
         if tn == pair_beacon {
           (n == 1, offer_check, ask_check)
@@ -125,7 +123,7 @@ fn extract_ask_and_offer_quantity(
         }
       }
 
-      when list.foldl(tns_list,(False,False,False),beacon_check) is {
+      when pairs.foldl(tns_list,(False,False,False),beacon_check) is {
         (True,True,True) -> (offer,ask,ada,True)
         _ -> acc
       }
@@ -147,9 +145,9 @@ fn extract_ask_and_offer_quantity(
 
     // Must handle when the offer and ask assets have the same policy id.
     else if cn == offer_id && cn == ask_id {
-      when dict.to_list(tns_dict) is {
+      when dict.to_pairs(tns_dict) is {
         // Only one of the assets is present.
-        [(tn,n)] -> {
+        [Pair(tn,n)] -> {
           if tn == offer_name {
             (offer+n,ask,ada,valid_beacons)
           } else if tn == ask_name {
@@ -160,7 +158,7 @@ fn extract_ask_and_offer_quantity(
         }
 
         // They are both present in the UTxO.
-        [(tn1,n1),(tn2,n2)] -> {
+        [Pair(tn1,n1),Pair(tn2,n2)] -> {
           if tn1 == offer_name {
             if tn2 == ask_name {
               (offer+n1,ask+n2,ada,valid_beacons)
@@ -185,8 +183,8 @@ fn extract_ask_and_offer_quantity(
     // Check the offer asset. If this path is taken, the ask asset and offer asset have different
     // policy ids.
     else if cn == offer_id {
-      when dict.to_list(tns_dict) is {
-        [(tn,n)] -> {
+      when dict.to_pairs(tns_dict) is {
+        [Pair(tn,n)] -> {
           if tn == offer_name {
             (offer+n,ask,ada,valid_beacons)
           } else {
@@ -200,8 +198,8 @@ fn extract_ask_and_offer_quantity(
     // Check the ask asset. If this path is taken, the ask asset and offer asset have different
     // policy ids.
     else if cn == ask_id {
-      when dict.to_list(tns_dict) is {
-        [(tn,n)] -> {
+      when dict.to_pairs(tns_dict) is {
+        [Pair(tn,n)] -> {
           if tn == ask_name {
             (offer,ask+n,ada,valid_beacons)
           } else {
@@ -216,7 +214,7 @@ fn extract_ask_and_offer_quantity(
   }
 
   let (offer,ask,ada,valid_beacons) = list.foldl(
-    value.to_dict(val) |> dict.to_list(_),
+    assets.to_dict(val) |> dict.to_pairs(_),
     (0,0,0,False),
     foo
   )
@@ -233,25 +231,24 @@ fn valid_swap_output(
   beacon_id: PolicyId,
   output_value: Value,
   output_datum: Datum,
-  invalid_hereafter: Option<PosixTime>,
+  invalid_hereafter: Option<Int>,
 ) -> Bool {
-  let SwapDatum(
-    beacon_id_,
-    pair_beacon_,
-    offer_id_,
-    offer_name_,
-    offer_beacon_,
-    ask_id_,
-    ask_name_,
-    ask_beacon_,
-    swap_price_,
-    _, // prev_input does not need to be checked.
-    expiration_,
-  ) = parse_datum(output_datum)
+  let SwapDatum{
+    beacon_id: beacon_id_,
+    pair_beacon: pair_beacon_,
+    offer_id: offer_id_,
+    offer_name: offer_name_,
+    offer_beacon: offer_beacon_,
+    ask_id: ask_id_,
+    ask_name: ask_name_,
+    ask_beacon: ask_beacon_,
+    swap_price: swap_price_,
+    expiration: expiration_,
+    ..
+ } = parse_datum(output_datum)
 
   let offer = AssetConfig(offer_id_,offer_name_)
   let ask = AssetConfig(ask_id_,ask_name_)
-  let Rational(price_num_,price_den_) = swap_price_
 
   let (o,_,_) = 
     extract_ask_and_offer_quantity(
@@ -305,13 +302,13 @@ fn valid_swap_output(
   // The swap_price denominator must be > 0.
   trace_if_false( 
     @"swap_price denominator not > 0", 
-    price_den_ > 0 
+    swap_price_.denominator > 0 
   ) &&
 
   // The swap_price must be > 0.
   trace_if_false(
     @"swap_price numerator not > 0", 
-    price_num_ > 0 
+    swap_price_.numerator > 0 
   ) &&
 
   // This is just to force the extract_ask_and_offer_quantity function to be executed.
@@ -322,9 +319,9 @@ fn valid_swap_output(
 // This function will return `True` or `False`. It uses `app_name` in the error message to generate
 // a unique beacon policy for testing. 
 pub fn beacon_destination_check(
-  dapp_hash: Hash<Blake2b_224, Script>,
+  dapp_hash: ScriptHash,
   beacon_id: PolicyId,
-  invalid_hereafter: Option<PosixTime>,
+  invalid_hereafter: Option<Int>,
   outputs: List<Output>
 ) -> Bool {
   // Checks:
@@ -352,17 +349,22 @@ pub fn beacon_destination_check(
   // A function to map over the list of outputs.
   let foo = fn (out: Output, acc: Bool) {
     // Extract out the output's information.
-    let Output(Address(pay,stake),val,d,_) = out
+    let Output{
+      address: Address{payment_credential: pay,stake_credential: stake},
+      value: val,
+      datum: d, 
+      ..
+    } = out
 
     // Get the beacons in this UTxO and save it as a list for pattern matching.
-    let beacon_list = value.tokens(val,beacon_id) |> dict.to_list()
+    let beacon_list = assets.tokens(val,beacon_id) |> dict.to_pairs()
 
     when beacon_list is {
       // If beacons are not present, this output can be ignored.
       [] -> acc
 
       // The UTxO has three types of beacon.
-      [(_,_),(_,_),(_,_)] -> {
+      [Pair(_,_),Pair(_,_),Pair(_,_)] -> {
         // All previous outputs must be valid.
         acc &&
 
@@ -370,7 +372,7 @@ pub fn beacon_destination_check(
         // the error message.
         trace_if_false( 
           concat(@"Beacon must go to a ", app_name) |> concat(_,@" DApp address with staking"),
-          pay == ScriptCredential(dapp_hash) && is_some(stake)
+          pay == Script(dapp_hash) && is_some(stake)
         ) &&
 
         // The output must be properly configured. This has its own trace messages.
@@ -405,7 +407,7 @@ fn swap_output_value(
 ) -> (Int,Int,Int) {
   when outputs is {
     [] -> error @"Corresponding swap output not found"
-    [Output(addr,oval,d,_), ..rest] -> {
+    [output, ..rest] -> {
       // Requirements for a valid corresponding output:
       // 1) The output is to the same swap address where the input originates.
       // 2) The output has exactly one of each of the proper beacons.
@@ -413,12 +415,12 @@ fn swap_output_value(
 
       // Check if the datum is correct. This is done first to rule out all but the target UTxO.
       // The rest of the checks will just check if the UTxO is properly configured.
-      if req_datum == d {
+      if req_datum == output.datum {
         // Check if the output is to this swap address.
-        if swap_addr == addr {
+        if swap_addr == output.address {
           // Get the necessary values.
           extract_ask_and_offer_quantity(
-            oval,
+            output.value,
             beacon_id,
             pair_beacon,
             offer_id,
@@ -472,7 +474,7 @@ fn swap_output_value(
 pub fn valid_swap(
   input_ref: OutputReference,
   input_val: Value,
-  invalid_hereafter: Option<PosixTime>,
+  invalid_hereafter: Option<Int>,
   swap_addr: Address,
   beacon_id: PolicyId,
   pair_beacon: AssetName,
@@ -483,7 +485,7 @@ pub fn valid_swap(
   ask_name: AssetName,
   ask_beacon: AssetName,
   swap_price: Rational,
-  expiration: Option<PosixTime>,
+  expiration: Option<Int>,
   outputs: List<Output>,
 ) -> Bool {
   let req_datum = 
@@ -500,8 +502,6 @@ pub fn valid_swap(
       Some(input_ref),
       expiration,
     ) |> InlineDatum
-
-  let Rational(price_num,price_den) = swap_price
 
   // Make sure the swap is not already expired.
   expect True = when (expiration, invalid_hereafter) is {
@@ -563,7 +563,7 @@ pub fn valid_swap(
   // offer_taken * price_num / price_den <= ask_given
   trace_if_false( 
     @"Fail: offer_taken * price <= ask_given",
-    offer_taken * price_num <= ask_given * price_den
+    offer_taken * swap_price.numerator <= ask_given * swap_price.denominator
   ) &&
 
   // The ask asset cannot be taken. This would allow the swap to go in reverse.

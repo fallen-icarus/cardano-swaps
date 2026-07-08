@@ -34,8 +34,8 @@ import qualified PlutusTx.Prelude as PlutusTx
 import GHC.Generics (Generic)
 import qualified Data.Map as Map
 import Data.Aeson
-import qualified Plutus.Script.Utils.Scripts as PV2
-import qualified PlutusLedgerApi.V2 as PV2
+import qualified Plutus.Script.Utils.Scripts as PV3
+import qualified PlutusLedgerApi.V3 as PV3
 
 import CardanoSwaps.Utils
 import CardanoSwaps.Blueprints
@@ -110,8 +110,8 @@ swapScript = parseScriptFromCBOR $ blueprints Map.! "two_way_swap.swap_script"
 swapScriptSize :: Integer
 swapScriptSize = getScriptSize swapScript
 
-swapValidatorHash :: PV2.ValidatorHash
-swapValidatorHash = PV2.ValidatorHash $ PV2.getScriptHash $ scriptHash swapScript
+swapValidatorHash :: PV3.ValidatorHash
+swapValidatorHash = PV3.ValidatorHash $ PV3.getScriptHash $ scriptHash swapScript
 
 beaconScript :: SerialisedScript
 beaconScript =
@@ -122,8 +122,8 @@ beaconScript =
 beaconScriptSize :: Integer
 beaconScriptSize = getScriptSize beaconScript
 
-beaconCurrencySymbol :: PV2.CurrencySymbol
-beaconCurrencySymbol = PV2.CurrencySymbol $ PV2.getScriptHash $ scriptHash beaconScript
+beaconCurrencySymbol :: PV3.CurrencySymbol
+beaconCurrencySymbol = PV3.CurrencySymbol $ PV3.getScriptHash $ scriptHash beaconScript
 
 -------------------------------------------------
 -- Beacon Names

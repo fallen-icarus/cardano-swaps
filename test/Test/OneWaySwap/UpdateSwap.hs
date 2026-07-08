@@ -13,7 +13,14 @@ module Test.OneWaySwap.UpdateSwap
   , regressionTest4
 
     -- ** Scenarios that should fail
-    
+  , failureTest1
+  , failureTest2
+  , failureTest3
+  , failureTest4
+  , failureTest5
+  , failureTest6
+  , failureTest7
+
     -- ** Benchmark Tests
   , benchTest1
   , benchTest2
@@ -35,6 +42,7 @@ import CardanoSwaps.OneWaySwap
 import CardanoSwaps.Utils hiding (posixTimeToSlot)
 
 import Test.Prelude
+import Test.OneWaySwap.UnsafeDatum
 
 -------------------------------------------------
 -- Initialize reference scripts.
@@ -77,7 +85,7 @@ initializeReferenceScripts = do
 -------------------------------------------------
 -- Mint Test Tokens
 -------------------------------------------------
-mintTestTokens :: MonadEmulator m => Mock.MockWallet -> LV.Lovelace -> [(TokenName,Integer)] -> m ()
+mintTestTokens :: MonadEmulator m => Mock.MockWallet -> Lovelace -> [(TokenName,Integer)] -> m ()
 mintTestTokens w lovelace ts = do
   let walletAddress = Mock.mockWalletAddress w
   void $ transact walletAddress [refScriptAddress] [Mock.paymentPrivateKey w] $
@@ -550,6 +558,683 @@ regressionTest4 = do
       }
 
 -------------------------------------------------
+-- Failure Tests
+-------------------------------------------------
+-- | When updating a swap with the beacon script executed as a staking script, the new swap
+-- datum has a zero swap price.
+failureTest1 :: MonadEmulator m => m ()
+failureTest1 = do
+  let -- Seller Info
+      sellerWallet = Mock.knownMockWallet 1
+      sellerPersonalAddr = Mock.mockWalletAddress sellerWallet
+      sellerPayPrivKey = Mock.paymentPrivateKey sellerWallet
+      sellerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash sellerWallet
+      swapAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash swapScript)
+                    (Just $ PV2.StakingHash $ PV2.PubKeyCredential sellerPubKey)
+
+      -- Swap Info
+      offer = OfferAsset (testTokenSymbol,"TestToken1")
+      ask = AskAsset (adaSymbol,adaToken)
+      pairBeacon = genPairBeaconName offer ask
+      offerBeacon = genOfferBeaconName offer
+      askBeacon = genAskBeaconName ask
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
+
+  -- Initialize scenario
+  (mintRef,spendRef) <- initializeReferenceScripts
+  mintTestTokens sellerWallet 10_000_000 [("TestToken1",1000)]
+
+  -- Create the swap UTxO.
+  void $ transact sellerPersonalAddr [refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [(pairBeacon,1),(offerBeacon,1),(askBeacon,1)]
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps
+              , mintPolicy = toVersionedMintingPolicy beaconScript
+              , mintReference = Just mintRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [mintRef]
+      }
+
+  swapRef <-
+    txOutRefWithValue $
+      utxoValue 3_000_000 $ mconcat
+        [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+        , PV2.singleton beaconCurrencySymbol offerBeacon 1
+        , PV2.singleton beaconCurrencySymbol askBeacon 1
+        ]
+
+  -- Try to update the swap price.
+  void $ transact sellerPersonalAddr [swapAddress,refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { inputs =
+          [ Input
+              { inputId = swapRef
+              , inputWitness =
+                  SpendWithPlutusReference spendRef InlineDatum (toRedeemer SpendWithStake)
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum{swapPrice = unsafeRatio 0 1}
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash beaconScript
+              , withdrawalAmount = 0
+              , withdrawalWitness =
+                  StakeWithPlutusReference mintRef $ toRedeemer UpdateSwaps
+              }
+          ]
+      , referenceInputs = [mintRef,spendRef]
+      , extraKeyWitnesses = [sellerPubKey]
+      }
+
+-- | When updating a swap with the beacon script executed as a staking script, the new swap
+-- datum has a zero denominator for the swap price.
+failureTest2 :: MonadEmulator m => m ()
+failureTest2 = do
+  let -- Seller Info
+      sellerWallet = Mock.knownMockWallet 1
+      sellerPersonalAddr = Mock.mockWalletAddress sellerWallet
+      sellerPayPrivKey = Mock.paymentPrivateKey sellerWallet
+      sellerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash sellerWallet
+      swapAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash swapScript)
+                    (Just $ PV2.StakingHash $ PV2.PubKeyCredential sellerPubKey)
+
+      -- Swap Info
+      offer = OfferAsset (testTokenSymbol,"TestToken1")
+      ask = AskAsset (adaSymbol,adaToken)
+      pairBeacon = genPairBeaconName offer ask
+      offerBeacon = genOfferBeaconName offer
+      askBeacon = genAskBeaconName ask
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
+      updatedDatum = UnsafeDatum
+        { unsafeBeaconId = beaconCurrencySymbol
+        , unsafePairBeacon = pairBeacon
+        , unsafeOfferId = fst $ unOfferAsset offer
+        , unsafeOfferName = snd $ unOfferAsset offer
+        , unsafeOfferBeacon = offerBeacon
+        , unsafeAskId = fst $ unAskAsset ask
+        , unsafeAskName = snd $ unAskAsset ask
+        , unsafeAskBeacon = askBeacon
+        , unsafeSwapPrice = (10,0)
+        , unsafePrevInput = Nothing
+        , unsafeExpiration = Nothing
+        }
+
+  -- Initialize scenario
+  (mintRef,spendRef) <- initializeReferenceScripts
+  mintTestTokens sellerWallet 10_000_000 [("TestToken1",1000)]
+
+  -- Create the swap UTxO.
+  void $ transact sellerPersonalAddr [refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [(pairBeacon,1),(offerBeacon,1),(askBeacon,1)]
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps
+              , mintPolicy = toVersionedMintingPolicy beaconScript
+              , mintReference = Just mintRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [mintRef]
+      }
+
+  swapRef <-
+    txOutRefWithValue $
+      utxoValue 3_000_000 $ mconcat
+        [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+        , PV2.singleton beaconCurrencySymbol offerBeacon 1
+        , PV2.singleton beaconCurrencySymbol askBeacon 1
+        ]
+
+  -- Try to update the swap price.
+  void $ transact sellerPersonalAddr [swapAddress,refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { inputs =
+          [ Input
+              { inputId = swapRef
+              , inputWitness =
+                  SpendWithPlutusReference spendRef InlineDatum (toRedeemer SpendWithStake)
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum updatedDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash beaconScript
+              , withdrawalAmount = 0
+              , withdrawalWitness =
+                  StakeWithPlutusReference mintRef $ toRedeemer UpdateSwaps
+              }
+          ]
+      , referenceInputs = [mintRef,spendRef]
+      , extraKeyWitnesses = [sellerPubKey]
+      }
+
+-- | When updating a swap with the beacon script executed as a staking script, the updated
+-- swap UTxO is stored at a swap address without a staking credential.
+failureTest3 :: MonadEmulator m => m ()
+failureTest3 = do
+  let -- Seller Info
+      sellerWallet = Mock.knownMockWallet 1
+      sellerPersonalAddr = Mock.mockWalletAddress sellerWallet
+      sellerPayPrivKey = Mock.paymentPrivateKey sellerWallet
+      sellerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash sellerWallet
+      swapAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash swapScript)
+                    (Just $ PV2.StakingHash $ PV2.PubKeyCredential sellerPubKey)
+      swapAddressWithoutStaking = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash swapScript) Nothing
+
+      -- Swap Info
+      offer = OfferAsset (testTokenSymbol,"TestToken1")
+      ask = AskAsset (adaSymbol,adaToken)
+      pairBeacon = genPairBeaconName offer ask
+      offerBeacon = genOfferBeaconName offer
+      askBeacon = genAskBeaconName ask
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
+
+  -- Initialize scenario
+  (mintRef,spendRef) <- initializeReferenceScripts
+  mintTestTokens sellerWallet 10_000_000 [("TestToken1",1000)]
+
+  -- Create the swap UTxO.
+  void $ transact sellerPersonalAddr [refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [(pairBeacon,1),(offerBeacon,1),(askBeacon,1)]
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps
+              , mintPolicy = toVersionedMintingPolicy beaconScript
+              , mintReference = Just mintRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [mintRef]
+      }
+
+  swapRef <-
+    txOutRefWithValue $
+      utxoValue 3_000_000 $ mconcat
+        [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+        , PV2.singleton beaconCurrencySymbol offerBeacon 1
+        , PV2.singleton beaconCurrencySymbol askBeacon 1
+        ]
+
+  -- Try to move the swap UTxO to a swap address without staking.
+  void $ transact sellerPersonalAddr [swapAddress,refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { inputs =
+          [ Input
+              { inputId = swapRef
+              , inputWitness =
+                  SpendWithPlutusReference spendRef InlineDatum (toRedeemer SpendWithStake)
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddressWithoutStaking
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum{swapPrice = unsafeRatio 10 1}
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash beaconScript
+              , withdrawalAmount = 0
+              , withdrawalWitness =
+                  StakeWithPlutusReference mintRef $ toRedeemer UpdateSwaps
+              }
+          ]
+      , referenceInputs = [mintRef,spendRef]
+      , extraKeyWitnesses = [sellerPubKey]
+      }
+
+-- | When updating a swap with the beacon script executed as a staking script, the updated
+-- swap UTxO is stored at a non-swap address.
+failureTest4 :: MonadEmulator m => m ()
+failureTest4 = do
+  let -- Seller Info
+      sellerWallet = Mock.knownMockWallet 1
+      sellerPersonalAddr = Mock.mockWalletAddress sellerWallet
+      sellerPayPrivKey = Mock.paymentPrivateKey sellerWallet
+      sellerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash sellerWallet
+      swapAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash swapScript)
+                    (Just $ PV2.StakingHash $ PV2.PubKeyCredential sellerPubKey)
+
+      -- Swap Info
+      offer = OfferAsset (testTokenSymbol,"TestToken1")
+      ask = AskAsset (adaSymbol,adaToken)
+      pairBeacon = genPairBeaconName offer ask
+      offerBeacon = genOfferBeaconName offer
+      askBeacon = genAskBeaconName ask
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
+
+  -- Initialize scenario
+  (mintRef,spendRef) <- initializeReferenceScripts
+  mintTestTokens sellerWallet 10_000_000 [("TestToken1",1000)]
+
+  -- Create the swap UTxO.
+  void $ transact sellerPersonalAddr [refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [(pairBeacon,1),(offerBeacon,1),(askBeacon,1)]
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps
+              , mintPolicy = toVersionedMintingPolicy beaconScript
+              , mintReference = Just mintRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [mintRef]
+      }
+
+  swapRef <-
+    txOutRefWithValue $
+      utxoValue 3_000_000 $ mconcat
+        [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+        , PV2.singleton beaconCurrencySymbol offerBeacon 1
+        , PV2.singleton beaconCurrencySymbol askBeacon 1
+        ]
+
+  -- Try to move the swap UTxO to a non-swap address.
+  void $ transact sellerPersonalAddr [swapAddress,refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { inputs =
+          [ Input
+              { inputId = swapRef
+              , inputWitness =
+                  SpendWithPlutusReference spendRef InlineDatum (toRedeemer SpendWithStake)
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = sellerPersonalAddr
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum{swapPrice = unsafeRatio 10 1}
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash beaconScript
+              , withdrawalAmount = 0
+              , withdrawalWitness =
+                  StakeWithPlutusReference mintRef $ toRedeemer UpdateSwaps
+              }
+          ]
+      , referenceInputs = [mintRef,spendRef]
+      , extraKeyWitnesses = [sellerPubKey]
+      }
+
+-- | When updating a swap with the beacon script executed as a staking script, the new swap
+-- datum has the wrong offer name; the beacons and the rest of the datum still correspond to
+-- the original trading pair.
+failureTest5 :: MonadEmulator m => m ()
+failureTest5 = do
+  let -- Seller Info
+      sellerWallet = Mock.knownMockWallet 1
+      sellerPersonalAddr = Mock.mockWalletAddress sellerWallet
+      sellerPayPrivKey = Mock.paymentPrivateKey sellerWallet
+      sellerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash sellerWallet
+      swapAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash swapScript)
+                    (Just $ PV2.StakingHash $ PV2.PubKeyCredential sellerPubKey)
+
+      -- Swap Info
+      offer = OfferAsset (testTokenSymbol,"TestToken1")
+      ask = AskAsset (adaSymbol,adaToken)
+      pairBeacon = genPairBeaconName offer ask
+      offerBeacon = genOfferBeaconName offer
+      askBeacon = genAskBeaconName ask
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
+
+  -- Initialize scenario
+  (mintRef,spendRef) <- initializeReferenceScripts
+  mintTestTokens sellerWallet 10_000_000 [("TestToken1",1000)]
+
+  -- Create the swap UTxO.
+  void $ transact sellerPersonalAddr [refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [(pairBeacon,1),(offerBeacon,1),(askBeacon,1)]
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps
+              , mintPolicy = toVersionedMintingPolicy beaconScript
+              , mintReference = Just mintRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [mintRef]
+      }
+
+  swapRef <-
+    txOutRefWithValue $
+      utxoValue 3_000_000 $ mconcat
+        [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+        , PV2.singleton beaconCurrencySymbol offerBeacon 1
+        , PV2.singleton beaconCurrencySymbol askBeacon 1
+        ]
+
+  -- Try to update the swap datum with the wrong offer name.
+  void $ transact sellerPersonalAddr [swapAddress,refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { inputs =
+          [ Input
+              { inputId = swapRef
+              , inputWitness =
+                  SpendWithPlutusReference spendRef InlineDatum (toRedeemer SpendWithStake)
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum{offerName = "TestToken2"}
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash beaconScript
+              , withdrawalAmount = 0
+              , withdrawalWitness =
+                  StakeWithPlutusReference mintRef $ toRedeemer UpdateSwaps
+              }
+          ]
+      , referenceInputs = [mintRef,spendRef]
+      , extraKeyWitnesses = [sellerPubKey]
+      }
+
+-- | When updating a swap with the beacon script executed as a staking script, the updated
+-- swap UTxO has an extraneous asset.
+failureTest6 :: MonadEmulator m => m ()
+failureTest6 = do
+  let -- Seller Info
+      sellerWallet = Mock.knownMockWallet 1
+      sellerPersonalAddr = Mock.mockWalletAddress sellerWallet
+      sellerPayPrivKey = Mock.paymentPrivateKey sellerWallet
+      sellerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash sellerWallet
+      swapAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash swapScript)
+                    (Just $ PV2.StakingHash $ PV2.PubKeyCredential sellerPubKey)
+
+      -- Swap Info
+      offer = OfferAsset (testTokenSymbol,"TestToken1")
+      ask = AskAsset (adaSymbol,adaToken)
+      pairBeacon = genPairBeaconName offer ask
+      offerBeacon = genOfferBeaconName offer
+      askBeacon = genAskBeaconName ask
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
+
+  -- Initialize scenario
+  (mintRef,spendRef) <- initializeReferenceScripts
+  mintTestTokens sellerWallet 10_000_000 [("TestToken1",1000),("TestToken2",1000)]
+
+  -- Create the swap UTxO.
+  void $ transact sellerPersonalAddr [refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [(pairBeacon,1),(offerBeacon,1),(askBeacon,1)]
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps
+              , mintPolicy = toVersionedMintingPolicy beaconScript
+              , mintReference = Just mintRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [mintRef]
+      }
+
+  swapRef <-
+    txOutRefWithValue $
+      utxoValue 3_000_000 $ mconcat
+        [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+        , PV2.singleton beaconCurrencySymbol offerBeacon 1
+        , PV2.singleton beaconCurrencySymbol askBeacon 1
+        ]
+
+  -- Try to update the swap price and add an extraneous asset to the swap UTxO.
+  void $ transact sellerPersonalAddr [swapAddress,refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { inputs =
+          [ Input
+              { inputId = swapRef
+              , inputWitness =
+                  SpendWithPlutusReference spendRef InlineDatum (toRedeemer SpendWithStake)
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon 1
+                  , PV2.singleton testTokenSymbol "TestToken2" 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum{swapPrice = unsafeRatio 10 1}
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash beaconScript
+              , withdrawalAmount = 0
+              , withdrawalWitness =
+                  StakeWithPlutusReference mintRef $ toRedeemer UpdateSwaps
+              }
+          ]
+      , referenceInputs = [mintRef,spendRef]
+      , extraKeyWitnesses = [sellerPubKey]
+      }
+
+-- | When updating a swap with the beacon script executed as a staking script, the address'
+-- staking credential did not approve.
+failureTest7 :: MonadEmulator m => m ()
+failureTest7 = do
+  let -- Seller Info
+      sellerWallet = Mock.knownMockWallet 1
+      sellerPersonalAddr = Mock.mockWalletAddress sellerWallet
+      sellerPayPrivKey = Mock.paymentPrivateKey sellerWallet
+      sellerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash sellerWallet
+      swapAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash swapScript)
+                    (Just $ PV2.StakingHash $ PV2.PubKeyCredential sellerPubKey)
+
+      -- Other Wallet Info
+      otherWallet = Mock.knownMockWallet 2
+      otherPersonalAddr = Mock.mockWalletAddress otherWallet
+      otherPayPrivKey = Mock.paymentPrivateKey otherWallet
+      otherPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash otherWallet
+
+      -- Swap Info
+      offer = OfferAsset (testTokenSymbol,"TestToken1")
+      ask = AskAsset (adaSymbol,adaToken)
+      pairBeacon = genPairBeaconName offer ask
+      offerBeacon = genOfferBeaconName offer
+      askBeacon = genAskBeaconName ask
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
+
+  -- Initialize scenario
+  (mintRef,spendRef) <- initializeReferenceScripts
+  mintTestTokens sellerWallet 10_000_000 [("TestToken1",1000)]
+
+  -- Create the swap UTxO.
+  void $ transact sellerPersonalAddr [refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [(pairBeacon,1),(offerBeacon,1),(askBeacon,1)]
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps
+              , mintPolicy = toVersionedMintingPolicy beaconScript
+              , mintReference = Just mintRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [mintRef]
+      }
+
+  swapRef <-
+    txOutRefWithValue $
+      utxoValue 3_000_000 $ mconcat
+        [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+        , PV2.singleton beaconCurrencySymbol offerBeacon 1
+        , PV2.singleton beaconCurrencySymbol askBeacon 1
+        ]
+
+  -- Try to update the swap price without the staking credential's approval.
+  void $ transact otherPersonalAddr [swapAddress,refScriptAddress] [otherPayPrivKey] $
+    emptyTxParams
+      { inputs =
+          [ Input
+              { inputId = swapRef
+              , inputWitness =
+                  SpendWithPlutusReference spendRef InlineDatum (toRedeemer SpendWithStake)
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum{swapPrice = unsafeRatio 10 1}
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash beaconScript
+              , withdrawalAmount = 0
+              , withdrawalWitness =
+                  StakeWithPlutusReference mintRef $ toRedeemer UpdateSwaps
+              }
+          ]
+      , referenceInputs = [mintRef,spendRef]
+      , extraKeyWitnesses = [otherPubKey]
+      }
+
+-------------------------------------------------
 -- Benchmark Tests
 -------------------------------------------------
 -- | Update the swap prices for multiple swap UTxOs. All swaps are for the same trading pair.
@@ -894,6 +1579,23 @@ tests =
     , mustSucceed "regressionTest4" regressionTest4
 
       -- Failure Tests
+    , scriptMustFailWithError "failureTest1"
+        "swap_price numerator not > 0"
+        failureTest1
+    , scriptMustFailWithError "failureTest2"
+        "swap_price denominator not > 0"
+        failureTest2
+    , scriptMustFail "failureTest3" failureTest3
+    , scriptMustFail "failureTest4" failureTest4
+    , scriptMustFailWithError "failureTest5"
+        "Wrong pair_beacon"
+        failureTest5
+    , scriptMustFailWithError "failureTest6"
+        "No extraneous assets allowed in the UTxO"
+        failureTest6
+    , scriptMustFailWithError "failureTest7"
+        "Staking credential did not approve"
+        failureTest7
 
       -- Benchmark Tests
     , mustSucceed "benchTest1" $ benchTest1 30

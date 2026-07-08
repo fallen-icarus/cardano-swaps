@@ -43,7 +43,7 @@ module CardanoSwaps.Utils
   , getScriptSize
 
     -- * Time
-  , PV2.POSIXTime(..)
+  , PV3.POSIXTime(..)
   , L.Slot(..)
   , slotToPOSIXTime
   , posixTimeToSlot
@@ -53,16 +53,16 @@ module CardanoSwaps.Utils
 
   -- * Re-exports
   , applyArguments
-  , PV2.CurrencySymbol(..)
-  , PV2.TokenName(..)
+  , PV3.CurrencySymbol(..)
+  , PV3.TokenName(..)
   , unsafeRatio
-  , PV2.adaSymbol
-  , PV2.adaToken
+  , PV3.adaSymbol
+  , PV3.adaToken
   , numerator
   , denominator
-  , PV2.TxOutRef(..)
-  , PV2.TxId(..)
-  , PV2.SerialisedScript
+  , PV3.TxOutRef(..)
+  , PV3.TxId(..)
+  , PV3.SerialisedScript
   ) where
 
 import qualified Data.Aeson as Aeson
@@ -81,20 +81,22 @@ import qualified PlutusTx.Prelude as PlutusTx
 import qualified PlutusCore.MkPlc as PLC
 import qualified UntypedPlutusCore as UPLC
 import qualified Cardano.Api as Api 
-import Cardano.Api.Shelley (fromPlutusData,PlutusScript(..))
+import Cardano.Api.Plutus (fromPlutusData,PlutusScript(..))
 import PlutusLedgerApi.V1.Bytes (fromHex,bytes,encodeByteString,LedgerBytesError)
 import Ledger.Tx.CardanoAPI.Internal (fromCardanoScriptData)
 import qualified Ledger as L
 import PlutusTx.Ratio (fromGHC,unsafeRatio,numerator,denominator)
 import qualified PlutusTx.Builtins as Builtins
-import qualified Plutus.Script.Utils.Scripts as PV2
-import qualified PlutusLedgerApi.V2 as PV2
+import qualified Plutus.Script.Utils.Scripts as PV3
+import qualified Plutus.Script.Utils.Data as PSU
+import qualified PlutusLedgerApi.V1 as PV1
+import qualified PlutusLedgerApi.V3 as PV3
 
 -------------------------------------------------
 -- On-Chain Data Types
 -------------------------------------------------
 type PlutusRational = PlutusTx.Rational
-type AssetConfig = (PV2.CurrencySymbol,PV2.TokenName)
+type AssetConfig = (PV3.CurrencySymbol,PV3.TokenName)
 
 -------------------------------------------------
 -- Off-Chain Data Types
@@ -106,25 +108,25 @@ type TwoWayPair = (AssetConfig,AssetConfig)
 -------------------------------------------------
 -- Serialization
 -------------------------------------------------
-toJSONValue :: PV2.ToData a => a -> Aeson.Value
+toJSONValue :: PV3.ToData a => a -> Aeson.Value
 toJSONValue = Api.scriptDataToJson Api.ScriptDataJsonDetailedSchema
             . Api.unsafeHashableScriptData
             . fromPlutusData
-            . PV2.toData
+            . PV3.toData
 
-writeScript :: FilePath -> PV2.SerialisedScript -> IO (Either (Api.FileError ()) ())
-writeScript file script = 
-  Api.writeFileTextEnvelope @(Api.PlutusScript Api.PlutusScriptV2) (Api.File file) Nothing $ 
+writeScript :: FilePath -> PV3.SerialisedScript -> IO (Either (Api.FileError ()) ())
+writeScript file script =
+  Api.writeFileTextEnvelope @(Api.PlutusScript Api.PlutusScriptV3) (Api.File file) Nothing $
     PlutusScriptSerialised script
 
-writeData :: PV2.ToData a => FilePath -> a -> IO ()
+writeData :: PV3.ToData a => FilePath -> a -> IO ()
 writeData file = LBS.writeFile file . Aeson.encode . toJSONValue
 
-decodeDatum :: (PV2.FromData a) => Aeson.Value -> Maybe a
-decodeDatum = either (const Nothing) (PV2.fromBuiltinData . fromCardanoScriptData)
+decodeDatum :: (PV3.FromData a) => Aeson.Value -> Maybe a
+decodeDatum = either (const Nothing) (PV3.fromBuiltinData . fromCardanoScriptData)
             . Api.scriptDataFromJson Api.ScriptDataJsonDetailedSchema
 
-parseScriptFromCBOR :: String -> PV2.SerialisedScript
+parseScriptFromCBOR :: String -> PV3.SerialisedScript
 parseScriptFromCBOR script =
   case Base16.decode base16Bytes of
     Left e -> error $ "Failed to decode validator: " <> show e
@@ -132,7 +134,7 @@ parseScriptFromCBOR script =
  where
   base16Bytes = encodeUtf8 script
 
-dataFromCBOR :: String -> Either LedgerBytesError PV2.Data
+dataFromCBOR :: String -> Either LedgerBytesError PV3.Data
 dataFromCBOR = fmap Serial.deserialise . decodeHex
 
 decodeHex :: String -> Either LedgerBytesError LBS.ByteString
@@ -148,31 +150,31 @@ toCBOR = encodeByteString . toStrict . Serial.serialise
 -- "lovelace" or of the form "policy_id.asset_name".
 readAssetConfig :: String -> Either String AssetConfig
 readAssetConfig s =
-    if s == "lovelace" then Right (PV2.adaSymbol,PV2.adaToken)
+    if s == "lovelace" then Right (PV3.adaSymbol,PV3.adaToken)
     else (,) <$> readCurrencySymbol policy <*> readTokenName (drop 1 name)
   where
     (policy,name) = span (/='.') s
 
 -- | Parse `CurrencySymbol` from user supplied `String`.
-readCurrencySymbol :: String -> Either String PV2.CurrencySymbol
+readCurrencySymbol :: String -> Either String PV3.CurrencySymbol
 readCurrencySymbol s = case fromHex $ fromString s of
-  Right (PV2.LedgerBytes bytes') -> Right $ PV2.CurrencySymbol bytes'
+  Right (PV3.LedgerBytes bytes') -> Right $ PV3.CurrencySymbol bytes'
   Left msg                   -> Left $ show msg
 
 -- | Parse `TokenName` from user supplied `String`.
-readTokenName :: String -> Either String PV2.TokenName
+readTokenName :: String -> Either String PV3.TokenName
 readTokenName s = case fromHex $ fromString s of
-  Right (PV2.LedgerBytes bytes') -> Right $ PV2.TokenName bytes'
+  Right (PV3.LedgerBytes bytes') -> Right $ PV3.TokenName bytes'
   Left msg                   -> Left $ show msg
 
 -- | Parse `TxId` from user supplied `String`.
-readTxId :: String -> Either String PV2.TxId
+readTxId :: String -> Either String PV3.TxId
 readTxId s = case fromHex $ fromString s of
-  Right (PV2.LedgerBytes bytes') -> Right $ PV2.TxId bytes'
+  Right (PV3.LedgerBytes bytes') -> Right $ PV3.TxId bytes'
   Left msg                   -> Left $ show msg
 
-readTxOutRef :: String -> Either String PV2.TxOutRef
-readTxOutRef s = PV2.TxOutRef <$> readTxId txHash <*> readIndex (drop 1 index)
+readTxOutRef :: String -> Either String PV3.TxOutRef
+readTxOutRef s = PV3.TxOutRef <$> readTxId txHash <*> readIndex (drop 1 index)
   where
     (txHash,index) = span (/='#') s
 
@@ -205,27 +207,27 @@ readPlutusRational s = case fromGHC <$> (readMaybeRatio sample <|> readMaybeDoub
 data SlotConfig = SlotConfig
   { scSlotLength :: !Integer
   -- ^ Length (number of milliseconds) of one slot
-  , scSlotZeroTime :: !PV2.POSIXTime
+  , scSlotZeroTime :: !PV3.POSIXTime
   -- ^ Beginning of slot 0 (in milliseconds)
   } deriving (Eq, Show)
 
 -- | Get the starting 'POSIXTime' of a 'Slot' given a 'SlotConfig'.
-slotToBeginPOSIXTime :: SlotConfig -> L.Slot -> PV2.POSIXTime
+slotToBeginPOSIXTime :: SlotConfig -> L.Slot -> PV3.POSIXTime
 slotToBeginPOSIXTime SlotConfig{scSlotLength, scSlotZeroTime} (L.Slot n) =
   let msAfterBegin = n * scSlotLength
-   in PV2.POSIXTime $ PV2.getPOSIXTime scSlotZeroTime + msAfterBegin
+   in PV3.POSIXTime $ PV3.getPOSIXTime scSlotZeroTime + msAfterBegin
 
 -- | Convert a 'POSIXTime' to 'Slot' given a 'SlotConfig'.
-posixTimeToEnclosingSlot :: SlotConfig -> PV2.POSIXTime -> L.Slot
-posixTimeToEnclosingSlot SlotConfig{scSlotLength, scSlotZeroTime} (PV2.POSIXTime t) =
-  let timePassed = t - PV2.getPOSIXTime scSlotZeroTime
+posixTimeToEnclosingSlot :: SlotConfig -> PV3.POSIXTime -> L.Slot
+posixTimeToEnclosingSlot SlotConfig{scSlotLength, scSlotZeroTime} (PV3.POSIXTime t) =
+  let timePassed = t - PV3.getPOSIXTime scSlotZeroTime
       slotsPassed = PlutusTx.divide timePassed scSlotLength
    in L.Slot slotsPassed
 
-slotToPOSIXTime :: SlotConfig -> L.Slot -> PV2.POSIXTime
+slotToPOSIXTime :: SlotConfig -> L.Slot -> PV3.POSIXTime
 slotToPOSIXTime = slotToBeginPOSIXTime
 
-posixTimeToSlot :: SlotConfig -> PV2.POSIXTime -> L.Slot
+posixTimeToSlot :: SlotConfig -> PV3.POSIXTime -> L.Slot
 posixTimeToSlot = posixTimeToEnclosingSlot
 
 -- | The preproduction testnet has not always had 1 second slots. Therefore, the default settings
@@ -237,13 +239,13 @@ posixTimeToSlot = posixTimeToEnclosingSlot
 -- from the time yields the normalized 0 time. The final number needs to be converted to
 -- milliseconds.
 preprodTimeConfig :: SlotConfig
-preprodTimeConfig = SlotConfig 1000 $ PV2.POSIXTime $ (1712603045 - 56919845) * 1000
+preprodTimeConfig = SlotConfig 1000 $ PV3.POSIXTime $ (1712603045 - 56919845) * 1000
 
 -- | The mainnet config must also be normalized.
 mainnetTimeConfig :: SlotConfig
-mainnetTimeConfig = SlotConfig 1000 $ PV2.POSIXTime $ (1712661664 - 121095373) * 1000
+mainnetTimeConfig = SlotConfig 1000 $ PV3.POSIXTime $ (1712661664 - 121095373) * 1000
 
-toNearestMinute :: PV2.POSIXTime -> PV2.POSIXTime
+toNearestMinute :: PV3.POSIXTime -> PV3.POSIXTime
 toNearestMinute time =
   let remainder = time `mod` 60_000
   in if remainder >= 30_000
@@ -253,50 +255,55 @@ toNearestMinute time =
 -------------------------------------------------
 -- Misc
 -------------------------------------------------
-toCardanoApiScript :: PV2.SerialisedScript -> Api.Script Api.PlutusScriptV2
-toCardanoApiScript = Api.PlutusScript Api.PlutusScriptV2 . PlutusScriptSerialised
+toCardanoApiScript :: PV3.SerialisedScript -> Api.Script Api.PlutusScriptV3
+toCardanoApiScript = Api.PlutusScript Api.PlutusScriptV3 . PlutusScriptSerialised
 
-toLedgerScript :: PV2.SerialisedScript -> PV2.Script
-toLedgerScript = PV2.Script
+toLedgerScript :: PV3.SerialisedScript -> PV3.Script
+toLedgerScript = PV3.Script
 
-toVersionedLedgerScript :: PV2.SerialisedScript -> PV2.Versioned PV2.Script
-toVersionedLedgerScript script = PV2.Versioned (toLedgerScript script) PV2.PlutusV2
+toVersionedLedgerScript :: PV3.SerialisedScript -> PV3.Versioned PV3.Script
+toVersionedLedgerScript script = PV3.Versioned (toLedgerScript script) PV3.PlutusV3
 
-wrapVersionedLedgerScript :: (PV2.Script -> a) -> PV2.Versioned PV2.Script -> PV2.Versioned a
-wrapVersionedLedgerScript wrapper v@PV2.Versioned{PV2.unversioned} = 
-  v{PV2.unversioned = wrapper unversioned}
+wrapVersionedLedgerScript :: (PV3.Script -> a) -> PV3.Versioned PV3.Script -> PV3.Versioned a
+wrapVersionedLedgerScript wrapper v@PV3.Versioned{PV3.unversioned} = 
+  v{PV3.unversioned = wrapper unversioned}
 
-scriptHash :: PV2.SerialisedScript -> PV2.ScriptHash
+scriptHash :: PV3.SerialisedScript -> PV3.ScriptHash
 scriptHash =
-  PV2.ScriptHash
+  PV3.ScriptHash
     . Builtins.toBuiltin
     . Api.serialiseToRawBytes
     . Api.hashScript
     . toCardanoApiScript
 
-datumHash :: (PV2.ToData a) => a -> PV2.DatumHash
-datumHash = L.datumHash . L.Datum . PV2.dataToBuiltinData . PV2.toData
+datumHash :: (PV3.ToData a) => a -> PV3.DatumHash
+datumHash = PSU.datumHash . L.Datum . PV3.dataToBuiltinData . PV3.toData
 
-applyArguments :: PV2.SerialisedScript -> [PV2.Data] -> PV2.SerialisedScript
+-- | plutus-ledger only provides JSON instances for the V1 `TxOutRef`, so the
+-- V3 version delegates to them to keep the CLI's JSON format unchanged.
+instance Aeson.ToJSON PV3.TxOutRef where
+  toJSON (PV3.TxOutRef (PV3.TxId h) ix) = Aeson.toJSON $ PV1.TxOutRef (PV1.TxId h) ix
+
+applyArguments :: PV3.SerialisedScript -> [PV3.Data] -> PV3.SerialisedScript
 applyArguments p args =
     let termArgs = fmap (PLC.mkConstant ()) args
         applied t = PLC.mkIterAppNoAnn t termArgs
-    in PV2.serialiseUPLC $ over UPLC.progTerm applied $ PV2.uncheckedDeserialiseUPLC p
+    in PV3.serialiseUPLC $ over UPLC.progTerm applied $ PV3.uncheckedDeserialiseUPLC p
 
 unsafeFromRight :: Either a b -> b
 unsafeFromRight (Right x) = x
 unsafeFromRight _ = error "unsafeFromRight used on Left"
 
 -- | Show the token name in hexidecimal.
-showTokenName :: PV2.TokenName -> String
-showTokenName (PV2.TokenName name) = show $ PV2.PubKeyHash name
+showTokenName :: PV3.TokenName -> String
+showTokenName (PV3.TokenName name) = show $ PV3.PubKeyHash name
 
 unsafeToBuiltinByteString :: String -> Builtins.BuiltinByteString
-unsafeToBuiltinByteString = (\(PV2.LedgerBytes bytes') -> bytes')
+unsafeToBuiltinByteString = (\(PV3.LedgerBytes bytes') -> bytes')
                           . unsafeFromRight
                           . fromHex
                           . fromString
 
-getScriptSize :: PV2.SerialisedScript -> Integer
+getScriptSize :: PV3.SerialisedScript -> Integer
 getScriptSize = UPLC.serialisedSize
 

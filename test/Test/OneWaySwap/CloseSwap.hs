@@ -74,7 +74,7 @@ initializeReferenceScripts = do
 -------------------------------------------------
 -- Mint Test Tokens
 -------------------------------------------------
-mintTestTokens :: MonadEmulator m => Mock.MockWallet -> LV.Lovelace -> [(TokenName,Integer)] -> m ()
+mintTestTokens :: MonadEmulator m => Mock.MockWallet -> Lovelace -> [(TokenName,Integer)] -> m ()
 mintTestTokens w lovelace ts = do
   let walletAddress = Mock.mockWalletAddress w
   void $ transact walletAddress [refScriptAddress] [Mock.paymentPrivateKey w] $
@@ -1235,11 +1235,11 @@ benchTest2 number = do
                     (Just $ PV2.StakingHash $ PV2.PubKeyCredential sellerPubKey)
 
       -- Other Info
-      assetNames = map (\i -> fromString $ "TestToken" <> show @Int i) [1..130]
+      assetNames = map (\i -> fromString $ "TestToken" <> show @Int i) [1..160]
 
       -- Swap Info
-      offers = map (\name -> OfferAsset (testTokenSymbol,name)) $ drop 65 assetNames
-      asks = map (\name -> AskAsset (testTokenSymbol,name)) $ take 65 assetNames
+      offers = map (\name -> OfferAsset (testTokenSymbol,name)) $ drop 80 assetNames
+      asks = map (\name -> AskAsset (testTokenSymbol,name)) $ take 80 assetNames
       pairs = zip offers asks
       datums = 
         flip map pairs $ \(offer,ask) -> 
@@ -1260,10 +1260,11 @@ benchTest2 number = do
 
   -- Initialize scenario
   (mintRef,spendRef) <- initializeReferenceScripts 
-  mintTestTokens sellerWallet 100_000_000 $ zip assetNames (repeat 1000)
+  mintTestTokens sellerWallet 100_000_000 $ zip (take 80 assetNames) (repeat 1000)
+  mintTestTokens sellerWallet 100_000_000 $ zip (drop 80 assetNames) (repeat 1000)
 
   -- Create the swap UTxO.
-  forM_ (grouped 20 datums) $ \ds -> 
+  forM_ (grouped 15 datums) $ \ds -> 
     transact sellerPersonalAddr [refScriptAddress] [sellerPayPrivKey] $
       emptyTxParams
         { tokens =
@@ -1347,10 +1348,10 @@ tests =
         failureTest8
 
       -- Benchmark Tests
-    , mustSucceed "benchTest1" $ benchTest1 60
-    , mustSucceed "benchTest2" $ benchTest2 60
+    , mustSucceed "benchTest1" $ benchTest1 71
+    , mustSucceed "benchTest2" $ benchTest2 71
 
       -- Performance Increase Tests
-    , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 61
-    , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 61
+    , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 72
+    , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 72
     ]

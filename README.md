@@ -259,10 +259,13 @@ data SwapDatum = SwapDatum
   , expiration  :: Maybe POSIXTime -- ^ An optional expiration. Must fall on 1-min interval.
   }
 
+-- The beacon script still requires a redeemer, but no longer inspects it: the script
+-- purpose (minting, staking, or publishing) determines the behavior. These constructors
+-- are kept for backwards compatibility and convention:
 data BeaconPolicyRedeemer
-  = RegisterBeaconScript -- ^ Register beacon script for staking execution.
-  | CreateOrCloseSwaps   -- ^ Executes the beacon script as a minting policy.
-  | UpdateSwaps          -- ^ Executes the beacon script as a staking script.
+  = RegisterBeaconScript -- ^ Conventionally used when registering the script's staking credential.
+  | CreateOrCloseSwaps   -- ^ Conventionally used with minting executions.
+  | UpdateSwaps          -- ^ Conventionally used with staking executions.
 
 data SwapSpendingRedeemer
   = SpendWithMint  -- ^ Delegates checks to the beacon script's minting policy execution.
@@ -291,10 +294,13 @@ data SwapDatum = SwapDatum
   , expiration  :: Maybe POSIXTime -- ^ An optional expiration. Must fall on 1-min interval.
   }
 
+-- The beacon script still requires a redeemer, but no longer inspects it: the script
+-- purpose (minting, staking, or publishing) determines the behavior. These constructors
+-- are kept for backwards compatibility and convention:
 data BeaconPolicyRedeemer
-  = RegisterBeaconScript -- ^ Register beacon script for staking execution.
-  | CreateOrCloseSwaps   -- ^ Executes the beacon script as a minting policy.
-  | UpdateSwaps          -- ^ Executes the beacon script as a staking script.
+  = RegisterBeaconScript -- ^ Conventionally used when registering the script's staking credential.
+  | CreateOrCloseSwaps   -- ^ Conventionally used with minting executions.
+  | UpdateSwaps          -- ^ Conventionally used with staking executions.
 
 data SwapSpendingRedeemer
   = SpendWithMint  -- ^ Delegates checks to the beacon script's minting policy execution.
@@ -355,7 +361,8 @@ script.
 
 ##### Creating a Swap
 
-To create a swap, the owner must use the `CreateOrCloseSwaps` beacon redeemer. This requires:
+To create a swap, the owner must execute the beacon script as a minting policy (any beacon
+redeemer works; `CreateOrCloseSwaps` by convention). This requires:
 
 1. The beacon script is executed as a **minting policy**.
 2. The minted beacons are sent to the correct universal swap address, which must have a valid

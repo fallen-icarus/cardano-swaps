@@ -12,20 +12,16 @@ changed**. Each version corresponds to a unique, immutable set of smart contract
 
 This version introduces the optional order `expiration` feature to both one-way and two-way swaps.
 
-> [!NOTE]
-> A `RegisterScript` redeemer was added for the beacon scripts since the conway hardfork now
-> enforces script execution when registering a staking credential.
-
 -   **Status:** 🟡 **LIVE but not audited**
--   **Plutus Version:** Plutus V2
--   **Commit Hash:** [`ecbf5daf8f28ac6e56adc8cc28d2a0931e01194a`](https://github.com/fallen-icarus/cardano-swaps/commit/ecbf5daf8f28ac6e56adc8cc28d2a0931e01194a)
+-   **Plutus Version:** Plutus V3
+-   **Commit Hash:** [`d7d9c814dfccb5c526fd6418d5a30233c1ac1d42`](https://github.com/fallen-icarus/cardano-swaps/commit/d7d9c814dfccb5c526fd6418d5a30233c1ac1d42)
 -   **Script Hashes:**
     - **One-Way:**
-        -   Swap: `1d6cff26bcab91d2061aad0bd259cbb7d76d25ced2eeaed5926a42ad`
-        -   Beacon Policy: `c4d7d117d9ebcde6db28db40837ff2b1401e9eaaa6eecea9e070e209`
+        -   Swap: `ef69e7b2174184c1a1e140f255af81bb6a8daf7d3796563ec7bdeccb`
+        -   Beacon Policy: `4557249e92a42c371f494c32fcfbb31648ef14c4fb69056e56269af3`
     - **Two-Way:**
-        -   Swap: `11928a3ac3b65edbf103ea6bb3362e39b879a36f02897df31c40917b`
-        -   Beacon Policy: `8a199a17ef4517215945aaf3c8c5204c60fd94d34c46d341e99c8fcf`
+        -   Swap: `81bd68c4428281814bb2c69d75af4bc45876dfdc0af82c1ed4b8a8b4`
+        -   Beacon Policy: `ca68d83fa7afe2dab5bfdaa9ee2fd5e0dc584f0d5cbbac887c2b77a2`
 
 ---
 

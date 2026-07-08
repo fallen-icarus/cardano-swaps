@@ -168,7 +168,7 @@ queryAllSwapsByTradingPair :: OfferAsset -> AskAsset -> ClientM [SwapUTxO]
 queryAllSwapsByTradingPair o@(OfferAsset offer@(currSym,_)) a@(AskAsset ask) = do
   let oneWayBeacon = (OneWay.beaconCurrencySymbol, OneWay.genPairBeaconName o a)
       twoWayBeacon = (TwoWay.beaconCurrencySymbol, TwoWay.genPairBeaconName offer ask)
-      offerFilter = if currSym == "" then Nothing else Just $ "cs." <> assetToQueryParam offer
+      offerFilter = if currSym == adaSymbol then Nothing else Just $ "cs." <> assetToQueryParam offer
   oneWayUTxOs <- 
     assetUTxOsApi 
       "is_spent,tx_hash,tx_index,address,value,datum_hash,inline_datum,asset_list,reference_script"
@@ -189,7 +189,7 @@ queryAllSwapsByOffer offer@(OfferAsset asset@(currSym,_))  = do
       twoWayOfferBeaconName = TwoWay.genAssetBeaconName asset
       oneWayBeacon = (OneWay.beaconCurrencySymbol, oneWayOfferBeaconName)
       twoWayBeacon = (TwoWay.beaconCurrencySymbol, twoWayOfferBeaconName)
-      offerFilter = if currSym == "" then Nothing else Just $ "cs." <> assetToQueryParam asset
+      offerFilter = if currSym == adaSymbol then Nothing else Just $ "cs." <> assetToQueryParam asset
   oneWayUTxOs <- 
     assetUTxOsApi 
       "is_spent,tx_hash,tx_index,address,value,datum_hash,inline_datum,asset_list,reference_script"

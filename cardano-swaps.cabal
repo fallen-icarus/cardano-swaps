@@ -24,6 +24,7 @@ common lang
     NumericUnderscores
     TupleSections
     TypeApplications
+    ViewPatterns
 
 common internals
   build-depends:
@@ -37,7 +38,6 @@ common internals
     , aeson
     , text
     , bytestring
-    , prettyprinter
 
 library
   import:
@@ -65,8 +65,10 @@ test-suite cardano-swaps-tests
   hs-source-dirs: test
   ghc-options:
     -threaded -rtsopts -with-rtsopts=-N
-    -Wno-unused-matches -Wno-unused-local-binds 
+    -Wno-unused-matches -Wno-unused-local-binds
     -Wno-unused-top-binds
+  default-extensions:
+    ConstraintKinds
   other-modules:
       Test.Prelude
     , Test.OneWaySwap
@@ -75,6 +77,7 @@ test-suite cardano-swaps-tests
     , Test.OneWaySwap.CreateSwap
     , Test.OneWaySwap.Swap
     , Test.OneWaySwap.UpdateSwap
+    , Test.OneWaySwap.Publish
     , Test.OneWaySwap.UnsafeDatum
     , Test.TwoWaySwap
     , Test.TwoWaySwap.BeaconNames
@@ -82,6 +85,7 @@ test-suite cardano-swaps-tests
     , Test.TwoWaySwap.CreateSwap
     , Test.TwoWaySwap.Swap
     , Test.TwoWaySwap.UpdateSwap
+    , Test.TwoWaySwap.Publish
     , Test.TwoWaySwap.UnsafeDatum
   build-depends:
       cardano-swaps
@@ -89,8 +93,8 @@ test-suite cardano-swaps-tests
     , tasty
     , tasty-hunit
     , microlens
-    , mtl
     , cardano-node-emulator
+    , cooked-validators == 8.0.0
 
 executable cardano-swaps
     import: 
@@ -110,9 +114,7 @@ executable cardano-swaps
       servant-client,
       http-client,
       http-client-tls,
-      vector,
-      aeson-pretty,
-      file-embed,
+      prettyprinter,
       prettyprinter-ansi-terminal
     hs-source-dirs: app
     default-extensions:

@@ -100,7 +100,7 @@ initializeReferenceScripts = do
 -------------------------------------------------
 -- Mint Test Tokens
 -------------------------------------------------
-mintTestTokens :: MonadEmulator m => Mock.MockWallet -> LV.Lovelace -> [(TokenName,Integer)] -> m ()
+mintTestTokens :: MonadEmulator m => Mock.MockWallet -> Lovelace -> [(TokenName,Integer)] -> m ()
 mintTestTokens w lovelace ts = do
   let walletAddress = Mock.mockWalletAddress w
   void $ transact walletAddress [refScriptAddress] [Mock.paymentPrivateKey w] $
@@ -3492,7 +3492,7 @@ failureTest22 = do
                   , uncurry PV2.singleton (unOfferAsset offer1) 5
                   , uncurry PV2.singleton (unAskAsset ask1) 5_000_000
                   ]
-              , outputDatum = OutputDatumHash $ datumHash swapDatum1{prevInput = Just swapRef}
+              , outputDatum = OutputDatumHash $ toDatum swapDatum1{prevInput = Just swapRef}
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
@@ -4284,6 +4284,112 @@ failureTest29 = do
           }
       }
 
+-- | The new swap output's datum has the wrong expiration.
+failureTest30 :: MonadEmulator m => m ()
+failureTest30 = do
+  let -- Seller Info
+      sellerWallet = Mock.knownMockWallet 1
+      sellerPersonalAddr = Mock.mockWalletAddress sellerWallet
+      sellerPayPrivKey = Mock.paymentPrivateKey sellerWallet
+      sellerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash sellerWallet
+      sellerSwapAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash swapScript)
+                    (Just $ PV2.StakingHash $ PV2.PubKeyCredential sellerPubKey)
+
+      -- Swap Info
+      offer1 = OfferAsset (testTokenSymbol,"TestToken1")
+      ask1 = AskAsset (adaSymbol,adaToken)
+      pairBeacon1 = genPairBeaconName offer1 ask1
+      offerBeacon1 = genOfferBeaconName offer1
+      askBeacon1 = genAskBeaconName ask1
+
+      -- Buyer Info
+      buyerWallet = Mock.knownMockWallet 2
+      buyerPersonalAddr = Mock.mockWalletAddress buyerWallet
+      buyerPayPrivKey = Mock.paymentPrivateKey buyerWallet
+
+  -- Initialize scenario
+  (mintRef,spendRef) <- initializeReferenceScripts
+  mintTestTokens sellerWallet 10_000_000 [("TestToken1",1000)]
+  mintTestTokens buyerWallet 10_000_000 [("TestToken1",1000)]
+
+  let expir = toNearestMin $ slotToPosixTime 60
+  let swapDatum1 = genSwapDatum offer1 ask1 (unsafeRatio 1_000_000 1) Nothing (Just expir)
+
+  -- Try to create the swap UTxO.
+  void $ transact sellerPersonalAddr [refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [(pairBeacon1,1),(offerBeacon1,1),(askBeacon1,1)]
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps
+              , mintPolicy = toVersionedMintingPolicy beaconScript
+              , mintReference = Just mintRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = sellerSwapAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon1 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon1 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon1 1
+                  , uncurry PV2.singleton (unOfferAsset offer1) 10
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum1
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [mintRef]
+      , validityRange = ValidityRange
+          { validityRangeLowerBound = Nothing
+          , validityRangeUpperBound = Just $ posixTimeToSlot expir
+          }
+      }
+
+  swapRef <-
+    txOutRefWithValue $
+      utxoValue 3_000_000 $ mconcat
+        [ PV2.singleton beaconCurrencySymbol pairBeacon1 1
+        , PV2.singleton beaconCurrencySymbol offerBeacon1 1
+        , PV2.singleton beaconCurrencySymbol askBeacon1 1
+        , uncurry PV2.singleton (unOfferAsset offer1) 10
+        ]
+
+  -- Try to swap with the swap UTxO. The output's datum has the wrong expiration.
+  void $ transact buyerPersonalAddr [sellerSwapAddress,refScriptAddress] [buyerPayPrivKey] $
+    emptyTxParams
+      { inputs =
+          [ Input
+              { inputId = swapRef
+              , inputWitness =
+                  SpendWithPlutusReference spendRef InlineDatum (toRedeemer Swap)
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = sellerSwapAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon1 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon1 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon1 1
+                  , uncurry PV2.singleton (unOfferAsset offer1) 5
+                  , uncurry PV2.singleton (unAskAsset ask1) 5_000_000
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum1
+                  { prevInput = Just swapRef
+                  , expiration = Just $ expir + 60_000
+                  }
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [spendRef,mintRef]
+      , validityRange = ValidityRange
+          { validityRangeLowerBound = Nothing
+          , validityRangeUpperBound = Just $ posixTimeToSlot expir
+          }
+      }
+
 -------------------------------------------------
 -- Benchmark Tests
 -------------------------------------------------
@@ -4577,12 +4683,15 @@ tests =
     , scriptMustFailWithError "failureTest29"
         "invalid-hereafter must be <= expiration"
         failureTest29
+    , scriptMustFailWithError "failureTest30"
+        "Corresponding swap output not found"
+        failureTest30
 
       -- Benchmark Tests
-    , mustSucceed "benchTest1" $ benchTest1 26
-    , mustSucceed "benchTest2" $ benchTest1 24
+    , mustSucceed "benchTest1" $ benchTest1 29
+    , mustSucceed "benchTest2" $ benchTest2 24
 
       -- Performance Increase Tests
-    , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 27
+    , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 30
     , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 25
     ]

@@ -231,7 +231,7 @@ intersperseDoc _ [x] = [x]
 intersperseDoc i (x:xs) = (x <+> i) : intersperseDoc i xs
 
 toAssetName :: CurrencySymbol -> TokenName -> Text
-toAssetName "" _ = "lovelace"
+toAssetName cur _ | cur == adaSymbol = "lovelace"
 toAssetName cur tok = T.pack (show cur) <> "." <> T.pack (showTokenName tok)
 
 data TargetDirection = None | TakingAsset1 | TakingAsset2 deriving (Eq)

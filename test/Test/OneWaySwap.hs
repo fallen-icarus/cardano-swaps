@@ -9,6 +9,7 @@ import qualified Test.OneWaySwap.UpdateSwap as UpdateSwap
 import qualified Test.OneWaySwap.CloseSwap as CloseSwap
 import qualified Test.OneWaySwap.Swap as Swap
 import qualified Test.OneWaySwap.BeaconNames as BeaconNames
+import qualified Test.OneWaySwap.Publish as Publish
 
 tests :: TestTree
 tests = testGroup "One-Way Swaps"
@@ -17,4 +18,5 @@ tests = testGroup "One-Way Swaps"
   , UpdateSwap.tests
   , Swap.tests
   , BeaconNames.tests
+  , Publish.tests
   ]

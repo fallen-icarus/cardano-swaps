@@ -113,7 +113,7 @@ initializeBeaconPolicy = do
 -------------------------------------------------
 -- Mint Test Tokens
 -------------------------------------------------
-mintTestTokens :: MonadEmulator m => Mock.MockWallet -> LV.Lovelace -> [(TokenName,Integer)] -> m ()
+mintTestTokens :: MonadEmulator m => Mock.MockWallet -> Lovelace -> [(TokenName,Integer)] -> m ()
 mintTestTokens w lovelace ts = do
   let walletAddress = Mock.mockWalletAddress w
   void $ transact walletAddress [refScriptAddress] [Mock.paymentPrivateKey w] $
@@ -2940,7 +2940,7 @@ failureTest41 = do
                   , PV2.singleton beaconCurrencySymbol askBeacon 1
                   , uncurry PV2.singleton offer 10
                   ]
-              , outputDatum = OutputDatumHash $ datumHash swapDatum
+              , outputDatum = OutputDatumHash $ toDatum swapDatum
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
@@ -3996,8 +3996,8 @@ tests =
     , scriptMustFailWithError "failureTest2" 
         "Wrong pair_beacon" 
         failureTest2
-    , scriptMustFailWithError "failureTest3" 
-        "UTxO has wrong beacons" 
+    , scriptMustFailWithError "failureTest3"
+        "Wrong pair_beacon"
         failureTest3
     , scriptMustFailWithError "failureTest4" 
         "Two-way swaps must have exactly three kinds of beacons" 
@@ -4011,8 +4011,8 @@ tests =
     , scriptMustFailWithError "failureTest7" 
         "Wrong asset2_beacon" 
         failureTest7
-    , scriptMustFailWithError "failureTest8" 
-        "UTxO has wrong beacons" 
+    , scriptMustFailWithError "failureTest8"
+        "Wrong asset2_beacon"
         failureTest8
     , scriptMustFailWithError "failureTest9" 
         "Two-way swaps must have exactly three kinds of beacons" 
@@ -4026,8 +4026,8 @@ tests =
     , scriptMustFailWithError "failureTest12" 
         "Wrong asset1_beacon" 
         failureTest12
-    , scriptMustFailWithError "failureTest13" 
-        "UTxO has wrong beacons" 
+    , scriptMustFailWithError "failureTest13"
+        "Wrong asset1_beacon"
         failureTest13
     , scriptMustFailWithError "failureTest14" 
         "Two-way swaps must have exactly three kinds of beacons" 
@@ -4052,11 +4052,11 @@ tests =
     , scriptMustFailWithError "failureTest24" 
         "Wrong beacon_id" 
         failureTest24
-    , scriptMustFailWithError "failureTest25" 
-        "No extraneous assets allowed in the UTxO" 
+    , scriptMustFailWithError "failureTest25"
+        "Wrong pair_beacon"
         failureTest25
-    , scriptMustFailWithError "failureTest26" 
-        "No extraneous assets allowed in the UTxO" 
+    , scriptMustFailWithError "failureTest26"
+        "Wrong pair_beacon"
         failureTest26
     , scriptMustFailWithError "failureTest27" 
         "Wrong pair_beacon" 
@@ -4067,8 +4067,8 @@ tests =
     , scriptMustFailWithError "failureTest29" 
         "Two-way swaps must have exactly three kinds of beacons" 
         failureTest29
-    , scriptMustFailWithError "failureTest30" 
-        "UTxO has wrong beacons" 
+    , scriptMustFailWithError "failureTest30"
+        "Asset1 must be less than asset2"
         failureTest30
     , scriptMustFailWithError "failureTest31" 
         "Asset1 must be less than asset2" 
@@ -4115,8 +4115,8 @@ tests =
     , scriptMustFailWithError "failureTest45" 
         "UTxO has wrong beacons" 
         failureTest45
-    , scriptMustFailWithError "failureTest46" 
-        "UTxO has wrong beacons" 
+    , scriptMustFailWithError "failureTest46"
+        "No extraneous assets allowed in the UTxO"
         failureTest46
     , scriptMustFailWithError "failureTest47" 
         "No extraneous assets allowed in the UTxO" 

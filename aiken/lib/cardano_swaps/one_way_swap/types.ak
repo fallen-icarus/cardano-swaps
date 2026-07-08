@@ -23,3 +23,7 @@ pub type SwapRedeemer {
   SpendWithStake
   Swap
 }
+
+// The beacon policy redeemer was dropped because it is no longer required. The script purpose now
+// decides the dispatch, not the redeemer. For backwards compatibility with the prior version's ABI,
+// the prior redeemer can continue to be used; it is just ignored by the smart contract.

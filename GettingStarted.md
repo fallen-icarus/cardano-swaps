@@ -151,10 +151,10 @@ the compiled scripts yourself, you will also need to install `aiken`. You can in
 cargo like this:
 
 ```bash
-cargo install aiken --version 1.0.26-alpha
+cargo install aiken --version 1.1.22
 ```
 
-Make sure you instal verison 1.0.20-alpha. Newer versions may change some things and so the source
+Make sure you install version 1.1.22. Newer versions may change some things and so the source
 code may not compile or may result in a different script. As aiken stabilizes, the code will be
 updated to the latest version.
 
@@ -163,7 +163,7 @@ updated to the latest version.
 > ```bash
 > git clone https://github.com/aiken-lang/aiken
 > cd aiken
-> git checkout v1.0.26-alpha
+> git checkout v1.1.22
 > cargo build
 > ```
 > The executable should now be located at `target/debug/aiken`.

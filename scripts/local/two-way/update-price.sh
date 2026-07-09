@@ -110,12 +110,12 @@ cardano-cli conway transaction build \
   --tx-in 22e60774851d6db2c2e4600e3c6daebe3b68d52e1d9d7070f6c2fc6ee8c8efcf#1 \
   --tx-in 22e60774851d6db2c2e4600e3c6daebe3b68d52e1d9d7070f6c2fc6ee8c8efcf#0 \
   --spending-tx-in-reference $spendingScriptPreprodTestnetRef \
-  --spending-plutus-script-v2 \
+  --spending-plutus-script-v3 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
   --withdrawal "$(cat ${beaconAddrFile})+0" \
   --withdrawal-tx-in-reference $beaconScriptPreprodTestnetRef \
-  --withdrawal-plutus-script-v2 \
+  --withdrawal-plutus-script-v3 \
   --withdrawal-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${asset1Beacon} + 1 ${asset2Beacon} + 11 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.54657374546f6b656e31" \
   --tx-out-inline-datum-file $swapDatumFile \

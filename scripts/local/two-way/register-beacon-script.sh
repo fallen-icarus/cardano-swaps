@@ -49,7 +49,7 @@ cardano-cli conway transaction build \
   --change-address "$(cat $HOME/wallets/01.addr)" \
   --certificate-file "${tmpDir}registration.cert" \
   --certificate-tx-in-reference $beaconScriptPreprodTestnetRef \
-  --certificate-plutus-script-v2 \
+  --certificate-plutus-script-v3 \
   --certificate-reference-tx-in-redeemer-file $beaconRedeemer \
   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --testnet-magic 1 \

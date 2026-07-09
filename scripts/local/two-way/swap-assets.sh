@@ -76,7 +76,7 @@ cardano-cli conway transaction build \
   --tx-in 4ff289b54b595f621b12ca03e7425e178a029aa0fe487984570879f1ba538a08#0 \
   --tx-in 7b113cebcbd43339b38be9aaafa676ae7e2af14cf35fc32f720bcd33e7359bd1#0 \
   --spending-tx-in-reference $spendingScriptPreprodTestnetRef \
-  --spending-plutus-script-v2 \
+  --spending-plutus-script-v3 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
   --tx-out "${swapAddr1} + 13000000 lovelace + 1 ${pairBeacon1} + 1 ${asset1Beacon1} + 1 ${asset2Beacon1} + 6 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \

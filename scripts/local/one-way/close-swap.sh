@@ -71,13 +71,13 @@ cardano-cli conway transaction build \
   --tx-in 702770033d7f4bf0b99161b3858d677c71147c5eb5423de306b355a419564aec#1 \
   --tx-in 1b39c6f7529a0614d99ac8edadf6e89721ff95d864758534aa6d2bacf3d3940c#0 \
   --spending-tx-in-reference $spendingScriptPreprodTestnetRef \
-  --spending-plutus-script-v2 \
+  --spending-plutus-script-v3 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
   --tx-out "$(cat $HOME/wallets/01.addr) + 3000000 lovelace + 10 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
   --mint "-1 ${pairBeacon} + -1 ${offerBeacon} + -1 ${askBeacon}" \
   --mint-tx-in-reference $beaconScriptPreprodTestnetRef \
-  --mint-plutus-script-v2 \
+  --mint-plutus-script-v3 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id "$beaconPolicyId" \
   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \

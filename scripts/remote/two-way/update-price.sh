@@ -117,13 +117,13 @@ cardano-cli conway transaction build-raw \
   --tx-in e44ff771ac294fca630bb4752058cbbde85a97e640bfaf03050ad8bb0c70adf9#1 \
   --tx-in e44ff771ac294fca630bb4752058cbbde85a97e640bfaf03050ad8bb0c70adf9#0 \
   --spending-tx-in-reference $spendingScriptPreprodTestnetRef \
-  --spending-plutus-script-v2 \
+  --spending-plutus-script-v3 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-execution-units "(0,0)" \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
   --withdrawal "$(cat ${beaconAddrFile})+0" \
   --withdrawal-tx-in-reference $beaconScriptPreprodTestnetRef \
-  --withdrawal-plutus-script-v2 \
+  --withdrawal-plutus-script-v3 \
   --withdrawal-reference-tx-in-execution-units "(0,0)" \
   --withdrawal-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${asset1Beacon} + 1 ${asset2Beacon} + 20 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
@@ -156,13 +156,13 @@ cardano-cli conway transaction build-raw \
   --tx-in e44ff771ac294fca630bb4752058cbbde85a97e640bfaf03050ad8bb0c70adf9#1 \
   --tx-in e44ff771ac294fca630bb4752058cbbde85a97e640bfaf03050ad8bb0c70adf9#0 \
   --spending-tx-in-reference $spendingScriptPreprodTestnetRef \
-  --spending-plutus-script-v2 \
+  --spending-plutus-script-v3 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-execution-units "(${spend_0_steps},${spend_0_mem})" \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
   --withdrawal "$(cat ${beaconAddrFile})+0" \
   --withdrawal-tx-in-reference $beaconScriptPreprodTestnetRef \
-  --withdrawal-plutus-script-v2 \
+  --withdrawal-plutus-script-v3 \
   --withdrawal-reference-tx-in-execution-units "(${stake_steps},${stake_mem})" \
   --withdrawal-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${asset1Beacon} + 1 ${asset2Beacon} + 20 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \
@@ -182,7 +182,7 @@ calculated_fee=$(cardano-cli conway transaction calculate-min-fee \
   --tx-body-file "${tmpDir}tx.body" \
   --protocol-params-file "${tmpDir}protocol.json" \
   --reference-script-size $((beaconScriptSize+spendingScriptSize)) \
-  --witness-count 2 | cut -d' ' -f1)
+  --witness-count 2 --output-json | jq .fee)
 req_fee=$((calculated_fee+50000)) # Add 0.05 ADA to be safe since the fee must still be updated.
 req_collateral=$(printf %.0f $(echo "${req_fee}*1.5" | bc))
 
@@ -191,13 +191,13 @@ cardano-cli conway transaction build-raw \
   --tx-in e44ff771ac294fca630bb4752058cbbde85a97e640bfaf03050ad8bb0c70adf9#1 \
   --tx-in e44ff771ac294fca630bb4752058cbbde85a97e640bfaf03050ad8bb0c70adf9#0 \
   --spending-tx-in-reference $spendingScriptPreprodTestnetRef \
-  --spending-plutus-script-v2 \
+  --spending-plutus-script-v3 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-execution-units "(${spend_0_steps},${spend_0_mem})" \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
   --withdrawal "$(cat ${beaconAddrFile})+0" \
   --withdrawal-tx-in-reference $beaconScriptPreprodTestnetRef \
-  --withdrawal-plutus-script-v2 \
+  --withdrawal-plutus-script-v3 \
   --withdrawal-reference-tx-in-execution-units "(${stake_steps},${stake_mem})" \
   --withdrawal-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --tx-out "$(cat ${swapAddrFile}) + 3000000 lovelace + 1 ${pairBeacon} + 1 ${asset1Beacon} + 1 ${asset2Beacon} + 20 c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a" \

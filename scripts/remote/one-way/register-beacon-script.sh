@@ -52,7 +52,7 @@ cardano-cli conway transaction build-raw \
   --tx-out "$(cat $HOME/wallets/01.addr) + $initial_change lovelace" \
   --certificate-file "${tmpDir}registration.cert" \
   --certificate-tx-in-reference $beaconScriptPreprodTestnetRef \
-  --certificate-plutus-script-v2 \
+  --certificate-plutus-script-v3 \
   --certificate-reference-tx-in-redeemer-file $beaconRedeemer \
   --certificate-reference-tx-in-execution-units "(0,0)" \
   --protocol-params-file "${tmpDir}protocol.json" \
@@ -70,8 +70,8 @@ exec_units=$(cardano-swaps evaluate-tx \
 # MAKE SURE THE INDEXES MATCH THE LEXICOGRAPHICAL ORDERING FOR INPUTS AND POLICY IDS.
 # You can use `cardano-cli debug transaction view --tx-file "${tmpDir}tx.body` to view the prior
 # transaction with everything in the correct order.
-cert_mem=$(echo $exec_units | jq '.result | .[] | select(.validator.purpose=="certificate" and .validator.index==0) | .budget.memory' )
-cert_steps=$(echo $exec_units | jq '.result | .[] | select(.validator.purpose=="certificate" and .validator.index==0) | .budget.cpu' )
+cert_mem=$(echo $exec_units | jq '.result | .[] | select(.validator.purpose=="publish" and .validator.index==0) | .budget.memory' )
+cert_steps=$(echo $exec_units | jq '.result | .[] | select(.validator.purpose=="publish" and .validator.index==0) | .budget.cpu' )
 
 echo "Rebuilding the transaction with proper executions budgets..."
 cardano-cli conway transaction build-raw \
@@ -79,7 +79,7 @@ cardano-cli conway transaction build-raw \
   --tx-out "$(cat $HOME/wallets/01.addr) + $initial_change lovelace" \
   --certificate-file "${tmpDir}registration.cert" \
   --certificate-tx-in-reference $beaconScriptPreprodTestnetRef \
-  --certificate-plutus-script-v2 \
+  --certificate-plutus-script-v3 \
   --certificate-reference-tx-in-redeemer-file $beaconRedeemer \
   --certificate-reference-tx-in-execution-units "(${cert_steps},${cert_mem})" \
   --protocol-params-file "${tmpDir}protocol.json" \
@@ -94,7 +94,7 @@ calculated_fee=$(cardano-cli conway transaction calculate-min-fee \
   --tx-body-file "${tmpDir}tx.body" \
   --protocol-params-file "${tmpDir}protocol.json" \
   --reference-script-size $((beaconScriptSize)) \
-  --witness-count 1 | cut -d' ' -f1)
+  --witness-count 1 --output-json | jq .fee)
 req_fee=$((calculated_fee+50000)) # Add 0.05 ADA to be safe since the fee must still be updated.
 req_collateral=$(printf %.0f $(echo "${req_fee}*1.5" | bc))
 
@@ -104,7 +104,7 @@ cardano-cli conway transaction build-raw \
   --tx-out "$(cat $HOME/wallets/01.addr) + $((initial_change-req_fee)) lovelace" \
   --certificate-file "${tmpDir}registration.cert" \
   --certificate-tx-in-reference $beaconScriptPreprodTestnetRef \
-  --certificate-plutus-script-v2 \
+  --certificate-plutus-script-v3 \
   --certificate-reference-tx-in-redeemer-file $beaconRedeemer \
   --certificate-reference-tx-in-execution-units "(${cert_steps},${cert_mem})" \
   --protocol-params-file "${tmpDir}protocol.json" \

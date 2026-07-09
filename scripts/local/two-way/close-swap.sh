@@ -71,12 +71,12 @@ cardano-cli conway transaction build \
   --tx-in d98535245496d2f7d79e0e9aa89ba03abdc7b22d5f884a35c5d218682e0a9f6c#0 \
   --tx-in 4743707d8e94b35520670acd31c6e5404c9bba583a5de20bbd38b1de0d78e1a2#0 \
   --spending-tx-in-reference $spendingScriptPreprodTestnetRef \
-  --spending-plutus-script-v2 \
+  --spending-plutus-script-v3 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
   --mint "-1 ${pairBeacon} + -1 ${asset1Beacon} + -1 ${asset2Beacon}" \
   --mint-tx-in-reference $beaconScriptPreprodTestnetRef \
-  --mint-plutus-script-v2 \
+  --mint-plutus-script-v3 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id "$beaconPolicyId" \
   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \

@@ -79,7 +79,7 @@ cardano-cli conway transaction build-raw \
   --tx-in 07b2177d87a3e1bcd41548bcf2dca24038dbf09865fae80bf0b511229bf7f2df#1 \
   --tx-in 841f95b65531a8bfe076336a544b62466057848e039ea31e519e2c852add4090#0 \
   --spending-tx-in-reference $spendingScriptPreprodTestnetRef \
-  --spending-plutus-script-v2 \
+  --spending-plutus-script-v3 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
   --spending-reference-tx-in-execution-units "(0,0)" \
@@ -111,7 +111,7 @@ cardano-cli conway transaction build-raw \
   --tx-in 07b2177d87a3e1bcd41548bcf2dca24038dbf09865fae80bf0b511229bf7f2df#1 \
   --tx-in 841f95b65531a8bfe076336a544b62466057848e039ea31e519e2c852add4090#0 \
   --spending-tx-in-reference $spendingScriptPreprodTestnetRef \
-  --spending-plutus-script-v2 \
+  --spending-plutus-script-v3 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
   --spending-reference-tx-in-execution-units "(${spend_0_steps},${spend_0_mem})" \
@@ -132,7 +132,7 @@ calculated_fee=$(cardano-cli conway transaction calculate-min-fee \
   --tx-body-file "${tmpDir}tx.body" \
   --protocol-params-file "${tmpDir}protocol.json" \
   --reference-script-size $((spendingScriptSize)) \
-  --witness-count 2 | cut -d' ' -f1)
+  --witness-count 2 --output-json | jq .fee)
 req_fee=$((calculated_fee+50000)) # Add 0.05 ADA to be safe since the fee must still be updated.
 req_collateral=$(printf %.0f $(echo "${req_fee}*1.5" | bc))
 
@@ -141,7 +141,7 @@ cardano-cli conway transaction build-raw \
   --tx-in 07b2177d87a3e1bcd41548bcf2dca24038dbf09865fae80bf0b511229bf7f2df#1 \
   --tx-in 841f95b65531a8bfe076336a544b62466057848e039ea31e519e2c852add4090#0 \
   --spending-tx-in-reference $spendingScriptPreprodTestnetRef \
-  --spending-plutus-script-v2 \
+  --spending-plutus-script-v3 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
   --spending-reference-tx-in-execution-units "(${spend_0_steps},${spend_0_mem})" \

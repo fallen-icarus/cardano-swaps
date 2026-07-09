@@ -107,7 +107,7 @@ cardano-cli conway transaction build-raw \
   --tx-out "$(cat $HOME/wallets/01.addr) + ${initial_change} lovelace " \
   --mint "1 ${pairBeacon} + 1 ${offerBeacon} + 1 ${askBeacon}" \
   --mint-tx-in-reference $beaconScriptPreprodTestnetRef \
-  --mint-plutus-script-v2 \
+  --mint-plutus-script-v3 \
   --mint-reference-tx-in-execution-units "(0,0)" \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id "$beaconPolicyId" \
@@ -139,7 +139,7 @@ cardano-cli conway transaction build-raw \
   --tx-out "$(cat $HOME/wallets/01.addr) + ${initial_change} lovelace " \
   --mint "1 ${pairBeacon} + 1 ${offerBeacon} + 1 ${askBeacon}" \
   --mint-tx-in-reference $beaconScriptPreprodTestnetRef \
-  --mint-plutus-script-v2 \
+  --mint-plutus-script-v3 \
   --mint-reference-tx-in-execution-units "(${mint_steps},${mint_mem})" \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id "$beaconPolicyId" \
@@ -156,7 +156,7 @@ calculated_fee=$(cardano-cli conway transaction calculate-min-fee \
   --tx-body-file "${tmpDir}tx.body" \
   --protocol-params-file "${tmpDir}protocol.json" \
   --reference-script-size $((beaconScriptSize)) \
-  --witness-count 1 | cut -d' ' -f1)
+  --witness-count 1 --output-json | jq .fee)
 req_fee=$((calculated_fee+50000)) # Add 0.05 ADA to be safe since the fee must still be updated.
 req_collateral=$(printf %.0f $(echo "${req_fee}*1.5" | bc))
 
@@ -169,7 +169,7 @@ cardano-cli conway transaction build-raw \
   --tx-out "$(cat $HOME/wallets/01.addr) + $((initial_change-req_fee)) lovelace " \
   --mint "1 ${pairBeacon} + 1 ${offerBeacon} + 1 ${askBeacon}" \
   --mint-tx-in-reference $beaconScriptPreprodTestnetRef \
-  --mint-plutus-script-v2 \
+  --mint-plutus-script-v3 \
   --mint-reference-tx-in-execution-units "(${mint_steps},${mint_mem})" \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id "$beaconPolicyId" \

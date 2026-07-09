@@ -79,7 +79,7 @@ cardano-cli conway transaction build-raw \
   --tx-in 74a2f2d043a79bece075d95dc51206fdafb3786fe705da60ab11e330be2c776f#0 \
   --tx-in 59142f9a9a9b90fb1a54c12925a3cf372bc1257ed0239ef7468d64bbf61cb659#0 \
   --spending-tx-in-reference $spendingScriptPreprodTestnetRef \
-  --spending-plutus-script-v2 \
+  --spending-plutus-script-v3 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-execution-units "(0,0)" \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
@@ -87,7 +87,7 @@ cardano-cli conway transaction build-raw \
   --tx-out "$(cat $HOME/wallets/01.addr) + ${initial_change} lovelace" \
   --mint "-1 ${pairBeacon} + -1 ${offerBeacon} + -1 ${askBeacon}" \
   --mint-tx-in-reference $beaconScriptPreprodTestnetRef \
-  --mint-plutus-script-v2 \
+  --mint-plutus-script-v3 \
   --mint-reference-tx-in-execution-units "(0,0)" \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id "$beaconPolicyId" \
@@ -117,7 +117,7 @@ cardano-cli conway transaction build-raw \
   --tx-in 74a2f2d043a79bece075d95dc51206fdafb3786fe705da60ab11e330be2c776f#0 \
   --tx-in 59142f9a9a9b90fb1a54c12925a3cf372bc1257ed0239ef7468d64bbf61cb659#0 \
   --spending-tx-in-reference $spendingScriptPreprodTestnetRef \
-  --spending-plutus-script-v2 \
+  --spending-plutus-script-v3 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-execution-units "(${spend_0_steps},${spend_0_mem})" \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
@@ -125,7 +125,7 @@ cardano-cli conway transaction build-raw \
   --tx-out "$(cat $HOME/wallets/01.addr) + ${initial_change} lovelace" \
   --mint "-1 ${pairBeacon} + -1 ${offerBeacon} + -1 ${askBeacon}" \
   --mint-tx-in-reference $beaconScriptPreprodTestnetRef \
-  --mint-plutus-script-v2 \
+  --mint-plutus-script-v3 \
   --mint-reference-tx-in-execution-units "(${mint_steps},${mint_mem})" \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id "$beaconPolicyId" \
@@ -142,7 +142,7 @@ calculated_fee=$(cardano-cli conway transaction calculate-min-fee \
   --tx-body-file "${tmpDir}tx.body" \
   --protocol-params-file "${tmpDir}protocol.json" \
   --reference-script-size $((beaconScriptSize+spendingScriptSize)) \
-  --witness-count 2 | cut -d' ' -f1)
+  --witness-count 2 --output-json | jq .fee)
 req_fee=$((calculated_fee+50000)) # Add 0.05 ADA to be safe since the fee must still be updated.
 req_collateral=$(printf %.0f $(echo "${req_fee}*1.5" | bc))
 
@@ -151,7 +151,7 @@ cardano-cli conway transaction build-raw \
   --tx-in 74a2f2d043a79bece075d95dc51206fdafb3786fe705da60ab11e330be2c776f#0 \
   --tx-in 59142f9a9a9b90fb1a54c12925a3cf372bc1257ed0239ef7468d64bbf61cb659#0 \
   --spending-tx-in-reference $spendingScriptPreprodTestnetRef \
-  --spending-plutus-script-v2 \
+  --spending-plutus-script-v3 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-execution-units "(${spend_0_steps},${spend_0_mem})" \
   --spending-reference-tx-in-redeemer-file $swapRedeemerFile \
@@ -159,7 +159,7 @@ cardano-cli conway transaction build-raw \
   --tx-out "$(cat $HOME/wallets/01.addr) + $((initial_change-req_fee)) lovelace " \
   --mint "-1 ${pairBeacon} + -1 ${offerBeacon} + -1 ${askBeacon}" \
   --mint-tx-in-reference $beaconScriptPreprodTestnetRef \
-  --mint-plutus-script-v2 \
+  --mint-plutus-script-v3 \
   --mint-reference-tx-in-execution-units "(${mint_steps},${mint_mem})" \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id "$beaconPolicyId" \

@@ -39,7 +39,7 @@ cardano-cli conway address build \
   --testnet-magic 1 \
   --out-file $swapAddrFile
 
-cat $swapAddrFile)
+cat $swapAddrFile
 
 # Helper beacon variables.
 echo "Calculating the beacon names..."
@@ -99,7 +99,7 @@ cardano-cli conway transaction build \
   --tx-out-inline-datum-file $swapDatumFile \
   --mint "1 ${pairBeacon} + 1 ${offerBeacon} + 1 ${askBeacon}" \
   --mint-tx-in-reference $beaconScriptPreprodTestnetRef \
-  --mint-plutus-script-v2 \
+  --mint-plutus-script-v3 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id "$beaconPolicyId" \
   --change-address "$(cat $HOME/wallets/01.addr)" \

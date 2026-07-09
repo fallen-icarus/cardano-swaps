@@ -57,7 +57,7 @@ echo "Calculating the required fee..."
 calculated_fee=$(cardano-cli conway transaction calculate-min-fee \
   --tx-body-file "${tmpDir}tx.body" \
   --protocol-params-file "${tmpDir}protocol.json" \
-  --witness-count 1 | cut -d' ' -f1)
+  --witness-count 1 --output-json | jq .fee)
 req_fee=$(($calculated_fee+50000)) # Add 0.05 ADA to be safe since the fee must still be updated.
 req_collateral=$(printf %.0f $(echo "${req_fee}*1.5" | bc))
 

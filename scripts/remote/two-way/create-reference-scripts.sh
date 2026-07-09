@@ -55,7 +55,7 @@ echo "Calculating the required fee..."
 req_fee=$(cardano-cli conway transaction calculate-min-fee \
   --tx-body-file "${tmpDir}tx.body" \
   --protocol-params-file "${tmpDir}protocol.json" \
-  --witness-count 1 | cut -d' ' -f1)
+  --witness-count 1 --output-json | jq .fee)
 
 echo "Rebuilding the transaction with the required fee..."
 cardano-cli conway build-raw \

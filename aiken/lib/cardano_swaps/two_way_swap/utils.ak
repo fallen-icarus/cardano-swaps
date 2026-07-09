@@ -231,7 +231,7 @@ fn valid_swap_output(
     asset2_price: asset2_price_,
     expiration: expiration_,
     ..
- } = parse_datum(output_datum)
+  } = parse_datum(output_datum)
 
   let asset1 = AssetConfig(asset1_id_,asset1_name_)
   let asset2 = AssetConfig(asset2_id_,asset2_name_)
@@ -571,8 +571,8 @@ pub fn valid_swap(
       True
     } else {
       error_if_false(
-       @"Ada can only be deposited",
-       ada_o - ada_i >= 0
+        @"Ada can only be deposited",
+        ada_o - ada_i >= 0
       )
     }
 

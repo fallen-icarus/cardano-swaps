@@ -109,7 +109,7 @@ validator swap_script {
           swap_price,
           expiration,
           ..
-      }) = datum
+        }) = datum
 
         // The following checks requirements 1,2,3,4. It has its own error messages.
         utils.valid_swap(

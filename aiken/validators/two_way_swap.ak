@@ -104,7 +104,7 @@ validator swap_script {
           asset2_price,
           expiration,
           ..
-      }) = datum
+        }) = datum
 
         // The following checks requirements 1,2,3,4. It has its own error messages.
         utils.valid_swap(
@@ -170,7 +170,7 @@ validator swap_script {
           asset2_price,
           expiration,
           ..
-      }) = datum
+        }) = datum
 
         // The following checks requirements 1,2,3,4. It has its own error messages.
         utils.valid_swap(
@@ -252,7 +252,7 @@ validator beacon_script(dapp_hash: ScriptHash) {
     )
   }
 
-// Used to update swaps
+  // Used to update swaps
   withdraw(_redeemer, account: Credential, tx: Transaction) -> Bool {
     // Requirements:
     // 1) Must be executed as a staking script.

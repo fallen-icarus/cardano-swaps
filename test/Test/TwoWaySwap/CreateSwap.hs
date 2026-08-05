@@ -4116,7 +4116,7 @@ tests =
         "UTxO has wrong beacons" 
         failureTest45
     , scriptMustFailWithError "failureTest46"
-        "No extraneous assets allowed in the UTxO"
+        "UTxO has wrong beacons"
         failureTest46
     , scriptMustFailWithError "failureTest47" 
         "No extraneous assets allowed in the UTxO" 

@@ -2,7 +2,6 @@ use aiken/primitive/bytearray
 use aiken/collection/dict.{Dict}
 use aiken/interval.{Interval,IntervalBound,Finite}
 use aiken/collection/list
-use aiken/collection/pairs
 use aiken/option.{is_some}
 use aiken/primitive/string.{concat}
 use cardano/transaction.{ValidityRange,Datum,InlineDatum,Output,OutputReference} as tx
@@ -108,25 +107,20 @@ fn extract_ask_and_offer_quantity(
 
     // Check the beacons.
     if cn == beacon_id {
-      let tns_list = dict.to_pairs(tns_dict)
+      let expected_dict =
+          dict.from_pairs([
+            Pair(pair_beacon, 1),
+            Pair(offer_beacon, 1),
+            Pair(ask_beacon, 1),
+          ])
 
-      let beacon_check = fn(tn: AssetName, n: Int, acc: (Bool,Bool,Bool)) {
-        let (pair_check,offer_check,ask_check) = acc
-        if tn == pair_beacon {
-          (n == 1, offer_check, ask_check)
-        } else if tn == offer_beacon {
-          (pair_check, n == 1, ask_check)
-        } else if tn == ask_beacon {
-          (pair_check, offer_check, n == 1)
-        } else {
-          error @"UTxO has wrong beacons"
-        }
-      }
+      // UTxO has wrong beacons
+      expect True = error_if_false(
+          @"UTxO has wrong beacons",
+          tns_dict == expected_dict
+      )
 
-      when pairs.foldl(tns_list,(False,False,False),beacon_check) is {
-        (True,True,True) -> (offer,ask,ada,True)
-        _ -> acc
-      }
+      (offer, ask, ada, True)
     } 
 
     // Check ada.

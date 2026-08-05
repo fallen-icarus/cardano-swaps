@@ -1,5 +1,4 @@
 use aiken/primitive/bytearray
-use aiken/collection/dict
 use aiken/collection/list
 use cardano/address.{
   Address,
@@ -72,7 +71,7 @@ pub fn has_beacon_script_minting_execution(
   beacon_id: PolicyId,
   mint: Value
 ) -> Bool {
-  !(assets.tokens(mint,beacon_id) |> dict.is_empty(_))
+  assets.to_pairs(mint) |> pairs.has_key(beacon_id)
 }
 
 pub fn has_beacon_script_staking_execution(

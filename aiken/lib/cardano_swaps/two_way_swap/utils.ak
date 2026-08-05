@@ -99,7 +99,7 @@ fn extract_ask_and_offer_quantity(
             Pair(ask_beacon, 1),
           ])
 
-      // UTxO has wrong beacons
+      // UTxO must have the right beacons.
       expect True = error_if_false(
           @"UTxO has wrong beacons",
           tns_dict == expected_dict

@@ -1365,10 +1365,10 @@ tests =
         failureTest8
 
       -- Benchmark Tests
-    , mustSucceed "benchTest1" $ benchTest1 70
-    , mustSucceed "benchTest2" $ benchTest2 70
+    , mustSucceed "benchTest1" $ benchTest1 71
+    , mustSucceed "benchTest2" $ benchTest2 71
 
       -- Performance Increase Tests
-    , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 71
-    , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 71
+    , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 72
+    , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 72
     ]

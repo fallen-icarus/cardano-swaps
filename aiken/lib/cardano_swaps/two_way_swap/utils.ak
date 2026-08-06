@@ -138,20 +138,12 @@ fn extract_ask_and_offer_quantity(
 
         // They are both present in the UTxO.
         [Pair(tn1,n1),Pair(tn2,n2)] -> {
-          if tn1 == offer_name {
-            if tn2 == ask_name {
+          if tn1 == offer_name && tn2 == ask_name {
               (offer+n1,ask+n2,ada,valid_beacons)
-            } else {
-              error @"No extraneous assets allowed in the UTxO"
-            }
-          } else if tn1 == ask_name { 
-            if tn2 == offer_name {
+          } else if tn1 == ask_name && tn2 == offer_name {
               (offer+n2,ask+n1,ada,valid_beacons)
-            } else {
-              error @"No extraneous assets allowed in the UTxO"
-            }
           } else {
-            error @"No extraneous assets allowed in the UTxO"
+              error @"No extraneous assets allowed in the UTxO"
           }
         }
 
@@ -413,11 +405,10 @@ fn swap_output_value(
       // 2) The output has exactly one of each of the proper beacons.
       // 3) The output's datum is exactly the same accept the `prev_input` == `Some(input_ref)`.
 
-      // Check if the datum is correct. This is done first to rule out all but the target UTxO.
-      // The rest of the checks will just check if the UTxO is properly configured.
-      if req_datum == output.datum {
-        // Check if the output is to this swap address.
-        if swap_addr == output.address {
+      // Check if the datum is correct. This is done first to rule out all but the target UTxO. If
+      // the datum is correct, then check the address too. The rest of the checks will just check if
+      // the UTxO is properly configured.
+      if req_datum == output.datum && swap_addr == output.address {
           // Get the necessary values.
           extract_ask_and_offer_quantity(
             output.value,
@@ -430,24 +421,6 @@ fn swap_output_value(
             ask_name,
             ask_beacon
           )
-        }
-
-        // This cannot be the corresponding output so recurse.
-        else {
-          swap_output_value(
-            swap_addr,
-            beacon_id,
-            pair_beacon,
-            offer_id,
-            offer_name,
-            offer_beacon,
-            ask_id,
-            ask_name,
-            ask_beacon,
-            req_datum,
-            rest
-          )
-        }
       }
 
       // This cannot be the corresponding output so recurse.

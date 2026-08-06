@@ -3534,7 +3534,7 @@ tests =
         "UTxO has wrong beacons" 
         failureTest38
     , scriptMustFailWithError "failureTest39"
-        "UTxO has wrong beacons"
+        "No extraneous assets allowed in the UTxO"
         failureTest39
     , scriptMustFailWithError "failureTest40" 
         "Wrong beacon_id" 

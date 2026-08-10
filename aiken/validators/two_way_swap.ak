@@ -259,12 +259,13 @@ validator beacon_script(dapp_hash: ScriptHash) {
     // 1) Must be executed as a staking script.
     // 2) The beacons must go to an address protected by the DApp validator script.
     // 3) The beacons must go to an address using a valid staking credential.
-    // 4) The UTxOs with the beacons must have the proper value:
+    // 4) The beacons must not be stored with a reference script.
+    // 5) The UTxOs with the beacons must have the proper value:
     //      a) Exactly three kinds of beacons: pair beacon, asset1 beacon, and asset2 beacon.
     //      b) The beacons must correspond to the beacons in the datum.
     //      c) There must be exactly 1 of each beacon.
     //      d) No extraneous assets are in the UTxO.
-    // 5) The beacons must be stored with the proper inline `SwapDatum`:
+    // 6) The beacons must be stored with the proper inline `SwapDatum`:
     //      a) `beacon_id` == this policy id.
     //      b) `pair_beacon` == sha2_256(asset1_id ++ asset1_name ++ asset2_id ++ asset2_name)
     //      c) `asset1_id` == policy id of asset1 for that trading pair.

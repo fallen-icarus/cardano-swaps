@@ -154,12 +154,13 @@ validator beacon_script(dapp_hash: ScriptHash) {
     // 1) Must be executed as a minting script.
     // 2) The beacons must go to an address protected by the DApp validator script.
     // 3) The beacons must go to an address using a valid staking credential.
-    // 4) The UTxOs with the beacons must have the proper value:
+    // 4) The beacons must not be stored with a reference script.
+    // 5) The UTxOs with the beacons must have the proper value:
     //      a) Exactly three kinds of beacons: pair beacon, offer beacon, and ask beacon.
     //      b) The beacons must correspond to the beacons in the datum.
     //      c) There must be exactly 1 of each beacon.
     //      d) No extraneous assets are in the UTxO.
-    // 5) The beacons must be stored with the proper inline `SwapDatum`:
+    // 6) The beacons must be stored with the proper inline `SwapDatum`:
     //      a) `beacon_id` == this policy id.
     //      b) `pair_beacon` == `sha2_256(offer_id ++ offer_name ++ ask_id ++ ask_name)`
     //      c) `offer_id` == policy id of the offer asset.
@@ -171,8 +172,8 @@ validator beacon_script(dapp_hash: ScriptHash) {
     //      i) `swap_price` denominator > 0
     //      j) `swap_price` numerator > 0
     //      k) `expiration` >= invalid-hereafter && `expiration` % 60000 == 0 if expiration used
-    // 6) The offer asset and the ask asset must be different assets.
-    // 7) Any unused beacons must be burned.
+    // 7) The offer asset and the ask asset must be different assets.
+    // 8) Any unused beacons must be burned.
     //
     // To enable real-time front-ends, the expirations are set to 1-min intervals. This way
     // front-ends will not struggle to keep up with the on-chain order book.
@@ -194,12 +195,13 @@ validator beacon_script(dapp_hash: ScriptHash) {
     // 1) Must be executed as a staking script.
     // 2) The beacons must go to an address protected by the DApp validator script.
     // 3) The beacons must go to an address using a valid staking credential.
-    // 4) The UTxOs with the beacons must have the proper value:
+    // 4) The beacons must not be stored with a reference script.
+    // 5) The UTxOs with the beacons must have the proper value:
     //      a) Exactly three kinds of beacons: pair beacon, offer beacon, and ask beacon.
     //      b) The beacons must correspond to the beacons in the datum.
     //      c) There must be exactly 1 of each beacon.
     //      d) No extraneous assets are in the UTxO.
-    // 5) The beacons must be stored with the proper inline `SwapDatum`:
+    // 6) The beacons must be stored with the proper inline `SwapDatum`:
     //      a) `beacon_id` == this policy id.
     //      b) `pair_beacon` == `sha2_256(offer_id ++ offer_name ++ ask_id ++ ask_name)`
     //      c) `offer_id` == policy id of the offer asset.
@@ -211,8 +213,8 @@ validator beacon_script(dapp_hash: ScriptHash) {
     //      i) `swap_price` denominator > 0
     //      j) `swap_price` numerator > 0
     //      k) `expiration` >= invalid-hereafter && `expiration` % 60000 == 0 if expiration used
-    // 6) The offer asset and the ask asset must be different assets.
-    // 7) Any unused beacons must be burned.
+    // 7) The offer asset and the ask asset must be different assets.
+    // 8) Any unused beacons must be burned.
     //
     // To enable real-time front-ends, the expirations are set to 1-min intervals. This way
     // front-ends will not struggle to keep up with the on-chain order book.

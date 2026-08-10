@@ -325,6 +325,7 @@ The spending script is executed for each swap input in a transaction. Its logic 
 2. Compare the asset values between this input/output pair.
 3. Validate that the exchange meets the price defined in the datum. **Partial fills are allowed.**
 4. Checks the swap is not expired.
+5. A reference script cannot be attached to the new swap output.
 
 This design cleverly utilizes Cardano's per-UTxO script execution to enable cheap composition of
 swaps across different trading pairs within a single transaction.
@@ -370,9 +371,10 @@ redeemer works; `CreateOrCloseSwaps` by convention). This requires:
 3. The output UTxO contains exactly one of each required beacon type for the swap and no extraneous
    assets (besides ADA).
 4. The output UTxO has a valid inline `SwapDatum` with `swapPrice > 0`.
-5. The assets in the pair are distinct.
-6. *For two-way swaps:* `asset1` must be lexicographically less than `asset2`.
-7. *Optional Expiration:* If an expiration time is set, it must be a multiple of 60,000 (a 1-minute
+5. The output UTxO does not hold a reference script.
+6. The assets in the pair are distinct.
+7. *For two-way swaps:* `asset1` must be lexicographically less than `asset2`.
+8. *Optional Expiration:* If an expiration time is set, it must be a multiple of 60,000 (a 1-minute
    interval). The transaction creating the swap must also have its `invalid-hereafter` field set
 less than or equal to this time.
 

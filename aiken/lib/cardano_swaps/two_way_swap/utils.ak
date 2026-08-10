@@ -2,7 +2,7 @@ use aiken/primitive/bytearray
 use aiken/collection/dict.{Dict}
 use aiken/interval.{Interval,IntervalBound,Finite}
 use aiken/collection/list
-use aiken/option.{is_some}
+use aiken/option.{is_some, is_none}
 use aiken/primitive/string.{concat}
 use cardano/transaction.{ValidityRange,Datum,InlineDatum,Output,OutputReference} as tx
 use cardano/address.{
@@ -314,12 +314,13 @@ pub fn beacon_destination_check(
   // Checks:
   // 1) The beacons must go to an address protected by the DApp validator script.
   // 2) The beacons must go to an address using a valid staking credential.
-  // 3) The UTxOs with the beacons must have the proper value:
+  // 3) The beacons cannot be stored with a reference script.
+  // 4) The UTxOs with the beacons must have the proper value:
   //      a) Exactly three kinds of beacons: pair beacon, asset1 beacon, and asset2 beacon.
   //      b) The beacons must correspond to the beacons in the datum.
   //      c) There must be exactly 1 of each beacon.
   //      e) No extraneous assets are in the UTxO.
-  // 4) The beacons must be stored with the proper inline `SwapDatum`:
+  // 5) The beacons must be stored with the proper inline `SwapDatum`:
   //      a) `beacon_id` == this policy id.
   //      b) `pair_beacon` == sha2_256(asset1_id ++ asset1_name ++ asset2_id ++ asset2_name)
   //      c) `asset1_id` == policy id of asset1 for that trading pair.
@@ -334,6 +335,8 @@ pub fn beacon_destination_check(
   //      l) `asset2_price` numerator > 0
   //      m) asset1 < asset2
   //      n) `expiration` >= invalid-hereafter if expiration used
+  // 6) The offer asset and the ask asset must be different assets. Asset1 must be lexicographically
+  // less than Asset2.
   //
   // The validator assumes the trading pairs are sorted which is why asset1 must be less than
   // asset2. Asset1 and asset2 cannot be the same asset.
@@ -345,7 +348,7 @@ pub fn beacon_destination_check(
       address: Address{payment_credential: pay, stake_credential: stake}, 
       value: val, 
       datum: d, 
-      ..
+      reference_script: ref_script,
     } = out
 
     // Get the beacons in this UTxO and save it as a list for pattern matching.
@@ -365,6 +368,12 @@ pub fn beacon_destination_check(
         trace_if_false( 
           concat(@"Beacon must go to a ", app_name) |> concat(_,@" DApp address with staking"),
           pay == Script(dapp_hash) && is_some(stake)
+        ) &&
+
+        // The output cannot hold a reference script.
+        trace_if_false( 
+          @"Swap cannot hold a reference script",
+          is_none(ref_script)
         ) &&
 
         // The output must be properly configured. This has its own trace messages.
@@ -405,11 +414,14 @@ fn swap_output_value(
       // 2) The output has exactly one of each of the proper beacons.
       // 3) The output's datum is exactly the same accept the `prev_input` == `Some(input_ref)`.
 
-      // Check if the datum is correct. This is done first to rule out all but the target UTxO. If
-      // the datum is correct, then check the address too. The rest of the checks will just check if
-      // the UTxO is properly configured.
-      if req_datum == output.datum && swap_addr == output.address {
-          // Get the necessary values.
+      // The swap output must have:
+      // 1. The correct datum.
+      // 2. Be locked at the proper address.
+      // 3. Not contain a reference script. While not an attack since the person who places the
+      // reference script effectively gives the next executor the ADA for the deposit, it can cause
+      // the execution usage to spike which can impact composability.
+      if swap_addr == output.address && req_datum == output.datum && is_none(output.reference_script) {
+          // Get the necessary values. It will also check if the UTxO is properly configured.
           extract_ask_and_offer_quantity(
             output.value,
             beacon_id,

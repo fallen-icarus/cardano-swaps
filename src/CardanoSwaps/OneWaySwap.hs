@@ -9,6 +9,7 @@ module CardanoSwaps.OneWaySwap
     SwapDatum(..)
   , SwapRedeemer(..)
   , BeaconRedeemer(..)
+  , SwapAsset(..)
 
     -- * Contracts
   , swapScript
@@ -29,6 +30,7 @@ module CardanoSwaps.OneWaySwap
 
 import qualified PlutusTx
 import qualified PlutusTx.Prelude as PlutusTx
+import qualified PlutusTx.Builtins as Builtins
 import GHC.Generics (Generic)
 import qualified Data.Map as Map
 import Data.Aeson
@@ -91,9 +93,30 @@ data BeaconRedeemer
   | UpdateSwaps
   deriving (Generic,Show)
 
+-- | The pre-image for beacon token names. Every beacon name is:
+--
+-- > sha2_256 ( serialiseData ( toBuiltinData swapAsset ) )
+--
+-- The Data encoding tags each constructor and length-prefixes each field, so the encoding is
+-- injective: distinct assets/pairs can never produce the same pre-hash bytes, and beacon names
+-- cannot collide without a sha2_256 collision.
+--
+-- The constructor order must match the on-chain SwapAsset type exactly since it determines the
+-- constructor tag in the Data encoding: append only, never reorder or remove constructors. This
+-- type never appears in a datum or redeemer; it is internal to the beacon name derivation.
+data SwapAsset
+  -- | The offer asset. On-chain: @OfferAsset@ (Constr tag 121).
+  = Offer CurrencySymbol TokenName
+  -- | The ask asset. On-chain: @AskAsset@ (Constr tag 122).
+  | Ask CurrencySymbol TokenName
+  -- | The trading pair; the offer asset must come first. On-chain: @TradingPair@ (Constr tag 123).
+  | TradingPair CurrencySymbol TokenName CurrencySymbol TokenName
+  deriving (Generic,Show,Eq)
+
 PlutusTx.unstableMakeIsData ''SwapDatum
 PlutusTx.unstableMakeIsData ''SwapRedeemer
 PlutusTx.unstableMakeIsData ''BeaconRedeemer
+PlutusTx.unstableMakeIsData ''SwapAsset
 
 -------------------------------------------------
 -- Contracts
@@ -122,37 +145,30 @@ beaconCurrencySymbol = PV3.CurrencySymbol $ PV3.getScriptHash $ scriptHash beaco
 -------------------------------------------------
 -- Beacon Names
 -------------------------------------------------
--- | Generate the beacon asset name by hashing offer ++ ask. The policy id for
--- ADA is set to "00".
+-- | Hash the Data encoding of a `SwapAsset` to create a beacon name.
+hashSwapAsset :: SwapAsset -> TokenName
+hashSwapAsset = TokenName . PlutusTx.sha2_256 . Builtins.serialiseData . PlutusTx.toBuiltinData
+
+-- | Generate the beacon asset name by hashing the serialised `TradingPair`. The offer asset
+-- always comes first, so the two directions of a pair get distinct beacon names even when ADA
+-- (empty policy id and asset name) is part of the pair.
 --
--- > sha2_256 ( offerId ++ offerName ++ askId ++ askName )
+-- > sha2_256 ( serialiseData ( TradingPair offerId offerName askId askName ) )
 genPairBeaconName :: OfferAsset -> AskAsset -> TokenName
-genPairBeaconName (OfferAsset assetX) (AskAsset assetY) =
-  let ((CurrencySymbol sym1',TokenName name1),(CurrencySymbol sym2',TokenName name2)) =
-        (assetX,assetY)
-      sym1 = 
-        if sym1' == "" 
-        then unsafeToBuiltinByteString "00" 
-        else sym1'
-      sym2 = 
-        if sym2' == "" 
-        then unsafeToBuiltinByteString "00" 
-        else sym2'
-  in TokenName $ PlutusTx.sha2_256 $ sym1 <> name1 <> sym2 <> name2
+genPairBeaconName (OfferAsset (offerId,offerName)) (AskAsset (askId,askName)) =
+  hashSwapAsset $ TradingPair offerId offerName askId askName
 
--- | Generate the beacon asset name by hashing the offer asset policy id and name. 
+-- | Generate the beacon asset name by hashing the serialised `Offer` asset.
 --
--- > sha2_256 ( "01" ++ offerId ++ offerName )
+-- > sha2_256 ( serialiseData ( Offer offerId offerName ) )
 genOfferBeaconName :: OfferAsset -> TokenName
-genOfferBeaconName (OfferAsset (CurrencySymbol sym,TokenName name)) =
-  TokenName $ PlutusTx.sha2_256 $ unsafeToBuiltinByteString "01" <> sym <> name
+genOfferBeaconName (OfferAsset (sym,name)) = hashSwapAsset $ Offer sym name
 
--- | Generate the beacon asset name by hashing the ask asset policy id and name.
+-- | Generate the beacon asset name by hashing the serialised `Ask` asset.
 --
--- > sha2_256 ( "02" ++ askId ++ askName )
+-- > sha2_256 ( serialiseData ( Ask askId askName ) )
 genAskBeaconName :: AskAsset -> TokenName
-genAskBeaconName (AskAsset (CurrencySymbol sym,TokenName name)) =
-  TokenName $ PlutusTx.sha2_256 $ unsafeToBuiltinByteString "02" <> sym <> name
+genAskBeaconName (AskAsset (sym,name)) = hashSwapAsset $ Ask sym name
 
 -------------------------------------------------
 -- Datums

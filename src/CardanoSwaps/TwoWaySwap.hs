@@ -9,6 +9,7 @@ module CardanoSwaps.TwoWaySwap
     SwapDatum(..)
   , SwapRedeemer(..)
   , BeaconRedeemer(..)
+  , SwapAsset(..)
 
     -- * Contracts
   , swapScript
@@ -31,6 +32,7 @@ module CardanoSwaps.TwoWaySwap
 
 import qualified PlutusTx
 import qualified PlutusTx.Prelude as PlutusTx
+import qualified PlutusTx.Builtins as Builtins
 import GHC.Generics (Generic)
 import qualified Data.Map as Map
 import Data.Aeson
@@ -97,9 +99,31 @@ data BeaconRedeemer
   | UpdateSwaps
   deriving (Generic,Show)
 
+-- | The pre-image for beacon token names. Every beacon name is:
+--
+-- > sha2_256 ( serialiseData ( toBuiltinData swapAsset ) )
+--
+-- The Data encoding tags each constructor and length-prefixes each field, so the encoding is
+-- injective: distinct assets/pairs can never produce the same pre-hash bytes, and beacon names
+-- cannot collide without a sha2_256 collision.
+--
+-- The constructor order must match the on-chain SwapAsset type exactly since it determines the
+-- constructor tag in the Data encoding: append only, never reorder or remove constructors. The
+-- tags may coincide with the one-way swap's SwapAsset tags; that is harmless because the two
+-- protocols use different beacon policies. This type never appears in a datum or redeemer; it is
+-- internal to the beacon name derivation.
+data SwapAsset
+  -- | An asset in the pair. On-chain: @Asset@ (Constr tag 121).
+  = Asset CurrencySymbol TokenName
+  -- | The trading pair, already sorted: asset1 < asset2 lexicographically. On-chain:
+  -- @SortedPair@ (Constr tag 122).
+  | SortedPair CurrencySymbol TokenName CurrencySymbol TokenName
+  deriving (Generic,Show,Eq)
+
 PlutusTx.unstableMakeIsData ''SwapDatum
 PlutusTx.unstableMakeIsData ''SwapRedeemer
 PlutusTx.unstableMakeIsData ''BeaconRedeemer
+PlutusTx.unstableMakeIsData ''SwapAsset
 
 -------------------------------------------------
 -- Contracts
@@ -128,31 +152,26 @@ beaconCurrencySymbol = PV3.CurrencySymbol $ PV3.getScriptHash $ scriptHash beaco
 -------------------------------------------------
 -- Beacon Names
 -------------------------------------------------
--- | Generate the beacon asset name by hashing asset1 ++ asset2. The trading pair is first
--- sorted so that the beacon name is independent of the ordering. The policy id for
--- ADA is set to "00" __after__ sorting.
+-- | Hash the Data encoding of a `SwapAsset` to create a beacon name.
+hashSwapAsset :: SwapAsset -> TokenName
+hashSwapAsset = TokenName . PlutusTx.sha2_256 . Builtins.serialiseData . PlutusTx.toBuiltinData
+
+-- | Generate the beacon asset name by hashing the serialised `SortedPair`. The trading pair is
+-- first sorted so that the beacon name is independent of the ordering. ADA (empty policy id and
+-- asset name) needs no special handling since the Data encoding length-prefixes every field.
 --
--- > sha2_256 ( asset1Id ++ asset1Name ++ asset2Id ++ asset2Name )
+-- > sha2_256 ( serialiseData ( SortedPair asset1Id asset1Name asset2Id asset2Name ) )
 genPairBeaconName :: AssetConfig -> AssetConfig -> TokenName
 genPairBeaconName assetX assetY =
-  let ((CurrencySymbol sym1',TokenName name1),(CurrencySymbol sym2',TokenName name2)) =
-       if assetY < assetX then (assetY,assetX) else (assetX,assetY) 
-      sym1 = 
-        if sym1' == "" 
-        then unsafeToBuiltinByteString "00" 
-        else sym1'
-      sym2 = 
-        if sym2' == "" 
-        then unsafeToBuiltinByteString "00" 
-        else sym2'
-  in TokenName $ PlutusTx.sha2_256 $ sym1 <> name1 <> sym2 <> name2
+  let ((sym1,name1),(sym2,name2)) =
+       if assetY < assetX then (assetY,assetX) else (assetX,assetY)
+  in hashSwapAsset $ SortedPair sym1 name1 sym2 name2
 
--- | Generate the beacon asset name by hashing the asset policy id and name. 
+-- | Generate the beacon asset name by hashing the serialised `Asset`.
 --
--- > sha2_256 ( assetId ++ assetName )
+-- > sha2_256 ( serialiseData ( Asset assetId assetName ) )
 genAssetBeaconName :: AssetConfig -> TokenName
-genAssetBeaconName (CurrencySymbol sym,TokenName name) =
-  TokenName $ PlutusTx.sha2_256 $ sym <> name
+genAssetBeaconName (sym,name) = hashSwapAsset $ Asset sym name
 
 -------------------------------------------------
 -- Datums

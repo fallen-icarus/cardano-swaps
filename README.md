@@ -213,18 +213,46 @@ script (which runs only once per transaction) to minimize redundant executions a
 ### Beacon Naming Conventions
 
 To guarantee uniqueness and fit within Cardano's 64-character limit for token names, all beacon
-names are derived by hashing concatenated asset information.
+names are derived by hashing the serialized [Plutus `Data` encoding][7] of a dedicated `SwapAsset`
+type:
+
+```
+beacon_name = sha2_256( serialise_data( swap_asset ) )
+```
+
+Because the low-level `Data` encoding tags every constructor and length-prefixes every field, the
+mapping from asset information to pre-hash bytes is **injective**: two different assets (or pairs)
+can never produce the same pre-hash bytes, so beacon names cannot collide without a sha2_256
+collision. Concatenation-based schemes do not have this property because field boundaries can
+shift (e.g. `"ABC" ++ "" ++ "123" ++ ""` and `"ABC" ++ "123" ++ "" ++ ""` concatenate to the same
+bytes). This also means ADA — whose policy id and asset name are both empty bytestrings — needs no
+special casing.
+
+Each swap protocol has its own `SwapAsset` type. The **constructor order is part of the naming
+scheme** (it determines the constructor tag in the `Data` encoding), so constructors must never be
+reordered or removed. The two protocols' tags may overlap; this is harmless because beacon names
+are namespaced by their minting policy, and each protocol has its own beacon script. Golden test
+vectors pinning the exact pre-image bytes and hashes live next to the on-chain derivation
+functions in [`aiken/lib/cardano_swaps`](./aiken/lib/cardano_swaps).
 
 ##### One-Way Swaps
 
-A one-way swap uses three distinct beacons:
+A one-way swap uses three distinct beacons, one per constructor:
 
-- **Offer Beacon:** `sha2_256( "01" ++ offer_policy_id ++ offer_asset_name )`
-- **Ask Beacon:** `sha2_256( "02" ++ ask_policy_id ++ ask_asset_name )`
-- **Pair Beacon:** `sha2_256( offer_id ++ offer_name ++ ask_id ++ ask_name )`
+```aiken
+pub type SwapAsset {
+  OfferAsset(PolicyId, AssetName)                        // Constr tag 121
+  AskAsset(PolicyId, AssetName)                          // Constr tag 122
+  TradingPair(PolicyId, AssetName, PolicyId, AssetName)  // Constr tag 123
+}
+```
 
-To distinguish between ADA → TOKEN and TOKEN → ADA, ADA's policy ID is replaced with "00" when it is
-the ask asset. This ensures each direction has a unique pair beacon.
+- **Offer Beacon:** `sha2_256( serialise_data( OfferAsset(offer_id, offer_name) ) )`
+- **Ask Beacon:** `sha2_256( serialise_data( AskAsset(ask_id, ask_name) ) )`
+- **Pair Beacon:** `sha2_256( serialise_data( TradingPair(offer_id, offer_name, ask_id, ask_name) ) )`
+
+The offer asset always comes first in `TradingPair`, so ADA → TOKEN and TOKEN → ADA naturally have
+distinct pair beacons.
 
 ##### Two-Way Swaps
 
@@ -232,9 +260,16 @@ A two-way swap uses a non-directional pair beacon and two asset beacons. The ass
 first **sorted lexicographically** to determine `asset1` and `asset2`. This ensures consistency for
 off-chain queries.
 
-- **Asset1 Beacon:** `sha2_256( asset1_policy_id ++ asset1_asset_name )`
-- **Asset2 Beacon:** `sha2_256( asset2_policy_id ++ asset2_asset_name )`
-- **Pair Beacon:** `sha2_256( asset1_id ++ asset1_name ++ asset2_id ++ asset2_name )`
+```aiken
+pub type SwapAsset {
+  Asset(PolicyId, AssetName)                            // Constr tag 121
+  SortedPair(PolicyId, AssetName, PolicyId, AssetName)  // Constr tag 122
+}
+```
+
+- **Asset1 Beacon:** `sha2_256( serialise_data( Asset(asset1_id, asset1_name) ) )`
+- **Asset2 Beacon:** `sha2_256( serialise_data( Asset(asset2_id, asset2_name) ) )`
+- **Pair Beacon:** `sha2_256( serialise_data( SortedPair(asset1_id, asset1_name, asset2_id, asset2_name) ) )`
 
 ### Swap Primitives: Datums and Redeemers
 
@@ -556,3 +591,4 @@ fundamentally more free.
 [4]: https://github.com/cardano-foundation/CIPs/blob/master/CIP-0089/README.md
 [5]: https://github.com/cypher-enterprises/p2p-audit/blob/main/audit.pdf
 [6]: https://github.com/fallen-icarus/cardano-swaps/tree/9ec41e7619f5ba9d3dd46dd194e2146098093721
+[7]: https://github.com/IntersectMBO/plutus/blob/master/plutus-core/plutus-core/src/PlutusCore/Data.hs

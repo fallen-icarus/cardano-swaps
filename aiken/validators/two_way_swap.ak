@@ -222,13 +222,13 @@ validator beacon_script(dapp_hash: ScriptHash) {
     //      d) No extraneous assets are in the UTxO.
     // 6) The beacons must be stored with the proper inline `SwapDatum`:
     //      a) `beacon_id` == this policy id.
-    //      b) `pair_beacon` == sha2_256(asset1_id ++ asset1_name ++ asset2_id ++ asset2_name)
+    //      b) `pair_beacon` == sha2_256(serialise(SortedPair(asset1_id, asset1_name, asset2_id, asset2_name)))
     //      c) `asset1_id` == policy id of asset1 for that trading pair.
     //      d) `asset1_name` == asset name of asset1 for that trading_pair.
-    //      e) `asset1_beacon` == sha2_256(asset1_id ++ asset1_name).
+    //      e) `asset1_beacon` == sha2_256(serialise(Asset(asset1_id, asset1_name))).
     //      f) `asset2_id` == policy id of asset2 for that trading_pair.
     //      g) `asset2_name` == asset name of asset2 for that trading_pair.
-    //      h) `asset2_beacon` == sha2_256(asset2_id ++ asset2_name).
+    //      h) `asset2_beacon` == sha2_256(serialise(Asset(asset2_id, asset2_name))).
     //      i) `asset1_price` denominator > 0
     //      j) `asset1_price` numerator > 0
     //      k) `asset2_price` denominator > 0
@@ -267,13 +267,13 @@ validator beacon_script(dapp_hash: ScriptHash) {
     //      d) No extraneous assets are in the UTxO.
     // 6) The beacons must be stored with the proper inline `SwapDatum`:
     //      a) `beacon_id` == this policy id.
-    //      b) `pair_beacon` == sha2_256(asset1_id ++ asset1_name ++ asset2_id ++ asset2_name)
+    //      b) `pair_beacon` == sha2_256(serialise(SortedPair(asset1_id, asset1_name, asset2_id, asset2_name)))
     //      c) `asset1_id` == policy id of asset1 for that trading pair.
     //      d) `asset1_name` == asset name of asset1 for that trading_pair.
-    //      e) `asset1_beacon` == sha2_256(asset1_id ++ asset1_name).
+    //      e) `asset1_beacon` == sha2_256(serialise(Asset(asset1_id, asset1_name))).
     //      f) `asset2_id` == policy id of asset2 for that trading_pair.
     //      g) `asset2_name` == asset name of asset2 for that trading_pair.
-    //      h) `asset2_beacon` == sha2_256(asset2_id ++ asset2_name).
+    //      h) `asset2_beacon` == sha2_256(serialise(Asset(asset2_id, asset2_name))).
     //      i) `asset1_price` denominator > 0
     //      j) `asset1_price` numerator > 0
     //      k) `asset2_price` denominator > 0

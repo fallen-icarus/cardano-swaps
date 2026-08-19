@@ -3584,9 +3584,8 @@ tests =
     , scriptMustFailWithError "failureTest38" 
         "UTxO has wrong beacons" 
         failureTest38
-    , scriptMustFailWithError "failureTest39"
-        "No extraneous assets allowed in the UTxO"
-        failureTest39
+      -- No specific error message since the checks are lexicographically dependent.
+    , scriptMustFail "failureTest39" failureTest39
     , scriptMustFailWithError "failureTest40" 
         "Wrong beacon_id" 
         failureTest40

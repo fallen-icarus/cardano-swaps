@@ -1,12 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Test.OneWaySwap.BeaconNames 
+module Test.OneWaySwap.BeaconNames
   (
     uniquenessTest1
   , uniquenessTest2
   , uniquenessTest3
   , uniquenessTest4
   , uniquenessTest5
+
+  , goldenTest1
+  , goldenTest2
+  , goldenTest3
+  , goldenTest4
+  , goldenTest5
+  , goldenTest6
+  , goldenTest7
 
   , tests
   ) where
@@ -90,6 +98,80 @@ uniquenessTest5 =
     genAskBeaconName (AskAsset testToken1) /= 
       genAskBeaconName (AskAsset testToken2)
 
+-------------------------------------------------
+-- Golden Tests
+-------------------------------------------------
+-- The expected hashes below are pinned by the golden tests in
+-- aiken/lib/cardano_swaps/one_way_swap/utils.ak. Both test suites use the same inputs, so these
+-- tests check that the off-chain beacon names match the on-chain ones byte-for-byte. If any of
+-- these fail, the off-chain derivation has diverged from the on-chain derivation.
+
+-- | The policy id used by the aiken golden tests (28 bytes).
+goldenPolicy :: CurrencySymbol
+goldenPolicy = unsafeFromRight $
+  readCurrencySymbol "00112233445566778899aabbccddeeff00112233445566778899aabb"
+
+-- | The asset name used by the aiken golden tests ("DJED").
+goldenName :: TokenName
+goldenName = unsafeFromRight $ readTokenName "444a4544"
+
+-- | A 32-byte asset name (the maximum length).
+goldenMaxName :: TokenName
+goldenMaxName = unsafeFromRight $
+  readTokenName "ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100"
+
+expectedName :: String -> TokenName
+expectedName = unsafeFromRight . readTokenName
+
+-- | The offer beacon for ADA.
+goldenTest1 :: TestTree
+goldenTest1 =
+  testCase "goldenTest1" $
+    genOfferBeaconName (OfferAsset (adaSymbol,adaToken)) @?=
+      expectedName "07d5f63e85046b83e1fc4102a7c19c3f1711c51984725e3b6cf195900947cebe"
+
+-- | The ask beacon for ADA.
+goldenTest2 :: TestTree
+goldenTest2 =
+  testCase "goldenTest2" $
+    genAskBeaconName (AskAsset (adaSymbol,adaToken)) @?=
+      expectedName "08bae3e35a3531a500149bd10d9b872621a41b4f6ba086920518220829370d2b"
+
+-- | The offer beacon for a native asset.
+goldenTest3 :: TestTree
+goldenTest3 =
+  testCase "goldenTest3" $
+    genOfferBeaconName (OfferAsset (goldenPolicy,goldenName)) @?=
+      expectedName "2dab55ec954afe698b6de75d81f0067fd503d1e4ecd49d593f8a3b9c9a963d4f"
+
+-- | The ask beacon for a native asset.
+goldenTest4 :: TestTree
+goldenTest4 =
+  testCase "goldenTest4" $
+    genAskBeaconName (AskAsset (goldenPolicy,goldenName)) @?=
+      expectedName "8530f818d752ab63a9366d8e5e38f1e83d45ae71240b08059fd8a3d4a2b6fea7"
+
+-- | The offer beacon for a native asset with a maximum length (32 byte) asset name.
+goldenTest5 :: TestTree
+goldenTest5 =
+  testCase "goldenTest5" $
+    genOfferBeaconName (OfferAsset (goldenPolicy,goldenMaxName)) @?=
+      expectedName "130f1a4999dcc8b6bb9f31949ee44381e587ace2f03437c65d15536770704324"
+
+-- | The pair beacon for ADA -> native asset.
+goldenTest6 :: TestTree
+goldenTest6 =
+  testCase "goldenTest6" $
+    genPairBeaconName (OfferAsset (adaSymbol,adaToken)) (AskAsset (goldenPolicy,goldenName)) @?=
+      expectedName "ac77181ee78354aa42afae2ad4b902e3c6f9137525d3c56fe20ea2ffc0a6a878"
+
+-- | The pair beacon for native asset -> ADA.
+goldenTest7 :: TestTree
+goldenTest7 =
+  testCase "goldenTest7" $
+    genPairBeaconName (OfferAsset (goldenPolicy,goldenName)) (AskAsset (adaSymbol,adaToken)) @?=
+      expectedName "ccf1b9d64f82b9d3b5f6bf4b0ac4ab0a55e489c20f7c078a4621c6ab2b83b717"
+
 tests :: TestTree
 tests = testGroup "Beacon Names"
   [ uniquenessTest1
@@ -97,4 +179,12 @@ tests = testGroup "Beacon Names"
   , uniquenessTest3
   , uniquenessTest4
   , uniquenessTest5
+
+  , goldenTest1
+  , goldenTest2
+  , goldenTest3
+  , goldenTest4
+  , goldenTest5
+  , goldenTest6
+  , goldenTest7
   ]

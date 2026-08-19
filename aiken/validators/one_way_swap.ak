@@ -162,13 +162,13 @@ validator beacon_script(dapp_hash: ScriptHash) {
     //      d) No extraneous assets are in the UTxO.
     // 6) The beacons must be stored with the proper inline `SwapDatum`:
     //      a) `beacon_id` == this policy id.
-    //      b) `pair_beacon` == `sha2_256(offer_id ++ offer_name ++ ask_id ++ ask_name)`
+    //      b) `pair_beacon` == `sha2_256(serialise(TradingPair(offer_id, offer_name, ask_id, ask_name)))`
     //      c) `offer_id` == policy id of the offer asset.
     //      d) `offer_name` == asset name of the offer asset.
-    //      e) `offer_beacon` == `sha2_256("01" ++ offer_id ++ offer_name)`.
+    //      e) `offer_beacon` == `sha2_256(serialise(OfferAsset(offer_id, offer_name)))`.
     //      f) `ask_id` == policy id of the ask asset.
     //      g) `ask_name` == asset name of the ask asset.
-    //      h) `ask_beacon` == `sha2_256("02" ++ ask_id ++ ask_name)`
+    //      h) `ask_beacon` == `sha2_256(serialise(AskAsset(ask_id, ask_name)))`
     //      i) `swap_price` denominator > 0
     //      j) `swap_price` numerator > 0
     //      k) `expiration` >= invalid-hereafter && `expiration` % 60000 == 0 if expiration used
@@ -203,13 +203,13 @@ validator beacon_script(dapp_hash: ScriptHash) {
     //      d) No extraneous assets are in the UTxO.
     // 6) The beacons must be stored with the proper inline `SwapDatum`:
     //      a) `beacon_id` == this policy id.
-    //      b) `pair_beacon` == `sha2_256(offer_id ++ offer_name ++ ask_id ++ ask_name)`
+    //      b) `pair_beacon` == `sha2_256(serialise(TradingPair(offer_id, offer_name, ask_id, ask_name)))`
     //      c) `offer_id` == policy id of the offer asset.
     //      d) `offer_name` == asset name of the offer asset.
-    //      e) `offer_beacon` == `sha2_256("01" ++ offer_id ++ offer_name)`.
+    //      e) `offer_beacon` == `sha2_256(serialise(OfferAsset(offer_id, offer_name)))`.
     //      f) `ask_id` == policy id of the ask asset.
     //      g) `ask_name` == asset name of the ask asset.
-    //      h) `ask_beacon` == `sha2_256("02" ++ ask_id ++ ask_name)`
+    //      h) `ask_beacon` == `sha2_256(serialise(AskAsset(ask_id, ask_name)))`
     //      i) `swap_price` denominator > 0
     //      j) `swap_price` numerator > 0
     //      k) `expiration` >= invalid-hereafter && `expiration` % 60000 == 0 if expiration used

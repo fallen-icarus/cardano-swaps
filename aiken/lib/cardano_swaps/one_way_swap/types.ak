@@ -18,6 +18,17 @@ pub type SwapDatum {
   }
 }
 
+// Pre-images for the beacon token names: every beacon name is
+// `sha2_256(cbor.serialise(swap_asset))`. The Data encoding tags each constructor and
+// length-prefixes each field, so the encoding is injective: distinct assets/pairs can never
+// produce the same pre-hash bytes, and beacon names cannot collide without a sha2_256 collision.
+pub type SwapAsset {
+  OfferAsset(PolicyId, AssetName)
+  AskAsset(PolicyId, AssetName)
+  // The offer asset must come first: (offer_id, offer_name, ask_id, ask_name).
+  TradingPair(PolicyId, AssetName, PolicyId, AssetName)
+}
+
 pub type SwapRedeemer {
   SpendWithMint
   SpendWithStake

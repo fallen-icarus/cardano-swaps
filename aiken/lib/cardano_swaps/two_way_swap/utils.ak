@@ -1,4 +1,4 @@
-use aiken/primitive/bytearray
+use aiken/cbor
 use aiken/collection/dict.{Dict}
 use aiken/interval.{Interval,IntervalBound,Finite}
 use aiken/collection/list
@@ -19,7 +19,10 @@ use cardano_swaps/common/utils.{
   trace_if_false,
   } as common_utils
 use cardano_swaps/two_way_swap/types.{
-  SwapDatum
+  SwapDatum,
+  SwapAsset,
+  Asset,
+  SortedPair
   } as two_way_types
 
 // This parses the datums attached to target UTxOs. It will fail with an error unless
@@ -46,30 +49,26 @@ pub fn get_upper_bound(val_range: ValidityRange) -> Option<Int> {
   }
 }
 
-// Create the asset name for the pair beacon by hashing the combination of asset1 and asset2. 
-// It uses the sha2_256 hash algorithm. It assumes the pair is already sorted. 
-// When ada is part of the pair, the empty bytestring is replaced so that the beacon is distinct 
-// from the asset beacons.
-pub fn generate_pair_beacon(asset1: AssetConfig, asset2: AssetConfig) -> AssetName {
-  let AssetConfig{asset_id: asset1_id_,asset_name: asset1_name} = asset1
-  let AssetConfig{asset_id: asset2_id_,asset_name: asset2_name} = asset2
-
-  let asset1_id = if asset1_id_ == #"" { #"00" } else { asset1_id_ }
-  let asset2_id = if asset2_id_ == #"" { #"00" } else { asset2_id_ }
-
-  crypto.sha2_256(
-    bytearray.concat(asset1_id,asset1_name)
-    |> bytearray.concat(_,asset2_id)
-    |> bytearray.concat(_,asset2_name)
+// Create the asset name for the pair beacon by hashing the serialised SortedPair. It uses the
+// sha2_256 hash algorithm on the Data encoding, which is injective (see SwapAsset). It crashes
+// if the pair is not sorted: asset1 < asset2.
+pub fn generate_pair_beacon(pair: SwapAsset) -> AssetName {
+  expect SortedPair(asset1_id, asset1_name, asset2_id, asset2_name) = pair
+  expect True = error_if_false(
+    @"Asset1 must be less than asset2",
+    compare_asset_config(
+      AssetConfig(asset1_id, asset1_name),
+      AssetConfig(asset2_id, asset2_name)
+    ) == Less
   )
+  crypto.sha2_256(cbor.serialise(pair))
 }
 
-// Create the asset name for the beacon by hashing the combination of the policy id and asset name
-// for the asset. It uses the sha2_256 hash algorithm.
-pub fn generate_asset_beacon(policy_id: PolicyId, asset_name: AssetName) -> AssetName {
-  crypto.sha2_256(
-    bytearray.concat( policy_id, asset_name )
-  )
+// Create the asset name for an asset beacon by hashing the serialised Asset. It uses the
+// sha2_256 hash algorithm on the Data encoding, which is injective (see SwapAsset).
+pub fn generate_asset_beacon(asset: SwapAsset) -> AssetName {
+  expect Asset(_,_) = asset
+  crypto.sha2_256(cbor.serialise(asset))
 }
 
 // This is used to check that the value of Swap UTxOs are correct. It also returns the amount of
@@ -219,10 +218,7 @@ fn valid_swap_output(
     ..
   } = parse_datum(output_datum)
 
-  let asset1 = AssetConfig(asset1_id_,asset1_name_)
-  let asset2 = AssetConfig(asset2_id_,asset2_name_)
-
-  let (o,_,_) = 
+  let (o,_,_) =
     extract_ask_and_offer_quantity(
       output_value,
       beacon_id,
@@ -250,28 +246,23 @@ fn valid_swap_output(
   // The beacon_id must be the policy id of the beacon policy.
   trace_if_false( @"Wrong beacon_id", beacon_id == beacon_id_ ) &&
 
-  // The trading pair must be sorted: asset1 < asset2. They cannot be equal.
-  trace_if_false( 
-    @"Asset1 must be less than asset2", 
-    compare_asset_config(asset1,asset2) == Less
+  // The pair_beacon must be the sha2_256 hash of the serialised SortedPair. generate_pair_beacon
+  // also enforces that asset1 < asset2.
+  trace_if_false(
+    @"Wrong pair_beacon",
+    pair_beacon_ == generate_pair_beacon(SortedPair(asset1_id_,asset1_name_,asset2_id_,asset2_name_))
   ) &&
 
-  // The pair_beacon must be the sha2_256 hash of asset1 ++ asset2.
-  trace_if_false( 
-    @"Wrong pair_beacon", 
-    pair_beacon_ == generate_pair_beacon(asset1,asset2)
+  // The asset1_beacon must be the sha2_256 hash of the serialised Asset.
+  trace_if_false(
+    @"Wrong asset1_beacon",
+    asset1_beacon_ == generate_asset_beacon(Asset(asset1_id_,asset1_name_))
   ) &&
 
-  // The asset1_beacon must be the sha2_256 hash of assetId ++ assetName.
-  trace_if_false( 
-    @"Wrong asset1_beacon", 
-    asset1_beacon_ == generate_asset_beacon(asset1_id_,asset1_name_)
-  ) &&
-
-  // The asset2_beacon must be the sha2_256 hash of assetId ++ assetName.
-  trace_if_false( 
-    @"Wrong asset2_beacon", 
-    asset2_beacon_ == generate_asset_beacon(asset2_id_,asset2_name_)
+  // The asset2_beacon must be the sha2_256 hash of the serialised Asset.
+  trace_if_false(
+    @"Wrong asset2_beacon",
+    asset2_beacon_ == generate_asset_beacon(Asset(asset2_id_,asset2_name_))
   ) &&
 
   // The asset1_price denominator must be > 0.
@@ -322,18 +313,18 @@ pub fn beacon_destination_check(
   //      e) No extraneous assets are in the UTxO.
   // 5) The beacons must be stored with the proper inline `SwapDatum`:
   //      a) `beacon_id` == this policy id.
-  //      b) `pair_beacon` == sha2_256(asset1_id ++ asset1_name ++ asset2_id ++ asset2_name)
+  //      b) `pair_beacon` == sha2_256(serialise(SortedPair(asset1_id, asset1_name, asset2_id, asset2_name)))
   //      c) `asset1_id` == policy id of asset1 for that trading pair.
   //      d) `asset1_name` == asset name of asset1 for that trading_pair.
-  //      e) `asset1_beacon` == sha2_256(asset1_id ++ asset1_name).
+  //      e) `asset1_beacon` == sha2_256(serialise(Asset(asset1_id, asset1_name))).
   //      f) `asset2_id` == policy id of asset2 for that trading_pair.
   //      g) `asset2_name` == asset name of asset2 for that trading_pair.
-  //      h) `asset2_beacon` == sha2_256(asset2_id ++ asset2_name).
+  //      h) `asset2_beacon` == sha2_256(serialise(Asset(asset2_id, asset2_name))).
   //      i) `asset1_price` denominator > 0
   //      j) `asset1_price` numerator > 0
   //      k) `asset2_price` denominator > 0
   //      l) `asset2_price` numerator > 0
-  //      m) asset1 < asset2
+  //      m) asset1 < asset2 (enforced by generate_pair_beacon)
   //      n) `expiration` >= invalid-hereafter if expiration used
   // 6) The offer asset and the ask asset must be different assets. Asset1 must be lexicographically
   // less than Asset2.
@@ -568,4 +559,82 @@ pub fn valid_swap(
     @"The ask asset cannot be taken from the swap",
     ask_given >= 0 // Negative would mean it was taken.
   )
+}
+
+// =================================================================================================
+// Golden tests for beacon name derivation.
+// =================================================================================================
+
+const test_policy: PolicyId = #"00112233445566778899aabbccddeeff00112233445566778899aabb"
+
+const test_name: AssetName = #"444a4544"
+
+// A 32-byte asset name (the maximum length).
+const test_max_name: AssetName =
+  #"ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100"
+
+// Pre-image: d8799f4040ff
+test golden_asset_beacon_ada() {
+  generate_asset_beacon(Asset(#"", #"")) ==
+    #"07d5f63e85046b83e1fc4102a7c19c3f1711c51984725e3b6cf195900947cebe"
+}
+
+// Pre-image: d8799f581c00112233445566778899aabbccddeeff00112233445566778899aabb44444a4544ff
+test golden_asset_beacon_native_asset() {
+  generate_asset_beacon(Asset(test_policy, test_name)) ==
+    #"2dab55ec954afe698b6de75d81f0067fd503d1e4ecd49d593f8a3b9c9a963d4f"
+}
+
+// A 32-byte asset name crosses CBOR's 23-byte short-length boundary (0x5820 prefix).
+// Pre-image: d8799f581c...aabb5820ffeeddcc...1100ff
+test golden_asset_beacon_max_length_name() {
+  generate_asset_beacon(Asset(test_policy, test_max_name)) ==
+    #"130f1a4999dcc8b6bb9f31949ee44381e587ace2f03437c65d15536770704324"
+}
+
+// Ada sorts first, so it is always asset1 when part of a pair.
+// Pre-image: d87a9f4040581c00112233445566778899aabbccddeeff00112233445566778899aabb44444a4544ff
+test golden_pair_beacon_ada_and_token() {
+  generate_pair_beacon(SortedPair(#"", #"", test_policy, test_name)) ==
+    #"c6656f7142e3ef8e72066251cac9e9cc2454571204fa85ab13b34a03e77d7230"
+}
+
+// The old concatenation scheme collided here: the asset beacon pre-hash "123" ++ "ABC" and the
+// pair beacon pre-hash "12" ++ "3" ++ "AB" ++ "C" both concatenate to "123ABC". The constructor
+// tags and field framing keep the two beacon kinds disjoint.
+// Pre-images: d8799f4331323343414243ff vs d87a9f42313241334241424143ff
+test asset_and_pair_beacons_cannot_collide() {
+  generate_asset_beacon(Asset("123", "ABC")) ==
+    #"421118aa9387559826262aa7545bfac75f5393f4867a8bb5ab0df111e96aeb15" &&
+  generate_pair_beacon(SortedPair("12", "3", "AB", "C")) ==
+    #"0980838c69e2b4193015eed4505d222849ecca60fdf069f75a57f250c1762d61"
+}
+
+// The old concatenation scheme collided here: "AB" ++ "" ++ "CD" ++ "" and
+// "AB" ++ "C" ++ "D" ++ "" both concatenate to "ABCD". The Data encoding length-prefixes every
+// field, so the boundaries cannot shift.
+// Pre-images: d87a9f4241424042434440ff vs d87a9f4241424143414440ff
+test pair_beacon_field_boundaries_cannot_shift() {
+  generate_pair_beacon(SortedPair("AB", "", "CD", "")) ==
+    #"6e90ae87cd390983bb293f04b40d22c04fe00c0957eca07f68d63e63d54a005e" &&
+  generate_pair_beacon(SortedPair("AB", "C", "D", "")) ==
+    #"97bd089a14e634317d6251349086ede4eaff43878495246e925b78bfb8534224"
+}
+
+// The generate_ functions must crash when given the wrong SwapAsset variant.
+test asset_beacon_rejects_pair() fail {
+  generate_asset_beacon(SortedPair(#"", #"", test_policy, test_name)) == #""
+}
+
+test pair_beacon_rejects_single_asset() fail {
+  generate_pair_beacon(Asset(test_policy, test_name)) == #""
+}
+
+// generate_pair_beacon must crash on unsorted or equal pairs.
+test pair_beacon_rejects_unsorted_pair() fail {
+  generate_pair_beacon(SortedPair(test_policy, test_name, #"", #"")) == #""
+}
+
+test pair_beacon_rejects_equal_assets() fail {
+  generate_pair_beacon(SortedPair(test_policy, test_name, test_policy, test_name)) == #""
 }

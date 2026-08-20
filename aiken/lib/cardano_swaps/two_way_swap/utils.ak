@@ -20,7 +20,6 @@ use cardano_swaps/common/utils.{
   } as common_utils
 use cardano_swaps/two_way_swap/types.{
   SwapDatum,
-  SwapAsset,
   Asset,
   SortedPair
   } as two_way_types
@@ -52,8 +51,12 @@ pub fn get_upper_bound(val_range: ValidityRange) -> Option<Int> {
 // Create the asset name for the pair beacon by hashing the serialised SortedPair. It uses the
 // sha2_256 hash algorithm on the Data encoding, which is injective (see SwapAsset). It crashes
 // if the pair is not sorted: asset1 < asset2.
-pub fn generate_pair_beacon(pair: SwapAsset) -> AssetName {
-  expect SortedPair(asset1_id, asset1_name, asset2_id, asset2_name) = pair
+pub fn generate_pair_beacon(
+  asset1_id: PolicyId,
+  asset1_name: AssetName,
+  asset2_id: PolicyId,
+  asset2_name: AssetName
+) -> AssetName {
   expect True = error_if_false(
     @"Asset1 must be less than asset2",
     compare_asset_config(
@@ -61,14 +64,13 @@ pub fn generate_pair_beacon(pair: SwapAsset) -> AssetName {
       AssetConfig(asset2_id, asset2_name)
     ) == Less
   )
-  crypto.sha2_256(cbor.serialise(pair))
+  crypto.sha2_256(cbor.serialise(SortedPair(asset1_id,asset1_name,asset2_id,asset2_name)))
 }
 
 // Create the asset name for an asset beacon by hashing the serialised Asset. It uses the
 // sha2_256 hash algorithm on the Data encoding, which is injective (see SwapAsset).
-pub fn generate_asset_beacon(asset: SwapAsset) -> AssetName {
-  expect Asset(_,_) = asset
-  crypto.sha2_256(cbor.serialise(asset))
+pub fn generate_asset_beacon(policy_id: PolicyId, asset_name: AssetName) -> AssetName {
+  crypto.sha2_256(cbor.serialise(Asset(policy_id,asset_name)))
 }
 
 // This is used to check that the value of Swap UTxOs are correct. It also returns the amount of
@@ -250,19 +252,19 @@ fn valid_swap_output(
   // also enforces that asset1 < asset2.
   trace_if_false(
     @"Wrong pair_beacon",
-    pair_beacon_ == generate_pair_beacon(SortedPair(asset1_id_,asset1_name_,asset2_id_,asset2_name_))
+    pair_beacon_ == generate_pair_beacon(asset1_id_,asset1_name_,asset2_id_,asset2_name_)
   ) &&
 
   // The asset1_beacon must be the sha2_256 hash of the serialised Asset.
   trace_if_false(
     @"Wrong asset1_beacon",
-    asset1_beacon_ == generate_asset_beacon(Asset(asset1_id_,asset1_name_))
+    asset1_beacon_ == generate_asset_beacon(asset1_id_,asset1_name_)
   ) &&
 
   // The asset2_beacon must be the sha2_256 hash of the serialised Asset.
   trace_if_false(
     @"Wrong asset2_beacon",
-    asset2_beacon_ == generate_asset_beacon(Asset(asset2_id_,asset2_name_))
+    asset2_beacon_ == generate_asset_beacon(asset2_id_,asset2_name_)
   ) &&
 
   // The asset1_price denominator must be > 0.
@@ -575,27 +577,27 @@ const test_max_name: AssetName =
 
 // Pre-image: d8799f4040ff
 test golden_asset_beacon_ada() {
-  generate_asset_beacon(Asset(#"", #"")) ==
+  generate_asset_beacon(#"", #"") ==
     #"07d5f63e85046b83e1fc4102a7c19c3f1711c51984725e3b6cf195900947cebe"
 }
 
 // Pre-image: d8799f581c00112233445566778899aabbccddeeff00112233445566778899aabb44444a4544ff
 test golden_asset_beacon_native_asset() {
-  generate_asset_beacon(Asset(test_policy, test_name)) ==
+  generate_asset_beacon(test_policy, test_name) ==
     #"2dab55ec954afe698b6de75d81f0067fd503d1e4ecd49d593f8a3b9c9a963d4f"
 }
 
 // A 32-byte asset name crosses CBOR's 23-byte short-length boundary (0x5820 prefix).
 // Pre-image: d8799f581c...aabb5820ffeeddcc...1100ff
 test golden_asset_beacon_max_length_name() {
-  generate_asset_beacon(Asset(test_policy, test_max_name)) ==
+  generate_asset_beacon(test_policy, test_max_name) ==
     #"130f1a4999dcc8b6bb9f31949ee44381e587ace2f03437c65d15536770704324"
 }
 
 // Ada sorts first, so it is always asset1 when part of a pair.
 // Pre-image: d87a9f4040581c00112233445566778899aabbccddeeff00112233445566778899aabb44444a4544ff
 test golden_pair_beacon_ada_and_token() {
-  generate_pair_beacon(SortedPair(#"", #"", test_policy, test_name)) ==
+  generate_pair_beacon(#"", #"", test_policy, test_name) ==
     #"c6656f7142e3ef8e72066251cac9e9cc2454571204fa85ab13b34a03e77d7230"
 }
 
@@ -604,9 +606,9 @@ test golden_pair_beacon_ada_and_token() {
 // tags and field framing keep the two beacon kinds disjoint.
 // Pre-images: d8799f4331323343414243ff vs d87a9f42313241334241424143ff
 test asset_and_pair_beacons_cannot_collide() {
-  generate_asset_beacon(Asset("123", "ABC")) ==
+  generate_asset_beacon("123", "ABC") ==
     #"421118aa9387559826262aa7545bfac75f5393f4867a8bb5ab0df111e96aeb15" &&
-  generate_pair_beacon(SortedPair("12", "3", "AB", "C")) ==
+  generate_pair_beacon("12", "3", "AB", "C") ==
     #"0980838c69e2b4193015eed4505d222849ecca60fdf069f75a57f250c1762d61"
 }
 
@@ -615,26 +617,17 @@ test asset_and_pair_beacons_cannot_collide() {
 // field, so the boundaries cannot shift.
 // Pre-images: d87a9f4241424042434440ff vs d87a9f4241424143414440ff
 test pair_beacon_field_boundaries_cannot_shift() {
-  generate_pair_beacon(SortedPair("AB", "", "CD", "")) ==
+  generate_pair_beacon("AB", "", "CD", "") ==
     #"6e90ae87cd390983bb293f04b40d22c04fe00c0957eca07f68d63e63d54a005e" &&
-  generate_pair_beacon(SortedPair("AB", "C", "D", "")) ==
+  generate_pair_beacon("AB", "C", "D", "") ==
     #"97bd089a14e634317d6251349086ede4eaff43878495246e925b78bfb8534224"
-}
-
-// The generate_ functions must crash when given the wrong SwapAsset variant.
-test asset_beacon_rejects_pair() fail {
-  generate_asset_beacon(SortedPair(#"", #"", test_policy, test_name)) == #""
-}
-
-test pair_beacon_rejects_single_asset() fail {
-  generate_pair_beacon(Asset(test_policy, test_name)) == #""
 }
 
 // generate_pair_beacon must crash on unsorted or equal pairs.
 test pair_beacon_rejects_unsorted_pair() fail {
-  generate_pair_beacon(SortedPair(test_policy, test_name, #"", #"")) == #""
+  generate_pair_beacon(test_policy, test_name, #"", #"") == #""
 }
 
 test pair_beacon_rejects_equal_assets() fail {
-  generate_pair_beacon(SortedPair(test_policy, test_name, test_policy, test_name)) == #""
+  generate_pair_beacon(test_policy, test_name, test_policy, test_name) == #""
 }

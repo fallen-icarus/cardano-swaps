@@ -19,7 +19,6 @@ use cardano_swaps/common/utils.{
   } as common_utils
 use cardano_swaps/one_way_swap/types.{
   SwapDatum,
-  SwapAsset,
   OfferAsset,
   AskAsset,
   TradingPair
@@ -50,24 +49,27 @@ pub fn get_upper_bound(val_range: ValidityRange) -> Option<Int> {
 }
 
 // Create the asset name for the pair beacon by hashing the serialised TradingPair. It uses the
-// sha2_256 hash algorithm on the Data encoding, which is injective (see SwapAsset).
-pub fn generate_pair_beacon(pair: SwapAsset) -> AssetName {
-  expect TradingPair(_,_,_,_) = pair
-  crypto.sha2_256(cbor.serialise(pair))
+// sha2_256 hash algorithm on the Data encoding, which is injective (see SwapAsset). The offer
+// asset must come first.
+pub fn generate_pair_beacon(
+  offer_id: PolicyId,
+  offer_name: AssetName,
+  ask_id: PolicyId,
+  ask_name: AssetName
+) -> AssetName {
+  crypto.sha2_256(cbor.serialise(TradingPair(offer_id,offer_name,ask_id,ask_name)))
 }
 
 // Create the asset name for the offer beacon by hashing the serialised OfferAsset. It uses the
 // sha2_256 hash algorithm on the Data encoding, which is injective (see SwapAsset).
-pub fn generate_offer_beacon(offer: SwapAsset) -> AssetName {
-  expect OfferAsset(_,_) = offer
-  crypto.sha2_256(cbor.serialise(offer))
+pub fn generate_offer_beacon(policy_id: PolicyId, asset_name: AssetName) -> AssetName {
+  crypto.sha2_256(cbor.serialise(OfferAsset(policy_id,asset_name)))
 }
 
 // Create the asset name for the ask beacon by hashing the serialised AskAsset. It uses the
 // sha2_256 hash algorithm on the Data encoding, which is injective (see SwapAsset).
-pub fn generate_ask_beacon(ask: SwapAsset) -> AssetName {
-  expect AskAsset(_,_) = ask
-  crypto.sha2_256(cbor.serialise(ask))
+pub fn generate_ask_beacon(policy_id: PolicyId, asset_name: AssetName) -> AssetName {
+  crypto.sha2_256(cbor.serialise(AskAsset(policy_id,asset_name)))
 }
 
 // This is used to check thath the value of Swap UTxOs are correct. It also returns the amount of
@@ -253,19 +255,19 @@ fn valid_swap_output(
   // The pair_beacon must be the sha2_256 hash of the serialised TradingPair.
   trace_if_false(
     @"Wrong pair_beacon",
-    pair_beacon_ == generate_pair_beacon(TradingPair(offer_id_,offer_name_,ask_id_,ask_name_))
+    pair_beacon_ == generate_pair_beacon(offer_id_,offer_name_,ask_id_,ask_name_)
   ) &&
 
   // The offer_beacon must be the sha2_256 hash of the serialised OfferAsset.
   trace_if_false(
     @"Wrong offer_beacon",
-    offer_beacon_ == generate_offer_beacon(OfferAsset(offer_id_,offer_name_))
+    offer_beacon_ == generate_offer_beacon(offer_id_,offer_name_)
   ) &&
 
   // The ask_beacon must be the sha2_256 hash of the serialised AskAsset.
   trace_if_false(
     @"Wrong ask_beacon",
-    ask_beacon_ == generate_ask_beacon(AskAsset(ask_id_,ask_name_))
+    ask_beacon_ == generate_ask_beacon(ask_id_,ask_name_)
   ) &&
 
   // The swap_price denominator must be > 0.
@@ -547,52 +549,52 @@ const test_max_name: AssetName =
 
 // Pre-image: d8799f4040ff
 test golden_offer_beacon_ada() {
-  generate_offer_beacon(OfferAsset(#"", #"")) ==
+  generate_offer_beacon(#"", #"") ==
     #"07d5f63e85046b83e1fc4102a7c19c3f1711c51984725e3b6cf195900947cebe"
 }
 
 // Pre-image: d87a9f4040ff
 test golden_ask_beacon_ada() {
-  generate_ask_beacon(AskAsset(#"", #"")) ==
+  generate_ask_beacon(#"", #"") ==
     #"08bae3e35a3531a500149bd10d9b872621a41b4f6ba086920518220829370d2b"
 }
 
 // Pre-image: d8799f581c00112233445566778899aabbccddeeff00112233445566778899aabb44444a4544ff
 test golden_offer_beacon_native_asset() {
-  generate_offer_beacon(OfferAsset(test_policy, test_name)) ==
+  generate_offer_beacon(test_policy, test_name) ==
     #"2dab55ec954afe698b6de75d81f0067fd503d1e4ecd49d593f8a3b9c9a963d4f"
 }
 
 // Pre-image: d87a9f581c00112233445566778899aabbccddeeff00112233445566778899aabb44444a4544ff
 test golden_ask_beacon_native_asset() {
-  generate_ask_beacon(AskAsset(test_policy, test_name)) ==
+  generate_ask_beacon(test_policy, test_name) ==
     #"8530f818d752ab63a9366d8e5e38f1e83d45ae71240b08059fd8a3d4a2b6fea7"
 }
 
 // A 32-byte asset name crosses CBOR's 23-byte short-length boundary (0x5820 prefix).
 // Pre-image: d8799f581c...aabb5820ffeeddcc...1100ff
 test golden_offer_beacon_max_length_name() {
-  generate_offer_beacon(OfferAsset(test_policy, test_max_name)) ==
+  generate_offer_beacon(test_policy, test_max_name) ==
     #"130f1a4999dcc8b6bb9f31949ee44381e587ace2f03437c65d15536770704324"
 }
 
 // Pre-image: d87b9f4040581c00112233445566778899aabbccddeeff00112233445566778899aabb44444a4544ff
 test golden_pair_beacon_ada_to_token() {
-  generate_pair_beacon(TradingPair(#"", #"", test_policy, test_name)) ==
+  generate_pair_beacon(#"", #"", test_policy, test_name) ==
     #"ac77181ee78354aa42afae2ad4b902e3c6f9137525d3c56fe20ea2ffc0a6a878"
 }
 
 // Pre-image: d87b9f581c00112233445566778899aabbccddeeff00112233445566778899aabb44444a45444040ff
 test golden_pair_beacon_token_to_ada() {
-  generate_pair_beacon(TradingPair(test_policy, test_name, #"", #"")) ==
+  generate_pair_beacon(test_policy, test_name, #"", #"") ==
     #"ccf1b9d64f82b9d3b5f6bf4b0ac4ab0a55e489c20f7c078a4621c6ab2b83b717"
 }
 
 // The old concatenation scheme required substituting "00" for ada's empty policy id to keep the
 // two directions distinct. The Data encoding preserves direction on its own.
 test pair_beacon_is_directional_for_ada() {
-  generate_pair_beacon(TradingPair(#"", #"", test_policy, test_name)) !=
-    generate_pair_beacon(TradingPair(test_policy, test_name, #"", #""))
+  generate_pair_beacon(#"", #"", test_policy, test_name) !=
+    generate_pair_beacon(test_policy, test_name, #"", #"")
 }
 
 // The old concatenation scheme collided here: "ABC" ++ "" ++ "123" ++ "" and
@@ -600,27 +602,14 @@ test pair_beacon_is_directional_for_ada() {
 // every field, so the boundaries cannot shift.
 // Pre-images: d87b9f43414243404331323340ff vs d87b9f43414243433132334040ff
 test pair_beacon_field_boundaries_cannot_shift() {
-  generate_pair_beacon(TradingPair("ABC", "", "123", "")) ==
+  generate_pair_beacon("ABC", "", "123", "") ==
     #"461fd2d8a7179e276cde2b803a73978fb7a3e74000b1efd3cf3fdb89b1424dd6" &&
-  generate_pair_beacon(TradingPair("ABC", "123", "", "")) ==
+  generate_pair_beacon("ABC", "123", "", "") ==
     #"b9f1919a23126a9d272901f6cfb3a44c27ac683da940966293db88406f79d378"
 }
 
 // The constructor tags keep the offer and ask beacons distinct for the same asset.
 test offer_and_ask_beacons_are_distinct() {
-  generate_offer_beacon(OfferAsset(test_policy, test_name)) !=
-    generate_ask_beacon(AskAsset(test_policy, test_name))
-}
-
-// The generate_ functions must crash when given the wrong SwapAsset variant.
-test offer_beacon_rejects_ask_asset() fail {
-  generate_offer_beacon(AskAsset(test_policy, test_name)) == #""
-}
-
-test ask_beacon_rejects_offer_asset() fail {
-  generate_ask_beacon(OfferAsset(test_policy, test_name)) == #""
-}
-
-test pair_beacon_rejects_single_asset() fail {
-  generate_pair_beacon(OfferAsset(test_policy, test_name)) == #""
+  generate_offer_beacon(test_policy, test_name) !=
+    generate_ask_beacon(test_policy, test_name)
 }

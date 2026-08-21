@@ -3,6 +3,9 @@
 module Test.TwoWaySwap where
 
 import Test.Tasty
+import Test.Tasty.HUnit
+
+import CardanoSwaps.TwoWaySwap
 
 import qualified Test.TwoWaySwap.CreateSwap as CreateSwap
 import qualified Test.TwoWaySwap.UpdateSwap as UpdateSwap
@@ -19,4 +22,10 @@ tests = testGroup "Two-Way Swaps"
   , Swap.tests
   , BeaconNames.tests
   , Publish.tests
+    -- The script sizes impact user fees. The beacon script size includes the applied swap
+    -- validator hash.
+  , testGroup "Script Sizes"
+      [ testCase "swapScript size" $ swapScriptSize @?= 3914
+      , testCase "beaconScript size" $ beaconScriptSize @?= 3912
+      ]
   ]

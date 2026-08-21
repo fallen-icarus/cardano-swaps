@@ -87,39 +87,37 @@ fn extract_ask_and_offer_quantity(
   ask_name: AssetName,
   ask_beacon: AssetName
 ) -> (Int,Int,Int) {
-  let foo = fn(x: Pair<PolicyId,Dict<AssetName,Int>>, acc: (Int,Int,Int,Bool)) {
+  // Separate the beacon tokens from the rest of the value to check them separately.
+  let (beacon_tns, rest) = assets.to_dict(val) |> dict.pop(_, beacon_id)
+
+  let expected_dict =
+      dict.from_pairs([
+        Pair(pair_beacon, 1),
+        Pair(offer_beacon, 1),
+        Pair(ask_beacon, 1),
+      ])
+
+  // UTxO must have the right beacons.
+  expect True = error_if_false(
+      @"UTxO has wrong beacons",
+      beacon_tns == Some(expected_dict)
+  )
+
+  let foo = fn(x: Pair<PolicyId,Dict<AssetName,Int>>, acc: (Int,Int,Int)) {
     let Pair(cn,tns_dict) = x
-    let (offer,ask,ada,valid_beacons) = acc
-
-    // Check the beacons.
-    if cn == beacon_id {
-      let expected_dict =
-          dict.from_pairs([
-            Pair(pair_beacon, 1),
-            Pair(offer_beacon, 1),
-            Pair(ask_beacon, 1),
-          ])
-
-      // UTxO must have the right beacons.
-      expect True = error_if_false(
-          @"UTxO has wrong beacons",
-          tns_dict == expected_dict
-      )
-
-      (offer, ask, ada, True)
-    } 
+    let (offer,ask,ada) = acc
 
     // Check ada.
-    else if cn == #"" {
+    if cn == #"" {
       expect Some(n) = dict.get(tns_dict,#"")
 
       // Also account for when ada is part of the pair.
       if cn == offer_id {
-        (offer+n,ask,ada+n,valid_beacons)
+        (offer+n,ask,ada+n)
       } else if cn == ask_id {
-        (offer,ask+n,ada+n,valid_beacons)
+        (offer,ask+n,ada+n)
       } else {
-        (offer,ask,ada+n,valid_beacons)
+        (offer,ask,ada+n)
       }
     }
 
@@ -129,9 +127,9 @@ fn extract_ask_and_offer_quantity(
         // Only one of the assets is present.
         [Pair(tn,n)] -> {
           if tn == offer_name {
-            (offer+n,ask,ada,valid_beacons)
+            (offer+n,ask,ada)
           } else if tn == ask_name {
-            (offer,ask+n,ada,valid_beacons)
+            (offer,ask+n,ada)
           } else {
             error @"No extraneous assets allowed in the UTxO"
           }
@@ -140,9 +138,9 @@ fn extract_ask_and_offer_quantity(
         // They are both present in the UTxO.
         [Pair(tn1,n1),Pair(tn2,n2)] -> {
           if tn1 == offer_name && tn2 == ask_name {
-              (offer+n1,ask+n2,ada,valid_beacons)
+              (offer+n1,ask+n2,ada)
           } else if tn1 == ask_name && tn2 == offer_name {
-              (offer+n2,ask+n1,ada,valid_beacons)
+              (offer+n2,ask+n1,ada)
           } else {
               error @"No extraneous assets allowed in the UTxO"
           }
@@ -158,7 +156,7 @@ fn extract_ask_and_offer_quantity(
       when dict.to_pairs(tns_dict) is {
         [Pair(tn,n)] -> {
           if tn == offer_name {
-            (offer+n,ask,ada,valid_beacons)
+            (offer+n,ask,ada)
           } else {
             error @"No extraneous assets allowed in the UTxO"
           }
@@ -173,7 +171,7 @@ fn extract_ask_and_offer_quantity(
       when dict.to_pairs(tns_dict) is {
         [Pair(tn,n)] -> {
           if tn == ask_name {
-            (offer,ask+n,ada,valid_beacons)
+            (offer,ask+n,ada)
           } else {
             error @"No extraneous assets allowed in the UTxO"
           }
@@ -185,17 +183,7 @@ fn extract_ask_and_offer_quantity(
     }
   }
 
-  let (offer,ask,ada,valid_beacons) = list.foldl(
-    assets.to_dict(val) |> dict.to_pairs(_),
-    (0,0,0,False),
-    foo
-  )
-
-  if valid_beacons {
-    (offer,ask,ada)
-  } else {
-    error @"UTxO has wrong beacons"
-  }
+  list.foldl( dict.to_pairs(rest), (0,0,0), foo )
 }
 
 // This checks the datum and calls extract_ask_and_offer_quantity to check the value.

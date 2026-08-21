@@ -67,16 +67,16 @@ initializeReferenceScripts = do
               , outputReferenceScript = toReferenceScript $ Just swapScript
               }
           ]
-      -- , certificates =
-      --     [ Certificate
-      --         { certificateCredential = PV2.ScriptCredential $ scriptHash beaconScript
-      --         , certificateWitness = 
-      --             StakeWithPlutusScript 
-      --               (toVersioned $ toLedgerScript beaconScript) 
-      --               (toRedeemer UpdateSwaps)
-      --         , certificateAction = Register
-      --         }
-      --     ]
+      , certificates =
+          [ Certificate
+              { certificateCredential = PV2.ScriptCredential $ scriptHash beaconScript
+              , certificateWitness =
+                  StakeWithPlutusScript
+                    (toVersionedLedgerScript beaconScript)
+                    (toRedeemer UpdateSwaps)
+              , certificateAction = Register
+              }
+          ]
       }
 
   (,) <$> txOutRefWithReferenceScript (scriptHash beaconScript)
@@ -173,19 +173,11 @@ regressionTest1 = do
   -- Try to update the swap price.
   void $ transact sellerPersonalAddr [swapAddress,refScriptAddress] [sellerPayPrivKey] $
     emptyTxParams
-      { tokens = -- this is just to get the beacon script to execute.
-          [ TokenMint
-              { mintTokens = [(pairBeacon,1),(offerBeacon,1),(askBeacon,1)]
-              , mintRedeemer = toRedeemer CreateOrCloseSwaps
-              , mintPolicy = toVersionedMintingPolicy beaconScript
-              , mintReference = Just mintRef
-              }
-          ]
-      , inputs =
+      { inputs =
           [ Input
               { inputId = swapRef
-              , inputWitness = 
-                  SpendWithPlutusReference spendRef InlineDatum (toRedeemer SpendWithMint)
+              , inputWitness =
+                  SpendWithPlutusReference spendRef InlineDatum (toRedeemer SpendWithStake)
               }
           ]
       , outputs =
@@ -199,25 +191,15 @@ regressionTest1 = do
               , outputDatum = OutputDatum $ toDatum swapDatum{swapPrice = unsafeRatio 10 1}
               , outputReferenceScript = toReferenceScript Nothing
               }
-          , Output
-              { outputAddress = swapAddress
-              , outputValue = utxoValue 3_000_000 $ mconcat
-                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
-                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
-                  , PV2.singleton beaconCurrencySymbol askBeacon 1
-                  ]
-              , outputDatum = OutputDatum $ toDatum swapDatum
-              , outputReferenceScript = toReferenceScript Nothing
+          ]
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash beaconScript
+              , withdrawalAmount = 0
+              , withdrawalWitness =
+                  StakeWithPlutusReference mintRef $ toRedeemer UpdateSwaps
               }
           ]
-      -- , withdrawals =
-      --     [ Withdrawal
-      --         { withdrawalCredential = PV2.ScriptCredential $ scriptHash beaconScript
-      --         , withdrawalAmount = 0
-      --         , withdrawalWitness = 
-      --             StakeWithPlutusReference mintRef $ toRedeemer UpdateSwaps
-      --         }
-      --     ]
       , referenceInputs = [mintRef,spendRef]
       , extraKeyWitnesses = [sellerPubKey]
       }
@@ -299,40 +281,21 @@ regressionTest2 = do
   -- Try to update the swap prices.
   void $ transact sellerPersonalAddr [swapAddress,refScriptAddress] [sellerPayPrivKey] $
     emptyTxParams
-      { tokens = -- this is just to get the beacon script to execute.
-          [ TokenMint
-              { mintTokens = [(pairBeacon,1),(offerBeacon,1),(askBeacon,1)]
-              , mintRedeemer = toRedeemer CreateOrCloseSwaps
-              , mintPolicy = toVersionedMintingPolicy beaconScript
-              , mintReference = Just mintRef
-              }
-          ]
-      , inputs = flip map swaps $ \(ref,_) ->
+      { inputs = flip map swaps $ \(ref,_) ->
           Input
             { inputId = ref
-            , inputWitness = 
-                SpendWithPlutusReference spendRef InlineDatum (toRedeemer SpendWithMint)
+            , inputWitness =
+                SpendWithPlutusReference spendRef InlineDatum (toRedeemer SpendWithStake)
             }
-      , outputs = updatedOuts <>
-          [ Output
-              { outputAddress = swapAddress
-              , outputValue = utxoValue 3_000_000 $ mconcat
-                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
-                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
-                  , PV2.singleton beaconCurrencySymbol askBeacon 1
-                  ]
-              , outputDatum = OutputDatum $ toDatum swapDatum
-              , outputReferenceScript = toReferenceScript Nothing
+      , outputs = updatedOuts
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash beaconScript
+              , withdrawalAmount = 0
+              , withdrawalWitness =
+                  StakeWithPlutusReference mintRef $ toRedeemer UpdateSwaps
               }
           ]
-      -- , withdrawals =
-      --     [ Withdrawal
-      --         { withdrawalCredential = PV2.ScriptCredential $ scriptHash beaconScript
-      --         , withdrawalAmount = 0
-      --         , withdrawalWitness = 
-      --             StakeWithPlutusReference mintRef $ toRedeemer UpdateSwaps
-      --         }
-      --     ]
       , referenceInputs = [mintRef,spendRef]
       , extraKeyWitnesses = [sellerPubKey]
       }
@@ -449,12 +412,12 @@ regressionTest4 = do
       sellerPayPrivKey = Mock.paymentPrivateKey sellerWallet
       sellerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash sellerWallet
       swapAddress1 = toCardanoApiAddress $
-        PV2.Address (PV2.ScriptCredential $ scriptHash swapScript) 
+        PV2.Address (PV2.ScriptCredential $ scriptHash swapScript)
                     (Just $ PV2.StakingHash $ PV2.PubKeyCredential sellerPubKey)
       swapAddress2 = toCardanoApiAddress $
-        PV2.Address (PV2.ScriptCredential $ scriptHash swapScript) 
-                    (Just $ PV2.StakingHash 
-                          $ PV2.PubKeyCredential 
+        PV2.Address (PV2.ScriptCredential $ scriptHash swapScript)
+                    (Just $ PV2.StakingHash
+                          $ PV2.PubKeyCredential
                           $ LA.unPaymentPubKeyHash
                           $ Mock.paymentPubKeyHash
                           $ Mock.knownMockWallet 2)
@@ -508,19 +471,11 @@ regressionTest4 = do
   -- Try to update the swap price.
   void $ transact sellerPersonalAddr [swapAddress1,refScriptAddress] [sellerPayPrivKey] $
     emptyTxParams
-      { tokens = -- this is just to get the beacon script to execute.
-          [ TokenMint
-              { mintTokens = [(pairBeacon,1),(offerBeacon,1),(askBeacon,1)]
-              , mintRedeemer = toRedeemer CreateOrCloseSwaps
-              , mintPolicy = toVersionedMintingPolicy beaconScript
-              , mintReference = Just mintRef
-              }
-          ]
-      , inputs =
+      { inputs =
           [ Input
               { inputId = swapRef
-              , inputWitness = 
-                  SpendWithPlutusReference spendRef InlineDatum (toRedeemer SpendWithMint)
+              , inputWitness =
+                  SpendWithPlutusReference spendRef InlineDatum (toRedeemer SpendWithStake)
               }
           ]
       , outputs =
@@ -534,25 +489,15 @@ regressionTest4 = do
               , outputDatum = OutputDatum $ toDatum swapDatum{swapPrice = unsafeRatio 10 1}
               , outputReferenceScript = toReferenceScript Nothing
               }
-          , Output
-              { outputAddress = swapAddress2
-              , outputValue = utxoValue 3_000_000 $ mconcat
-                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
-                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
-                  , PV2.singleton beaconCurrencySymbol askBeacon 1
-                  ]
-              , outputDatum = OutputDatum $ toDatum swapDatum
-              , outputReferenceScript = toReferenceScript Nothing
+          ]
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash beaconScript
+              , withdrawalAmount = 0
+              , withdrawalWitness =
+                  StakeWithPlutusReference mintRef $ toRedeemer UpdateSwaps
               }
           ]
-      -- , withdrawals =
-      --     [ Withdrawal
-      --         { withdrawalCredential = PV2.ScriptCredential $ scriptHash beaconScript
-      --         , withdrawalAmount = 0
-      --         , withdrawalWitness = 
-      --             StakeWithPlutusReference mintRef $ toRedeemer UpdateSwaps
-      --         }
-      --     ]
       , referenceInputs = [mintRef,spendRef]
       , extraKeyWitnesses = [sellerPubKey]
       }
@@ -1293,42 +1238,16 @@ benchTest1 number = do
           
   swaps <- take number <$> txOutRefsAndDatumsAtAddress @SwapDatum swapAddress
 
-  let dummyOutput =
-        [ Output
-            { outputAddress = swapAddress
-            , outputValue = utxoValue 3_000_000 $ mconcat
-                [ PV2.singleton beaconCurrencySymbol pairBeacon1 1
-                , PV2.singleton beaconCurrencySymbol offerBeacon1 1
-                , PV2.singleton beaconCurrencySymbol askBeacon1 1
-                , uncurry PV2.singleton (unOfferAsset offer1) 10
-                ]
-            , outputDatum = OutputDatum $ toDatum swapDatum1
-            , outputReferenceScript = toReferenceScript Nothing
-            }
-        ]
-
   -- Try to update the prices for the swap UTxOs.
   void $ transact sellerPersonalAddr [swapAddress,refScriptAddress] [sellerPayPrivKey] $
     emptyTxParams
-      { tokens =
-          [ TokenMint -- this is just to get the beacon script to execute
-              { mintTokens = 
-                  [ (pairBeacon1,1)
-                  , (offerBeacon1,1)
-                  , (askBeacon1,1)
-                  ]
-              , mintRedeemer = toRedeemer CreateOrCloseSwaps
-              , mintPolicy = toVersionedMintingPolicy beaconScript
-              , mintReference = Just mintRef
-              }
-          ]
-      , inputs = flip map swaps $ \(swapRef,_) ->
+      { inputs = flip map swaps $ \(swapRef,_) ->
           Input
             { inputId = swapRef
-            , inputWitness = 
-                SpendWithPlutusReference spendRef InlineDatum $ toRedeemer SpendWithMint
+            , inputWitness =
+                SpendWithPlutusReference spendRef InlineDatum $ toRedeemer SpendWithStake
             }
-      , outputs = dummyOutput <> flip map swaps (\(ref,Just datum@SwapDatum{..}) ->
+      , outputs = flip map swaps (\(ref,Just datum@SwapDatum{..}) ->
           Output
             { outputAddress = swapAddress
             , outputValue = utxoValue 3_000_000 $ mconcat
@@ -1340,6 +1259,14 @@ benchTest1 number = do
             , outputDatum = OutputDatum $ toDatum datum{swapPrice = unsafeRatio 10 1}
             , outputReferenceScript = toReferenceScript Nothing
             })
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash beaconScript
+              , withdrawalAmount = 0
+              , withdrawalWitness =
+                  StakeWithPlutusReference mintRef $ toRedeemer UpdateSwaps
+              }
+          ]
       , referenceInputs = [mintRef,spendRef]
       , extraKeyWitnesses = [sellerPubKey]
       }
@@ -1406,41 +1333,16 @@ benchTest2 number = do
 
   swaps <- take number <$> txOutRefsAndDatumsAtAddress @SwapDatum swapAddress
 
-  let dummyMint = flip map (take 1 datums) $ \SwapDatum{..} ->
-        TokenMint
-          { mintTokens = 
-              [ (pairBeacon,1)
-              , (offerBeacon,1)
-              , (askBeacon,1)
-              ]
-          , mintRedeemer = toRedeemer CreateOrCloseSwaps
-          , mintPolicy = toVersionedMintingPolicy beaconScript
-          , mintReference = Just mintRef
-          }
-      dummyOutput = flip map (take 1 datums) $ \datum@SwapDatum{..} ->
-        Output
-          { outputAddress = swapAddress
-          , outputValue = utxoValue 3_000_000 $ mconcat
-              [ PV2.singleton beaconCurrencySymbol pairBeacon 1
-              , PV2.singleton beaconCurrencySymbol offerBeacon 1
-              , PV2.singleton beaconCurrencySymbol askBeacon 1
-              , PV2.singleton offerId offerName 10
-              ]
-          , outputDatum = OutputDatum $ toDatum datum
-          , outputReferenceScript = toReferenceScript Nothing
-          }
-
   -- Try to update the swap prices.
   void $ transact sellerPersonalAddr [swapAddress,refScriptAddress] [sellerPayPrivKey] $
     emptyTxParams
-      { tokens = dummyMint
-      , inputs = flip map swaps $ \(swapRef,_) ->
+      { inputs = flip map swaps $ \(swapRef,_) ->
           Input
             { inputId = swapRef
-            , inputWitness = 
-                SpendWithPlutusReference spendRef InlineDatum $ toRedeemer SpendWithMint
+            , inputWitness =
+                SpendWithPlutusReference spendRef InlineDatum $ toRedeemer SpendWithStake
             }
-      , outputs = dummyOutput <> flip map swaps  (\(ref,Just datum@SwapDatum{..}) ->
+      , outputs = flip map swaps  (\(ref,Just datum@SwapDatum{..}) ->
           Output
             { outputAddress = swapAddress
             , outputValue = utxoValue 4_000_000 $ mconcat
@@ -1452,6 +1354,14 @@ benchTest2 number = do
             , outputDatum = OutputDatum $ toDatum datum{swapPrice = unsafeRatio 10 1}
             , outputReferenceScript = toReferenceScript Nothing
             })
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash beaconScript
+              , withdrawalAmount = 0
+              , withdrawalWitness =
+                  StakeWithPlutusReference mintRef $ toRedeemer UpdateSwaps
+              }
+          ]
       , referenceInputs = [spendRef,mintRef]
       , extraKeyWitnesses = [sellerPubKey]
       }
@@ -1598,12 +1508,12 @@ tests =
         failureTest7
 
       -- Benchmark Tests
-    , mustSucceed "benchTest1" $ benchTest1 30
-    , mustSucceed "benchTest2" $ benchTest2 21
+    , mustSucceed "benchTest1" $ benchTest1 31
+    , mustSucceed "benchTest2" $ benchTest2 22
     , mustSucceed "benchTest3" $ benchTest3 18
 
       -- Performance Increase Tests
-    , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 31
-    , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 22
+    , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 32
+    , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 23
     , mustExceedTxLimits "perfIncreaseTest3" $ benchTest3 19
     ]

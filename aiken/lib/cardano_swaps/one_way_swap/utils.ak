@@ -111,9 +111,9 @@ fn extract_ask_and_offer_quantity(
       expect Some(n) = dict.get(tns_dict,#"")
 
       // Also account for when ada is part of the pair.
-      if cn == offer_id {
+      if cn == offer_id && offer_name == #"" {
         (offer+n,ask,ada+n)
-      } else if cn == ask_id {
+      } else if cn == ask_id && ask_name == #"" {
         (offer,ask+n,ada+n)
       } else {
         (offer,ask,ada+n)
@@ -269,6 +269,12 @@ fn valid_swap_output(
     @"swap_price numerator not > 0", 
     swap_price_.numerator > 0 
   ) &&
+
+  // If the offer asset is ADA, it must be properly named.
+  trace_if_false( @"Invalid asset", if offer_id_ == #"" { offer_name_ == #"" } else { True }) &&
+
+  // If the ask asset is ADA, it must be properly named.
+  trace_if_false( @"Invalid asset", if ask_id_ == #"" { ask_name_ == #"" } else { True }) &&
 
   // This is just to force the extract_ask_and_offer_quantity function to be executed.
   o >= 0

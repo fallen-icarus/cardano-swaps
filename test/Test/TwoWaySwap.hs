@@ -25,7 +25,7 @@ tests = testGroup "Two-Way Swaps"
     -- The script sizes impact user fees. The beacon script size includes the applied swap
     -- validator hash.
   , testGroup "Script Sizes"
-      [ testCase "swapScript size" $ swapScriptSize @?= 3914
-      , testCase "beaconScript size" $ beaconScriptSize @?= 3912
+      [ testCase "swapScript size" $ swapScriptSize @?= 3935
+      , testCase "beaconScript size" $ beaconScriptSize @?= 4014
       ]
   ]

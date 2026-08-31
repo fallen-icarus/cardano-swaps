@@ -3346,6 +3346,107 @@ failureTest47 = do
       , referenceInputs = [mintRef]
       }
 
+-- | Create a swap with a misnamed ADA ask asset.
+failureTest48 :: MonadEmulator m => m ()
+failureTest48 = do
+  let -- Seller Info
+      sellerWallet = Mock.knownMockWallet 1
+      sellerPersonalAddr = Mock.mockWalletAddress sellerWallet
+      sellerPayPrivKey = Mock.paymentPrivateKey sellerWallet
+      sellerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash sellerWallet
+      swapAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash swapScript) 
+                    (Just $ PV2.StakingHash $ PV2.PubKeyCredential sellerPubKey)
+
+      -- Swap Info
+      offer = OfferAsset (testTokenSymbol,"TestToken1")
+      ask = AskAsset (adaSymbol,"TestToken1")
+      pairBeacon = genPairBeaconName offer ask
+      offerBeacon = genOfferBeaconName offer
+      askBeacon = genAskBeaconName ask
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
+
+  -- Initialize scenario
+  mintRef <- initializeBeaconPolicy 
+  mintTestTokens sellerWallet 10_000_000 [("TestToken1",1000)]
+
+  -- Try to create the swap UTxO.
+  void $ transact sellerPersonalAddr [refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [(pairBeacon,1),(offerBeacon,1),(askBeacon,1)]
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps
+              , mintPolicy = toVersionedMintingPolicy beaconScript
+              , mintReference = Just mintRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon 1
+                  , uncurry PV2.singleton (unOfferAsset offer) 10
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [mintRef]
+      }
+
+-- | Create a swap with a misnamed ADA offer asset.
+failureTest49 :: MonadEmulator m => m ()
+failureTest49 = do
+  let -- Seller Info
+      sellerWallet = Mock.knownMockWallet 1
+      sellerPersonalAddr = Mock.mockWalletAddress sellerWallet
+      sellerPayPrivKey = Mock.paymentPrivateKey sellerWallet
+      sellerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash sellerWallet
+      swapAddress = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash swapScript) 
+                    (Just $ PV2.StakingHash $ PV2.PubKeyCredential sellerPubKey)
+
+      -- Swap Info
+      offer = OfferAsset (adaSymbol,"TestToken1")
+      ask = AskAsset (testTokenSymbol,"TestToken1")
+      pairBeacon = genPairBeaconName offer ask
+      offerBeacon = genOfferBeaconName offer
+      askBeacon = genAskBeaconName ask
+      swapDatum = genSwapDatum offer ask (unsafeRatio 1_000_000 1) Nothing Nothing
+
+  -- Initialize scenario
+  mintRef <- initializeBeaconPolicy 
+  mintTestTokens sellerWallet 10_000_000 [("TestToken1",1000)]
+
+  -- Try to create the swap UTxO.
+  void $ transact sellerPersonalAddr [refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [(pairBeacon,1),(offerBeacon,1),(askBeacon,1)]
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps
+              , mintPolicy = toVersionedMintingPolicy beaconScript
+              , mintReference = Just mintRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddress
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [mintRef]
+      }
+
 -------------------------------------------------
 -- Benchmark Tests
 -------------------------------------------------
@@ -3610,6 +3711,12 @@ tests =
     , scriptMustFailWithError "failureTest47" 
         "Swap cannot hold a reference script" 
         failureTest47
+    , scriptMustFailWithError "failureTest48" 
+        "Invalid asset" 
+        failureTest48
+    , scriptMustFailWithError "failureTest49" 
+        "Invalid asset" 
+        failureTest49
 
       -- Benchmark Tests
     , mustSucceed "benchTest1" $ benchTest1 34

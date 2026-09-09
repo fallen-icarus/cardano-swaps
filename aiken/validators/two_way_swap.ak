@@ -213,7 +213,8 @@ validator beacon_script(dapp_hash: ScriptHash) {
     // Requirements:
     // 1) Must be executed as a minting script.
     // 2) The beacons must go to an address protected by the DApp validator script.
-    // 3) The beacons must go to an address using a valid staking credential.
+    // 3) The beacons must go to an address using a valid staking credential. If the swap is new
+    //    (`prev_input` == None), the staking credential must approve the transaction.
     // 4) The beacons must not be stored with a reference script.
     // 5) The UTxOs with the beacons must have the proper value:
     //      a) Exactly three kinds of beacons: pair beacon, asset1 beacon, and asset2 beacon.
@@ -243,12 +244,14 @@ validator beacon_script(dapp_hash: ScriptHash) {
     // front-ends will not struggle to keep up with the on-chain order book.
 
     // Get required information from the Transaction.
-    let Transaction{outputs,validity_range,..} = tx
+    let Transaction{outputs,validity_range,withdrawals,extra_signatories,..} = tx
 
     utils.beacon_destination_check(
       dapp_hash,
       policy_id,
       utils.get_upper_bound(validity_range),
+      withdrawals,
+      extra_signatories,
       outputs
     )
   }
@@ -258,7 +261,8 @@ validator beacon_script(dapp_hash: ScriptHash) {
     // Requirements:
     // 1) Must be executed as a staking script.
     // 2) The beacons must go to an address protected by the DApp validator script.
-    // 3) The beacons must go to an address using a valid staking credential.
+    // 3) The beacons must go to an address using a valid staking credential. If the swap is new
+    //    (`prev_input` == None), the staking credential must approve the transaction.
     // 4) The beacons must not be stored with a reference script.
     // 5) The UTxOs with the beacons must have the proper value:
     //      a) Exactly three kinds of beacons: pair beacon, asset1 beacon, and asset2 beacon.
@@ -288,7 +292,7 @@ validator beacon_script(dapp_hash: ScriptHash) {
     // front-ends will not struggle to keep up with the on-chain order book.
 
     // Get required information from the script context.
-    let Transaction{outputs,validity_range,..} = tx
+    let Transaction{outputs,validity_range,withdrawals,extra_signatories,..} = tx
 
     let policy_id = when account is {
       Script(policy_id) -> policy_id
@@ -299,6 +303,8 @@ validator beacon_script(dapp_hash: ScriptHash) {
       dapp_hash,
       policy_id,
       utils.get_upper_bound(validity_range),
+      withdrawals,
+      extra_signatories,
       outputs
     )
   }

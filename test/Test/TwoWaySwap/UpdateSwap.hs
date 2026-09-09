@@ -415,6 +415,7 @@ regressionTest4 = do
       sellerPersonalAddr = Mock.mockWalletAddress sellerWallet
       sellerPayPrivKey = Mock.paymentPrivateKey sellerWallet
       sellerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash sellerWallet
+      newSellerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash $ Mock.knownMockWallet 2
       swapAddress1 = toCardanoApiAddress $
         PV2.Address (PV2.ScriptCredential $ scriptHash swapScript)
                     (Just $ PV2.StakingHash $ PV2.PubKeyCredential sellerPubKey)
@@ -504,7 +505,7 @@ regressionTest4 = do
               }
           ]
       , referenceInputs = [mintRef,spendRef]
-      , extraKeyWitnesses = [sellerPubKey]
+      , extraKeyWitnesses = [sellerPubKey, newSellerPubKey]
       }
 
 -------------------------------------------------
@@ -1192,6 +1193,107 @@ failureTest7 = do
       , extraKeyWitnesses = [otherPubKey]
       }
 
+-- | New owner did not approve.
+failureTest8 :: MonadEmulator m => m ()
+failureTest8 = do
+  let -- Seller Info
+      sellerWallet = Mock.knownMockWallet 1
+      sellerPersonalAddr = Mock.mockWalletAddress sellerWallet
+      sellerPayPrivKey = Mock.paymentPrivateKey sellerWallet
+      sellerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash sellerWallet
+      -- newSellerPubKey = LA.unPaymentPubKeyHash $ Mock.paymentPubKeyHash $ Mock.knownMockWallet 2
+      swapAddress1 = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash swapScript)
+                    (Just $ PV2.StakingHash $ PV2.PubKeyCredential sellerPubKey)
+      swapAddress2 = toCardanoApiAddress $
+        PV2.Address (PV2.ScriptCredential $ scriptHash swapScript)
+                    (Just $ PV2.StakingHash
+                          $ PV2.PubKeyCredential
+                          $ LA.unPaymentPubKeyHash
+                          $ Mock.paymentPubKeyHash
+                          $ Mock.knownMockWallet 2)
+
+      -- Swap Info
+      offer = (testTokenSymbol,"TestToken1")
+      ask = (adaSymbol,adaToken)
+      pairBeacon = genPairBeaconName offer ask
+      offerBeacon = genAssetBeaconName offer
+      askBeacon = genAssetBeaconName ask
+      swapDatum = 
+        genSwapDatum (offer,ask) (unsafeRatio 1 1) (unsafeRatio 1_000_000 1) Nothing Nothing
+
+  -- Initialize scenario
+  (mintRef,spendRef) <- initializeReferenceScripts 
+  mintTestTokens sellerWallet 10_000_000 [("TestToken1",1000)]
+
+  -- Create the swap UTxO.
+  void $ transact sellerPersonalAddr [refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { tokens =
+          [ TokenMint
+              { mintTokens = [(pairBeacon,1),(offerBeacon,1),(askBeacon,1)]
+              , mintRedeemer = toRedeemer CreateOrCloseSwaps
+              , mintPolicy = toVersionedMintingPolicy beaconScript
+              , mintReference = Just mintRef
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddress1
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , referenceInputs = [mintRef]
+      }
+
+  swapRef <- 
+    txOutRefWithValue $ 
+      utxoValue 3_000_000 $ mconcat
+        [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+        , PV2.singleton beaconCurrencySymbol offerBeacon 1
+        , PV2.singleton beaconCurrencySymbol askBeacon 1
+        ]
+
+  -- Try to update the swap price.
+  void $ transact sellerPersonalAddr [swapAddress1,refScriptAddress] [sellerPayPrivKey] $
+    emptyTxParams
+      { inputs =
+          [ Input
+              { inputId = swapRef
+              , inputWitness =
+                  SpendWithPlutusReference spendRef InlineDatum (toRedeemer SpendWithStake)
+              }
+          ]
+      , outputs =
+          [ Output
+              { outputAddress = swapAddress2
+              , outputValue = utxoValue 3_000_000 $ mconcat
+                  [ PV2.singleton beaconCurrencySymbol pairBeacon 1
+                  , PV2.singleton beaconCurrencySymbol offerBeacon 1
+                  , PV2.singleton beaconCurrencySymbol askBeacon 1
+                  ]
+              , outputDatum = OutputDatum $ toDatum swapDatum
+              , outputReferenceScript = toReferenceScript Nothing
+              }
+          ]
+      , withdrawals =
+          [ Withdrawal
+              { withdrawalCredential = PV2.ScriptCredential $ scriptHash beaconScript
+              , withdrawalAmount = 0
+              , withdrawalWitness =
+                  StakeWithPlutusReference mintRef $ toRedeemer UpdateSwaps
+              }
+          ]
+      , referenceInputs = [mintRef,spendRef]
+      , extraKeyWitnesses = [sellerPubKey]
+      }
+
 -------------------------------------------------
 -- Benchmark Tests
 -------------------------------------------------
@@ -1521,6 +1623,9 @@ tests =
     , scriptMustFailWithError "failureTest7"
         "Staking credential did not approve"
         failureTest7
+    , scriptMustFailWithError "failureTest8"
+        "Staking credential did not approve"
+        failureTest8
 
       -- Benchmark Tests
     , mustSucceed "benchTest1" $ benchTest1 33

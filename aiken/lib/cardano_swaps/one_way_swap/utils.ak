@@ -7,15 +7,18 @@ use aiken/primitive/string.{concat}
 use cardano/transaction.{ValidityRange,Datum,InlineDatum,Output,OutputReference} as tx
 use cardano/address.{
   Address,
+  Credential,
   Script,
+  StakeCredential,
   }
-use aiken/crypto.{ScriptHash}
-use cardano/assets.{PolicyId,Value,AssetName}
+use aiken/crypto.{ScriptHash,VerificationKeyHash}
+use cardano/assets.{PolicyId,Value,AssetName,Lovelace}
 
 use cardano_swaps/common/types.{app_name,AssetConfig,Rational} as common_types
 use cardano_swaps/common/utils.{
   error_if_false,
-  trace_if_false
+  trace_if_false,
+  staking_credential_approves
   } as common_utils
 use cardano_swaps/one_way_swap/types.{
   SwapDatum,
@@ -189,7 +192,7 @@ fn extract_ask_and_offer_quantity(
 fn valid_swap_output(
   beacon_id: PolicyId,
   output_value: Value,
-  output_datum: Datum,
+  swap_datum: SwapDatum,
   invalid_hereafter: Option<Int>,
 ) -> Bool {
   let SwapDatum{
@@ -204,7 +207,7 @@ fn valid_swap_output(
     swap_price: swap_price_,
     expiration: expiration_,
     ..
-  } = parse_datum(output_datum)
+  } = swap_datum
 
   let offer = AssetConfig(offer_id_,offer_name_)
   let ask = AssetConfig(ask_id_,ask_name_)
@@ -287,11 +290,17 @@ pub fn beacon_destination_check(
   dapp_hash: ScriptHash,
   beacon_id: PolicyId,
   invalid_hereafter: Option<Int>,
+  withdrawals: Pairs<Credential, Lovelace>,
+  extra_signatories: List<VerificationKeyHash>,
   outputs: List<Output>
 ) -> Bool {
   // Checks:
   // 1) The beacons must go to an address protected by the DApp validator script.
-  // 2) The beacons must go to an address using a valid staking credential.
+  // 2) The beacons must go to an address using a valid staking credential. If the swap is new
+  //    (`prev_input` == None), the staking credential must approve the transaction. This proves the
+  //    credential is usable so that funds cannot be accidentally locked at an unusable address.
+  //    Outputs with `prev_input` == Some(_) are skipped so swap executions remain composable. The
+  //    approval is only re-checked when a new swap for a different staking credential is found.
   // 3) The beacons cannot be stored with a reference script.
   // 4) The UTxOs with the beacons must have the proper value:
   //      a) Exactly three kinds of beacons: pair beacon, offer beacon, and ask beacon.
@@ -312,8 +321,11 @@ pub fn beacon_destination_check(
   //      k) `expiration` >= invalid-hereafter if expiration used
   // 6) The offer asset and the ask asset must be different assets.
 
-  // A function to map over the list of outputs.
-  let foo = fn (out: Output, acc: Bool) {
+  // A function to map over the list of outputs. The accumulator also tracks the staking credential
+  // that most recently approved a new swap so it is not re-checked for the next new swap.
+  let foo = fn (out: Output, acc: (Bool, Option<StakeCredential>)) {
+    let (valid, last_approved) = acc
+
     // Extract out the output's information.
     let Output{
       address: Address{payment_credential: pay,stake_credential: stake},
@@ -331,24 +343,37 @@ pub fn beacon_destination_check(
 
       // The UTxO has three types of beacon.
       [Pair(_,_),Pair(_,_),Pair(_,_)] -> {
-        // All previous outputs must be valid.
-        acc &&
+        let swap_datum = parse_datum(d)
 
-        // The output must be at a DApp address with staking. Uses `app_name` in 
-        // the error message.
-        trace_if_false( 
-          concat(@"Beacon must go to a ", app_name) |> concat(_,@" DApp address with staking"),
-          pay == Script(dapp_hash) && is_some(stake)
-        ) &&
+        // New swaps (prev_input == None) must have their staking credential approve.
+        let needs_approval = swap_datum.prev_input == None && stake != last_approved
 
-        // The output cannot hold a reference script.
-        trace_if_false( 
-          @"Swap cannot hold a reference script",
-          is_none(ref_script)
-        ) &&
+        ( // All previous outputs must be valid.
+          valid &&
 
-        // The output must be properly configured. This has its own trace messages.
-        valid_swap_output(beacon_id,val,d,invalid_hereafter)
+          // The output must be at a DApp address with staking. Uses `app_name` in
+          // the error message.
+          trace_if_false(
+            concat(@"Beacon must go to a ", app_name) |> concat(_,@" DApp address with staking"),
+            pay == Script(dapp_hash) && is_some(stake)
+          ) &&
+
+          // The staking credential must approve new swaps.
+          trace_if_false(
+            @"Staking credential did not approve",
+            !needs_approval || staking_credential_approves(out.address, withdrawals, extra_signatories)
+          ) &&
+
+          // The output cannot hold a reference script.
+          trace_if_false(
+            @"Swap cannot hold a reference script",
+            is_none(ref_script)
+          ) &&
+
+          // The output must be properly configured. This has its own trace messages.
+          valid_swap_output(beacon_id,val,swap_datum,invalid_hereafter)
+        , if needs_approval { stake } else { last_approved }
+        )
       }
 
       // This path can only be taken if the above two matches failed which means the UTxO
@@ -358,7 +383,7 @@ pub fn beacon_destination_check(
   }
 
   // Map over the list. This will only return True if all the outputs are valid.
-  list.foldl( outputs, True, foo )
+  list.foldl( outputs, (True, None), foo ).1st
 }
 
 // This is a recursive function that will terminate when the corresponding output is found or when

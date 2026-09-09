@@ -335,10 +335,11 @@ To see how to build the transaction using a remote node, refer
 
 Creating a swap involves the following steps:
 1. Create your swap address.
-2. Calculate the required beacon names to mint.
-3. Create the required beacon script redeemer.
-4. Create the required swap datum for each swap.
-5. Submit a transaction that creates the swaps.
+2. Calculate the hash of the swap's staking credential.
+3. Calculate the required beacon names to mint.
+4. Create the required beacon script redeemer.
+5. Create the required swap datum for each swap.
+6. Submit a transaction that creates the swaps.
 
 ##### Creating your swap address
 ```bash
@@ -359,6 +360,25 @@ the `--stake-script-file` flag instead of the `--stake-verification-key-file` fl
 
 For a mainnet address, just use the `--mainnet` flag instead of `--testnet-magic 1` when creating
 the address.
+
+##### Calculate the hash of the swap's staking credential
+The staking credential must approve the transaction that creates the swaps. A staking pubkey must
+sign the transaction (`--required-signer-hash`) and a staking script must be executed with a
+zero-ADA `--withdrawal`, which requires the script to already be registered.
+
+```bash
+# Generate the hash for a staking verification key.
+ownerPubKeyHash=$(cardano-cli conway stake-address key-hash \
+  --stake-verification-key-file ownerStake.vkey)
+
+# Generate the hash for a staking script.
+ownerStakingScriptHash=$(cardano-cli conway transaction policyid \
+  --script-file ownerStake.plutus)
+```
+
+When creating swaps for multiple addresses in one transaction, order the outputs so that each
+address' new swaps are consecutive; the beacon script only re-checks the approval when it encounters
+a new swap for a different address.
 
 ##### Calculate the required beacon names to mint
 One-way swaps require three beacons: the trading pair beacon, the offer beacon, and the ask beacon.
@@ -871,10 +891,11 @@ To see how to build the transaction using a remote node, refer
 
 Creating a swap involves the following steps:
 1. Create your swap address.
-2. Calculate the required beacon names to mint.
-3. Create the required beacon script redeemer.
-4. Create the required swap datum for each swap.
-5. Submit a transaction that creates the swaps.
+2. Calculate the hash of the swap's staking credential.
+3. Calculate the required beacon names to mint.
+4. Create the required beacon script redeemer.
+5. Create the required swap datum for each swap.
+6. Submit a transaction that creates the swaps.
 
 ##### Creating your swap address
 ```bash
@@ -895,6 +916,25 @@ the `--stake-script-file` flag instead of the `--stake-verification-key-file` fl
 
 For a mainnet address, just use the `--mainnet` flag instead of `--testnet-magic 1` when creating
 the address.
+
+##### Calculate the hash of the swap's staking credential
+The staking credential must approve the transaction that creates the swaps. A staking pubkey must
+sign the transaction (`--required-signer-hash`) and a staking script must be executed with a
+zero-ADA `--withdrawal`, which requires the script to already be registered.
+
+```bash
+# Generate the hash for a staking verification key.
+ownerPubKeyHash=$(cardano-cli conway stake-address key-hash \
+  --stake-verification-key-file ownerStake.vkey)
+
+# Generate the hash for a staking script.
+ownerStakingScriptHash=$(cardano-cli conway transaction policyid \
+  --script-file ownerStake.plutus)
+```
+
+When creating swaps for multiple addresses in one transaction, order the outputs so that each
+address' new swaps are consecutive; the beacon script only re-checks the approval when it encounters
+a new swap for a different address.
 
 ##### Calculate the required beacon names to mint
 Two-way swaps require three beacons: the trading pair beacon, the asset1 beacon, and the asset2

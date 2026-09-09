@@ -402,7 +402,10 @@ redeemer works; `CreateOrCloseSwaps` by convention). This requires:
 
 1. The beacon script is executed as a **minting policy**.
 2. The minted beacons are sent to the correct universal swap address, which must have a valid
-   staking credential.
+   staking credential. The staking credential must approve the transaction: a staking pubkey must
+   sign it and a staking script must be executed in it (a zero-ADA withdrawal, so the script must
+   already be registered). This proves the credential is usable before any funds are locked behind
+   it.
 3. The output UTxO contains exactly one of each required beacon type for the swap and no extraneous
    assets (besides ADA).
 4. The output UTxO has a valid inline `SwapDatum` with `swapPrice > 0`.
@@ -414,6 +417,17 @@ redeemer works; `CreateOrCloseSwaps` by convention). This requires:
 less than or equal to this time.
 
 This process requires a deposit of **~2 ADA** per swap UTxO, which is reclaimable upon closing.
+
+> [!NOTE]
+> **On the Staking Credential Approval**
+>
+> Only outputs with `prevInput = Nothing` (new swaps) require the approval. Swap execution outputs
+> always have `prevInput` set, so creating swaps while executing others remains composable.
+>
+> The beacon script remembers the last staking credential that approved and only performs a new
+> lookup when a new swap for a different address is encountered. Multiple addresses can create swaps
+> in one transaction, but ordering the outputs so that each address' new swaps are consecutive (other
+> outputs in between are fine) keeps the lookups to one per address instead of one per swap.
 
 > [!NOTE]
 > **On 1-Minute Expiration Intervals**

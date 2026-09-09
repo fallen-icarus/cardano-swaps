@@ -8,6 +8,10 @@ mkdir -p $tmpDir
 
 swapScriptFile="${tmpDir}oneWaySwap.plutus" # This is used to create the user's swap address.
 ownerPubKeyFile="$HOME/wallets/01Stake.vkey"
+
+# The staking credential must approve the transaction that creates the swaps.
+ownerPubKeyHash=$(cardano-cli conway stake-address key-hash \
+  --stake-verification-key-file $ownerPubKeyFile)
 swapAddrFile="${tmpDir}oneWaySwap.addr"
 swapDatumFile="${tmpDir}swapDatum.json"
 beaconRedeemerFile="${tmpDir}oneWayBeaconRedeemer.json"
@@ -111,6 +115,7 @@ cardano-cli conway transaction build-raw \
   --mint-reference-tx-in-execution-units "(0,0)" \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id "$beaconPolicyId" \
+  --required-signer-hash "$ownerPubKeyHash" \
   --protocol-params-file "${tmpDir}protocol.json" \
   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --tx-total-collateral 21000000 \
@@ -143,6 +148,7 @@ cardano-cli conway transaction build-raw \
   --mint-reference-tx-in-execution-units "(${mint_steps},${mint_mem})" \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id "$beaconPolicyId" \
+  --required-signer-hash "$ownerPubKeyHash" \
   --protocol-params-file "${tmpDir}protocol.json" \
   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --tx-total-collateral 21000000 \
@@ -173,6 +179,7 @@ cardano-cli conway transaction build-raw \
   --mint-reference-tx-in-execution-units "(${mint_steps},${mint_mem})" \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id "$beaconPolicyId" \
+  --required-signer-hash "$ownerPubKeyHash" \
   --protocol-params-file "${tmpDir}protocol.json" \
   --tx-in-collateral 4cc5755712fee56feabad637acf741bc8c36dda5f3d6695ac6487a77c4a92d76#0 \
   --tx-total-collateral $req_collateral \
@@ -185,6 +192,7 @@ echo "Signing the transaction..."
 cardano-cli conway transaction sign \
   --tx-body-file "${tmpDir}tx.body" \
   --signing-key-file $HOME/wallets/01.skey \
+  --signing-key-file $HOME/wallets/01Stake.skey \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.signed"
 

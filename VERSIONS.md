@@ -10,7 +10,13 @@ changed**. Each version corresponds to a unique, immutable set of smart contract
 
 ## Protocol v2 - *In Development*
 
-This version introduces the optional order `expiration` feature to both one-way and two-way swaps.
+This version makes the following changes to both one-way and two-way swaps:
+
+- Introduces the optional order `expiration` feature.
+- Beacon names are now derived from the `sha2_256` hash of the CBOR-serialised asset/pair
+  constructors, making the naming scheme injective.
+- The staking credential of a new swap's address must approve the creating transaction, so swaps
+  cannot be accidentally created at an address whose staking credential is unusable.
 
 -   **Status:** 🟡 **LIVE but not audited**
 -   **Plutus Version:** Plutus V3

@@ -323,9 +323,7 @@ pub fn beacon_destination_check(
 
   // A function to map over the list of outputs. The accumulator also tracks the staking credential
   // that most recently approved a new swap so it is not re-checked for the next new swap.
-  let foo = fn (out: Output, acc: (Bool, Option<StakeCredential>)) {
-    let (valid, last_approved) = acc
-
+  let foo = fn (out: Output, valid: Bool, last_approved: Option<StakeCredential>, return) {
     // Extract out the output's information.
     let Output{
       address: Address{payment_credential: pay,stake_credential: stake},
@@ -339,7 +337,7 @@ pub fn beacon_destination_check(
 
     when beacon_list is {
       // If beacons are not present, this output can be ignored.
-      [] -> acc
+      [] -> return(valid, last_approved)
 
       // The UTxO has three types of beacon.
       [Pair(_,_),Pair(_,_),Pair(_,_)] -> {
@@ -348,7 +346,7 @@ pub fn beacon_destination_check(
         // New swaps (prev_input == None) must have their staking credential approve.
         let needs_approval = swap_datum.prev_input == None && stake != last_approved
 
-        ( // All previous outputs must be valid.
+        return( // All previous outputs must be valid.
           valid &&
 
           // The output must be at a DApp address with staking. Uses `app_name` in
@@ -383,7 +381,8 @@ pub fn beacon_destination_check(
   }
 
   // Map over the list. This will only return True if all the outputs are valid.
-  list.foldl( outputs, (True, None), foo ).1st
+  let valid, _ <- list.foldl2( outputs, True, None, foo )
+  valid
 }
 
 // This is a recursive function that will terminate when the corresponding output is found or when

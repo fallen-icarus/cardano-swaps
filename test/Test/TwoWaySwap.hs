@@ -26,6 +26,6 @@ tests = testGroup "Two-Way Swaps"
     -- validator hash.
   , testGroup "Script Sizes"
       [ testCase "swapScript size" $ swapScriptSize @?= 3935
-      , testCase "beaconScript size" $ beaconScriptSize @?= 4418
+      , testCase "beaconScript size" $ beaconScriptSize @?= 4375
       ]
   ]

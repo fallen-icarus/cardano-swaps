@@ -24,32 +24,36 @@ asset_name="4f74686572546f6b656e0a"
 
 One-Way swap beacons all have the same policy id:
 ```bash
-v1_policy_id="47cec2a1404ed91fc31124f29db15dc1aae77e0617868bcef351b8fd"
+v2_policy_id="274765b4c626c28d18752176b59c0ff63db56b8305c1daa49c9879fe"
 ```
 
 We just need to derive the `asset_names`. According to the One-Way Swap specification, the asset
 name is: 
 
 ```txt
-sha2_256( offer_id ++ offer_name ++ ask_id ++ ask_name )
-
-But if ADA is part of the pair, replace it's policy id with "00".
+sha2_256( serialise_data( TradingPair(offer_id, offer_name, ask_id, ask_name) ) )
 ```
+
+`serialise_data` is the CBOR encoding of the Plutus `Data` value (see the
+[specification](README.md#beacon-naming-conventions)). In hex, `TradingPair` is `d87b9f` followed
+by each field as a length-prefixed bytestring, then `ff`. An empty bytestring is `40`, a 28-byte
+policy id is `581c` followed by the policy id, and an 11-byte asset name is `4b` followed by the
+name.
 
 So for the direction ADA -> TestDJED, ADA is the offer asset and TestDJED is the ask asset so the
 derivation is:
 
 ```txt
-sha2_256( "00" ++ "" ++ "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d" ++ "4f74686572546f6b656e0a" )
+sha2_256( "d87b9f" ++ "40" ++ "40" ++ "581c" ++ "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d" ++ "4b" ++ "4f74686572546f6b656e0a" ++ "ff" )
 ```
 
 which simplifies to:
 
 ```txt
-sha2_256( "00c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d4f74686572546f6b656e0a" )
+sha2_256( "d87b9f4040581cc0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d4b4f74686572546f6b656e0aff" )
 ```
 
-Hashing this gives: `5e23340d7a9c22745a2f2f907c8c17a8962cfac2292a4cb1d3832b4b88cdee95`
+Hashing this gives: `c676e361eda95d4c8e2651d123987203c22839df31d266f9d24d88e51f4817cb`
 
 > [!IMPORTANT]
 > The input to the hashing algorithm must be hexadecimally encoded. The above pre-hash is already in
@@ -57,11 +61,15 @@ Hashing this gives: `5e23340d7a9c22745a2f2f907c8c17a8962cfac2292a4cb1d3832b4b88c
 > else. You can test it with this [website](https://emn178.github.io/online-tools/sha256.html), but
 > make sure to set the input encoding to 'Hex'.
 
+> [!TIP]
+> The `cardano-swaps` CLI can compute these names for you with `cardano-swaps beacon-info` (see
+> [GettingStarted.md](GettingStarted.md)).
+
 So the One-Way swap beacon for ADA -> TestDJED is:
 
 ```bash
-v1_policy_id="47cec2a1404ed91fc31124f29db15dc1aae77e0617868bcef351b8fd"
-asset_name="5e23340d7a9c22745a2f2f907c8c17a8962cfac2292a4cb1d3832b4b88cdee95"
+v2_policy_id="274765b4c626c28d18752176b59c0ff63db56b8305c1daa49c9879fe"
+asset_name="c676e361eda95d4c8e2651d123987203c22839df31d266f9d24d88e51f4817cb"
 ```
 
 To determine the One-Way swap beacon name for the other direction (TestDJED -> ADA), you just need
@@ -70,8 +78,8 @@ to switch which asset is the offer and the ask in the `sha2_256` hash formula.
 Here is the One-Way swap beacon for TestDJED -> ADA:
 
 ```bash
-v1_policy_id="47cec2a1404ed91fc31124f29db15dc1aae77e0617868bcef351b8fd"
-asset_name="5e09a478610895febe6afe42db300dd3bb985f3ff2e26125dbd4bf966d473350"
+v2_policy_id="274765b4c626c28d18752176b59c0ff63db56b8305c1daa49c9879fe"
+asset_name="a218175e55f900de49b4a4f38e03a36b13e369e947daa0117618c8acd42497c5"
 ```
 
 Now to query the One-Way swaps, we can use [this Koios
@@ -80,10 +88,10 @@ each direction:
 
 ```bash
 # ADA -> TestDJED
-curl -X POST "https://preprod.koios.rest/api/v1/asset_utxos"  -H 'accept: application/json' -H 'content-type: application/json'  -d '{"_asset_list":[["47cec2a1404ed91fc31124f29db15dc1aae77e0617868bcef351b8fd","5e23340d7a9c22745a2f2f907c8c17a8962cfac2292a4cb1d3832b4b88cdee95"]],"_extended":true}'
+curl -X POST "https://preprod.koios.rest/api/v1/asset_utxos"  -H 'accept: application/json' -H 'content-type: application/json'  -d '{"_asset_list":[["274765b4c626c28d18752176b59c0ff63db56b8305c1daa49c9879fe","c676e361eda95d4c8e2651d123987203c22839df31d266f9d24d88e51f4817cb"]],"_extended":true}'
 
 # TestDJED -> ADA
-curl -X POST "https://preprod.koios.rest/api/v1/asset_utxos"  -H 'accept: application/json' -H 'content-type: application/json'  -d '{"_asset_list":[["47cec2a1404ed91fc31124f29db15dc1aae77e0617868bcef351b8fd","5e09a478610895febe6afe42db300dd3bb985f3ff2e26125dbd4bf966d473350"]],"_extended":true}'
+curl -X POST "https://preprod.koios.rest/api/v1/asset_utxos"  -H 'accept: application/json' -H 'content-type: application/json'  -d '{"_asset_list":[["274765b4c626c28d18752176b59c0ff63db56b8305c1daa49c9879fe","a218175e55f900de49b4a4f38e03a36b13e369e947daa0117618c8acd42497c5"]],"_extended":true}'
 ```
 
 ## Two-Way Swaps
@@ -93,36 +101,36 @@ But the process to query them is the same as with One-Way swaps.
 
 Two-Way swap beacons all have the same policy id:
 ```bash
-v1_policy_id="84662c22dc5c0cadad7b2ebf9757ce9ea61dbd8fe64bc8c43c112a40"
+v2_policy_id="ae19cf56a7631068aa754327e0472840b76e485868a324904c8b379e"
 ```
 
 Again, we just need to derive the `asset_names`. According to the Two-Way Swap specification, the asset
 name is: 
 
 ```txt
-sha2_256( asset1_id ++ asset1_name ++ asset2_id ++ asset2_name )
+sha2_256( serialise_data( SortedPair(asset1_id, asset1_name, asset2_id, asset2_name) ) )
 
 Sort the two assets in the trading pair lexicographically: the smaller asset is asset1 and the
 larger one is asset2.
-
-If ADA is part of the pair, replace it's policy id with "00" AFTER SORTING.
 ```
+
+In hex, `SortedPair` is `d87a9f` followed by the fields, then `ff`.
 
 So unlike with One-Way swaps, the beacons for Two-Way swaps is independent of the swap direction.
 Sorting ADA and TestDJED lexicographically results in ADA being `asset1` because the empty
 bytestring comes first. Thus, the equation to use is:
 
 ```txt
-sha2_256( "00" ++ "" ++ "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d" ++ "4f74686572546f6b656e0a" )
+sha2_256( "d87a9f" ++ "40" ++ "40" ++ "581c" ++ "c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d" ++ "4b" ++ "4f74686572546f6b656e0a" ++ "ff" )
 ```
 
 which simplifies to:
 
 ```txt
-sha2_256( "00c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d4f74686572546f6b656e0a" )
+sha2_256( "d87a9f4040581cc0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d4b4f74686572546f6b656e0aff" )
 ```
 
-Hashing this gives: `5e23340d7a9c22745a2f2f907c8c17a8962cfac2292a4cb1d3832b4b88cdee95`
+Hashing this gives: `9cfd4f3e253f2ed28b90c2498159d44cba323185ff3f98ac2fac7fdaa0b58f5e`
 
 > [!IMPORTANT]
 > The input to the hashing algorithm must be hexadecimally encoded. The above pre-hash is already in
@@ -133,15 +141,15 @@ Hashing this gives: `5e23340d7a9c22745a2f2f907c8c17a8962cfac2292a4cb1d3832b4b88c
 Finaly, the Two-Way swap beacon for ADA <--> TestDJED is:
 
 ```bash
-v1_policy_id="84662c22dc5c0cadad7b2ebf9757ce9ea61dbd8fe64bc8c43c112a40"
-asset_name="5e23340d7a9c22745a2f2f907c8c17a8962cfac2292a4cb1d3832b4b88cdee95"
+v2_policy_id="ae19cf56a7631068aa754327e0472840b76e485868a324904c8b379e"
+asset_name="9cfd4f3e253f2ed28b90c2498159d44cba323185ff3f98ac2fac7fdaa0b58f5e"
 ```
 
 Now we just need to query it using the same Koios query as before. Here is the exact command:
 
 ```bash
 # ADA <--> TestDJED
-curl -X POST "https://preprod.koios.rest/api/v1/asset_utxos"  -H 'accept: application/json' -H 'content-type: application/json'  -d '{"_asset_list":[["84662c22dc5c0cadad7b2ebf9757ce9ea61dbd8fe64bc8c43c112a40","5e23340d7a9c22745a2f2f907c8c17a8962cfac2292a4cb1d3832b4b88cdee95"]],"_extended":true}'
+curl -X POST "https://preprod.koios.rest/api/v1/asset_utxos"  -H 'accept: application/json' -H 'content-type: application/json'  -d '{"_asset_list":[["ae19cf56a7631068aa754327e0472840b76e485868a324904c8b379e","9cfd4f3e253f2ed28b90c2498159d44cba323185ff3f98ac2fac7fdaa0b58f5e"]],"_extended":true}'
 ```
 
 ## Next Steps
@@ -154,5 +162,5 @@ filter out finished orders and organize them into a typical order book chart.
 > need to augment the above queries slightly. The following query will only return UTxOs that
 > contain some of the native asset specified in the `cs.[]` part.
 > ```bash
-> curl -g -X POST -H "content-type: application/json" 'https://preprod.koios.rest/api/v1/asset_utxos?select=is_spent,asset_list&is_spent=eq.false&asset_list=cs.[{"policy_id":"c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","asset_name":"4f74686572546f6b656e0a"}]' -d '{"_asset_list":[ ["84662c22dc5c0cadad7b2ebf9757ce9ea61dbd8fe64bc8c43c112a40","5e23340d7a9c22745a2f2f907c8c17a8962cfac2292a4cb1d3832b4b88cdee95"] ], "_extended": true }'
+> curl -g -X POST -H "content-type: application/json" 'https://preprod.koios.rest/api/v1/asset_utxos?select=is_spent,asset_list&is_spent=eq.false&asset_list=cs.[{"policy_id":"c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d","asset_name":"4f74686572546f6b656e0a"}]' -d '{"_asset_list":[ ["ae19cf56a7631068aa754327e0472840b76e485868a324904c8b379e","9cfd4f3e253f2ed28b90c2498159d44cba323185ff3f98ac2fac7fdaa0b58f5e"] ], "_extended": true }'
 > ```

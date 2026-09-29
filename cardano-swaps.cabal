@@ -1,6 +1,6 @@
 cabal-version:      3.0
 name:               cardano-swaps
-version:            1.0.0.0
+version:            2.0.0
 
 synopsis: A distributed Cardano DEX PoC
 license: Apache-2.0

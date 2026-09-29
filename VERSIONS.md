@@ -8,7 +8,7 @@ changed**. Each version corresponds to a unique, immutable set of smart contract
 
 ---
 
-## Protocol v2 - *In Development*
+## Protocol v2 - *Current*
 
 This version makes the following changes to both one-way and two-way swaps:
 
@@ -16,22 +16,28 @@ This version makes the following changes to both one-way and two-way swaps:
 - Beacon names are now derived from the `sha2_256` hash of the CBOR-serialised asset/pair
   constructors, making the naming scheme injective.
 - The staking credential of a new swap's address must approve the creating transaction, so swaps
-  cannot be accidentally created at an address whose staking credential is unusable.
+  cannot be accidentally created at an address whose staking credential is unusable. The check
+  only applies when the new swap's `prev_input` is `None`. A swap created with `Some` (e.g. to
+  link an update to the order it replaces) skips it, so the owner must verify the credential
+  themselves (audit finding CSW-302).
 
--   **Status:** 🟡 **LIVE but not audited**
+-   **Status:** ✅ **Live & Audited**
 -   **Plutus Version:** Plutus V3
--   **Commit Hash:** [`0b24fc374c8b30ca5f46b70ab4e078cdd7333e2f`](https://github.com/fallen-icarus/cardano-swaps/commit/0b24fc374c8b30ca5f46b70ab4e078cdd7333e2f)
+-   **Commit Hash:** [`e1ab915709def43692dcde3a69fcfa23313a9bcb`](https://github.com/fallen-icarus/cardano-swaps/commit/e1ab915709def43692dcde3a69fcfa23313a9bcb)
 -   **Script Hashes:**
     - **One-Way:**
-        -   Swap: `ef69e7b2174184c1a1e140f255af81bb6a8daf7d3796563ec7bdeccb`
-        -   Beacon Policy: `4557249e92a42c371f494c32fcfbb31648ef14c4fb69056e56269af3`
+        -   Swap: `e5a22e4c31db20bce1c8b081f8e4009683990a33157947d75030deb8`
+        -   Beacon Policy: `274765b4c626c28d18752176b59c0ff63db56b8305c1daa49c9879fe`
     - **Two-Way:**
-        -   Swap: `81bd68c4428281814bb2c69d75af4bc45876dfdc0af82c1ed4b8a8b4`
-        -   Beacon Policy: `ca68d83fa7afe2dab5bfdaa9ee2fd5e0dc584f0d5cbbac887c2b77a2`
+        -   Swap: `569431d7c48bebb283077d46cbc72bd1f9f57f94c3b6d700aa684095`
+        -   Beacon Policy: `ae19cf56a7631068aa754327e0472840b76e485868a324904c8b379e`
+-   **Audit Details:**
+    -   **Auditor:** [TxPipe](https://txpipe.io)
+    -   **Report:** [**View Full Report**](./audits/v2/2026-09-21-txpipe.pdf)
 
 ---
 
-## Protocol v1 - *Current*
+## Protocol v1 - *Legacy*
 
 This version includes the core one-way and two-way swap logic without order expirations.
 
@@ -47,4 +53,4 @@ This version includes the core one-way and two-way swap logic without order expi
         -   Beacon Policy: `84662c22dc5c0cadad7b2ebf9757ce9ea61dbd8fe64bc8c43c112a40`
 -   **Audit Details:**
     -   **Auditor:** [Cypher Enterprises](https://github.com/cypher-enterprises)
-    -   **Report:** [**View Full Report**](https://github.com/cypher-enterprises/p2p-audit/blob/main/audit.pdf)
+    -   **Report:** [**View Full Report**](./audits/v1/2025-08-22-cypher-enterprises.pdf) ([original](https://github.com/cypher-enterprises/p2p-audit/blob/main/audit.pdf))

@@ -88,13 +88,13 @@ initializeReferenceScripts = do
       { outputs =
           [ Output
               { outputAddress = refScriptAddress
-              , outputValue = LV.lovelaceToValue 22_000_000
+              , outputValue = LV.lovelaceToValue 19_670_840
               , outputDatum = NoOutputDatum
               , outputReferenceScript = toReferenceScript $ Just beaconScript
               }
           , Output
               { outputAddress = refScriptAddress
-              , outputValue = LV.lovelaceToValue 24_000_000
+              , outputValue = LV.lovelaceToValue 17_783_060
               , outputDatum = NoOutputDatum
               , outputReferenceScript = toReferenceScript $ Just swapScript
               }

@@ -101,7 +101,7 @@ initializeBeaconPolicy = do
       { outputs =
           [ Output
               { outputAddress = refScriptAddress
-              , outputValue = LV.lovelaceToValue 22000000
+              , outputValue = LV.lovelaceToValue 19_670_840
               , outputDatum = NoOutputDatum
               , outputReferenceScript = toReferenceScript $ Just beaconScript
               }

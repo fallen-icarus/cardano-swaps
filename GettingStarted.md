@@ -68,7 +68,7 @@ window.
 
 ```bash
 source $HOME/.bashrc
-ghcup install ghc 9.6.4
+ghcup install ghc 9.6.7
 ```
 
 ### Install libsodium, scep256k1, and blst
@@ -135,7 +135,7 @@ cabal build exe:cardano-swaps
 ```
 
 The `cardano-swaps` CLI program should now be at
-`dist-newstyle/build/x86_64-linux/ghc-9.6.4/cardano-swaps-1.0.0.0/x/cardano-swaps/build/cardano-swaps/cardano-swaps`.
+`dist-newstyle/build/x86_64-linux/ghc-9.6.7/cardano-swaps-2.0.0/x/cardano-swaps/build/cardano-swaps/cardano-swaps`.
 Move the program to somewhere in your `$PATH`.
 
 All `cardano-swaps` subcommands have an associated `--help` option. The functionality is meant to
@@ -285,7 +285,7 @@ Registering the beacon script involves:
 
 ##### Exporting the beacon script
 ```bash
-cardano-swaps scripts one-way beacon-policy \
+cardano-swaps scripts one-way beacon-script \
   --out-file oneWayBeacons.plutus
 ```
 
@@ -364,7 +364,10 @@ the address.
 ##### Calculate the hash of the swap's staking credential
 The staking credential must approve the transaction that creates the swaps. A staking pubkey must
 sign the transaction (`--required-signer-hash`) and a staking script must be executed with a
-zero-ADA `--withdrawal`, which requires the script to already be registered.
+zero-ADA `--withdrawal`, which requires the script to already be registered. This check only
+applies when the swap datum's `prevInput` is `Nothing`. A swap created with `prevInput = Just ...`
+(for example, to link an updated order to the one it replaces) skips the check, so you must make
+sure the staking credential is usable yourself.
 
 ```bash
 # Generate the hash for a staking verification key.
@@ -715,7 +718,7 @@ oldPairBeaconName=$(cardano-swaps beacon-info one-way pair-beacon \
   --stdout)
 
 # Get the required offer beacon name.
-oldOfferBeacon=$(cardano-swaps beacon-info one-way offer-beacon \
+oldOfferBeaconName=$(cardano-swaps beacon-info one-way offer-beacon \
   --offer-asset c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d.4f74686572546f6b656e0a \
   --stdout)
 
@@ -726,7 +729,7 @@ oldAskBeaconName=$(cardano-swaps beacon-info one-way ask-beacon \
 
 # Create the required full beacon names.
 oldPairBeacon="${beaconPolicyId}.${oldPairBeaconName}"
-oldOfferBeacon="${beaconPolicyId}.${oldOfferBeacon}"
+oldOfferBeacon="${beaconPolicyId}.${oldOfferBeaconName}"
 oldAskBeacon="${beaconPolicyId}.${oldAskBeaconName}"
 ```
 
@@ -743,7 +746,7 @@ cardano-swaps datums one-way \
   --out-file oneWaySwapDatum.json
 ```
 
-**The price is always Ask/Offer.** In the above example, the swap wants 0.5 ADA per 1 native token
+**The price is always Ask/Offer.** In the above example, the swap wants 1 ADA per 1 native token
 taken. The price can be specified as either a fraction (like above) or a decimal. Specifying a
 decimal may be more convenient but specifying the fraction offers more control since it will be used
 on-chain as is (the decimal must be converted to a fraction).
@@ -841,7 +844,7 @@ Registering the beacon script involves:
 
 ##### Exporting the beacon script
 ```bash
-cardano-swaps scripts two-way beacon-policy \
+cardano-swaps scripts two-way beacon-script \
   --out-file twoWayBeacons.plutus
 ```
 
@@ -849,7 +852,7 @@ cardano-swaps scripts two-way beacon-policy \
 ```bash
 cardano-cli conway stake-address registration-certificate \
   --stake-script-file twoWayBeacons.plutus \
-  --out-file registration.cert"
+  --out-file registration.cert
 ```
 
 ##### Building the transaction
@@ -876,7 +879,7 @@ cardano-swaps scripts two-way swap-script \
   --out-file twoWaySwap.plutus
 
 # Export the beacon script.
-cardano-swaps scripts two-way beacon-policy \
+cardano-swaps scripts two-way beacon-script \
   --out-file twoWayBeacons.plutus
 ```
 
@@ -920,7 +923,10 @@ the address.
 ##### Calculate the hash of the swap's staking credential
 The staking credential must approve the transaction that creates the swaps. A staking pubkey must
 sign the transaction (`--required-signer-hash`) and a staking script must be executed with a
-zero-ADA `--withdrawal`, which requires the script to already be registered.
+zero-ADA `--withdrawal`, which requires the script to already be registered. This check only
+applies when the swap datum's `prevInput` is `Nothing`. A swap created with `prevInput = Just ...`
+(for example, to link an updated order to the one it replaces) skips the check, so you must make
+sure the staking credential is usable yourself.
 
 ```bash
 # Generate the hash for a staking verification key.
@@ -1131,7 +1137,7 @@ creating the hash of *any* script.
 ##### Create the required spending script redeemer
 ```bash
 cardano-swaps spending-redeemers two-way \
-  --update-with-mint \
+  --update-with-stake \
   --out-file spendingRedeemer.json
 ```
 
@@ -1140,7 +1146,7 @@ If the beacon script is being executed as a minting policy in this transaction, 
 
 ##### Create the beacon script redeemer.
 ```bash
-cardano-swaps beacon-redeemers one-way \
+cardano-swaps beacon-redeemers two-way \
   --update-only \
   --out-file beaconRedeemer.json
 ```
@@ -1233,7 +1239,7 @@ creating the hash of *any* script.
 ##### Create the required spending script redeemer
 ```bash
 cardano-swaps spending-redeemers two-way \
-  --close-or-update \
+  --update-with-mint \
   --out-file spendingRedeemer.json
 ```
 
@@ -1266,7 +1272,7 @@ newAsset2BeaconName=$(cardano-swaps beacon-info two-way asset-beacon \
 
 newPairBeacon="${beaconPolicyId}.${newPairBeaconName}"
 newAsset1Beacon="${beaconPolicyId}.${newAsset1BeaconName}"
-newAsset1Beacon="${beaconPolicyId}.${newAsset2BeaconName}"
+newAsset2Beacon="${beaconPolicyId}.${newAsset2BeaconName}"
 ```
 
 The above beacons are for a two-way swap between ADA and a native token. Which asset is specified
@@ -1492,7 +1498,7 @@ direction, this query requires you to choose one of the assets to be the offer a
 
 ##### Query One-Way Swaps By Ask
 ```bash
-cardano-swaps query own-swaps one-way offer \
+cardano-swaps query own-swaps one-way ask \
   --testnet \
   --address $(cat oneWaySwap.addr) \
   --ask-asset lovelace \

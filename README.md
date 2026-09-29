@@ -405,7 +405,7 @@ redeemer works; `CreateOrCloseSwaps` by convention). This requires:
    staking credential. The staking credential must approve the transaction: a staking pubkey must
    sign it and a staking script must be executed in it (a zero-ADA withdrawal, so the script must
    already be registered). This proves the credential is usable before any funds are locked behind
-   it.
+   it. The check only applies to outputs with `prevInput = Nothing` (see the note below).
 3. The output UTxO contains exactly one of each required beacon type for the swap and no extraneous
    assets (besides ADA).
 4. The output UTxO has a valid inline `SwapDatum` with `swapPrice > 0`.
@@ -423,6 +423,11 @@ This process requires a deposit of **~2 ADA** per swap UTxO, which is reclaimabl
 >
 > Only outputs with `prevInput = Nothing` (new swaps) require the approval. Swap execution outputs
 > always have `prevInput` set, so creating swaps while executing others remains composable.
+>
+> Owners may also create a swap with `prevInput = Just ...`, for example to link an updated order
+> back to the one it replaces for an audit trail. Such swaps skip the approval check, so it is up
+> to the owner to make sure the staking credential is usable (see finding CSW-302 in the [v2 audit
+> report][8]). Using `prevInput = Nothing` for brand-new orders is recommended.
 >
 > The beacon script remembers the last staking credential that approved and only performs a new
 > lookup when a new swap for a different address is encountered. Multiple addresses can create swaps
@@ -460,10 +465,9 @@ The [protocol versions](./VERSIONS.md) have undergone the following security aud
 
 ### Protocol v2
 
-> [!WARNING]
-> Although the changes are
-> [minor](https://github.com/fallen-icarus/cardano-swaps/commit/927444439f04ed5f00aa09d0eefcc3dc1f29251d),
-> this protocol version has not been audited yet.
+| Date | Auditor | Report |
+|:--:|:--:|:--:|
+| September 2026 | TxPipe | [View Full Report][8] |
 
 ### Protocol v1
 
@@ -603,6 +607,7 @@ fundamentally more free.
 [2]: https://github.com/fallen-icarus/meditations-blog/blob/main/The%20DeFi%20Hypothesis/README.md
 [3]: https://youtu.be/Pk6eNMLNDps
 [4]: https://github.com/cardano-foundation/CIPs/blob/master/CIP-0089/README.md
-[5]: https://github.com/cypher-enterprises/p2p-audit/blob/main/audit.pdf
+[5]: ./audits/v1/2025-08-22-cypher-enterprises.pdf
 [6]: https://github.com/fallen-icarus/cardano-swaps/tree/9ec41e7619f5ba9d3dd46dd194e2146098093721
 [7]: https://github.com/IntersectMBO/plutus/blob/master/plutus-core/plutus-core/src/PlutusCore/Data.hs
+[8]: ./audits/v2/2026-09-21-txpipe.pdf
